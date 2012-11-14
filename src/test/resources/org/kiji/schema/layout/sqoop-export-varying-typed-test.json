@@ -1,0 +1,81 @@
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+{
+  name : "kijiTableExportTyped",
+  keys_format : {
+    encoding : "HASH",
+    hash_type : "MD5",
+    hash_size : 16
+  },
+  locality_groups : [ {
+    name : "default",
+    in_memory : false,
+    max_versions : 2,
+    ttl_seconds : 2147483647,
+    compression_type : "NONE",
+    families : [ {
+      name : "FAMILY",
+      description : "the only family",
+      columns : [ {
+        name : "STRING_KEY_COLUMN",
+        description : "the val (string) used as a key",
+        column_schema : {
+          type : "INLINE",
+          value : '"string"'
+        }
+      }, {
+        name : "BOOLEAN_COLUMN",
+        description : "A column containing a boolean value.",
+        column_schema : {
+          type : "INLINE",
+          value : '"boolean"'
+        }
+      }, {
+        name : "DOUBLE_COLUMN",
+        description : "A column containing a double value.",
+        column_schema : {
+          type : "INLINE",
+          value : '"double"'
+        }
+      }, {
+        name : "INT_COLUMN",
+        description : "A column containing an integer value.",
+        column_schema : {
+          type : "INLINE",
+          value : '"int"'
+        }
+      }, {
+        name : "LONG_COLUMN",
+        description : "A column containing a long value.",
+        column_schema : {
+          type : "INLINE",
+          value : '"long"'
+        }
+      }, {
+        name : "ARRAY_COLUMN",
+        description : "A column containing an array of Strings.",
+        column_schema : {
+          type : "INLINE",
+          value : "{\"type\": \"array\", \"items\": \"string\"}"
+        }
+      } ]
+    } ]
+  } ],
+  version : "kiji-1.0"
+}

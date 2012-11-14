@@ -1,0 +1,292 @@
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Kiji table layout.
+
+@namespace("org.kiji.schema.avro")
+protocol KijiTableLayoutRecords {
+
+  /** Type of compression for the data within a locality group. */
+  enum CompressionType {
+    NONE,
+    GZ,
+    LZO,
+    SNAPPY
+  }
+
+  /** Type of schema for column data. */
+  enum SchemaType {
+    /** Column contains data encoded as specified inline. */
+    INLINE,
+
+    /** Column contains Avro records with the specified class name. */
+    CLASS,
+
+    /** Column contains counters. */
+    COUNTER
+  }
+
+  /** How schemas get encoded in cells. */
+  enum SchemaStorage {
+    /** Data is prepended with the schema hash. */
+    HASH,
+
+    /** Data is prepended with the schema unique ID. */
+    UID,
+
+    /** Schema is immutable and not stored in the cell. */
+    FINAL
+  }
+
+  /** Schema of a Kiji cell. */
+  record CellSchema {
+    /** Schema encoding in cells. Unused if type is COUNTER. */
+    SchemaStorage storage = "HASH";
+
+    /** Type of schema. */
+    SchemaType type;
+
+    /**
+     * Schema value, whose interpretation depends on the schema type:
+     *  - inline : immediate Avro schema description, eg. "string";
+     *  - class : Avro schema class name, eg. "org.kiji.avro.Node";
+     *  - counter : unused, must the empty.
+     */
+    union { null, string } value = null;
+  }
+
+  /** Column descriptor. */
+  record ColumnDesc {
+    /** Column ID. Not visible to the user. 0 means unset. */
+    int @internal("true") id = 0;
+
+    /** Column primary name ([a-zA-Z_][a-zA-Z0-9_]*). */
+    string name;
+
+    /** Column name aliases. */
+    array<string> aliases = [];
+
+    /** When false, the column is not visible or usable. */
+    boolean enabled = true;
+
+    /** User description of the column. */
+    string description = "";
+
+    /** Schema for the cell values. */
+    CellSchema column_schema;
+
+    // Fields below are used to apply a diff against a reference family layout:
+
+    /** When true, applying this layout deletes the column. */
+    boolean @diff("true") delete = false;
+
+    /** Reference primary name of the column, when renaming the column. */
+    union { null, string } @diff("true") renamed_from = null;
+  }
+
+  /** Descriptor for a group of columns. */
+  record FamilyDesc {
+    /** Family ID. Not visible to the user. 0 means unset. */
+    int @internal("true") id = 0;
+
+    /** Column family primary name ([a-zA-Z_][a-zA-Z0-9_]*). */
+    string name;
+
+    /** Column family name aliases. */
+    array<string> aliases = [];
+
+    /** When false, the family and its columns are not visible/usable. */
+    boolean enabled = true;
+
+    /** User description of the column family. */
+    string description = "";
+
+    /** Cell schema for map-type families. Null for group-type families. */
+    union { null, CellSchema } map_schema = null;
+
+    /** Columns, for group-type families only. Empty for map-type families. */
+    array<ColumnDesc> columns = [];
+
+    // Fields below are used to apply a diff against a reference family layout:
+
+    /** When true, applying this layout deletes the family. */
+    boolean @diff("true") delete = false;
+
+    /** Reference primary name of the family, when renaming the family. */
+    union { null, string } @diff("true") renamed_from = null;
+  }
+
+  /** A group of Kiji column families stored together in a table. */
+  record LocalityGroupDesc {
+    /** Locality group ID. Not visible to the user. 0 means unset. */
+    int @internal("true") id = 0;
+
+    /** Locality group primary name ([a-zA-Z_][a-zA-Z0-9_]*). */
+    string name;
+
+    /** Locality group name aliases. */
+    array<string> aliases = [];
+
+    /** When false, the locality group and its famillies are not visible. */
+    boolean enabled = true;
+
+    /** User description of the locality group. */
+    string description = "";
+
+    /** Reduce latency by forcing all data to be kept in memory. */
+    boolean in_memory;
+
+    /** Maximum number of the most recent cell versions to retain. */
+    int max_versions;
+
+    /** Length of time in seconds to retain cells. */
+    int ttl_seconds;
+
+    /** Data compression type. */
+    CompressionType compression_type;
+
+    /** Column family descriptors. */
+    array<FamilyDesc> families = [];
+
+    // Fields below are used against a reference locality group layout:
+
+    /** When true, applying this layout deletes the locality group. */
+    boolean @diff("true") delete = false;
+
+    /** Reference primary name of the locality group, when renaming. */
+    union { null, string } @diff("true") renamed_from = null;
+  }
+
+
+  /** Hashing methods. */
+  enum HashType {
+    /** MD5 hashing (16 bytes). */
+    MD5
+  }
+
+  /** Row keys encoding. */
+  enum RowKeyEncoding {
+    /** Row keys are managed by the user. */
+    RAW,
+
+    /** Row keys are hashed. */
+    HASH,
+
+    /** Row keys are prefixed by a hash. */
+    HASH_PREFIX
+
+    // TODO: composite row keys
+  }
+
+  record RowKeyFormat {
+    /** Encoding of the row key. */
+    RowKeyEncoding encoding;
+
+    /** Type of hashing used, if any. */
+    union { null, HashType } hash_type = null;
+
+    /**
+     * Size of the hash, in bytes.
+     *  - unused when encoding is RAW.
+     *  - smaller than the hash size used for HASH or HASH_PREFIX.
+     */
+    int hash_size = 0;
+  }
+
+  /** Layout of a Kiji table. */
+  record TableLayoutDesc {
+    /** Name of the table ([a-zA-Z0-9_]+). */
+    string name;
+
+    /** User description of the table. */
+    string description = "";
+
+    /** Whether row key hashing should be managed by Kiji. */
+    RowKeyFormat keys_format;
+
+    /** Locality groups in the table. */
+    array<LocalityGroupDesc> locality_groups = [];
+
+    /** Data layout version (eg. "kiji-1.0"). */
+    string version;
+
+    /** ID of the layout. */
+    union { null, string } layout_id = null;
+
+    /** Reference to the base layout this descriptor builds on. */
+    union { null, string } reference_layout = null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Backup records
+
+  /** An MD5 hash. */
+  fixed MD5Hash(16);
+
+  /** An entry from the SchemaTable inside a metadata backup file. */
+  record SchemaTableEntry {
+    /** Schema ID: positive integers only. */
+    long id;
+
+    /** 128 bits (16 bytes) hash of the schema JSON representation. */
+    MD5Hash hash;
+
+    /** JSON representation of the schema. */
+    string avro_schema;
+  }
+
+  /** Entry to backup a table layout update. */
+  record TableLayoutBackupEntry {
+    /** Update timestamp, in ms. */
+    long timestamp;
+
+    /**
+     * Table layout update, as specified by the submitter/user.
+     * Except for the first one, the update builds on the previous layout.
+     */
+    union { TableLayoutDesc, null } update = null;
+
+    /** Effective table layout, after applying the update. */
+    TableLayoutDesc layout;
+  }
+
+  /** Table backup, ie. everything needed to restore a table. */
+  record TableBackup {
+    /** Table name. */
+    string name;
+
+    /** Sequence of layouts, in order. */
+    array<TableLayoutBackupEntry> layouts = [];
+
+    // TODO: custom/user metadata associated to the table.
+  }
+
+  /** Record that encapsulates all Kiji metadata, for backup purposes. */
+  record MetadataBackup {
+    /** Layout version (eg. "kiji-1.0"). */
+    string layout_version;
+
+    /** Schema entries. */
+    array<SchemaTableEntry> schema_table = [];
+
+    /** Map from table names to table backup records. */
+    map<TableBackup> meta_table = {};
+  }
+
+}

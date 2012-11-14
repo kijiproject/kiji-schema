@@ -1,0 +1,110 @@
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+{
+  name : "foo",
+  description : "the foo table",
+  keys_format : {
+    encoding : "HASH",
+    hash_type : "MD5",
+    hash_size : 16
+  },
+  locality_groups : [ {
+    name : "default",
+    in_memory : false,
+    max_versions : 1,
+    ttl_seconds : 7776000,
+    compression_type : "GZ",
+    families : [ {
+      name : "info",
+      description : "simple info fields",
+      columns : [ {
+        name : "name",
+        description : "User name",
+        column_schema : {
+          type : "INLINE",
+          value : '"string"'
+        }
+      }, {
+        name : "email",
+        description : "User email address",
+        column_schema : {
+          type : "INLINE",
+          value : '"string"'
+        }
+      }, {
+        name : "b",
+        description : "Field 'b' of TestRecord",
+        column_schema : {
+          type : "INLINE",
+          value : '"int"'
+        }
+      }, {
+        name : "c",
+        description : "Field 'c' of TestRecord",
+        column_schema : {
+          type : "INLINE",
+          value : '"int"'
+        }
+      } ]
+    }, {
+      name : "derived",
+      description : "derived data",
+      columns : [ {
+        name : "domain",
+        description : "The domain of the email address",
+        column_schema : {
+          type : "INLINE",
+          value : '"string"'
+        }
+      } ]
+    }, {
+      name : "other",
+      description : "other crap",
+      columns : [ {
+        name : "counter",
+        description : "A counter",
+        column_schema : {
+          type : "COUNTER"
+        }
+      } ]
+    } ]
+  }, {
+    name : "inMemory",
+    in_memory : true,
+    max_versions : 1,
+    ttl_seconds : 3600,
+    compression_type : "NONE",
+    families : [ {
+      name : "tweets",
+      description : "Recent tweets, where the key is the decimal timestamp",
+      map_schema : {
+        type : "CLASS",
+        value : "org.kiji.schema.avro.Tweet"
+      }
+    }, {
+      name : "searches",
+      description : "Number of ads returned for the given search terms",
+      map_schema : {
+        type : "INLINE",
+        value : '"int"'
+      }
+    } ]
+  } ],
+  version : "kiji-1.0"
+}
