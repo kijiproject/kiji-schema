@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Distributed lock on top of ZooKeeper.
  */
-public class ZooKeeperLock implements Closeable {
+public class ZooKeeperLock implements Lock, Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperLock.class);
   private static final byte[] EMPTY = new byte[0];
 
@@ -80,11 +80,8 @@ public class ZooKeeperLock implements Closeable {
 
   private final LockWatcher mLockWatcher = new LockWatcher();
 
-  /**
-   * Unconditionally acquires the lock.
-   *
-   * @throws IOException on I/O error.
-   */
+  /** {@inheritDoc} */
+  @Override
   public void lock() throws IOException {
     if (!lock(0.0)) {
       // This should never happen, instead lock(0.0) should raise a KeeperException!
@@ -92,14 +89,8 @@ public class ZooKeeperLock implements Closeable {
     }
   }
 
-  /**
-   * Acquires the lock.
-   *
-   * @param timeout
-   *          Deadline, in seconds, to acquire the lock. 0 means no timeout.
-   * @return whether the lock is acquired (ie. false means timeout).
-   * @throws IOException on I/O error.
-   */
+  /** {@inheritDoc} */
+  @Override
   public boolean lock(double timeout) throws IOException {
     while (true) {
       try {
@@ -241,11 +232,8 @@ public class ZooKeeperLock implements Closeable {
     }
   }
 
-  /**
-   * Releases the lock.
-   *
-   * @throws IOException on I/O error.
-   */
+  /** {@inheritDoc} */
+  @Override
   public void unlock() throws IOException {
     while (true) {
       try {
@@ -265,7 +253,7 @@ public class ZooKeeperLock implements Closeable {
      * @throws InterruptedException if the thread is interrupted.
      * @throws KeeperException on error.
      */
-  public void unlockInternal() throws InterruptedException, KeeperException {
+  private void unlockInternal() throws InterruptedException, KeeperException {
     File pathToDelete = null;
     synchronized (this) {
       Preconditions.checkState(null != mCreatedPath, mCreatedPath);
