@@ -27,19 +27,19 @@ import java.io.IOException;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.impl.HBaseKijiTable;
-import org.kiji.schema.impl.HTableFactory;
+import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 
 public class TestHBaseKijiTable extends KijiClientTest {
   private HBaseKijiTable mKijiTable;
-  private HTable mHTable;
+  private HTableInterface mHTable;
 
   @Before
   public void setup() throws Exception {
@@ -47,13 +47,13 @@ public class TestHBaseKijiTable extends KijiClientTest {
         .updateTableLayout("table", KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
 
     // Create a mock HTable instance.
-    mHTable = createMock(HTable.class);
+    mHTable = createMock(HTableInterface.class);
     mHTable.close();  // <-- Expect it to be closed eventually.
     replay(mHTable);
 
-    mKijiTable = new HBaseKijiTable(getKiji(), "table", new HTableFactory() {
+    mKijiTable = new HBaseKijiTable(getKiji(), "table", new HTableInterfaceFactory() {
       @Override
-      public HTable create(Configuration conf, String hbaseTableName) throws IOException {
+      public HTableInterface create(Configuration conf, String hbaseTableName) throws IOException {
         return mHTable;
       }
     });

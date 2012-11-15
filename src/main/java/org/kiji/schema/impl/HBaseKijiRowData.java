@@ -32,7 +32,7 @@ import java.util.TreeSet;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecord;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -80,7 +80,7 @@ public class HBaseKijiRowData extends AbstractKijiRowData {
   private final KijiCellDecoderFactory mCellDecoderFactory;
 
   /** An optional HTable instance used for fetching the more results from paged columns. */
-  private final HTable mHTable;
+  private final HTableInterface mHTable;
 
   /** A column pager (will only be used if paging is enabled, otherwise set to null). */
   private final KijiColumnPager mColumnPager;
@@ -106,7 +106,7 @@ public class HBaseKijiRowData extends AbstractKijiRowData {
     private KijiCellDecoderFactory mCellDecoderFactory;
 
     /** An optional HTable instance, required for implementing nextPage() RPCs. */
-    private HTable mHTable;
+    private HTableInterface mHTable;
 
     /**
      * If this is not called, the EntityId is read from the HBase Result. Therefore, if
@@ -171,7 +171,7 @@ public class HBaseKijiRowData extends AbstractKijiRowData {
      * @param htable An HTable instance.
      * @return This options instance.
      */
-    public Options withHTable(HTable htable) {
+    public Options withHTable(HTableInterface htable) {
       mHTable = htable;
       return this;
     }
@@ -226,7 +226,7 @@ public class HBaseKijiRowData extends AbstractKijiRowData {
      *
      * @return The HTable instance.
      */
-    public HTable getHTable() {
+    public HTableInterface getHTable() {
       return mHTable;
     }
   }

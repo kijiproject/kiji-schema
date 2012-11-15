@@ -25,6 +25,7 @@ import org.apache.commons.io.IOUtils;
 
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiConfiguration;
+import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 
 
 /**
@@ -49,7 +50,10 @@ public abstract class KijiTool extends BaseTool {
    */
   protected Kiji openKiji() throws IOException {
     KijiConfiguration kijiConf = new KijiConfiguration(getConf(), getURI().getInstance());
-    return new Kiji(kijiConf, false);
+    return new Kiji(
+        kijiConf,
+        false,
+        DefaultHTableInterfaceFactory.get());
   }
 
   /**

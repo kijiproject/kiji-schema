@@ -32,7 +32,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -104,7 +104,7 @@ public class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   private static final KijiCellFormat CELL_FORMAT = KijiCellFormat.HASH;
 
   /** The HTable to use to store the layouts. */
-  private final HTable mTable;
+  private final HTableInterface mTable;
 
   /** The column family in the HTable to use for storing layouts. */
   private final String mFamily;
@@ -134,7 +134,9 @@ public class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    * @param family The name of the column family within the HTable used to store layout data.
    * @param schemaTable The Kiji schema table.
    */
-  public HBaseTableLayoutDatabase(HTable htable, String family, KijiSchemaTable schemaTable) {
+  public HBaseTableLayoutDatabase(
+      HTableInterface htable, String family, KijiSchemaTable schemaTable) {
+
     mTable = Preconditions.checkNotNull(htable);
     mFamily = Preconditions.checkNotNull(family);
     mFamilyBytes = Bytes.toBytes(mFamily);

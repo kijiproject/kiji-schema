@@ -49,7 +49,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -120,10 +120,10 @@ public class HBaseSchemaTable extends KijiSchemaTable {
       Bytes.toBytes(SCHEMA_COUNTER_ROW_NAME);
 
   /** HTable used to map schema hash to schema entries. */
-  private final HTable mSchemaHashTable;
+  private final HTableInterface mSchemaHashTable;
 
   /** HTable used to map schema IDs to schema entries. */
-  private final HTable mSchemaIdTable;
+  private final HTableInterface mSchemaIdTable;
 
   /** ZooKeeper lock for the kiji instance schema table. */
   private final ZooKeeperLock mZKLock;
@@ -144,11 +144,15 @@ public class HBaseSchemaTable extends KijiSchemaTable {
    * Creates an HTable handle to the schema V5 table.
    *
    * @param conf Kiji/HBase configuration to open the table.
-   * @return the HTable storing the schemas up until data layout v5.
+   * @param factory HTableInterface factory.
+   * @return a new interface for the table storing the schemas up until data layout v5.
    * @throws IOException on I/O error.
    */
-  public static HTable newSchemaV5Table(KijiConfiguration conf) throws IOException {
-    return new HTable(conf.getConf(),
+  public static HTableInterface newSchemaV5Table(
+      KijiConfiguration conf,
+      HTableInterfaceFactory factory)
+      throws IOException {
+    return factory.create(conf.getConf(),
         KijiManagedHBaseTableName.getSchemaV5TableName(conf.getName()).toString());
   }
 
@@ -156,11 +160,15 @@ public class HBaseSchemaTable extends KijiSchemaTable {
    * Creates an HTable handle to the schema hash table.
    *
    * @param conf Kiji/HBase configuration to open the table.
-   * @return the HTable storing the mapping from schema hash to schema entry.
+   * @param factory HTableInterface factory.
+   * @return a new interface for the table storing the mapping from schema hash to schema entry.
    * @throws IOException on I/O error.
    */
-  public static HTable newSchemaHashTable(KijiConfiguration conf) throws IOException {
-    return new HTable(conf.getConf(),
+  public static HTableInterface newSchemaHashTable(
+      KijiConfiguration conf,
+      HTableInterfaceFactory factory)
+      throws IOException {
+    return factory.create(conf.getConf(),
         KijiManagedHBaseTableName.getSchemaHashTableName(conf.getName()).toString());
   }
 
@@ -168,11 +176,15 @@ public class HBaseSchemaTable extends KijiSchemaTable {
    * Creates an HTable handle to the schema ID table.
    *
    * @param conf Kiji/HBase configuration to open the table.
-   * @return the HTable storing the mapping from schema ID to schema entry.
+   * @param factory HTableInterface factory.
+   * @return a new interface for the table storing the mapping from schema ID to schema entry.
    * @throws IOException on I/O error.
    */
-  public static HTable newSchemaIdTable(KijiConfiguration conf) throws IOException {
-    return new HTable(conf.getConf(),
+  public static HTableInterface newSchemaIdTable(
+      KijiConfiguration conf,
+      HTableInterfaceFactory factory)
+      throws IOException {
+    return factory.create(conf.getConf(),
         KijiManagedHBaseTableName.getSchemaIdTableName(conf.getName()).toString());
   }
 
@@ -237,12 +249,17 @@ public class HBaseSchemaTable extends KijiSchemaTable {
   /**
    * Open a connection to the HBase schema table for a Kiji instance.
    *
-   * @param kijiConfiguration The kiji configuration.
+   * @param kijiConf The kiji configuration.
+   * @param tableFactory HTableInterface factory.
    * @throws IOException on I/O error.
    */
-  public HBaseSchemaTable(KijiConfiguration kijiConfiguration) throws IOException {
-    this(newSchemaHashTable(kijiConfiguration), newSchemaIdTable(kijiConfiguration),
-        newZooKeeperLock(kijiConfiguration));
+  public HBaseSchemaTable(
+      KijiConfiguration kijiConf,
+      HTableInterfaceFactory tableFactory)
+      throws IOException {
+    this(newSchemaHashTable(kijiConf, tableFactory),
+        newSchemaIdTable(kijiConf, tableFactory),
+        newZooKeeperLock(kijiConf));
   }
 
   /**
@@ -253,7 +270,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
    * @param zkLock ZooKeeper lock protecting the schema tables.
    * @throws IOException on I/O error.
    */
-  public HBaseSchemaTable(HTable hashTable, HTable idTable, ZooKeeperLock zkLock)
+  public HBaseSchemaTable(HTableInterface hashTable, HTableInterface idTable, ZooKeeperLock zkLock)
       throws IOException {
     mSchemaHashTable = Preconditions.checkNotNull(hashTable);
     mSchemaIdTable = Preconditions.checkNotNull(idTable);
@@ -582,10 +599,14 @@ public class HBaseSchemaTable extends KijiSchemaTable {
    * Install the schema table into a Kiji instance.
    *
    * @param admin The HBase Admin interface for the HBase cluster to install into.
-   * @param kijiConfiguration The Kiji configuration.
+   * @param kijiConf The Kiji configuration.
+   * @param tableFactory HTableInterface factory.
    * @throws IOException If there is an error.
    */
-  public static void install(HBaseAdmin admin, KijiConfiguration kijiConfiguration)
+  public static void install(
+      HBaseAdmin admin,
+      KijiConfiguration kijiConf,
+      HTableInterfaceFactory tableFactory)
       throws IOException {
     // Keep all versions of schema entries:
     //  - entries of the ID table should never be written more than once.
@@ -596,7 +617,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
     final int maxVersions = Integer.MAX_VALUE;
 
     final HTableDescriptor hashTableDescriptor = new HTableDescriptor(
-        KijiManagedHBaseTableName.getSchemaHashTableName(kijiConfiguration.getName()).toString());
+        KijiManagedHBaseTableName.getSchemaHashTableName(kijiConf.getName()).toString());
     final HColumnDescriptor hashColumnDescriptor = new HColumnDescriptor(
         SCHEMA_COLUMN_FAMILY_BYTES, // family name.
         maxVersions, // max versions
@@ -609,7 +630,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
     admin.createTable(hashTableDescriptor);
 
     final HTableDescriptor idTableDescriptor = new HTableDescriptor(
-        KijiManagedHBaseTableName.getSchemaIdTableName(kijiConfiguration.getName()).toString());
+        KijiManagedHBaseTableName.getSchemaIdTableName(kijiConf.getName()).toString());
     final HColumnDescriptor idColumnDescriptor = new HColumnDescriptor(
         SCHEMA_COLUMN_FAMILY_BYTES, // family name.
         maxVersions, // max versions
@@ -622,9 +643,9 @@ public class HBaseSchemaTable extends KijiSchemaTable {
     admin.createTable(idTableDescriptor);
 
     final HBaseSchemaTable schemaTable = new HBaseSchemaTable(
-        newSchemaHashTable(kijiConfiguration),
-        newSchemaIdTable(kijiConfiguration),
-        newZooKeeperLock(kijiConfiguration));
+        newSchemaHashTable(kijiConf, tableFactory),
+        newSchemaIdTable(kijiConf, tableFactory),
+        newZooKeeperLock(kijiConf));
     try {
       schemaTable.setSchemaIdCounter(0L);
       schemaTable.registerPrimitiveSchemas();
@@ -779,7 +800,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
    * @param entries Collection of schema entries.
    * @return whether the entries are consistent.
    */
-  private boolean checkConsistency(Set<SchemaEntry> entries) {
+  private static boolean checkConsistency(Set<SchemaEntry> entries) {
     final Map<Long, SchemaEntry> idMap = new HashMap<Long, SchemaEntry>(entries.size());
     final Map<BytesKey, SchemaEntry> hashMap = new HashMap<BytesKey, SchemaEntry>(entries.size());
     boolean isConsistent = true;
@@ -842,7 +863,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
    * @return the set of schema entries from the schema hash table.
    * @throws IOException on I/O error.
    */
-  private Set<SchemaEntry> loadSchemaHashTable(HTable hashTable) throws IOException {
+  private Set<SchemaEntry> loadSchemaHashTable(HTableInterface hashTable) throws IOException {
     LOG.info("Loading entries from schema hash table.");
     final Set<SchemaEntry> entries = new HashSet<SchemaEntry>();
     int hashTableRowCounter = 0;
@@ -899,7 +920,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
    * @return the set of schema entries from the schema ID table.
    * @throws IOException on I/O error.
    */
-  private Set<SchemaEntry> loadSchemaIdTable(HTable idTable) throws IOException {
+  private Set<SchemaEntry> loadSchemaIdTable(HTableInterface idTable) throws IOException {
     LOG.info("Loading entries from schema ID table.");
     int idTableRowCounter = 0;
     final Set<SchemaEntry> entries = new HashSet<SchemaEntry>();

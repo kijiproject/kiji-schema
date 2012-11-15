@@ -22,16 +22,19 @@ package org.kiji.schema;
 import java.io.Closeable;
 import java.io.IOException;
 
+import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
+import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.util.VersionInfo;
 
 /**
@@ -55,6 +58,9 @@ public class Kiji implements KijiTableFactory, Closeable {
 
   /** The kiji configuration. */
   private final KijiConfiguration mKijiConf;
+
+  /** Factory for HTable instances. */
+  private final HTableInterfaceFactory mHTableFactory;
 
   /** The schema table for this kiji instance, or null if it has not been opened yet. */
   private KijiSchemaTable mSchemaTable;
@@ -84,7 +90,9 @@ public class Kiji implements KijiTableFactory, Closeable {
    * @throws IOException If there is an error.
    */
   public Kiji(KijiConfiguration kijiConf) throws IOException {
-    this(kijiConf, true);
+    this(kijiConf,
+        true,
+        DefaultHTableInterfaceFactory.get());
   }
 
   /**
@@ -96,11 +104,17 @@ public class Kiji implements KijiTableFactory, Closeable {
    * @param kijiConf The kiji configuration.
    * @param validateVersion Validate that the installed version of kiji is compatible with
    *     this client.
+   * @param tableFactory HTableInterface factory.
    * @throws IOException If there is an error.
    */
-  public Kiji(KijiConfiguration kijiConf, boolean validateVersion) throws IOException {
+  public Kiji(
+      KijiConfiguration kijiConf,
+      boolean validateVersion,
+      HTableInterfaceFactory tableFactory)
+      throws IOException {
     // Keep a deep copy of the kiji configuration.
     mKijiConf = new KijiConfiguration(kijiConf);
+    mHTableFactory = Preconditions.checkNotNull(tableFactory);
 
     LOG.debug("Opening kiji...");
 
@@ -187,7 +201,7 @@ public class Kiji implements KijiTableFactory, Closeable {
    */
   public synchronized KijiSchemaTable getSchemaTable() throws IOException {
     if (null == mSchemaTable) {
-      mSchemaTable = new HBaseSchemaTable(getKijiConf());
+      mSchemaTable = new HBaseSchemaTable(getKijiConf(), mHTableFactory);
     }
     return mSchemaTable;
   }
@@ -200,7 +214,7 @@ public class Kiji implements KijiTableFactory, Closeable {
    */
   public synchronized KijiSystemTable getSystemTable() throws IOException {
     if (null == mSystemTable) {
-      mSystemTable = new HBaseSystemTable(getKijiConf());
+      mSystemTable = new HBaseSystemTable(getKijiConf(), mHTableFactory);
     }
     return mSystemTable;
   }
@@ -213,7 +227,7 @@ public class Kiji implements KijiTableFactory, Closeable {
    */
   public synchronized KijiMetaTable getMetaTable() throws IOException {
     if (null == mMetaTable) {
-      mMetaTable = new HBaseMetaTable(getKijiConf(), getSchemaTable());
+      mMetaTable = new HBaseMetaTable(getKijiConf(), getSchemaTable(), mHTableFactory);
     }
     return mMetaTable;
   }

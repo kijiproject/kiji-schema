@@ -33,6 +33,7 @@ import org.apache.commons.lang.SerializationUtils;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.mapreduce.GenericTableMapReduceUtil;
@@ -59,6 +60,7 @@ import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.SpecificCellDecoderFactory;
+import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 import org.kiji.schema.impl.HBaseDataRequestAdapter;
 import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.HBaseKijiTable;
@@ -372,7 +374,10 @@ public class KijiTableInputFormat
       mLayout = TableLayoutSerializer.readInputTableLayout(mConf);
 
       // Get a kiji cell decoder factory.
-      mKiji = new Kiji(new KijiConfiguration(mConf, mInstance), false);
+      mKiji = new Kiji(
+          new KijiConfiguration(mConf, mInstance),
+          false,
+          DefaultHTableInterfaceFactory.get());
       mKijiTable = HBaseKijiTable.downcast(mKiji.openTable(mTable));
       mCellDecoderFactory = new SpecificCellDecoderFactory(mKiji.getSchemaTable());
 
@@ -383,12 +388,13 @@ public class KijiTableInputFormat
           .setStopRow(((KijiTableSplit) split).getEndRow());
 
       // Get the HTable to write to.
-      final HTable htable = mKijiTable.getHTable();
+      final HTableInterface htable = mKijiTable.getHTable();
 
       // Create the table record reader.
       mDelegate = new HBaseTableRecordReader(mLayout.getDesc().getKeysFormat());
       mDelegate.setScan(scan);
-      mDelegate.setHTable(htable);
+      // TODO: TableRecordReader requires type HTable, instead of HTableInterface:
+      mDelegate.setHTable((HTable) htable);
       mDelegate.init();
       mDelegate.initialize(split, context);
     }

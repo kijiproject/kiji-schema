@@ -38,7 +38,7 @@ import java.util.Set;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -56,13 +56,13 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
   /** A simple layout file example (bare minimum). */
   public static final String SIMPLE_LAYOUT_RESOURCE = "com/Kijidata/core/layout/simple-layout.xml";
 
-  private HTable mHTable;
+  private HTableInterface mHTable;
   private String mFamily;
   private HBaseTableLayoutDatabase mDb;
 
   @Before
   public void setupDb() throws IOException {
-    mHTable = createMock(HTable.class);
+    mHTable = createMock(HTableInterface.class);
     mFamily = "layout";
     mDb = new HBaseTableLayoutDatabase(mHTable, mFamily, getKiji().getSchemaTable());
   }
