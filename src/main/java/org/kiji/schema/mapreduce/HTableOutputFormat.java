@@ -26,6 +26,7 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.mapreduce.TableOutputFormat;
 import org.apache.hadoop.hbase.zookeeper.ZKUtil;
 import org.apache.hadoop.io.Writable;
@@ -94,8 +95,10 @@ public class HTableOutputFormat<K> extends TableOutputFormat<K> {
     final Configuration conf = getConf();
     final String tableName = checkNotNull(conf.get(OUTPUT_TABLE),
         "Missing output HBase table in job configuration");
-    final HTable htable = new HTable(conf, tableName);
+    // TODO: Inject an HTableInfactory instead of hardcoding an HTable constructor:
+    final HTableInterface htable = new HTable(conf, tableName);
     htable.setAutoFlush(false);
-    return new TableRecordWriter<K>(htable);
+    // TODO: TableRecordWriter requires the concrete class HTable even though it does not need it:
+    return new TableRecordWriter<K>((HTable) htable);
   }
 }

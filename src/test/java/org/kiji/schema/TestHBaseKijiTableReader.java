@@ -37,14 +37,14 @@ import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.impl.HBaseKijiTable;
-import org.kiji.schema.impl.HTableFactory;
+import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayouts;
 
@@ -60,12 +60,12 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
   @Test
   public void testGet() throws Exception {
     // Create a mock htable.
-    final HTable htable = createMock(HTable.class);
+    final HTableInterface htable = createMock(HTableInterface.class);
 
     // Create the kiji table.
-    HBaseKijiTable table = new HBaseKijiTable(getKiji(), "table", new HTableFactory() {
+    HBaseKijiTable table = new HBaseKijiTable(getKiji(), "table", new HTableInterfaceFactory() {
       @Override
-      public HTable create(Configuration conf, String hbaseTableName) throws IOException {
+      public HTableInterface create(Configuration conf, String hbaseTableName) throws IOException {
         return htable;
       }
     });
@@ -112,12 +112,12 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
   @Test
   public void testGetCounter() throws Exception {
     // Create a mock htable so we can verify that the reader delegates the correct get() calls.
-    final HTable htable = createMock(HTable.class);
+    final HTableInterface htable = createMock(HTableInterface.class);
 
     // Create the kiji table.
-    HBaseKijiTable table = new HBaseKijiTable(getKiji(), "user", new HTableFactory() {
+    HBaseKijiTable table = new HBaseKijiTable(getKiji(), "user", new HTableInterfaceFactory() {
       @Override
-      public HTable create(Configuration conf, String hbaseTableName) throws IOException {
+      public HTableInterface create(Configuration conf, String hbaseTableName) throws IOException {
         return htable;
       }
     });
@@ -163,11 +163,11 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     // only one item is passed in, thus this test must request multiple ids in order
     // to actually test the bulk get method.
 
-    final HTable htable = createMock(HTable.class);
+    final HTableInterface htable = createMock(HTableInterface.class);
     // Create the kiji table.
-    HBaseKijiTable table = new HBaseKijiTable(getKiji(), "table", new HTableFactory() {
+    HBaseKijiTable table = new HBaseKijiTable(getKiji(), "table", new HTableInterfaceFactory() {
       @Override
-      public HTable create(Configuration conf, String hbaseTableName) throws IOException {
+      public HTableInterface create(Configuration conf, String hbaseTableName) throws IOException {
         return htable;
       }
     });

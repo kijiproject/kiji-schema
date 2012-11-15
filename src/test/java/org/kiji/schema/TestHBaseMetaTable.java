@@ -27,7 +27,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -39,13 +39,13 @@ import org.kiji.schema.layout.KijiTableLayouts;
 
 
 public class TestHBaseMetaTable {
-  private HTable mHTable;
+  private HTableInterface mHTable;
   private KijiTableLayoutDatabase mTableLayoutDatabase;
   private KijiTableKeyValueDatabase mTableKeyValueDatabase;
 
   @Before
   public void setup() throws IOException {
-    mHTable = createMock(HTable.class);
+    mHTable = createMock(HTableInterface.class);
     mTableLayoutDatabase = createMock(KijiTableLayoutDatabase.class);
     mTableKeyValueDatabase = createMock(KijiTableKeyValueDatabase.class);
   }

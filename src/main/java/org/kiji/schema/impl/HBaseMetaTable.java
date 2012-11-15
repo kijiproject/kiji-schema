@@ -27,7 +27,7 @@ import java.util.Set;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +58,7 @@ public class HBaseMetaTable extends KijiMetaTable {
   private static final String META_COLUMN_FAMILY = "meta";
 
   /**  The HBase table that stores Kiji metadata. */
-  private final HTable mTable;
+  private final HTableInterface mTable;
 
   /** The layout table that we delegate the work of storing table layout metadata to. */
   private final KijiTableLayoutDatabase mTableLayoutDatabase;
@@ -69,17 +69,36 @@ public class HBaseMetaTable extends KijiMetaTable {
   //     so we can call HBaseMetaTable thread-safe, too.
 
   /**
+   * Creates an HTableInterface for the specified table.
+   *
+   * @param kijiConf Kiji configuration.
+   * @param factory HTableInterface factory to use.
+   * @return a new HTableInterface for the specified table.
+   * @throws IOException on I/O error.
+   */
+  public static HTableInterface newMetaTable(
+      KijiConfiguration kijiConf,
+      HTableInterfaceFactory factory)
+      throws IOException {
+    return factory.create(
+        kijiConf.getConf(),
+        KijiManagedHBaseTableName.getMetaTableName(kijiConf.getName()).toString());
+  }
+
+  /**
    * Create a connection to a Kiji meta table backed by an HTable within HBase.
    *
-   * @param kijiConfiguration The Kiji configuration.
+   * @param kijiConf The Kiji configuration.
    * @param schemaTable The Kiji schema table.
+   * @param factory HTableInterface factory.
    * @throws IOException If there is an error.
    */
-  public HBaseMetaTable(KijiConfiguration kijiConfiguration, KijiSchemaTable schemaTable)
+  public HBaseMetaTable(
+      KijiConfiguration kijiConf,
+      KijiSchemaTable schemaTable,
+      HTableInterfaceFactory factory)
       throws IOException {
-    this(new HTable(kijiConfiguration.getConf(),
-        KijiManagedHBaseTableName.getMetaTableName(kijiConfiguration.getName()).toString()),
-        schemaTable);
+    this(newMetaTable(kijiConf, factory), schemaTable);
   }
 
   /**
@@ -92,8 +111,9 @@ public class HBaseMetaTable extends KijiMetaTable {
    * @param schemaTable The Kiji schema table.
    * @throws IOException If there is an error.
    */
-  public HBaseMetaTable(HTable htable, KijiSchemaTable schemaTable) throws IOException {
-    this(htable, new HBaseTableLayoutDatabase(htable, LAYOUT_COLUMN_FAMILY, schemaTable),
+  public HBaseMetaTable(HTableInterface htable, KijiSchemaTable schemaTable) throws IOException {
+    this(htable,
+        new HBaseTableLayoutDatabase(htable, LAYOUT_COLUMN_FAMILY, schemaTable),
         new HBaseTableKeyValueDatabase(htable, META_COLUMN_FAMILY));
   }
 
@@ -107,7 +127,7 @@ public class HBaseMetaTable extends KijiMetaTable {
    * @param tableLayoutDatabase A database of table layouts to delegate layout storage to.
    * @param tableKeyValueDatabase A database of key-value pairs to delegate metadata storage to.
    */
-  public HBaseMetaTable(HTable htable, KijiTableLayoutDatabase tableLayoutDatabase,
+  public HBaseMetaTable(HTableInterface htable, KijiTableLayoutDatabase tableLayoutDatabase,
     KijiTableKeyValueDatabase tableKeyValueDatabase) {
     mTable = htable;
     mTableLayoutDatabase = tableLayoutDatabase;

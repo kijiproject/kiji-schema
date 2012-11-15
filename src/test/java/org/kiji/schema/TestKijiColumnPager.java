@@ -35,7 +35,7 @@ import java.util.NavigableMap;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
@@ -50,7 +50,7 @@ public class TestKijiColumnPager extends KijiClientTest {
   private ColumnNameTranslator mColumnNameTranslator;
   private EntityId mEntityId;
   private KijiDataRequest mDataRequest;
-  private HTable mHTable;
+  private HTableInterface mHTable;
   private KijiColumnPager mPager;
 
   @Before
@@ -72,7 +72,7 @@ public class TestKijiColumnPager extends KijiClientTest {
             .withMaxVersions(4)
             .withPageSize(2));
 
-    mHTable = createMock(HTable.class);
+    mHTable = createMock(HTableInterface.class);
 
     mPager = new KijiColumnPager(mEntityId, mDataRequest, tableLayout, mHTable);
   }

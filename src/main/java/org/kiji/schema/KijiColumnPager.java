@@ -27,7 +27,7 @@ import java.util.NavigableMap;
 import java.util.TreeMap;
 
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +53,7 @@ public class KijiColumnPager {
   private final KijiTableLayout mTableLayout;
 
   /** The HTable being read from. */
-  private final HTable mHTable;
+  private final HTableInterface mHTable;
 
   /** A map from column name to the current page index. */
   private final Map<KijiColumnName, Integer> mPageIndices;
@@ -67,7 +67,7 @@ public class KijiColumnPager {
    * @param htable An HTable connection for the table that stores the Kiji table data.
    */
   public KijiColumnPager(EntityId entityId, KijiDataRequest dataRequest,
-      KijiTableLayout tableLayout, HTable htable) {
+      KijiTableLayout tableLayout, HTableInterface htable) {
     assert null != entityId;
     assert null != dataRequest;
     assert null != tableLayout;

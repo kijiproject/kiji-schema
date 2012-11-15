@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
+import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.util.KijiNameValidator;
 
 /**
@@ -41,10 +42,13 @@ public class KijiInstaller {
    * Installs a kiji instance into the HBase cluster.
    *
    * @param kijiConf The configuration for the kiji instance to install.
+   * @param tableFactory HTableInterface factory.
    * @throws IOException If there is an error.
    * @throws org.kiji.schema.KijiInvalidNameException If the kiji instance already exists.
    */
-  public void install(KijiConfiguration kijiConf)
+  public void install(
+      KijiConfiguration kijiConf,
+      HTableInterfaceFactory tableFactory)
       throws IOException, KijiInvalidNameException {
 
     LOG.info("Installing a kiji instance named '" + kijiConf.getName() + "'...");
@@ -56,9 +60,9 @@ public class KijiInstaller {
       } else {
         KijiNameValidator.validateKijiName(kijiConf.getName());
       }
-      HBaseSystemTable.install(hbaseAdmin, kijiConf);
+      HBaseSystemTable.install(hbaseAdmin, kijiConf, tableFactory);
       HBaseMetaTable.install(hbaseAdmin, kijiConf);
-      HBaseSchemaTable.install(hbaseAdmin, kijiConf);
+      HBaseSchemaTable.install(hbaseAdmin, kijiConf, tableFactory);
 
     } finally {
       IOUtils.closeQuietly(hbaseAdmin);
