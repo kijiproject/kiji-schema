@@ -27,7 +27,7 @@
   <parent>
     <groupId>org.kiji.pom</groupId>
     <artifactId>root-pom</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
   </parent>
 
   <name>kiji-schema</name>
@@ -183,6 +183,11 @@
       <id>kiji-repos</id>
       <name>kiji-repos</name>
       <url>https://repo.wibidata.com/artifactory/kiji</url>
+    </repository>
+    <repository>
+      <id>kiji-nightly</id>
+      <name>kiji-nightly</name>
+      <url>https://repo.wibidata.com/artifactory/kiji-nightly</url>
     </repository>
   </repositories>
 
