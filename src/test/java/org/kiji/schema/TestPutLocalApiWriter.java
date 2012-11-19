@@ -29,7 +29,7 @@ import java.io.IOException;
 
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.junit.After;
 import org.junit.Before;
@@ -38,7 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.impl.HBaseKijiTable;
-import org.kiji.schema.impl.HTableFactory;
+import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -48,7 +48,7 @@ public class TestPutLocalApiWriter
     extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestPutLocalApiWriter.class);
   public static final int MAX_BUFFERED_WRITES = 20;
-  private HTable mHTable;
+  private HTableInterface mHTable;
   private KijiTable mKijiTable;
   private EntityIdFactory mEntityIdFactory;
   private PutLocalApiWriter mWriter;
@@ -60,10 +60,10 @@ public class TestPutLocalApiWriter
         .updateTableLayout("user", KijiTableLayouts.getLayout(KijiTableLayouts.USER_TABLE));
 
     mColumnNameTranslator = new ColumnNameTranslator(layout);
-    mHTable = createMock(HTable.class);
-    mKijiTable = new HBaseKijiTable(getKiji(), "user", new HTableFactory() {
+    mHTable = createMock(HTableInterface.class);
+    mKijiTable = new HBaseKijiTable(getKiji(), "user", new HTableInterfaceFactory() {
       @Override
-      public HTable create(Configuration conf, String htabeTableName) throws IOException {
+      public HTableInterface create(Configuration conf, String htabeTableName) throws IOException {
         return mHTable;
       }
     });

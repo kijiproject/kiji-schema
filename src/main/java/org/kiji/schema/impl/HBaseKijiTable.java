@@ -22,7 +22,7 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
@@ -44,7 +44,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  */
 public class HBaseKijiTable extends AbstractKijiTable {
   /** The underlying HTable that stores this Kiji table's data. */
-  private final HTable mHTable;
+  private final HTableInterface mHTable;
 
   /** The layout of the Kiji table. */
   private final KijiTableLayout mTableLayout;
@@ -61,7 +61,7 @@ public class HBaseKijiTable extends AbstractKijiTable {
    * @throws IOException On an HBase error.
    */
   public HBaseKijiTable(Kiji kiji, String name) throws IOException {
-    this(kiji, name, new HTableFactory());
+    this(kiji, name, DefaultHTableInterfaceFactory.get());
   }
 
   /**
@@ -73,7 +73,7 @@ public class HBaseKijiTable extends AbstractKijiTable {
    *
    * @throws IOException On an HBase error.
    */
-  public HBaseKijiTable(Kiji kiji, String name, HTableFactory htableFactory)
+  public HBaseKijiTable(Kiji kiji, String name, HTableInterfaceFactory htableFactory)
       throws IOException {
     super(kiji, name);
     try {
@@ -106,7 +106,7 @@ public class HBaseKijiTable extends AbstractKijiTable {
   }
 
   /** @return The underlying HTable instance. */
-  public HTable getHTable() {
+  public HTableInterface getHTable() {
     return mHTable;
   }
 

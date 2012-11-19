@@ -32,7 +32,7 @@ import java.io.IOException;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -42,11 +42,11 @@ import org.junit.Test;
 import org.kiji.schema.impl.HBaseSystemTable;
 
 public class TestHBaseSystemTable {
-  private HTable mHtable;
+  private HTableInterface mHtable;
 
   @Before
   public void setup() {
-    mHtable = createMock(HTable.class);
+    mHtable = createMock(HTableInterface.class);
   }
 
   @Test

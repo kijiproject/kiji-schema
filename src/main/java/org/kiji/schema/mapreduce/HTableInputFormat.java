@@ -22,7 +22,7 @@ package org.kiji.schema.mapreduce;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
@@ -42,7 +42,7 @@ public class HTableInputFormat extends TableInputFormat {
 
     // TableInputFormat opens an HTable within its setConf() method, since it is
     // required during getSplits().
-    HTable openedTable = getHTable();
+    HTableInterface openedTable = getHTable();
     assert null != openedTable;
 
     // After getSplits(), it is no longer necessary, so let's close it.

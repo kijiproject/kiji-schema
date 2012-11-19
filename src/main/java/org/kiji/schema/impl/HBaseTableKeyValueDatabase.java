@@ -27,7 +27,7 @@ import java.util.Set;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -55,7 +55,8 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
   private final byte[] mFamilyBytes;
 
   /**  The HBase table that stores Kiji metadata. */
-  private final HTable mTable;
+  private final HTableInterface mTable;
+
   /**
    * This class manages the storage and retrieval of key-value pairs on a per table basis. It is
    * backed by a column family in HBase specified by metaFamily, in the table specified by table.
@@ -63,7 +64,7 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
    * @param hTable The table to store the key-value information in.
    * @param metaFamily the name of the column family to use.
    */
-  public HBaseTableKeyValueDatabase(HTable hTable, String metaFamily) {
+  public HBaseTableKeyValueDatabase(HTableInterface hTable, String metaFamily) {
     mTable = Preconditions.checkNotNull(hTable);
     mFamily = Preconditions.checkNotNull(metaFamily);
     mFamilyBytes =  Bytes.toBytes(mFamily);

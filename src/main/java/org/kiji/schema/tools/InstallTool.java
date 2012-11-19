@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiInstaller;
+import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 
 /**
  * A command-line tool for installing kiji instances on hbase clusters.
@@ -41,7 +42,7 @@ public class InstallTool extends BaseTool {
     getPrintStream().println("Creating meta tables for kiji instance in hbase...");
 
     KijiConfiguration kijiConf = new KijiConfiguration(getConf(), getURI().getInstance());
-    new KijiInstaller().install(kijiConf);
+    new KijiInstaller().install(kijiConf, DefaultHTableInterfaceFactory.get());
 
     System.out.println("Successfully created kiji instance: " + getURI());
 
