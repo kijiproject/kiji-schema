@@ -25,28 +25,33 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
 
 import com.google.common.collect.Lists;
 import org.apache.avro.Schema;
 import org.junit.Assert;
 import org.junit.Test;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiColumnName;
+
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
+import org.kiji.schema.avro.ComponentType;
 import org.kiji.schema.avro.CompressionType;
 import org.kiji.schema.avro.FamilyDesc;
+import org.kiji.schema.avro.HashSpec;
 import org.kiji.schema.avro.LocalityGroupDesc;
+import org.kiji.schema.avro.RowKeyComponent;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
-import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
-import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
+
 import org.kiji.schema.util.ToJson;
 
 /** Tests for KijiTableLayout. */
@@ -55,14 +60,204 @@ public class TestKijiTableLayout {
 
   private static final String TABLE_LAYOUT_VERSION = "kiji-1.0";
 
+  private RowKeyFormat makeHashedRKF1() {
+    return RowKeyFormat.newBuilder()
+        .setEncoding(RowKeyEncoding.HASH)
+        .build();
+  }
+
+  private RowKeyFormat makeHashPrefixedRKF1() {
+    return RowKeyFormat.newBuilder()
+        .setEncoding(RowKeyEncoding.HASH_PREFIX)
+        .build();
+  }
+
+  private RowKeyFormat makeRawRKF1() {
+    return RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.RAW).build();
+  }
+
+  private RowKeyFormat2 makeHashPrefixedRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 noComponentsRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 badNullableIndexRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setNullableStartIndex(-1)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 zeroNullableIndexRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setNullableStartIndex(0)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 tooHighNullableIndexRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setNullableStartIndex(components.size() + 1)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 badRangeScanIndexRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setRangeScanStartIndex(0)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 tooHighRangeScanIndexRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setRangeScanStartIndex(components.size() + 1)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 badCompNameRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("0").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setRangeScanStartIndex(0)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 badHashSizeRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    HashSpec hs = HashSpec.newBuilder()
+        .setHashSize(20).build();
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(hs)
+        .setRangeScanStartIndex(0)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 repeatedNamesRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 emptyCompNameRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setRangeScanStartIndex(0)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
   /** Tests for a empty layout with no reference layout. */
   @Test
   public void testEmptyLayoutWithNoReference() throws Exception {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
@@ -78,7 +273,7 @@ public class TestKijiTableLayout {
   public void testLayoutIDs() throws Exception {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.RAW).build())
+        .setKeysFormat(makeRawRKF1())
         .setVersion("6.0")
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
@@ -94,20 +289,19 @@ public class TestKijiTableLayout {
   /** Tests for a layout with a single locality group, and with no reference layout. */
   @Test
   public void testLayoutWithNoReference() throws Exception {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
-            .setName("locality_group_name")
-            .setInMemory(false)
-            .setTtlSeconds(84600)
-            .setMaxVersions(1)
-            .setCompressionType(CompressionType.GZ)
-            .build()))
+                .setName("locality_group_name")
+                .setInMemory(false)
+                .setTtlSeconds(84600)
+                .setMaxVersions(1)
+                .setCompressionType(CompressionType.GZ)
+                .build()))
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     final LocalityGroupLayout lgLayout = layout.getLocalityGroupMap().get("locality_group_name");
@@ -123,29 +317,28 @@ public class TestKijiTableLayout {
   /** Tests for a layout with one map family, and with no reference layout. */
   @Test
   public void testMapFamilyLayoutWithNoReference() throws Exception {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
-            .setName("locality_group_name")
-            .setInMemory(false)
-            .setTtlSeconds(84600)
-            .setMaxVersions(1)
-            .setCompressionType(CompressionType.GZ)
-            .setFamilies(Lists.newArrayList(
-                FamilyDesc.newBuilder()
-                    .setName("family_name")
-                    .setMapSchema(CellSchema.newBuilder()
-                        .setType(SchemaType.INLINE)
-                        .setStorage(SchemaStorage.HASH)
-                        .setValue("\"int\"")
-                        .build())
-                    .build()))
-            .build()))
+                .setName("locality_group_name")
+                .setInMemory(false)
+                .setTtlSeconds(84600)
+                .setMaxVersions(1)
+                .setCompressionType(CompressionType.GZ)
+                .setFamilies(Lists.newArrayList(
+                    FamilyDesc.newBuilder()
+                        .setName("family_name")
+                        .setMapSchema(CellSchema.newBuilder()
+                            .setType(SchemaType.INLINE)
+                            .setStorage(SchemaStorage.HASH)
+                            .setValue("\"int\"")
+                            .build())
+                        .build()))
+                .build()))
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     final FamilyLayout fLayout = layout.getFamilyMap().get("family_name");
@@ -160,39 +353,39 @@ public class TestKijiTableLayout {
   /** Tests for a layout with one column, and with no reference layout. */
   @Test
   public void testGroupFamilyLayoutWithNoReference() throws Exception {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
-            .setName("locality_group_name")
-            .setInMemory(false)
-            .setTtlSeconds(84600)
-            .setMaxVersions(1)
-            .setCompressionType(CompressionType.GZ)
-            .setFamilies(Lists.newArrayList(
-                FamilyDesc.newBuilder()
-                    .setName("family_name")
-                    .setColumns(Lists.newArrayList(
-                        ColumnDesc.newBuilder()
-                            .setName("column_name")
-                            .setColumnSchema(CellSchema.newBuilder()
-                                 .setStorage(SchemaStorage.UID)
-                                 .setType(SchemaType.INLINE)
-                                 .setValue("\"string\"")
-                                 .build())
-                            .build()))
-                    .build()))
-            .build()))
+                .setName("locality_group_name")
+                .setInMemory(false)
+                .setTtlSeconds(84600)
+                .setMaxVersions(1)
+                .setCompressionType(CompressionType.GZ)
+                .setFamilies(Lists.newArrayList(
+                    FamilyDesc.newBuilder()
+                        .setName("family_name")
+                        .setColumns(Lists.newArrayList(
+                            ColumnDesc.newBuilder()
+                                .setName("column_name")
+                                .setColumnSchema(CellSchema.newBuilder()
+                                    .setStorage(SchemaStorage.UID)
+                                    .setType(SchemaType.INLINE)
+                                    .setValue("\"string\"")
+                                    .build())
+                                .build()))
+                        .build()))
+                .build()))
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     final FamilyLayout fLayout = layout.getFamilyMap().get("family_name");
     assertNotNull(fLayout);
     assertTrue(fLayout.isGroupType());
-    final ColumnLayout cLayout = fLayout.getColumnMap().get("column_name");
+    final KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout cLayout =
+        fLayout.getColumnMap().get("column_name");
     assertNotNull(cLayout);
     assertEquals(cLayout, fLayout.getColumns().iterator().next());
 
@@ -205,13 +398,11 @@ public class TestKijiTableLayout {
   /** Tests for column removal. */
   @Test
   public void testDeleteColumn() throws Exception {
-
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     // Reference layout with a single column : "family_name:column_name"
     final TableLayoutDesc refDesc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
@@ -241,9 +432,7 @@ public class TestKijiTableLayout {
       // Target layout deleting the column
       final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
           .setName("table_name")
-          .setKeysFormat(RowKeyFormat.newBuilder()
-              .setEncoding(RowKeyEncoding.HASH_PREFIX)
-              .build())
+          .setKeysFormat(format)
           .setVersion(TABLE_LAYOUT_VERSION)
           .setLocalityGroups(Lists.newArrayList(
               LocalityGroupDesc.newBuilder()
@@ -279,9 +468,7 @@ public class TestKijiTableLayout {
       // Target layout with an invalid column deletion
       final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
           .setName("table_name")
-          .setKeysFormat(RowKeyFormat.newBuilder()
-              .setEncoding(RowKeyEncoding.HASH_PREFIX)
-              .build())
+          .setKeysFormat(format)
           .setVersion(TABLE_LAYOUT_VERSION)
           .setLocalityGroups(Lists.newArrayList(
               LocalityGroupDesc.newBuilder()
@@ -308,9 +495,7 @@ public class TestKijiTableLayout {
       // Target layout with an invalid column rename
       final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
           .setName("table_name")
-          .setKeysFormat(RowKeyFormat.newBuilder()
-              .setEncoding(RowKeyEncoding.HASH_PREFIX)
-              .build())
+          .setKeysFormat(format)
           .setVersion(TABLE_LAYOUT_VERSION)
           .setLocalityGroups(Lists.newArrayList(
               LocalityGroupDesc.newBuilder()
@@ -345,12 +530,11 @@ public class TestKijiTableLayout {
 
   @Test
   public void testNameAliases() throws Exception {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     // Reference layout with a single column: "family_name:column_name"
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
@@ -392,7 +576,8 @@ public class TestKijiTableLayout {
         layout.getFamilyMap().get("family_name"),
         layout.getFamilyMap().get("family-alias2"));
 
-    final FamilyLayout fLayout = layout.getFamilyMap().get("family_name");
+    final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
+        layout.getFamilyMap().get("family_name");
     assertEquals(
         fLayout.getColumnMap().get("column_name"), fLayout.getColumnMap().get("column-alias1"));
     assertEquals(
@@ -418,12 +603,11 @@ public class TestKijiTableLayout {
   /** Tests the initial assignment of IDs to locality groups, families and columns. */
   @Test
   public void testIdAssignmentWithNoReference() throws Exception {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     // Reference layout with a single column: "family_name:column_name"
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
@@ -485,28 +669,32 @@ public class TestKijiTableLayout {
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     final LocalityGroupLayout lgLayout = layout.getLocalityGroupMap().get("locality_group_name");
     assertEquals(1, lgLayout.getId().getId());
-    final FamilyLayout fLayout = lgLayout.getFamilyMap().get("family_name");
+    final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
+        lgLayout.getFamilyMap().get("family_name");
     assertEquals(1, fLayout.getId().getId());
-    final ColumnLayout cLayout = fLayout.getColumnMap().get("column_name");
+    final KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout cLayout =
+        fLayout.getColumnMap().get("column_name");
     assertEquals(1, cLayout.getId().getId());
-    final ColumnLayout c2Layout = fLayout.getColumnMap().get("column2_name");
+    final KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout c2Layout =
+        fLayout.getColumnMap().get("column2_name");
     assertEquals(2, c2Layout.getId().getId());
 
-    final FamilyLayout f2Layout = lgLayout.getFamilyMap().get("family2_name");
+    final KijiTableLayout.LocalityGroupLayout.FamilyLayout f2Layout =
+        lgLayout.getFamilyMap().get("family2_name");
     assertEquals(2, f2Layout.getId().getId());
 
-    final LocalityGroupLayout lg2Layout = layout.getLocalityGroupMap().get("locality_group2_name");
+    final KijiTableLayout.LocalityGroupLayout lg2Layout =
+        layout.getLocalityGroupMap().get("locality_group2_name");
     assertEquals(2, lg2Layout.getId().getId());
   }
 
   @Test
   public void testDuplicateFamilyName() throws Exception {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     // Reference layout with a single column: "family_name:column_name"
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
@@ -576,12 +764,11 @@ public class TestKijiTableLayout {
 
   @Test
   public void testDuplicateQualifierName() throws Exception {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     // Reference layout with a single column: "family_name:column_name"
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
@@ -626,12 +813,11 @@ public class TestKijiTableLayout {
   /** Test for a family with both group and map type. */
   @Test
   public void testInvalidGroupAndMapFamily() throws Exception {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     // Reference layout with a single column: "family_name:column_name"
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
@@ -666,7 +852,8 @@ public class TestKijiTableLayout {
       // Expected
       LOG.info("Expected invalid family: " + ile);
       assertTrue(
-          ile.toString().contains("Invalid family 'family_name' with both map-type and columns"));
+          ile.toString().contains("Invalid family 'family_name' "
+              + "with both map-type and columns"));
     }
   }
 
@@ -674,7 +861,7 @@ public class TestKijiTableLayout {
   public void testInvalidLocalityGroupTTLSeconds() throws Exception {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.RAW).build())
+        .setKeysFormat(makeRawRKF1())
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(LocalityGroupDesc.newBuilder()
             .setName("default")
@@ -696,7 +883,7 @@ public class TestKijiTableLayout {
   public void testInvalidLocalityGroupMaxVersions() throws Exception {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.RAW).build())
+        .setKeysFormat(makeHashedRKF1())
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(LocalityGroupDesc.newBuilder()
             .setName("default")
@@ -718,9 +905,7 @@ public class TestKijiTableLayout {
   public void testFinalColumnSchema() throws Exception {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(makeHashPrefixedRKF1())
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
@@ -754,9 +939,7 @@ public class TestKijiTableLayout {
   public void testFinalColumnSchemaClassInvalid() throws Exception {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(makeHashPrefixedRKF1())
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
@@ -792,9 +975,7 @@ public class TestKijiTableLayout {
   public void testFinalColumnSchemaCounter() throws Exception {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
-        .setKeysFormat(RowKeyFormat.newBuilder()
-            .setEncoding(RowKeyEncoding.HASH_PREFIX)
-            .build())
+        .setKeysFormat(makeHashPrefixedRKF1())
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
             LocalityGroupDesc.newBuilder()
@@ -823,4 +1004,103 @@ public class TestKijiTableLayout {
         layout.getCellSchema(new KijiColumnName("family_name", "column_name")).getStorage());
   }
 
+  @Test (expected = InvalidLayoutException.class)
+  public void testNoComponentsRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(noComponentsRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void testBadNullableIndexRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(badNullableIndexRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void badRangeScanIndexRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(badRangeScanIndexRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void badCompNameRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(badCompNameRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void badHashSizeRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(badHashSizeRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void repeatedNamesRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(repeatedNamesRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void tooHighRangeScanIndexRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(tooHighRangeScanIndexRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void zeroNullableIndexRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(zeroNullableIndexRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void tooHighNullableScanIndexRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(tooHighNullableIndexRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void emptyCompNameRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(emptyCompNameRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
 }

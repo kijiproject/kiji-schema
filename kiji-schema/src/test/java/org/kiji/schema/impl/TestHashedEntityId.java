@@ -21,6 +21,8 @@ package org.kiji.schema.impl;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
@@ -39,12 +41,16 @@ public class TestHashedEntityId {
         .setHashSize(16)
         .build();
     final byte[] kijiRowKey = new byte[] {0x11, 0x22};
-    final HashedEntityId eid = HashedEntityId.fromKijiRowKey(kijiRowKey, format);
-    assertEquals(format, eid.getFormat());
-    assertArrayEquals(kijiRowKey, eid.getKijiRowKey());
+    final HashedEntityId eid = HashedEntityId.getEntityId(kijiRowKey, format);
+    assertArrayEquals(kijiRowKey, (byte[])eid.getComponentByIndex(0));
     assertEquals(
         "c700ed4fdb1d27055aa3faa2c2432283",
         ByteArrayFormatter.toHex(eid.getHBaseRowKey()));
+    assertEquals(1, eid.getComponents().size());
+    // when we create a hashed entity ID from a kiji row key we expect to
+    // be able to retrieve it.
+    assertNotNull(eid.getComponents().get(0));
+    assertEquals(kijiRowKey, eid.getComponents().get(0));
   }
 
   @Test
@@ -56,8 +62,11 @@ public class TestHashedEntityId {
         .build();
     final byte[] hbaseRowKey = ByteArrayFormatter.parseHex("c700ed4fdb1d27055aa3faa2c2432283");
     final HashedEntityId eid = HashedEntityId.fromHBaseRowKey(hbaseRowKey, format);
-    assertEquals(format, eid.getFormat());
     assertArrayEquals(hbaseRowKey, eid.getHBaseRowKey());
-    assertEquals(null, eid.getKijiRowKey());
+    // when we create a hashed entity ID from an hbase row key we cannot retrieve the
+    // original key which was used to create it.
+    assertNull(eid.getComponentByIndex(0));
+    assertEquals(1, eid.getComponents().size());
+    assertNull(eid.getComponents().get(0));
   }
 }

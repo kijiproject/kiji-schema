@@ -64,12 +64,12 @@ public final class ToolUtils {
     Preconditions.checkArgument(hashSpecified ^ idSpecified,
         "Must specify exactly one of --entity-id or --entity-hash.");
 
-    final EntityIdFactory eidFactory = EntityIdFactory.create(format);
+    final EntityIdFactory eidFactory = EntityIdFactory.getFactory(format);
     if (hashSpecified) {
       final byte[] hbaseRowKey = ByteArrayFormatter.parseHex(entityHash);
-      return eidFactory.fromHBaseRowKey(hbaseRowKey);
+      return eidFactory.getEntityIdFromHBaseRowKey(hbaseRowKey);
     } else {
-      return eidFactory.fromKijiRowKey(entityId);
+      return eidFactory.getEntityId(entityId);
     }
   }
 

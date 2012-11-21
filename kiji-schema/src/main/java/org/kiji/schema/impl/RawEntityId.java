@@ -19,30 +19,24 @@
 
 package org.kiji.schema.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.avro.HashType;
-import org.kiji.schema.avro.RowKeyEncoding;
-import org.kiji.schema.avro.RowKeyFormat;
 
 /** Implements the raw row key format. */
 @ApiAudience.Private
 public final class RawEntityId extends EntityId {
-  private static final RowKeyFormat RAW_KEY_FORMAT = RowKeyFormat.newBuilder()
-      .setEncoding(RowKeyEncoding.RAW)
-      .setHashType(HashType.MD5)  // HashType.NONE or INVALID?
-      .setHashSize(0)
-      .build();
-
   /**
    * Creates a RawEntityId from the specified Kiji row key.
    *
    * @param kijiRowKey Kiji row key.
    * @return a new RawEntityId with the specified Kiji row key.
    */
-  public static RawEntityId fromKijiRowKey(byte[] kijiRowKey) {
+  public static RawEntityId getEntityId(byte[] kijiRowKey) {
     return new RawEntityId(kijiRowKey);
   }
 
@@ -67,25 +61,29 @@ public final class RawEntityId extends EntityId {
    *
    * @param rowKey Kiji/HBase row key (both row keys are identical).
    */
-  public RawEntityId(byte[] rowKey) {
+  private RawEntityId(byte[] rowKey) {
     mBytes = Preconditions.checkNotNull(rowKey);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public RowKeyFormat getFormat() {
-    return RAW_KEY_FORMAT;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public byte[] getKijiRowKey() {
-    return mBytes;
   }
 
   /** {@inheritDoc} */
   @Override
   public byte[] getHBaseRowKey() {
     return mBytes;
+  }
+
+  /** {@inheritDoc} **/
+  @Override
+  @SuppressWarnings("unchecked")
+  public <T> T getComponentByIndex(int idx) {
+    Preconditions.checkArgument(idx == 0);
+    return (T)mBytes.clone();
+  }
+
+  /** {@inheritDoc} **/
+  @Override
+  public List<Object> getComponents() {
+    List<Object> resp = new ArrayList<Object>();
+    resp.add(mBytes);
+    return resp;
   }
 }

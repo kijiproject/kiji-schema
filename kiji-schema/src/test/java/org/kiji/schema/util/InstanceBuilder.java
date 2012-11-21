@@ -217,14 +217,13 @@ public class InstanceBuilder {
     /**
      * Constructs a new in-memory Kiji table builder.
      *
-     * @param instance Name of the Kiji instance that this table will belong to.
      * @param table Desired name of the Kiji table.
      */
     protected TableBuilder(String table) {
       final KijiTableLayout layout = mLayouts.get(table);
 
       mTableName = table;
-      mEntityIdFactory = EntityIdFactory.create(layout.getDesc().getKeysFormat());
+      mEntityIdFactory = EntityIdFactory.getFactory(layout);
     }
 
     /**
@@ -265,7 +264,7 @@ public class InstanceBuilder {
      * @return A builder to continue building with.
      */
     public RowBuilder withRow(String rowKey) {
-      return withRow(mEntityIdFactory.fromKijiRowKey(rowKey));
+      return withRow(mEntityIdFactory.getEntityId(rowKey));
     }
 
     /**
@@ -287,7 +286,6 @@ public class InstanceBuilder {
     /**
      * Constructs a new in-memory Kiji row builder.
      *
-     * @param instance Name of the Kiji instance that this row will belong to.
      * @param table Name of the Kiji table that this row will belong to.
      * @param entityId Desired entityId of the row.
      * @return A builder to continue building with.
@@ -323,7 +321,6 @@ public class InstanceBuilder {
     /**
      * Constructs a new in-memory Kiji column family builder.
      *
-     * @param instance Name of the Kiji instance that this column family will belong to.
      * @param table Name of the Kiji table that this column family will belong to.
      * @param entityId EntityId of the row that this column family will belong to.
      * @param family Desired column family name.
@@ -361,7 +358,6 @@ public class InstanceBuilder {
     /**
      * Constructs a new in-memory Kiji cell builder.
      *
-     * @param instance Name of the Kiji instance that this column will belong to.
      * @param table Name of the Kiji table that this column will belong to.
      * @param entityId EntityId of the row that this column will belong to.
      * @param family Name of the column family that this column will belong to.

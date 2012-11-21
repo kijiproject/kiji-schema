@@ -55,6 +55,7 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
@@ -451,19 +452,21 @@ public final class LsTool extends VersionValidatedTool {
 
     KijiTableReader reader = null;
     try {
-      final EntityIdFactory eidFactory = table.getEntityIdFactory();
+      final EntityIdFactory eidFactory = EntityIdFactory.getFactory(table.getLayout());
       reader = table.openTableReader();
       if (mEntityId.isEmpty() && mEntityHash.isEmpty()) {
         // Scan from startRow to limitRow.
         final EntityId startRow =
-            (mStartRow == null) ? null : eidFactory.fromHBaseRowKey(parseRowKeyFlag(mStartRow));
+            (mStartRow == null) ? null : eidFactory.
+                getEntityIdFromHBaseRowKey(parseRowKeyFlag(mStartRow));
         final EntityId limitRow =
-            (mLimitRow == null) ? null : eidFactory.fromHBaseRowKey(parseRowKeyFlag(mLimitRow));
+            (mLimitRow == null) ? null : eidFactory.
+                getEntityIdFromHBaseRowKey(parseRowKeyFlag(mLimitRow));
         return scan(reader, request, startRow, limitRow, mapTypeFamilies, groupTypeColumns);
       } else {
         // Return the specified entity.
         final EntityId entityId = ToolUtils.createEntityIdFromUserInputs(
-            mEntityId, mEntityHash, tableLayout.getDesc().getKeysFormat());
+            mEntityId, mEntityHash, (RowKeyFormat) tableLayout.getDesc().getKeysFormat());
         return lookup(reader, request, entityId, mapTypeFamilies, groupTypeColumns);
       }
     } finally {

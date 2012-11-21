@@ -94,11 +94,13 @@ public abstract class AbstractKijiTable implements KijiTable {
     return mTableURI;
   }
 
-  /** {@inheritDoc} */
-  @Override
-  public EntityId getEntityId(String kijiRowKey) {
-    return getEntityIdFactory().fromKijiRowKey(kijiRowKey);
-  }
+  /**
+   * Creates an entity ID out of a UTF8 encoded Kiji row key.
+   *
+   * @param kijiRowKey UTF8 encoded Kiji row key.
+   * @return an entity ID with the specified Kiji row key.
+   */
+  public abstract EntityId getEntityId(Object ... kijiRowKey);
 
   /** {@inheritDoc} */
   @Override

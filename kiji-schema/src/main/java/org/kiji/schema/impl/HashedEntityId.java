@@ -19,6 +19,9 @@
 
 package org.kiji.schema.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
@@ -30,8 +33,6 @@ import org.kiji.schema.util.Hasher;
 /** Implements the hashed row key format. */
 @ApiAudience.Private
 public final class HashedEntityId extends EntityId {
-  private final RowKeyFormat mFormat;
-
   /** Kiji row key bytes. May be null if we only know the HBase row key. */
   private final byte[] mKijiRowKey;
 
@@ -45,7 +46,7 @@ public final class HashedEntityId extends EntityId {
    * @param format Row key hashing specification.
    * @return a new HashedEntityId with the specified Kiji row key.
    */
-  public static HashedEntityId fromKijiRowKey(byte[] kijiRowKey, RowKeyFormat format) {
+  public static HashedEntityId getEntityId(byte[] kijiRowKey, RowKeyFormat format) {
     Preconditions.checkNotNull(format);
     final byte[] hbaseRowKey = hashKijiRowKey(format, kijiRowKey);
     return new HashedEntityId(kijiRowKey, hbaseRowKey, format);
@@ -89,27 +90,34 @@ public final class HashedEntityId extends EntityId {
    * @param format Row key hashing specification.
    */
   private HashedEntityId(byte[] kijiRowKey, byte[] hbaseRowKey, RowKeyFormat format) {
+    Preconditions.checkNotNull(format);
+    Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH);
     mKijiRowKey = kijiRowKey;
     mHBaseRowKey = Preconditions.checkNotNull(hbaseRowKey);
-    mFormat = Preconditions.checkNotNull(format);
-    Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public RowKeyFormat getFormat() {
-    return mFormat;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public byte[] getKijiRowKey() {
-    return mKijiRowKey;
   }
 
   /** {@inheritDoc} */
   @Override
   public byte[] getHBaseRowKey() {
     return mHBaseRowKey;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @SuppressWarnings("unchecked")
+  public <T> T getComponentByIndex(int idx) {
+    Preconditions.checkArgument(idx == 0);
+    if (null != mKijiRowKey) {
+      return (T)mKijiRowKey.clone();
+    }
+    return null;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public List<Object> getComponents() {
+    List<Object> resp = new ArrayList<Object>();
+    resp.add(mKijiRowKey);
+    return resp;
   }
 }

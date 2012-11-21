@@ -47,16 +47,13 @@ public interface KijiTable extends Closeable {
   /** @return the layout of this table. */
   KijiTableLayout getLayout();
 
-  /** @return the entity ID factory for this table. */
-  EntityIdFactory getEntityIdFactory();
-
   /**
    * Creates an entity ID for the specified UTF8 encoded Kiji row key.
    *
    * @param kijiRowKey UTF8 encoded Kiji row key.
    * @return a new entity ID for the specified Kiji row key.
    */
-  EntityId getEntityId(String kijiRowKey);
+  EntityId getEntityId(Object ... kijiRowKey);
 
   /**
    * Opens an appropriate implementation of KijiTableReader for this table.  The caller is
