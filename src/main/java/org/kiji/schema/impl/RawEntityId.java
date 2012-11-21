@@ -22,7 +22,6 @@ package org.kiji.schema.impl;
 import com.google.common.base.Preconditions;
 
 import org.kiji.schema.EntityId;
-import org.kiji.schema.avro.HashType;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 
@@ -30,8 +29,6 @@ import org.kiji.schema.avro.RowKeyFormat;
 public class RawEntityId extends EntityId {
   private static final RowKeyFormat RAW_KEY_FORMAT = RowKeyFormat.newBuilder()
       .setEncoding(RowKeyEncoding.RAW)
-      .setHashType(HashType.MD5)  // HashType.NONE or INVALID?
-      .setHashSize(0)
       .build();
 
   /**
@@ -75,7 +72,10 @@ public class RawEntityId extends EntityId {
     return RAW_KEY_FORMAT;
   }
 
-  /** {@inheritDoc} */
+  /**
+   * Get the row key in the Kiji namespace. This is exactly the same key used by Hbase.
+   * @return The raw byte array representing the row key.
+   */
   @Override
   public byte[] getKijiRowKey() {
     return mBytes;

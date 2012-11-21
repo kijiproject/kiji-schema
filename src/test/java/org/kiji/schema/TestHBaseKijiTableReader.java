@@ -71,7 +71,9 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     });
 
     // Construct the expected get request.
-    Get expectedGet = new Get(table.getEntityId("foo").getHBaseRowKey());
+    List<Object> kijiRowKey = new ArrayList<Object>();
+    kijiRowKey.add("row0");
+    Get expectedGet = new Get(table.getEntityId(kijiRowKey).getHBaseRowKey());
     final ColumnNameTranslator columnNameTranslator =
         new ColumnNameTranslator(getKiji().getMetaTable().getTableLayout("table"));
     final KijiColumnName column = new KijiColumnName("family:column");
@@ -80,7 +82,7 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
 
     // And the canned result response.
     Result cannedResult = new Result(new KeyValue[] {
-      new KeyValue(table.getEntityId("foo").getHBaseRowKey(),
+      new KeyValue(table.getEntityId(kijiRowKey).getHBaseRowKey(),
           hcolumn.getFamily(),
           hcolumn.getQualifier(),
           new KijiCellEncoder(getKiji().getSchemaTable()).encode(
@@ -97,7 +99,7 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     KijiTableReader reader = table.openTableReader();
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(new KijiDataRequest.Column("family", "column"));
-    KijiRowData rowData = reader.get(table.getEntityId("foo"), dataRequest);
+    KijiRowData rowData = reader.get(table.getEntityId(kijiRowKey), dataRequest);
 
     // Verify that the returned row data is as expected.
     assertTrue(rowData.containsColumn("family", "column"));
@@ -123,7 +125,9 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     });
 
     // Set the expected calls onto the mock htable.
-    Get expectedGet = new Get(table.getEntityId("foo").getHBaseRowKey());
+    List<Object> kijiRowKey = new ArrayList<Object>();
+    kijiRowKey.add("row0");
+    Get expectedGet = new Get(table.getEntityId(kijiRowKey).getHBaseRowKey());
     ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(
         getKiji().getMetaTable().getTableLayout("user"));
     HBaseColumnName hcolumn = columnNameTranslator.toHBaseColumnName(
@@ -131,7 +135,7 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     expectedGet.addColumn(hcolumn.getFamily(), hcolumn.getQualifier());
     Result cannedResult = new Result(new KeyValue[] {
         new KeyValue(
-            table.getEntityId("foo").getHBaseRowKey(),
+            table.getEntityId(kijiRowKey).getHBaseRowKey(),
             hcolumn.getFamily(),
             hcolumn.getQualifier(),
             Bytes.toBytes(42L)),
@@ -145,7 +149,7 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     KijiTableReader reader = table.openTableReader();
     KijiDataRequest dataRequest = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("info", "visits"));
-    KijiRowData rowData = reader.get(table.getEntityId("foo"), dataRequest);
+    KijiRowData rowData = reader.get(table.getEntityId(kijiRowKey), dataRequest);
 
     // Verify that the returned row data is as expected.
     assertTrue(rowData.containsColumn("info", "visits"));
@@ -176,13 +180,17 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(
         getKiji().getMetaTable().getTableLayout("table"));
 
+    List<Object> kijiFooKey = new ArrayList<Object>();
+    kijiFooKey.add("FOO");
+    List<Object> kijiBarKey = new ArrayList<Object>();
+    kijiBarKey.add("BAR");
     List<Get> expectedGets = new ArrayList<Get>(2);
-    expectedGets.add(makeHBaseGet("FOO", "family:column", table, columnNameTranslator));
-    expectedGets.add(makeHBaseGet("BAR", "family:column", table, columnNameTranslator));
+    expectedGets.add(makeHBaseGet(kijiFooKey, "family:column", table, columnNameTranslator));
+    expectedGets.add(makeHBaseGet(kijiBarKey, "family:column", table, columnNameTranslator));
 
     Result[] cannedResults = new Result[] {
-        makeHBaseResult("FOO", "family:column", "foo-val", table, columnNameTranslator),
-        makeHBaseResult("BAR", "family:column", "bar-val", table, columnNameTranslator),
+        makeHBaseResult(kijiFooKey, "family:column", "foo-val", table, columnNameTranslator),
+        makeHBaseResult(kijiBarKey, "family:column", "bar-val", table, columnNameTranslator),
     };
 
     expect(htable.get(eqListGet(expectedGets))).andReturn(cannedResults);
@@ -194,8 +202,8 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     KijiDataRequest dataRequest = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("family", "column"));
     List<EntityId> entityIds = new ArrayList<EntityId>(2);
-    entityIds.add(table.getEntityId("FOO"));
-    entityIds.add(table.getEntityId("BAR"));
+    entityIds.add(table.getEntityId(kijiFooKey));
+    entityIds.add(table.getEntityId(kijiBarKey));
     List<KijiRowData> listRowData = reader.bulkGet(entityIds, dataRequest);
 
     assertEquals(2, listRowData.size());
@@ -218,7 +226,7 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
    *     hbase name.
    * @return A Get for this column.
    */
-  private static Get makeHBaseGet(String kijiRowKey, String columnName,
+  private static Get makeHBaseGet(Object kijiRowKey, String columnName,
       KijiTable table, ColumnNameTranslator translator) throws IOException {
 
     final EntityId entityId = table.getEntityIdFactory().fromKijiRowKey(kijiRowKey);
@@ -239,7 +247,7 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
    * @param translator The ColumnNameTranslator to use when converting a kiji-name to an
    *     hbase name.
    */
-  private Result makeHBaseResult(String kijiRowKey, String columnName, String cellValue,
+  private Result makeHBaseResult(Object kijiRowKey, String columnName, String cellValue,
       KijiTable table, ColumnNameTranslator translator) throws IOException {
     final KijiColumnName column = new KijiColumnName(columnName);
     final HBaseColumnName hColumn = translator.toHBaseColumnName(column);

@@ -31,17 +31,17 @@ import static org.junit.Assert.assertNull;
 import static org.kiji.schema.util.GetEquals.eqGet;
 
 import java.io.IOException;
-import java.util.NavigableMap;
+import java.util.*;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.kiji.schema.impl.HashedEntityId;
+import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.impl.FormattedEntityId;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -60,8 +60,11 @@ public class TestKijiColumnPager extends KijiClientTest {
 
     mColumnNameTranslator = new ColumnNameTranslator(tableLayout);
 
-    mEntityId = HashedEntityId.fromKijiRowKey(
-        Bytes.toBytes("Garrett"), tableLayout.getDesc().getKeysFormat());
+    RowKeyFormat format = tableLayout.getDesc().getKeysFormat();
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("Garrett"));
+
+    mEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
 
     mDataRequest = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("info", "name"))
