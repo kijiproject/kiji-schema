@@ -169,19 +169,18 @@ import org.kiji.schema.util.ToJson;
  * row keys according to the row key encoding specified in the table layout:
  * <ul>
  *   <li> Raw encoding: the user has direct control over the encoding of row keys in the HBase
- *        table. In other words, the HBase row key is exactly the Kiji row key.
+ *        table. In other words, the HBase row key is exactly the Kiji row key. These are used
+ *        when the user would like to use arrays of bytes as row keys.
  *        See {@link org.kiji.schema.impl.RawEntityId RawEntityId}.
  *   </li>
- *   <li> Hashed: the HBase row key is computed as a hash of the Kiji row key.
- *        See {@link org.kiji.schema.impl.HashedEntityId HashedEntityId}.
- *   </li>
- *   <li> Hash-prefixed: the HBase row key is computed as the concatenation of a hash of the
- *        Kiji row key and the Kiji row key itself.
- *        See {@link org.kiji.schema.impl.HashPrefixedEntityId HashPrefixedEntityId}.
+ *   <li> Formatted: the row key is comprised of one or more components. Each component can be
+ *        a string, a number or a hash of another component. The user will specify the size
+ *        of this hash. The user also specifies the actual order of the components in the key.
  *   </li>
  * </ul>
  *
- * Hashing allows to spread the rows evenly across all the regions in the table.
+ * Hashing allows to spread the rows evenly across all the regions in the table. Specifying the size
+ * of the hash gives the user fine grained control of how the data will be distributed.
  *
  * <h1>Cell schema</h1>
  *

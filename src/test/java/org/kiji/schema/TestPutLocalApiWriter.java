@@ -26,6 +26,7 @@ import static org.junit.Assert.assertEquals;
 import static org.kiji.schema.util.PutEquals.eqPut;
 
 import java.io.IOException;
+import java.util.HashMap;
 
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
@@ -89,7 +90,9 @@ public class TestPutLocalApiWriter
   @Test
   public void testWrite() throws Exception {
     // Record expected behavior
-    Put expectedPut = new Put(mEntityIdFactory.fromKijiRowKey("foo").getHBaseRowKey());
+    HashMap<String, Object> kijiFooKey = new HashMap<String, Object>();
+    kijiFooKey.put("NAME", "foo");
+    Put expectedPut = new Put(mEntityIdFactory.fromKijiRowKey(kijiFooKey).getHBaseRowKey());
     KijiCellEncoder cellEncoder = new KijiCellEncoder(getKiji().getSchemaTable());
     HBaseColumnName hBaseColumnName = mColumnNameTranslator.toHBaseColumnName(
         new KijiColumnName("info", "name"));
@@ -113,18 +116,22 @@ public class TestPutLocalApiWriter
     replay(mHTable);
 
     // Verify that the expected behavior performed as expected
-    mWriter.write(mEntityIdFactory.fromKijiRowKey("foo"), "name", "baz");
+    mWriter.write(mEntityIdFactory.fromKijiRowKey(kijiFooKey), "name", "baz");
     assertEquals(1, mWriter.getNumBufferedElements());
-    mWriter.write(mEntityIdFactory.fromKijiRowKey("foo"), "name", "foo");
+    mWriter.write(mEntityIdFactory.fromKijiRowKey(kijiFooKey), "name", "foo");
     assertEquals(2, mWriter.getNumBufferedElements());
   }
 
   @Test
   public void testBuffering() throws Exception {
     // Record expectation
-    Put expectedPut1 = new Put(mEntityIdFactory.fromKijiRowKey("foo2").getHBaseRowKey());
-    Put expectedPut2 = new Put(mEntityIdFactory.fromKijiRowKey("bar2").getHBaseRowKey());
-    Put expectedPut3 = new Put(mEntityIdFactory.fromKijiRowKey("bar2").getHBaseRowKey());
+    HashMap<String, Object> kijiFooKey = new HashMap<String, Object>();
+    kijiFooKey.put("NAME", "foo2");
+    HashMap<String, Object> kijiBarKey = new HashMap<String, Object>();
+    kijiBarKey.put("NAME", "bar2");
+    Put expectedPut1 = new Put(mEntityIdFactory.fromKijiRowKey(kijiFooKey).getHBaseRowKey());
+    Put expectedPut2 = new Put(mEntityIdFactory.fromKijiRowKey(kijiBarKey).getHBaseRowKey());
+    Put expectedPut3 = new Put(mEntityIdFactory.fromKijiRowKey(kijiBarKey).getHBaseRowKey());
     KijiCellEncoder cellEncoder = new KijiCellEncoder(getKiji().getSchemaTable());
     HBaseColumnName hBaseColumnName = mColumnNameTranslator.toHBaseColumnName(
         new KijiColumnName("info", "name"));
@@ -163,13 +170,13 @@ public class TestPutLocalApiWriter
 
     // Verify that the expected behavior performed as expected
     for (long i = 0; i < 10; i++) {
-      mWriter.write(mEntityIdFactory.fromKijiRowKey("foo2"), "name", "Robert Chu " + i);
+      mWriter.write(mEntityIdFactory.fromKijiRowKey(kijiFooKey), "name", "Robert Chu " + i);
     }
     for (long i = 0; i < 10; i++) {
-      mWriter.write(mEntityIdFactory.fromKijiRowKey("bar2"), "name", "Robert Chiu " + i);
+      mWriter.write(mEntityIdFactory.fromKijiRowKey(kijiBarKey), "name", "Robert Chiu " + i);
     }
     assertEquals(0, mWriter.getNumBufferedElements());
-    mWriter.write(mEntityIdFactory.fromKijiRowKey("bar2"), "name", "Robert Chiu 10");
+    mWriter.write(mEntityIdFactory.fromKijiRowKey(kijiBarKey), "name", "Robert Chiu 10");
     assertEquals(1, mWriter.getNumBufferedElements());
   }
 }

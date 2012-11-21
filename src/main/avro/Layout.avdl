@@ -180,33 +180,78 @@ protocol KijiTableLayoutRecords {
     MD5
   }
 
-  /** Row keys encoding. */
+  /**
+   * Row keys can either be raw bytes or be formatted as one or more
+   * components which can either be strings, numbers or a fixed size
+   * hash of one of the other components.
+   */
   enum RowKeyEncoding {
-    /** Row keys are managed by the user. */
+    /** raw bytes */
     RAW,
-
-    /** Row keys are hashed. */
-    HASH,
-
-    /** Row keys are prefixed by a hash. */
-    HASH_PREFIX
-
-    // TODO: composite row keys
+    /** user specified format */
+    FORMATTED
   }
 
-  record RowKeyFormat {
-    /** Encoding of the row key. */
-    RowKeyEncoding encoding;
+  /**
+  * Type of a component of a row key.
+  * We allow string and numerical types only.
+  */
+  enum ComponentType {
+    STRING,
+    INTEGER,
+    LONG
+  }
 
-    /** Type of hashing used, if any. */
-    union { null, HashType } hash_type = null;
+  enum KeyTransform {
+    /** Store the target in its serialized form */
+    IDENTITY,
+    /** Store the hash of the specified target */
+    HASH
+  }
+
+  record StorageEncoding {
+
+    /** Name of element. */
+    string component_name;
+
+    /** Does this element represent a key component or its hash. */
+    KeyTransform transform;
+
+    /** Hashing method. */
+    union {null, HashType} hash_type = null;
 
     /**
      * Size of the hash, in bytes.
-     *  - unused when encoding is RAW.
-     *  - smaller than the hash size used for HASH or HASH_PREFIX.
+     *  - unused when transform is IDENTITY.
+     *  - used to determine amount of distribution required.
      */
     int hash_size = 0;
+
+    /** The component within the key. */
+    union {null, string} target = null;
+  }
+
+  record RowKeyFormat {
+    /** Whether the row key is raw bytes or specified by the user. */
+    RowKeyEncoding encoding;
+
+    /**
+     * Described the individual components that make up this key.
+     * This is provided for an "analyst's" view of the key. The order
+     * of the components specified does not matter. We only care about
+     * the types.
+     */
+    map<ComponentType> key_spec = {};
+
+    /**
+     * Represents the actual elements of the Hbase key that will be created.
+     * If a key is composed of the components A, B and C and the user also
+     * wants to store a 2 byte hash of the component B, then the actual key
+     * may look like A:h(B):B:C. The order of the elements in this array
+     * determines their actual position and how they can be indexed.
+     */
+    array<StorageEncoding> encoded_key_spec = [];
+
   }
 
   /** Layout of a Kiji table. */

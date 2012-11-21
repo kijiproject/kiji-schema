@@ -19,9 +19,17 @@
 {
   name : "user",
   keys_format : {
-    encoding : "HASH",
-    hash_type : "MD5",
-    hash_size : 16
+    encoding : "FORMATTED",
+    key_spec: {
+      "NAME": "STRING"
+    },
+    encoded_key_spec: [ {
+      component_name: "HN",
+      transform: "HASH",
+      hash_type: "MD5",
+      hash_size: 16,
+      target: "NAME"
+    } ]
   },
   locality_groups : [ {
     name : "default",

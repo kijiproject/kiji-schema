@@ -35,20 +35,17 @@ import org.kiji.schema.avro.RowKeyFormat;
  * The translation between Kiji row keys and HBase row keys depends on the layout of the table
  * the row belongs to.
  *
- * There are multiple translation schemes:
+ * There are two translation schemes:
  * <ul>
- *   <li> Raw: Kiji row keys and HBase row keys are identical (identity translation).
- *   <li> MD5: HBase row keys are MD5 hashes of the Kiji row key (non reversible transform).
- *   <li> Hash-prefix: HBase row keys are Kiji row keys prefixed by a hash of the Kiji row key.
- *   <li> Composite: to be determined.
+ *   <li> Raw: Kiji row keys and HBase row keys are identical (identity translation), specifically
+ *   used when the row key is an array of bytes.
+ *   <li> Formatted: The user specifies the composition of the key. The key can be composed of one
+ *   or more components of type string, number or a hash of one of the other components.
  * </ul>
  */
 public abstract class EntityId {
   /** @return the format of this row key. */
   public abstract RowKeyFormat getFormat();
-
-  /** @return the Kiji row key as a byte array. */
-  public abstract byte[] getKijiRowKey();
 
   /**
    * Translates this Kiji row key into an HBase row key.
@@ -56,6 +53,14 @@ public abstract class EntityId {
    * @return the HBase row key.
    */
   public abstract byte[] getHBaseRowKey();
+
+  /**
+   * Translates this Hbase row key into a Kiji row key object.
+   * @return String object in case of a raw Entity Id. Map of component
+   *         names to values (as specified in key_spec in the layout file)
+   *         in case of Formatted Entity Id.
+   */
+  public abstract Object getKijiRowKey();
 
   /** {@inheritDoc} */
   @Override
