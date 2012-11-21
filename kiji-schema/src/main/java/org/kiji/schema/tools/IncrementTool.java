@@ -33,6 +33,8 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.CellSchema;
+import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.KijiTableLayout;
 
@@ -90,6 +92,11 @@ public final class IncrementTool extends VersionValidatedTool {
       return 1;
     }
 
+    // TODO Fix CLI with formatted row key format (https://jira.kiji.org/browse/SCHEMA-171)
+    if (tableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat2) {
+      throw new RuntimeException("CLI does not support Formatted Row Key format as yet");
+    }
+
     final KijiColumnName column = new KijiColumnName(mColName);
     if (null == column.getQualifier()) {
       LOG.error("Column name must be in the format 'family:qualifier'.");
@@ -102,7 +109,7 @@ public final class IncrementTool extends VersionValidatedTool {
     }
 
     final EntityId entityId = ToolUtils.createEntityIdFromUserInputs(
-        mEntityId, mEntityHash, tableLayout.getDesc().getKeysFormat());
+        mEntityId, mEntityHash, (RowKeyFormat)tableLayout.getDesc().getKeysFormat());
 
     final KijiTable table = getKiji().openTable(getURI().getTable());
     try {

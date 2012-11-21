@@ -21,21 +21,29 @@ package org.kiji.schema.layout;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.ArrayList;
+
 import com.google.common.collect.Lists;
+
 import org.junit.Test;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
+import org.kiji.schema.avro.ComponentType;
 import org.kiji.schema.avro.CompressionType;
 import org.kiji.schema.avro.FamilyDesc;
+import org.kiji.schema.avro.HashSpec;
 import org.kiji.schema.avro.LocalityGroupDesc;
+import org.kiji.schema.avro.RowKeyComponent;
 import org.kiji.schema.avro.RowKeyEncoding;
-import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
+
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 
@@ -43,15 +51,29 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 public class TestKijiTableLayoutAddColumn {
   private static final Logger LOG = LoggerFactory.getLogger(TestKijiTableLayoutAddColumn.class);
 
-  private static final String TABLE_LAYOUT_VERSION = "kiji-1.0";
+  private static final String TABLE_LAYOUT_VERSION = "kiji-1.1";
+
+  private RowKeyFormat2 makeHashPrefixedRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
 
   /** Reference layout with a single column: "family_name:column_name". */
   private TableLayoutDesc getLayoutV1Desc() {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
     return TableLayoutDesc.newBuilder()
       .setName("table_name")
-      .setKeysFormat(RowKeyFormat.newBuilder()
-          .setEncoding(RowKeyEncoding.HASH_PREFIX)
-          .build())
+      .setKeysFormat(format)
       .setVersion(TABLE_LAYOUT_VERSION)
       .setLocalityGroups(Lists.newArrayList(
           LocalityGroupDesc.newBuilder()

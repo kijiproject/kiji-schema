@@ -36,6 +36,7 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.CellSchema;
+import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.KijiTableLayout;
 
@@ -102,7 +103,7 @@ public final class PutTool extends VersionValidatedTool {
       final CellSchema cellSchema = tableLayout.getCellSchema(column);
 
       final EntityId entityId = ToolUtils.createEntityIdFromUserInputs(
-          mEntityId, mEntityHash, tableLayout.getDesc().getKeysFormat());
+          mEntityId, mEntityHash, (RowKeyFormat)tableLayout.getDesc().getKeysFormat());
 
       final KijiTableWriter writer = table.openTableWriter();
       try {

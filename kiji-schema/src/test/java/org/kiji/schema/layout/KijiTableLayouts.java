@@ -28,6 +28,7 @@ import java.io.OutputStream;
 import org.apache.commons.io.IOUtils;
 
 import org.kiji.schema.avro.RowKeyEncoding;
+import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.util.FromJson;
 import org.kiji.schema.util.ToJson;
@@ -135,18 +136,22 @@ public final class KijiTableLayouts {
   public static final String FINAL_COLUMN =
       "org/kiji/schema/layout/final-column.json";
 
+  /** Table named 'table' which uses formatted row keys. */
+  public static final String FORMATTED_RKF =
+      "org/kiji/schema/layout/formattedkey.json";
+
   /** Test layout with hashing disabled. */
   public static TableLayoutDesc getFooUnhashedTestLayout() throws IOException {
     final TableLayoutDesc desc = getLayout(FOO_TEST);
     desc.setName("foo_nonhashed");
-    desc.getKeysFormat().setEncoding(RowKeyEncoding.RAW);
+    ((RowKeyFormat)desc.getKeysFormat()).setEncoding(RowKeyEncoding.RAW);
     return desc;
   }
 
   /** Test changing the row key hashing property. */
   public static TableLayoutDesc getFooChangeHashingTestLayout() throws IOException {
     final TableLayoutDesc desc = getLayout(FOO_TEST);
-    desc.getKeysFormat().setEncoding(RowKeyEncoding.RAW);
+    ((RowKeyFormat)desc.getKeysFormat()).setEncoding(RowKeyEncoding.RAW);
     desc.setReferenceLayout("1");
     return desc;
   }

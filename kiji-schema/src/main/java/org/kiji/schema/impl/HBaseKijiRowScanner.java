@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
+import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
@@ -231,7 +232,8 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
       }
 
       // Read the entity id from the HBase result.
-      final EntityId entityId = mTable.getEntityIdFactory().fromHBaseRowKey(result.getRow());
+      final EntityId entityId = EntityIdFactory.getFactory(mTable.getLayout()).
+          getEntityIdFromHBaseRowKey(result.getRow());
       // TODO: Inject the cell decoder factory in the row data
       return new HBaseKijiRowData(entityId, mKijiDataRequest, mTable, result);
     }

@@ -55,6 +55,8 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
@@ -437,6 +439,11 @@ public final class LsTool extends VersionValidatedTool {
     final KijiTable table = kiji.openTable(uri.getTable());
     final KijiTableLayout tableLayout = table.getLayout();
 
+    // TODO https://jira.kiji.org/browse/SCHEMA-171
+    if (tableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat2) {
+      throw new RuntimeException("CLI support for FORMATTED row keys is still unavailable");
+    }
+
     final String[] rawColumnNames =
         (mColumns.equals("*")) ? null : StringUtils.split(mColumns, ",");
 
@@ -451,19 +458,21 @@ public final class LsTool extends VersionValidatedTool {
 
     KijiTableReader reader = null;
     try {
-      final EntityIdFactory eidFactory = table.getEntityIdFactory();
+      final EntityIdFactory eidFactory = EntityIdFactory.getFactory(table.getLayout());
       reader = table.openTableReader();
       if (mEntityId.isEmpty() && mEntityHash.isEmpty()) {
         // Scan from startRow to limitRow.
         final EntityId startRow =
-            (mStartRow == null) ? null : eidFactory.fromHBaseRowKey(parseRowKeyFlag(mStartRow));
+            (mStartRow == null) ? null : eidFactory.
+                getEntityIdFromHBaseRowKey(parseRowKeyFlag(mStartRow));
         final EntityId limitRow =
-            (mLimitRow == null) ? null : eidFactory.fromHBaseRowKey(parseRowKeyFlag(mLimitRow));
+            (mLimitRow == null) ? null : eidFactory.
+                getEntityIdFromHBaseRowKey(parseRowKeyFlag(mLimitRow));
         return scan(reader, request, startRow, limitRow, mapTypeFamilies, groupTypeColumns);
       } else {
         // Return the specified entity.
         final EntityId entityId = ToolUtils.createEntityIdFromUserInputs(
-            mEntityId, mEntityHash, tableLayout.getDesc().getKeysFormat());
+            mEntityId, mEntityHash, (RowKeyFormat) tableLayout.getDesc().getKeysFormat());
         return lookup(reader, request, entityId, mapTypeFamilies, groupTypeColumns);
       }
     } finally {

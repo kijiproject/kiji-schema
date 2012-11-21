@@ -20,10 +20,10 @@
 package org.kiji.schema;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
-import org.kiji.schema.avro.RowKeyFormat;
 
 /**
  * EntityId is used to identify a particular row in a Kiji table.
@@ -39,27 +39,43 @@ import org.kiji.schema.avro.RowKeyFormat;
  *
  * There are multiple translation schemes:
  * <ul>
- *   <li> Raw: Kiji row keys and HBase row keys are identical (identity translation).
- *   <li> MD5: HBase row keys are MD5 hashes of the Kiji row key (non reversible transform).
+ *   <li> Raw: Kiji row keys and HBase row keys are identical (identity translation), specifically
+ *   used when the row key is an array of bytes.
+ *   <li> Hash: HBase row keys are MD5 hashes of the Kiji row key (non reversible transform).
  *   <li> Hash-prefix: HBase row keys are Kiji row keys prefixed by a hash of the Kiji row key.
- *   <li> Composite: to be determined.
+ *   <li> Formatted: The user specifies the composition of the key. The key can be composed of one
+ *   or more components of type string, number or a hash of one of the other components.
  * </ul>
  */
 @ApiAudience.Public
 @Inheritance.Sealed
 public abstract class EntityId {
-  /** @return the format of this row key. */
-  public abstract RowKeyFormat getFormat();
-
-  /** @return the Kiji row key as a byte array. */
-  public abstract byte[] getKijiRowKey();
-
   /**
    * Translates this Kiji row key into an HBase row key.
    *
    * @return the HBase row key.
    */
   public abstract byte[] getHBaseRowKey();
+
+  /**
+   * Get the individual components of the kiji Row Key representation. This excludes hash
+   * prefixes and only includes user-addressible components.
+   * E.g. If the key is composed of a String followed by an Int, getComponentByIndex(0)
+   * returns the String component. Zero based indexing.
+   *
+   * @param idx The index of the component. An integer between 0 and numComponents - 1.
+   * @param <T> The type of the row key component.
+   * @return The specific component of the row key.
+   */
+  public abstract <T> T getComponentByIndex(int idx);
+
+  /**
+   * Get the components of the row key as a List of Objects. This excludes hash
+   * prefixes and only includes user-addressible components.
+   *
+   * @return List of Objects representing the individual components of a row key.
+   */
+  public abstract List<Object> getComponents();
 
   /** {@inheritDoc} */
   @Override

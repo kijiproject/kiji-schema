@@ -39,12 +39,13 @@ public class TestHashPrefixedEntityId {
         .setHashSize(4)
         .build();
     final byte[] kijiRowKey = new byte[] {0x11, 0x22};
-    final HashPrefixedEntityId eid = HashPrefixedEntityId.fromKijiRowKey(kijiRowKey, format);
-    assertEquals(format, eid.getFormat());
-    assertArrayEquals(kijiRowKey, eid.getKijiRowKey());
+    final HashPrefixedEntityId eid = HashPrefixedEntityId.getEntityId(kijiRowKey, format);
+    assertArrayEquals(kijiRowKey, (byte[])eid.getComponentByIndex(0));
     assertEquals(
         "c700ed4f1122",
         ByteArrayFormatter.toHex(eid.getHBaseRowKey()));
+    assertEquals(1, eid.getComponents().size());
+    assertEquals(kijiRowKey, eid.getComponents().get(0));
   }
 
   @Test
@@ -56,8 +57,9 @@ public class TestHashPrefixedEntityId {
         .build();
     final byte[] hbaseRowKey = ByteArrayFormatter.parseHex("c700ed4f1122");
     final HashPrefixedEntityId eid = HashPrefixedEntityId.fromHBaseRowKey(hbaseRowKey, format);
-    assertEquals(format, eid.getFormat());
     assertArrayEquals(hbaseRowKey, eid.getHBaseRowKey());
-    assertArrayEquals(new byte[] {0x11, 0x22}, eid.getKijiRowKey());
+    assertArrayEquals(new byte[] {0x11, 0x22}, (byte[])eid.getComponentByIndex(0));
+    assertEquals(1, eid.getComponents().size());
+    assertArrayEquals(new byte[] {0x11, 0x22}, (byte[])eid.getComponents().get(0));
   }
 }

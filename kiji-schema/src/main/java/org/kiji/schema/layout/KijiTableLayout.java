@@ -22,6 +22,7 @@ package org.kiji.schema.layout;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,10 @@ import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
 import org.kiji.schema.avro.FamilyDesc;
 import org.kiji.schema.avro.LocalityGroupDesc;
+import org.kiji.schema.avro.RowKeyComponent;
+import org.kiji.schema.avro.RowKeyEncoding;
+import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -59,6 +64,7 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.util.FromJson;
+import org.kiji.schema.util.Hasher;
 import org.kiji.schema.util.JavaIdentifiers;
 import org.kiji.schema.util.KijiNameValidator;
 import org.kiji.schema.util.ToJson;
@@ -194,19 +200,23 @@ import org.kiji.schema.util.ToJson;
  * row keys according to the row key encoding specified in the table layout:
  * <ul>
  *   <li> Raw encoding: the user has direct control over the encoding of row keys in the HBase
- *        table. In other words, the HBase row key is exactly the Kiji row key.
- *        See {@link org.kiji.schema.impl.RawEntityId RawEntityId}.
+ *        table. In other words, the HBase row key is exactly the Kiji row key. These are used
+ *        when the user would like to use arrays of bytes as row keys.
  *   </li>
- *   <li> Hashed: the HBase row key is computed as a hash of the Kiji row key.
- *        See {@link org.kiji.schema.impl.HashedEntityId HashedEntityId}.
+ *   <li> Hashed: Deprecated! The HBase row key is computed as a hash of a single String or
+ *   byte array component.
  *   </li>
- *   <li> Hash-prefixed: the HBase row key is computed as the concatenation of a hash of the
- *        Kiji row key and the Kiji row key itself.
- *        See {@link org.kiji.schema.impl.HashPrefixedEntityId HashPrefixedEntityId}.
+ *   <li> Hash-prefixed: the HBase row key is computed as the concatenation of the hash of a
+ *   single String or byte array component.
+ *   </li>
+ *   <li> Formatted: the row key is comprised of one or more components. Each component can be
+ *        a string, a number or a hash of another component. The user will specify the size
+ *        of this hash. The user also specifies the actual order of the components in the key.
  *   </li>
  * </ul>
  *
- * Hashing allows to spread the rows evenly across all the regions in the table.
+ * Hashing allows to spread the rows evenly across all the regions in the table. Specifying the size
+ * of the hash gives the user fine grained control of how the data will be distributed.
  *
  * <h1>Cell schema</h1>
  *
@@ -853,6 +863,89 @@ public final class KijiTableLayout {
   /** All primary column names in the table (including names for map-type families). */
   private final ImmutableSet<KijiColumnName> mColumnNames;
 
+  /**
+   * Ensure a row key format (version 1) specified in a layout file is sane.
+   * @param format The RowKeyFormat created from the layout file for a table.
+   * @throws InvalidLayoutException If the format is invalid.
+   */
+  private void isValidRowKeyFormat1(RowKeyFormat format) throws InvalidLayoutException {
+    RowKeyEncoding rowKeyEncoding = format.getEncoding();
+    if (rowKeyEncoding != RowKeyEncoding.RAW
+        && rowKeyEncoding != RowKeyEncoding.HASH
+        && rowKeyEncoding != RowKeyEncoding.HASH_PREFIX) {
+      throw new InvalidLayoutException("RowKeyFormat only supports encodings"
+          + "of type RAW, HASH and HASH_PREFIX. Use RowKeyFormat2 instead");
+    }
+    if (rowKeyEncoding == RowKeyEncoding.HASH || rowKeyEncoding == RowKeyEncoding.HASH_PREFIX) {
+      if (format.getHashSize() < 0 || format.getHashSize() > Hasher.HASH_SIZE_BYTES) {
+        throw new InvalidLayoutException("HASH or HASH_PREFIX row key formats require hash size"
+            + "to be between 1 and " + Hasher.HASH_SIZE_BYTES);
+      }
+    }
+  }
+
+  /**
+   * Ensure a row key format (version 2) specified in a layout file is sane.
+   * @param format The RowKeyFormat2 created from the layout file for a table.
+   * @throws InvalidLayoutException If the format is invalid.
+   */
+  private void isValidRowKeyFormat2(RowKeyFormat2 format) throws InvalidLayoutException {
+    // RowKeyFormat2 can only contain RAW or FORMATTED encoding types.
+    if (format.getEncoding() != RowKeyEncoding.RAW
+        && format.getEncoding() != RowKeyEncoding.FORMATTED) {
+      throw new InvalidLayoutException("RowKeyFormat2 only supports RAW or FORMATTED encoding."
+          + "Found " + format.getEncoding().name());
+    }
+
+    // For RAW encoding, ignore the rest of the fields.
+    if (format.getEncoding() == RowKeyEncoding.RAW) {
+      return;
+    }
+
+    // At least one primitive component.
+    if (format.getComponents().size() <= 0) {
+      throw new InvalidLayoutException("At least 1 component is required in row key format.");
+    }
+
+    // Nullable index cannot be the first element or anything greater
+    // than the components length (number of components).
+    if (format.getNullableStartIndex() <= 0
+        || format.getNullableStartIndex() > format.getComponents().size()) {
+      throw new InvalidLayoutException("Invalid index for nullable component. The second component"
+          + " onwards can be set to null.");
+    }
+
+    // Range scan index cannot be the first element or anything greater
+    // than the components length (number of components).
+    if (format.getRangeScanStartIndex() <= 0
+      || format.getRangeScanStartIndex() > format.getComponents().size()) {
+      throw new InvalidLayoutException("Invalid range scan index. Range scans are supported "
+          + "starting with the second component.");
+    }
+
+    Set<String> nameset = new HashSet<String>();
+    for (RowKeyComponent component: format.getComponents()) {
+      // ensure names are valid "[a-zA-Z_][a-zA-Z0-9_]*"
+      if (!isValidName(component.getName())) {
+        throw new InvalidLayoutException("Names should begin with a letter followed by a "
+            + "combination of letters, numbers and underscores.");
+      }
+      nameset.add(component.getName());
+    }
+
+    // repeated component names
+    if (nameset.size() != format.getComponents().size()) {
+      throw new InvalidLayoutException("Component name already used.");
+    }
+
+    // hash size invalid
+    if (format.getSalt().getHashSize() <= 0
+        || format.getSalt().getHashSize() > Hasher.HASH_SIZE_BYTES) {
+      throw new InvalidLayoutException("Valid hash sizes are between 1 and "
+          + Hasher.HASH_SIZE_BYTES);
+    }
+  }
+
   // CSOFF: MethodLengthCheck
   /**
    * Constructs a KijiTableLayout from an Avro descriptor and an optional reference layout.
@@ -868,6 +961,9 @@ public final class KijiTableLayout {
 
     // Ensure the array of locality groups is mutable:
     mDesc.setLocalityGroups(Lists.newArrayList(mDesc.getLocalityGroups()));
+
+    // TODO Check version of layout matches the features used.
+    // https://jira.kiji.org/browse/SCHEMA-151
 
     if (!isValidName(getName())) {
       throw new InvalidLayoutException(String.format("Invalid table name: '%s'.", getName()));
@@ -899,6 +995,13 @@ public final class KijiTableLayout {
             "Reference layout for table '%s' has an invalid layout ID: '%s'",
             getName(), reference.getDesc().getLayoutId()));
       }
+    }
+
+    if (mDesc.getKeysFormat() instanceof RowKeyFormat) {
+      isValidRowKeyFormat1((RowKeyFormat) mDesc.getKeysFormat());
+    } else if (mDesc.getKeysFormat() instanceof RowKeyFormat2) {
+      // Check validity of row key format.
+      isValidRowKeyFormat2((RowKeyFormat2) mDesc.getKeysFormat());
     }
 
     // Build localities:
@@ -1396,5 +1499,37 @@ public final class KijiTableLayout {
     final TableLayoutDesc desc =
         (TableLayoutDesc) FromJson.fromJsonString(json, TableLayoutDesc.SCHEMA$);
     return desc;
+  }
+
+  /**
+   * Find the encoding of the row key given the format.
+   *
+   * @param rowKeyFormat Format of row keys of type RowKeyFormat or RowKeyFormat2.
+   * @return The specific row key encoding, e.g. RAW, HASH, etc.
+   */
+  public static RowKeyEncoding getEncoding(Object rowKeyFormat) {
+    if (rowKeyFormat instanceof RowKeyFormat) {
+      return ((RowKeyFormat) rowKeyFormat).getEncoding();
+    } else if (rowKeyFormat instanceof RowKeyFormat2) {
+      return ((RowKeyFormat2) rowKeyFormat).getEncoding();
+    } else {
+      throw new RuntimeException("Unsupported Row Key Format");
+    }
+  }
+
+  /**
+   * Get the hash size for a given row key format.
+   *
+   * @param rowKeyFormat Format of row keys of type RowKeyFormat or RowKeyFormat2.
+   * @return The size of the hash prefix.
+   */
+  public static int getHashSize(Object rowKeyFormat) {
+    if (rowKeyFormat instanceof RowKeyFormat) {
+      return ((RowKeyFormat) rowKeyFormat).getHashSize();
+    } else if (rowKeyFormat instanceof RowKeyFormat2) {
+      return ((RowKeyFormat2) rowKeyFormat).getSalt().getHashSize();
+    } else {
+      throw new RuntimeException("Unsupported Row Key Format");
+    }
   }
 }

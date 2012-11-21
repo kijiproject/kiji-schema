@@ -180,21 +180,65 @@ protocol KijiTableLayoutRecords {
     MD5
   }
 
-  /** Row keys encoding. */
+  /**
+   * Row keys can either be raw bytes, hash, hash-prefixed or be formatted. Formatted row keys
+   * are composed of one or more primitive types (string, int, long). By default
+   * they are prefixed by the hash of the first component.
+   */
   enum RowKeyEncoding {
-    /** Row keys are managed by the user. */
+    /** raw bytes */
     RAW,
 
-    /** Row keys are hashed. */
+    /**
+     * Deprecated, use FORMATTED. Row keys are the hash of one string component.
+     * Requires RowKeyFormat below.
+     */
     HASH,
 
-    /** Row keys are prefixed by a hash. */
-    HASH_PREFIX
+    /**
+     * Deprecated, use FORMATTED. Row keys are one string component with a hash prefix.
+     * Requires RowKeyFormat below.
+     */
+    HASH_PREFIX,
 
-    // TODO: composite row keys
+    /**
+     * User specified format. The key may be composed of one or more primitive types (string,
+     * int, long) prefixed by the hash of the first k components, 1 <= k < numComponents, where k
+     * can be specified using range_scan_start_index in RowKeyFormat2 below.
+     * This requires the user to use RowKeyFormat2 below.
+     */
+    FORMATTED
   }
 
+  /**
+   * The HashSpec contains details about the type of hashing algorithm, hash
+   * size, and whether or not the hbase key will include the actual component.
+   */
+  record HashSpec {
+    /** Hashing algorithm used. */
+    HashType hash_type = "MD5";
+
+    /**
+     * Size of the hash. If used for salting purposes, i.e. the hash is not the sole
+     * component of the key, use a smaller hash size.
+     */
+    int hash_size = 16;
+
+    /** Use with caution! Under normal circumstances, an hbase row key is created as
+     * a hash is followed by the actual component that is hashed. Setting this to
+     * true enables the user to store only the hash. (making the distinction between HASHED
+     * and HASH_PREFIXED). This means that there is a non-zero possibility for collisions.
+     */
+    boolean suppress_key_materialization = false;
+  }
+
+  /**
+   * Deprecated! Use RowKeyFormat2 instead.
+   * The specification for the row key. Fields have default values for suggested usage.
+   * Encoding cannot be FORMATTED if you use this record.
+   */
   record RowKeyFormat {
+
     /** Encoding of the row key. */
     RowKeyEncoding encoding;
 
@@ -209,6 +253,67 @@ protocol KijiTableLayoutRecords {
     int hash_size = 0;
   }
 
+  /**
+   * Types of row key components supported in FORMATTED encoding.
+   */
+  enum ComponentType {
+    STRING,
+    INTEGER,
+    LONG
+  }
+
+  /**
+   * Specifies a single element of the row key.
+   */
+  record RowKeyComponent {
+    /**
+     * Name of element. This name must match the regular expression for
+     * identifiers: [A-Za-z_][A-Za-z0-9_].
+     */
+    string name;
+
+    /** Primitive type of the component. */
+    ComponentType type;
+  }
+
+  /**
+   * The specification for the row key. Fields have default values for suggested usage.
+   * Only RAW and FORMATTED encoding can be used with this record.
+   */
+  record RowKeyFormat2 {
+    /** Whether the row key is raw bytes or composed of one or more primitive types. */
+    RowKeyEncoding encoding;
+
+    /**
+     * Specification for hashing. Hashing is left prefixed.
+     */
+     union {null, HashSpec} salt = null;
+
+    /**
+     * The first component index from which point we support range scans. This means
+     * only components to the left of this will be included in the hash. IOW, you
+     * are able to perform range scans over this component and components that follow.
+     * It is invalid to make the first component of key support range scans.
+     * 0 indexed. Set to key_spec.length to hash over the entire key.
+     */
+    int range_scan_start_index = 1;
+
+    /**
+     * The component at this index, and all following components can take null values.
+     * A row key with a null component must ensure that all the components following it
+     * are also null, in order to comply with ordering constraints. It is invalid to make
+     * the first component of a key nullable.
+     * 0 indexed. Set to key_spec.length to disallow nulls.
+     */
+    int nullable_start_index = 1;
+
+    /**
+     * An ordered list of the individual components that make up this key. Must contain
+     * at least one component.
+     */
+    array<RowKeyComponent> components = [];
+  }
+
   /** Layout of a Kiji table. */
   record TableLayoutDesc {
     /** Name of the table ([a-zA-Z0-9_]+). */
@@ -217,8 +322,11 @@ protocol KijiTableLayoutRecords {
     /** User description of the table. */
     string description = "";
 
-    /** Whether row key hashing should be managed by Kiji. */
-    RowKeyFormat keys_format;
+    /**
+     * The format of row keys for the table. Please use RowKeyFormat2 as
+     * RowKeyFormat is deprecated.
+     */
+    union { RowKeyFormat, RowKeyFormat2 } keys_format;
 
     /** Locality groups in the table. */
     array<LocalityGroupDesc> locality_groups = [];

@@ -17,22 +17,18 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-
-import org.junit.Test;
-
-/** Tests for RawEntityId. */
-public class TestRawEntityId {
-  @Test
-  public void testRawEntityId() {
-    final byte[] bytes = new byte[] {0x11, 0x22};
-    final RawEntityId eid = RawEntityId.getEntityId(bytes);
-    assertArrayEquals(bytes, (byte[])eid.getComponentByIndex(0));
-    assertArrayEquals(bytes, eid.getHBaseRowKey());
-    assertEquals(1, eid.getComponents().size());
-    assertEquals(bytes, eid.getComponents().get(0));
+/**
+ * Thrown when kiji encounters a row key component name that is not valid.
+ */
+public class EntityIdException extends RuntimeException {
+  /**
+   * Creates a new <code>EntityIdException</code> with the specified detail message.
+   *
+   * @param message The exception message.
+   */
+  public EntityIdException(String message) {
+    super(message);
   }
 }

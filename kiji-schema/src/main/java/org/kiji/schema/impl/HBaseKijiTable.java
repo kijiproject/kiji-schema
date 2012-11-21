@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
@@ -42,6 +43,8 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ResourceUtils;
@@ -100,7 +103,21 @@ public class HBaseKijiTable extends AbstractKijiTable {
       throw new KijiTableNotFoundException(name);
     }
     mTableLayout = kiji.getMetaTable().getTableLayout(name);
-    mEntityIdFactory = EntityIdFactory.create(mTableLayout.getDesc().getKeysFormat());
+    if (mTableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat) {
+      mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat) mTableLayout.getDesc()
+          .getKeysFormat());
+    } else if (mTableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat2) {
+      mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat2) mTableLayout.getDesc()
+          .getKeysFormat());
+    } else {
+      throw new RuntimeException("Invalid Row Key format found in Kiji Table");
+    }
+  }
+
+  /** {@inheritDoc} **/
+  @Override
+  public EntityId getEntityId(Object... kijiRowKey) {
+    return mEntityIdFactory.getEntityId(kijiRowKey);
   }
 
   /**
@@ -130,12 +147,6 @@ public class HBaseKijiTable extends AbstractKijiTable {
   @Override
   public KijiTableLayout getLayout() {
     return mTableLayout;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public EntityIdFactory getEntityIdFactory() {
-    return mEntityIdFactory;
   }
 
   /** {@inheritDoc} */

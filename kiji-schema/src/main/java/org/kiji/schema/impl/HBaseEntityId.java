@@ -19,11 +19,18 @@
 
 package org.kiji.schema.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.google.common.base.Preconditions;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.avro.RowKeyFormat;
 
-/** Entity ID encapsulating an HBase row key. */
+/**
+ * Entity ID encapsulating an HBase row key. This literally
+ * represents a byte[] containing an hbase row key.
+ */
 @ApiAudience.Private
 public class HBaseEntityId extends EntityId {
   private byte[] mHBaseRowKey;
@@ -39,20 +46,24 @@ public class HBaseEntityId extends EntityId {
 
   /** {@inheritDoc} */
   @Override
-  public RowKeyFormat getFormat() {
-    throw new UnsupportedOperationException();
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public byte[] getKijiRowKey() {
-    throw new UnsupportedOperationException();
-  }
-
-  /** {@inheritDoc} */
-  @Override
   public byte[] getHBaseRowKey() {
     return mHBaseRowKey;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @SuppressWarnings("unchecked")
+  public <T> T getComponentByIndex(int idx) {
+    Preconditions.checkArgument(idx == 0);
+    return (T)mHBaseRowKey.clone();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public List<Object> getComponents() {
+    List<Object> resp = new ArrayList<Object>();
+    resp.add(mHBaseRowKey);
+    return resp;
   }
 
 }

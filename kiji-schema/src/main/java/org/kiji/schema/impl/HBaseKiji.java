@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.util.StringUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -285,7 +286,8 @@ public final class HBaseKiji implements Kiji {
       throws IOException {
     Preconditions.checkArgument((numRegions >= 1), "numRegions must be positive: " + numRegions);
     if (numRegions > 1) {
-      if (tableLayout.getDesc().getKeysFormat().getEncoding() == RowKeyEncoding.RAW) {
+      if (KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat())
+          == RowKeyEncoding.RAW) {
         throw new IllegalArgumentException(
             "May not use numRegions > 1 if row key hashing is disabled in the layout");
       }

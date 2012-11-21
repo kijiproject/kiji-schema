@@ -116,16 +116,21 @@ public final class CreateTableTool extends VersionValidatedTool {
       // Create a table with an initial number of evenly split regions.
       getKiji().createTable(tableName, tableLayout, mNumRegions);
     } else if (!mSplitKeyFilePath.isEmpty()) {
-      switch (tableLayout.getDesc().getKeysFormat().getEncoding()) {
+      switch (KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat())) {
       case HASH:
       case HASH_PREFIX:
         throw new RuntimeException(
             "Row key hashing is enabled for the table.  Use --num-regions instead.");
       case RAW:
         break;
+      case FORMATTED:
+        // TODO Support pre-splitting tables for FORMATTED RKF
+        // (https://jira.kiji.org/browse/SCHEMA-172)
+        throw new RuntimeException("CLI support for FORMATTED row keys is not yet available");
       default:
         throw new RuntimeException(
-            "Unexpected row key encoding: " + tableLayout.getDesc().getKeysFormat().getEncoding());
+            "Unexpected row key encoding: "
+                + KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat()));
       }
       // Open the split key file.
       Path splitKeyFilePath = new Path(mSplitKeyFilePath);

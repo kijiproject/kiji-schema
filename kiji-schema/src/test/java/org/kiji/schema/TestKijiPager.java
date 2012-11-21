@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.filter.RegexQualifierColumnFilter;
 import org.kiji.schema.filter.TestKijiPaginationFilter;
-import org.kiji.schema.impl.HashedEntityId;
 import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -71,8 +70,7 @@ public class TestKijiPager extends KijiClientTest {
     final KijiDataRequest dataRequest = builder.build();
     assertTrue(!dataRequest.isEmpty());
     assertTrue(!dataRequest.isPagingEnabled());
-    EntityId meId = HashedEntityId.fromKijiRowKey(
-        Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+    EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     KijiPager pager = myRowData.getPager("info", "name");
   }
@@ -95,8 +93,7 @@ public class TestKijiPager extends KijiClientTest {
     assertTrue(!dataRequest.isEmpty());
     assertTrue(dataRequest.isPagingEnabled());
     assertTrue(dataRequest.getColumn("info", "name").isPagingEnabled());
-    EntityId meId = HashedEntityId.fromKijiRowKey(
-        Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+    EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     KijiPager pager = myRowData.getPager("info", "name");
     assertTrue(pager.hasNext());
@@ -137,8 +134,7 @@ public class TestKijiPager extends KijiClientTest {
     assertTrue(!dataRequest.isEmpty());
     assertTrue(dataRequest.isPagingEnabled());
     assertTrue(dataRequest.getColumn("info", "name").isPagingEnabled());
-    EntityId meId = HashedEntityId.fromKijiRowKey(
-        Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+    EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     Iterator<KijiRowData> scanner = mReader.getScanner(dataRequest).iterator();
     assertTrue(scanner.hasNext());
     KijiRowData myRowData = scanner.next();
@@ -182,8 +178,7 @@ public class TestKijiPager extends KijiClientTest {
     assertTrue(!dataRequest.isEmpty());
     assertTrue(dataRequest.isPagingEnabled());
     assertTrue(dataRequest.getColumn("jobs", null).isPagingEnabled());
-    EntityId meId = HashedEntityId.fromKijiRowKey(
-        Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+    EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     KijiPager pager = myRowData.getPager("jobs");
     assertTrue(pager.hasNext());
@@ -235,8 +230,7 @@ public class TestKijiPager extends KijiClientTest {
       assertTrue(!dataRequest.isEmpty());
       assertTrue(dataRequest.isPagingEnabled());
       assertTrue(dataRequest.getColumn("jobs", null).isPagingEnabled());
-      EntityId meId = HashedEntityId.fromKijiRowKey(
-          Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+      EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
       LOG.debug("DataRequest is [{}]", dataRequest.toString());
       KijiRowData myRowData = mReader.get(meId, dataRequest);
       pager = myRowData.getPager("jobs");

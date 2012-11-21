@@ -37,7 +37,6 @@ import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
-import org.codehaus.jackson.JsonGenerator.Feature;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ArrayNode;
@@ -206,7 +205,10 @@ public final class ToJson {
     final JsonNode node = ToJson.toJsonNode(value, schema);
     final StringWriter stringWriter = new StringWriter();
     final JsonGenerator generator = JSON_FACTORY.createJsonGenerator(stringWriter);
-    generator.disable(Feature.QUOTE_FIELD_NAMES);
+    // We have disabled this because we used unions to represent row key formats
+    // in the table layout. This is a HACK and needs a better solution.
+    // TODO: Find better solution. https://jira.kiji.org/browse/SCHEMA-174
+    //generator.disable(Feature.QUOTE_FIELD_NAMES);
     generator.setPrettyPrinter(new DefaultPrettyPrinter());
     final ObjectMapper mapper = new ObjectMapper();
     mapper.writeValue(generator, node);

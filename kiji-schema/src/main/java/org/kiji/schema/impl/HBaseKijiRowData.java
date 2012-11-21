@@ -135,7 +135,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       KijiTableLayout layout,
       Result result,
       KijiSchemaTable schemaTable) {
-    this(EntityIdFactory.create(layout.getDesc().getKeysFormat()).fromHBaseRowKey(result.getRow()),
+    this(EntityIdFactory.getFactory(layout).getEntityIdFromHBaseRowKey(result.getRow()),
         request, decoderFactory, layout, result, schemaTable);
   }
 
@@ -179,7 +179,8 @@ public final class HBaseKijiRowData implements KijiRowData {
    */
   public HBaseKijiRowData(KijiDataRequest request, HBaseKijiTable table, Result result)
       throws IOException {
-    this(table.getEntityIdFactory().fromHBaseRowKey(result.getRow()), request, table, result);
+    this(EntityIdFactory.getFactory(table.getLayout()).getEntityIdFromHBaseRowKey(
+        result.getRow()), request, table, result);
   }
 
   /**

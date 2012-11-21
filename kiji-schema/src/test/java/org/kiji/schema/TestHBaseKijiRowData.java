@@ -144,13 +144,13 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         .getQualifier();
     mHBaseMapFamily = translator.toHBaseColumnName(new KijiColumnName("map")).getFamily();
 
-    mEntityIdFactory = EntityIdFactory.create(tableLayout.getDesc().getKeysFormat());
+    mEntityIdFactory = EntityIdFactory.getFactory(tableLayout);
   }
 
   @Test
   public void testEntityId() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId foo = mEntityIdFactory.fromKijiRowKey("foo");
+    EntityId foo = mEntityIdFactory.getEntityId("foo");
     kvs.add(new KeyValue(foo.getHBaseRowKey(), mHBaseFamily, mHBaseQual0,
             Bytes.toBytes("bot")));
     kvs.add(new KeyValue(foo.getHBaseRowKey(), mHBaseFamily, mHBaseQual1,
@@ -171,7 +171,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   public void testReadInts() throws IOException {
     LOG.info("start testReadInts");
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
 
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual3, 1L, encodeInt(42)));
@@ -198,7 +198,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
 
     KijiRowData input = new HBaseKijiRowData(
-        RawEntityId.fromKijiRowKey(Bytes.toBytes("row-key")), dataRequest,
+        RawEntityId.getEntityId(Bytes.toBytes("row-key")), dataRequest,
         mCellDecoderFactory, tableLayout, result, getKiji().getSchemaTable());
 
     assertEquals(Schema.create(Schema.Type.STRING), input.getReaderSchema("family", "empty"));
@@ -212,7 +212,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
 
     KijiRowData input = new HBaseKijiRowData(
-        RawEntityId.fromKijiRowKey(Bytes.toBytes("row-key")), dataRequest,
+        RawEntityId.getEntityId(Bytes.toBytes("row-key")), dataRequest,
         mCellDecoderFactory, tableLayout, result, getKiji().getSchemaTable());
 
     input.getReaderSchema("this-family", "does-not-exist");
@@ -225,7 +225,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testGetMap() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId foo = mEntityIdFactory.fromKijiRowKey("foo");
+    EntityId foo = mEntityIdFactory.getEntityId("foo");
     kvs.add(new KeyValue(foo.getHBaseRowKey(), mHBaseFamily, mHBaseQual0,
             Bytes.toBytes("bot")));
     kvs.add(new KeyValue(foo.getHBaseRowKey(), mHBaseFamily, mHBaseEmpty,
@@ -243,7 +243,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testReadWithMaxVersions() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0,
             3L, encodeStr("apple")));
@@ -276,7 +276,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testTypedReadWithMaxVersions() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, 3L, encodeStr("apple")));
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, 2L, encodeStr("banana")));
@@ -302,7 +302,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testReadWithTimeRange() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0,
             3L, encodeStr("apple")));
@@ -335,7 +335,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   public void testReadColumnTypes() throws IOException {
     LOG.info("start testReadColumnTypes");
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value")));
     Result result = new Result(kvs);
 
@@ -362,7 +362,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testReadFamilyTypes() throws IOException {
     final List<KeyValue> kvs = new ArrayList<KeyValue>();
-    final EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    final EntityId row0 = mEntityIdFactory.getEntityId("row0");
     final byte[] hbaseRowKey = row0.getHBaseRowKey();
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, encodeStr("value0")));
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, encodeStr("value1")));
@@ -396,7 +396,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testReadMapFamilyTypes() throws IOException {
     final List<KeyValue> kvs = new ArrayList<KeyValue>();
-    final EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    final EntityId row0 = mEntityIdFactory.getEntityId("row0");
     final byte[] hbaseRowKey = row0.getHBaseRowKey();
     kvs.add(new KeyValue(hbaseRowKey, mHBaseMapFamily, encodeStr("key0"), encodeStr("value0")));
     kvs.add(new KeyValue(hbaseRowKey, mHBaseMapFamily, encodeStr("key1"), encodeStr("value1")));
@@ -420,7 +420,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testReadSpecificFamilyTypes() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     Node node0 = new Node();
     node0.setLabel("node0");
@@ -447,7 +447,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testReadSpecificTimestampTypes() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     Node node0 = new Node();
     node0.setLabel("node0");
@@ -481,7 +481,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testReadWithTimestamp() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     Node node0 = new Node();
     node0.setLabel("node0");
@@ -507,7 +507,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testReadSpecificTypes() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     Node node = new Node();
     node.setLabel("foo");
@@ -528,7 +528,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testMergePut() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, encodeStr("value0")));
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, encodeStr("value1")));
@@ -558,7 +558,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testMergeHBaseKijiRowData() throws IOException {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, encodeStr("value0")));
     kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, encodeStr("value1")));

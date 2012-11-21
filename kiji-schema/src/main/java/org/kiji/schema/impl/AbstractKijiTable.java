@@ -96,9 +96,7 @@ public abstract class AbstractKijiTable implements KijiTable {
 
   /** {@inheritDoc} */
   @Override
-  public EntityId getEntityId(String kijiRowKey) {
-    return getEntityIdFactory().fromKijiRowKey(kijiRowKey);
-  }
+  public abstract EntityId getEntityId(Object... kijiRowKey);
 
   /** {@inheritDoc} */
   @Override
