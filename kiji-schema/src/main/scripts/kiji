@@ -54,7 +54,7 @@ function resolve_symlink() {
       count=$(( $count + 1 ))
   done
 
-  # Compute the canonicalized name by finding the physical path 
+  # Compute the canonicalized name by finding the physical path
   # for the directory we're in and appending the target file.
   PHYS_DIR=$(pwd -P)
   RESULT="$PHYS_DIR/$TARGET_FILE"
@@ -117,6 +117,7 @@ function print_tool_usage() {
   echo "  install               - Install a kiji instance onto a running hbase cluster."
   echo "  uninstall             - Remove a kiji instance from a running hbase cluster."
   echo "  version               - Print the kiji distribution and data versions in use."
+  echo "  metadata              - Backup or restore Wibi metadata"
   echo "  classpath             - Print the classpath used to run kiji tools."
   echo
   echo "  jar                   - Run a main class contained in a jar file."
@@ -307,6 +308,9 @@ case $command in
         ;;
     version)
         class=org.kiji.schema.tools.VersionTool
+        ;;
+    metadata)
+        class=org.kiji.schema.tools.MetaDataTool
         ;;
     classpath)
         echo "$kiji_cp"

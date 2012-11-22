@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 
 /**
@@ -78,5 +79,23 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
     }
     super.finalize();
   }
+
+   /**
+   * Writes metadata backup entries into the specified record.
+   * This consists of table layouts, schemas, and user defined key-value pairs.
+   *
+   * @param backup Backup record builder.
+   * @throws IOException on I/O error.
+   */
+  public abstract void writeToBackup(MetadataBackup.Builder backup) throws IOException;
+
+   /**
+   * Restores metadata from a backup record.
+   * This consists of table layouts, schemas, and user defined key-value pairs.
+   *
+   * @param backup Backup record.
+   * @throws IOException on I/O error.
+   */
+  public abstract void restoreFromBackup(MetadataBackup backup) throws IOException;
 
 }

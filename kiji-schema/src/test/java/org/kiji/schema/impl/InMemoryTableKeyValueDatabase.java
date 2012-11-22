@@ -21,6 +21,7 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
@@ -31,6 +32,8 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.KijiTableNotFoundException;
+import org.kiji.schema.avro.KeyValueBackupEntry;
+import org.kiji.schema.avro.TableBackup;
 
  /**
  * Manages key-value pairs on a per table basis. Storage of these key-value pairs is provided by
@@ -114,6 +117,27 @@ public class InMemoryTableKeyValueDatabase implements KijiTableKeyValueDatabase 
   @Override
   public Set<String> tableSet() throws IOException {
     return mMetaMap.keySet();
+  }
+
+  @Override
+  public List<byte[]> getValues(String table, String key, int numVersions) throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public NavigableMap<Long, byte[]> getTimedValues(String table, String key, int numVersions)
+    throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public List<KeyValueBackupEntry> getKeyValueBackupRecords(String table) throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void restoreKeyValuesFromBackup(TableBackup tableBackup) throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
 }

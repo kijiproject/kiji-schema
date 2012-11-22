@@ -266,6 +266,18 @@ protocol KijiTableLayoutRecords {
     TableLayoutDesc layout;
   }
 
+  /** Entry to backup user defined meta data. */
+  record KeyValueBackupEntry {
+    /** Update timestamp, in ms. */
+    long timestamp;
+
+    /** Key. */
+    string key;
+
+    /** Value. */
+    bytes value;
+  }
+
   /** Table backup, ie. everything needed to restore a table. */
   record TableBackup {
     /** Table name. */
@@ -274,7 +286,8 @@ protocol KijiTableLayoutRecords {
     /** Sequence of layouts, in order. */
     array<TableLayoutBackupEntry> layouts = [];
 
-    // TODO: custom/user metadata associated to the table.
+    /** Sequence of user defined key-value pairs, in order. */
+    array<KeyValueBackupEntry> key_values = [];
   }
 
   /** Record that encapsulates all Kiji metadata, for backup purposes. */

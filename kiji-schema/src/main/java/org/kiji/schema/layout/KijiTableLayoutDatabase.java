@@ -26,6 +26,7 @@ import java.util.NavigableMap;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.TableBackup;
+import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
 
 /**
@@ -52,7 +53,7 @@ public interface KijiTableLayoutDatabase {
   KijiTableLayout updateTableLayout(String table, TableLayoutDesc update) throws IOException;
 
   /**
-   * Gets a table's layout.
+   * Gets the most recent versions of the layout for a table.
    *
    * @param table The name of the Kiji table.
    * @return The table's layout.
@@ -61,7 +62,7 @@ public interface KijiTableLayoutDatabase {
   KijiTableLayout getTableLayout(String table) throws IOException;
 
   /**
-   * Gets the most recent versions of the layout for a table.
+   * Gets a list of the most recent specified number of versions of the table layout.
    *
    * @param table The name of the Kiji table.
    * @param numVersions The maximum number of the most recent versions to retrieve.
@@ -84,6 +85,15 @@ public interface KijiTableLayoutDatabase {
       throws IOException;
 
   /**
+   * Gets a list of the TableLayoutBackupEntries which can be used to restore a table.
+   *
+   * @param table The name of the Kiji table.
+   * @return A list of TableLayoutBackupEntries.
+   * @throws IOException If there is an error.
+   */
+  List<TableLayoutBackupEntry> getLayoutBackupRecords(String table) throws IOException;
+
+  /**
    * Removes all layout information for a particular table.
    *
    * @param table The name of the Kiji table.
@@ -101,26 +111,10 @@ public interface KijiTableLayoutDatabase {
   void removeRecentTableLayoutVersions(String table, int numVersions) throws IOException;
 
   /**
-   * Writes table layout backup entries into the specified record.
-   *
-   * @param backup Backup record builder.
-   * @throws IOException on I/O error.
-   */
-  void writeToBackup(MetadataBackup.Builder backup) throws IOException;
-
-  /**
-   * Restores table layouts from a backup.
-   *
-   * @param backup Backup record.
-   * @throws IOException on I/O error.
-   */
-  void restoreFromBackup(MetadataBackup backup) throws IOException;
-
-  /**
    * Restores a table layout history from a backup.
    *
    * @param tableBackup Table backup to restore.
    * @throws IOException on I/O error.
    */
-  void restoreTableFromBackup(TableBackup tableBackup) throws IOException;
+  void restoreLayoutsFromBackup(TableBackup tableBackup) throws IOException;
 }
