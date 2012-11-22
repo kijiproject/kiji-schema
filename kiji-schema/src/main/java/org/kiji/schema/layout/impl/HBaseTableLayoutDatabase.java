@@ -49,10 +49,8 @@ import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.avro.CellSchema;
-import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
-import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.impl.AvroCellEncoder;
@@ -304,6 +302,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
     for (Result result : resultScanner) {
       tableNames.add(Bytes.toString(result.getRow()));
     }
+    resultScanner.close();
     return tableNames;
   }
 
@@ -326,92 +325,60 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
 
   /** {@inheritDoc} */
   @Override
-  public void writeToBackup(MetadataBackup.Builder backup) throws IOException {
-     final ResultScanner scanner = mTable.getScanner(mFamilyBytes);
-     for (Result result : scanner) {
+  public List<TableLayoutBackupEntry> layoutsToBackup(String table) throws IOException {
+    Get get = new Get(Bytes.toBytes(table));
+    get.addColumn(mFamilyBytes, QUALIFIER_UPDATE_BYTES)
+        .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES);
+    Result result = mTable.get(get);
        if (result.isEmpty()) {
-         continue;
+         LOG.info(String.format("There is no row in the MetaTable named '%s'.", table));
        }
-       final String tableName = Bytes.toString(result.getRow());
        final Map<byte[], NavigableMap<Long, byte[]>> qualifierMap =
            result.getMap().get(mFamilyBytes);
-       if ((qualifierMap == null) || qualifierMap.isEmpty()) {
-         LOG.info(String.format("Empty layout row for table '%s'.", tableName));
-         continue;
-       }
-       final Map<Long, byte[]> updateSerieMap = qualifierMap.get(QUALIFIER_UPDATE_BYTES);
-       final Map<Long, byte[]> layoutSerieMap = qualifierMap.get(QUALIFIER_LAYOUT_BYTES);
-
        final List<TableLayoutBackupEntry> history = Lists.newArrayList();
-       for (Map.Entry<Long, byte[]> serieEntry : layoutSerieMap.entrySet()) {
-         final long timestamp = serieEntry.getKey();
-         final TableLayoutDesc layout = decodeTableLayoutDesc(serieEntry.getValue());
-         TableLayoutDesc update = null;
-         if (updateSerieMap != null) {
-           final byte[] bytes = updateSerieMap.get(timestamp);
-           if (bytes != null) {
-             update = decodeTableLayoutDesc(bytes);
+       if ((qualifierMap == null) || qualifierMap.isEmpty()) {
+         LOG.info(String.format("Empty layout row for table '%s'.", table));
+       } else {
+         final Map<Long, byte[]> updateSerieMap = qualifierMap.get(QUALIFIER_UPDATE_BYTES);
+         final Map<Long, byte[]> layoutSerieMap = qualifierMap.get(QUALIFIER_LAYOUT_BYTES);
+
+         for (Map.Entry<Long, byte[]> serieEntry : layoutSerieMap.entrySet()) {
+           final long timestamp = serieEntry.getKey();
+           final TableLayoutDesc layout = decodeTableLayoutDesc(serieEntry.getValue());
+           TableLayoutDesc update = null;
+           if (updateSerieMap != null) {
+             final byte[] bytes = updateSerieMap.get(timestamp);
+             if (bytes != null) {
+               update = decodeTableLayoutDesc(bytes);
+             }
            }
+           history.add(TableLayoutBackupEntry.newBuilder()
+               .setLayout(layout)
+               .setUpdate(update)
+               .setTimestamp(timestamp)
+               .build());
          }
-
-         history.add(TableLayoutBackupEntry.newBuilder()
-             .setTimestamp(timestamp)
-             .setLayout(layout)
-             .setUpdate(update)
-             .build());
        }
-
-       final TableBackup tableBackup = TableBackup.newBuilder()
-           .setName(tableName)
-           .setLayouts(history)
-           .build();
-       Preconditions.checkState(null == backup.getMetaTable().put(tableName, tableBackup));
-     }
+       return history;
   }
 
   /** {@inheritDoc} */
   @Override
-  public void restoreFromBackup(MetadataBackup backup) throws IOException {
-    LOG.info(String.format("Restoring meta table from backup with %d entries.",
-        backup.getMetaTable().size()));
-    for (Map.Entry<String, TableBackup> tableEntry: backup.getMetaTable().entrySet()) {
-      final String tableName = tableEntry.getKey();
-      final TableBackup tableBackup = tableEntry.getValue();
-      Preconditions.checkState(tableName.equals(tableBackup.getName()), String.format(
-          "Inconsistent table backup: entry '%s' does not match table name '%s'.",
-          tableName, tableBackup.getName()));
-      restoreTableFromBackupNoFlush(tableBackup);
-    }
-    mTable.flushCommits();
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public void restoreTableFromBackup(TableBackup tableBackup) throws IOException {
-    restoreTableFromBackupNoFlush(tableBackup);
-    mTable.flushCommits();
-  }
-
-  /**
-   * Restores a table layout history from a backup. Does not flush.
-   *
-   * @param tableBackup Backup of a table layout history to restore.
-   * @throws IOException on I/O error.
-   */
-  private void restoreTableFromBackupNoFlush(TableBackup tableBackup) throws IOException {
-    final String tableName = tableBackup.getName();
+  public void layoutsFromBackup(String tableName, List<TableLayoutBackupEntry>  layoutBackup) throws
+      IOException {
     LOG.info(String.format("Restoring layout history for table '%s'.", tableName));
-
-    for (TableLayoutBackupEntry lbe : tableBackup.getLayouts()) {
+    for (TableLayoutBackupEntry lbe : layoutBackup) {
       final byte[] layoutBytes = encodeTableLayoutDesc(lbe.getLayout());
       final Put put = new Put(Bytes.toBytes(tableName))
-          .add(mFamilyBytes, QUALIFIER_LAYOUT_BYTES, lbe.getTimestamp(), layoutBytes);
+          .add(mFamilyBytes, QUALIFIER_LAYOUT_BYTES, layoutBytes);
       if (lbe.getUpdate() != null) {
         final byte[] updateBytes = encodeTableLayoutDesc(lbe.getUpdate());
-        put.add(mFamilyBytes, QUALIFIER_UPDATE_BYTES, lbe.getTimestamp(), updateBytes);
+        final long timestamp = lbe.getTimestamp();
+        put.add(mFamilyBytes, QUALIFIER_UPDATE_BYTES, timestamp, updateBytes);
       }
       mTable.put(put);
     }
+    mTable.flushCommits();
   }
 
   /**

@@ -20,11 +20,18 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -39,7 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiTableKeyValueDatabase;
-import org.kiji.schema.KijiTableNotFoundException;
+import org.kiji.schema.avro.KeyValueBackupEntry;
 
 
  /**
@@ -73,18 +80,63 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
   }
 
 
-/** {@inheritDoc} */
+  /** {@inheritDoc} */
   @Override
   public byte[] getValue(String table, String key) throws IOException {
-    Get get = new Get(Bytes.toBytes(table));
-    byte[] bKey = Bytes.toBytes(key);
-    get.addColumn(mFamilyBytes, bKey);
-    Result result = mTable.get(get);
-    if (!result.containsColumn(mFamilyBytes, bKey)) {
-      throw new IOException(String.format("Unable to find value for table '%s' and key '%s'", table,
-          key));
+    final List<byte[]> values = getValues(table, key, 1);
+    return values.get(0);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public List<byte[]> getValues(String table, String key, int numVersions) throws IOException {
+    Preconditions.checkArgument(numVersions >= 1,  "numVersions must be positive");
+
+    final byte[] bKey = Bytes.toBytes(key);
+    final Get get = new Get(Bytes.toBytes(table))
+        .addColumn(mFamilyBytes, bKey)
+        .setMaxVersions(numVersions);
+    final Result result = mTable.get(get);
+    if (result.isEmpty()) {
+      throw new IOException(String.format(
+          "Could not find any values associated with table %s and key %s", table, key));
     }
-    return result.getValue(mFamilyBytes, bKey);
+    /** List of values, ordered from  */
+    final List<byte[]> values = Lists.newArrayList();
+    for (KeyValue column : result.getColumn(mFamilyBytes, bKey)) {
+      values.add(column.getValue());
+    }
+    return values;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public NavigableMap<Long, byte[]> getTimedValues(String table, String key, int numVersions)
+      throws IOException {
+    Preconditions.checkArgument(numVersions >= 1,  "numVersions must be positive");
+    final byte[] bKey = Bytes.toBytes(key);
+    Get get = new Get(Bytes.toBytes(table))
+        .addColumn(mFamilyBytes, bKey);
+    Result result = mTable.get(get);
+
+    /** Map from timestamp to values. */
+    final NavigableMap<Long, byte[]> timedValues = Maps.newTreeMap();
+
+    // Pull out the full map: family -> qualifier -> timestamp -> TableLayoutDesc.
+    // Family and qualifier are already specified : the 2 outer maps must be size 11.
+    final NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> familyMap =
+        result.getMap();
+    Preconditions.checkState(familyMap.size() == 1);
+    final NavigableMap<byte[], NavigableMap<Long, byte[]>> qualifierMap =
+        familyMap.get(familyMap.firstKey());
+    Preconditions.checkState(qualifierMap.size() == 1);
+    final NavigableMap<Long, byte[]> timeSerieMap = qualifierMap.get(qualifierMap.firstKey());
+    for (Map.Entry<Long, byte[]> timeSerieEntry : timeSerieMap.entrySet()) {
+      final long timestamp = timeSerieEntry.getKey();
+      final byte[] bytes = timeSerieEntry.getValue();
+      Preconditions.checkState(timedValues.put(timestamp, bytes) == null);
+    }
+    return timedValues;
   }
 
   /** {@inheritDoc} */
@@ -113,7 +165,7 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
     get.addFamily(mFamilyBytes);
     Result result = mTable.get(get);
     if (result.isEmpty()) {
-      throw new KijiTableNotFoundException("Unable to find any keys for table" + table);
+      return keys;
     }
     for (byte[] qualifier : result.getFamilyMap(mFamilyBytes).navigableKeySet()) {
 
@@ -124,7 +176,7 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
     return keys;
   }
 
-    /** {@inheritDoc} */
+  /** {@inheritDoc} */
   @Override
   public Set<String> tableSet() throws IOException {
     Scan scan = new Scan();
@@ -138,13 +190,13 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
     Set<String> tableNames = new HashSet<String>();
     for (Result result : resultScanner) {
       String tableName = Bytes.toString(result.getRow());
-      LOG.debug("When constructing the tableSet for the meta table we founed table {}.", tableName);
+      LOG.debug("When constructing the tableSet for the metatable we found table '{}'.", tableName);
       tableNames.add(tableName);
     }
+    resultScanner.close();
     return tableNames;
 
   }
-
 
   /** {@inheritDoc} */
   @Override
@@ -155,4 +207,44 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
     }
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public List<KeyValueBackupEntry> keyValuesToBackup(String table) throws IOException {
+    List<KeyValueBackupEntry> keyValueBackups = Lists.newArrayList();
+    final Set<String> keys = keySet(table);
+    for (String key : keys) {
+      NavigableMap<Long, byte[]> versionedValues = getTimedValues(table, key, Integer.MAX_VALUE);
+      for (Long timestamp : versionedValues.descendingKeySet()) {
+        keyValueBackups.add(KeyValueBackupEntry.newBuilder()
+            .setKey(key)
+            .setValue(ByteBuffer.wrap(versionedValues.get(timestamp)))
+            .setTimestamp(timestamp)
+            .build());
+      }
+    }
+    return keyValueBackups;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void keyValuesFromBackup(final String tableName, final List<KeyValueBackupEntry> keyValues)
+      throws IOException {
+    LOG.debug(String.format("Restoring '%s' key-value(s) from backup for table '%s'.",
+        keyValues.size(), tableName));
+    for (KeyValueBackupEntry kvRecord : keyValues) {
+      final byte[] key = Bytes.toBytes(kvRecord.getKey());
+      final ByteBuffer valueBuffer = kvRecord.getValue(); // Read in ByteBuffer of values
+      byte[] value = new byte[valueBuffer.remaining()]; // Instantiate ByteArray
+      valueBuffer.get(value); // Write buffer to array
+      final long timestamp = kvRecord.getTimestamp();
+      LOG.debug(String.format("For the table '%s' we are writing to family '%s', qualifier '%s'"
+          + ", timestamp '%s', and value '%s' to the" + " meta table named '%s'.", tableName,
+          Bytes.toString(mFamilyBytes), Bytes.toString(key), "" + timestamp, Bytes.toString(value),
+          Bytes.toString(mTable.getTableName())));
+      final Put put = new Put(Bytes.toBytes(tableName)).add(mFamilyBytes, key, timestamp, value);
+      mTable.put(put);
+    }
+    LOG.debug("Flushing commits to restore key-values from backup.");
+    mTable.flushCommits();
+  }
 }

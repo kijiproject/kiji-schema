@@ -20,12 +20,14 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -38,34 +40,34 @@ import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiTableKeyValueDatabase;
-import org.kiji.schema.avro.MetadataBackup;
+import org.kiji.schema.avro.KeyValueBackupEntry;
 import org.kiji.schema.avro.TableBackup;
+import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
 
-
 /**
- * An implementation of the KijiMetaTable that uses the 'kiji-meta'
- * HBase table as the backing store.
+ * An implementation of the KijiMetaTable that uses the 'kiji-meta' HBase table as the backing
+ * store.
  */
 @ApiAudience.Private
 public class HBaseMetaTable extends KijiMetaTable {
+
   private static final Logger LOG = LoggerFactory.getLogger(HBaseMetaTable.class);
   /** The HBase column family that will store table layout specific metadata. */
   private static final String LAYOUT_COLUMN_FAMILY = "layout";
-
- /** The HBase column family that will store user defined metadata. */
+  /** The HBase column family that will store user defined metadata. */
   private static final String META_COLUMN_FAMILY = "meta";
 
   /**  The HBase table that stores Kiji metadata. */
   private final HTableInterface mTable;
 
   /** The layout table that we delegate the work of storing table layout metadata to. */
-  private final KijiTableLayoutDatabase mTableLayoutDatabase;
 
-  /** The table we delegate storing per table meta data, in the form of key value pairs.*/
+  private final KijiTableLayoutDatabase mTableLayoutDatabase;
+  /** The table we delegate storing per table meta data, in the form of key value pairs.  */
   private final KijiTableKeyValueDatabase mTableKeyValueDatabase;
   // TODO: Make KijiTableLayoutDatabase thread-safe,
   //     so we can call HBaseMetaTable thread-safe, too.
@@ -106,7 +108,7 @@ public class HBaseMetaTable extends KijiMetaTable {
   /**
    * Create a connection to a Kiji meta table backed by an HTable within HBase.
    *
-   * <p>This class takes ownership of the HTable.  It will be closed when this instance is
+   * <p>This class takes ownership of the HTable. It will be closed when this instance is
    * closed.</p>
    *
    * @param htable The HTable to use for storing Kiji meta data.
@@ -122,7 +124,7 @@ public class HBaseMetaTable extends KijiMetaTable {
   /**
    * Create a connection to a Kiji meta table backed by an HTable within HBase.
    *
-   * <p>This class takes ownership of the HTable.  It will be closed when this instance is
+   * <p>This class takes ownership of the HTable. It will be closed when this instance is
    * closed.</p>
    *
    * @param htable The HTable to use for storing Kiji meta data.
@@ -139,37 +141,32 @@ public class HBaseMetaTable extends KijiMetaTable {
   /** {@inheritDoc} */
   @Override
   public synchronized void deleteTable(String table) throws IOException {
-    Delete delete = new Delete(Bytes.toBytes(table));
-    mTable.delete(delete);
-    LOG.debug("Deleting ");
+    mTableLayoutDatabase.removeAllTableLayoutVersions(table);
+    mTableKeyValueDatabase.removeAllValues(table);
   }
-
 
   /** {@inheritDoc} */
   @Override
   public synchronized KijiTableLayout updateTableLayout(String table, TableLayoutDesc layoutUpdate)
-
-      throws IOException {
+    throws IOException {
     return mTableLayoutDatabase.updateTableLayout(table, layoutUpdate);
   }
-
   /** {@inheritDoc} */
   @Override
   public synchronized KijiTableLayout getTableLayout(String table) throws IOException {
     return mTableLayoutDatabase.getTableLayout(table);
   }
-
   /** {@inheritDoc} */
   @Override
   public synchronized List<KijiTableLayout> getTableLayoutVersions(String table, int numVersions)
-      throws IOException {
+    throws IOException {
     return mTableLayoutDatabase.getTableLayoutVersions(table, numVersions);
   }
 
   /** {@inheritDoc} */
   @Override
-  public synchronized NavigableMap<Long, KijiTableLayout>
-      getTimedTableLayoutVersions(String table, int numVersions) throws IOException {
+  public synchronized NavigableMap<Long, KijiTableLayout> getTimedTableLayoutVersions(String table,
+    int numVersions) throws IOException {
     return mTableLayoutDatabase.getTimedTableLayoutVersions(table, numVersions);
   }
 
@@ -182,7 +179,7 @@ public class HBaseMetaTable extends KijiMetaTable {
   /** {@inheritDoc} */
   @Override
   public synchronized void removeRecentTableLayoutVersions(String table, int numVersions)
-      throws IOException {
+    throws IOException {
     mTableLayoutDatabase.removeRecentTableLayoutVersions(table, numVersions);
   }
 
@@ -208,7 +205,7 @@ public class HBaseMetaTable extends KijiMetaTable {
   /** {@inheritDoc} */
   @Override
   public synchronized KijiTableKeyValueDatabase putValue(String table, String key, byte[] value)
-      throws IOException {
+    throws IOException {
     return mTableKeyValueDatabase.putValue(table, key, value);
   }
 
@@ -233,10 +230,7 @@ public class HBaseMetaTable extends KijiMetaTable {
   /** {@inheritDoc} */
   @Override
   public void removeAllValues(String table) throws IOException {
-    Set<String> keysToRemove = keySet(table);
-    for (String key : keysToRemove) {
-      removeValues(table, key);
-    }
+    mTableKeyValueDatabase.removeAllValues(table);
   }
 
   /**
@@ -247,13 +241,13 @@ public class HBaseMetaTable extends KijiMetaTable {
    * @throws IOException If there is an error.
    */
   public static void install(HBaseAdmin admin, KijiConfiguration kijiConfiguration)
-      throws IOException {
+    throws IOException {
     HTableDescriptor tableDescriptor = new HTableDescriptor(
-        KijiManagedHBaseTableName.getMetaTableName(kijiConfiguration.getName()).toString());
+      KijiManagedHBaseTableName.getMetaTableName(kijiConfiguration.getName()).toString());
     tableDescriptor.addFamily(
-        HBaseTableLayoutDatabase.getHColumnDescriptor(LAYOUT_COLUMN_FAMILY));
+      HBaseTableLayoutDatabase.getHColumnDescriptor(LAYOUT_COLUMN_FAMILY));
     tableDescriptor.addFamily(
-        HBaseTableLayoutDatabase.getHColumnDescriptor(META_COLUMN_FAMILY));
+      HBaseTableLayoutDatabase.getHColumnDescriptor(META_COLUMN_FAMILY));
     admin.createTable(tableDescriptor);
   }
 
@@ -265,7 +259,7 @@ public class HBaseMetaTable extends KijiMetaTable {
    * @throws IOException If there is an error.
    */
   public static void uninstall(HBaseAdmin admin, KijiConfiguration kijiConf)
-      throws IOException {
+    throws IOException {
     String tableName = KijiManagedHBaseTableName.getMetaTableName(kijiConf.getName()).toString();
     admin.disableTable(tableName);
     admin.deleteTable(tableName);
@@ -273,20 +267,76 @@ public class HBaseMetaTable extends KijiMetaTable {
 
   /** {@inheritDoc} */
   @Override
-  public void writeToBackup(MetadataBackup.Builder backup) throws IOException {
-    mTableLayoutDatabase.writeToBackup(backup);
+  public Map<String, TableBackup> toBackup() throws IOException {
+    Map<String, TableBackup> metadataBackup = new HashMap<String, TableBackup>();
+    List<String> tables = listTables();
+    for (String table : tables) {
+      List<TableLayoutBackupEntry> layouts = mTableLayoutDatabase.layoutsToBackup(table);
+      List<KeyValueBackupEntry> keyValues = mTableKeyValueDatabase.keyValuesToBackup(table);
+      final TableBackup tableBackup = TableBackup.newBuilder()
+          .setName(table)
+          .setLayouts(layouts)
+          .setKeyValues(keyValues)
+          .build();
+      metadataBackup.put(table, tableBackup);
+    }
+    return metadataBackup;
   }
 
   /** {@inheritDoc} */
   @Override
-  public void restoreFromBackup(MetadataBackup backup) throws IOException {
-    mTableLayoutDatabase.restoreFromBackup(backup);
+  public void fromBackup(Map<String, TableBackup> backup) throws IOException {
+    LOG.info(String.format("Restoring meta table from backup with %d entries.",
+        backup.size()));
+    for (Map.Entry<String, TableBackup> tableEntry: backup.entrySet()) {
+      final String tableName = tableEntry.getKey();
+      final TableBackup tableBackup = tableEntry.getValue();
+      Preconditions.checkState(tableName.equals(tableBackup.getName()), String.format(
+          "Inconsistent table backup: entry '%s' does not match table name '%s'.",
+          tableName, tableBackup.getName()));
+      layoutsFromBackup(tableName, tableBackup.getLayouts());
+      keyValuesFromBackup(tableName, tableBackup.getKeyValues());
+    }
+    mTable.flushCommits();
+    LOG.info("Flushing commits to table '{}'", Bytes.toString(mTable.getTableName()));
   }
 
   /** {@inheritDoc} */
   @Override
-  public void restoreTableFromBackup(TableBackup tableBackup) throws IOException {
-    mTableLayoutDatabase.restoreTableFromBackup(tableBackup);
+  public List<TableLayoutBackupEntry> layoutsToBackup(String table) throws IOException {
+    return mTableLayoutDatabase.layoutsToBackup(table);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public List<byte[]> getValues(String table, String key, int numVersions) throws IOException {
+    return mTableKeyValueDatabase.getValues(table, key, numVersions);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public NavigableMap<Long, byte[]> getTimedValues(String table, String key, int numVersions)
+    throws IOException {
+    return mTableKeyValueDatabase.getTimedValues(table, key, numVersions);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public List<KeyValueBackupEntry> keyValuesToBackup(String table) throws IOException {
+    return mTableKeyValueDatabase.keyValuesToBackup(table);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void keyValuesFromBackup(String table, List<KeyValueBackupEntry> tableBackup) throws
+      IOException {
+    mTableKeyValueDatabase.keyValuesFromBackup(table, tableBackup);
+  }
+
+  @Override
+  public void layoutsFromBackup(String tableName, List<TableLayoutBackupEntry> tableBackup) throws
+      IOException {
+    mTableLayoutDatabase.layoutsFromBackup(tableName, tableBackup);
   }
 
 }

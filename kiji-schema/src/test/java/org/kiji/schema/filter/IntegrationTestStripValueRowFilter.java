@@ -43,14 +43,22 @@ public class IntegrationTestStripValueRowFilter extends FooTableIntegrationTest 
       IntegrationTestStripValueRowFilter.class);
 
   private KijiTableReader mReader;
+  private KijiRowScanner mScanner;
 
   @Before
   public void setupReader() throws IOException {
     mReader = getFooTable().openTableReader();
+    KijiDataRequest dataRequest = new KijiDataRequest()
+      .addColumn(new KijiDataRequest.Column("info", "name"));
+    KijiRowFilter rowFilter = new StripValueRowFilter();
+
+    mScanner = mReader.getScanner(dataRequest, null, null, rowFilter,
+      new HBaseScanOptions());
   }
 
   @After
   public void teardownReader() throws IOException {
+    mScanner.close();
     mReader.close();
   }
 
@@ -72,6 +80,7 @@ public class IntegrationTestStripValueRowFilter extends FooTableIntegrationTest 
       }
     } finally {
       IOUtils.closeQuietly(rowScanner);
+
     }
     fail("Should have gotten an IOException in attempting to get filtered values.");
   }

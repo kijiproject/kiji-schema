@@ -20,9 +20,12 @@
 package org.kiji.schema;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.NavigableMap;
 import java.util.Set;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.avro.KeyValueBackupEntry;
 
 /**
  * A database of per table key-value pairs. This is used to store meta data (in the form of
@@ -50,12 +53,39 @@ public interface KijiTableKeyValueDatabase {
   /**
    * Returns the most recent value associated with the specified table and key.
    *
-   * @param table The kiji table .
+   * @param table The kiji table.
    * @param key The key to look up the associated value for.
    * @return The value in the meta table with the given key, or null if the key doesn't exist.
    * @throws IOException If there is an error.
    */
   byte[] getValue(String table, String key) throws IOException;
+
+  /**
+   * Gets a list of the most recent specified number of versions of the value corresponding to the
+   * specified table and key.
+   *
+   * @param table The Kiji table.
+   * @param key The key to look up associated values for.
+   * @param numVersions The maximum number of the most recent versions to retrieve.
+   * @return A list of the most recent versions of the values for the specified table and key,
+   *     sorted by most-recent-first.  If there are no values, returns an empty list.
+   * @throws IOException If there is an error.
+   */
+  List<byte[]> getValues(String table, String key, int numVersions) throws IOException;
+
+   /**
+   * Returns a map of values associated with the specified table and key. The Map
+   * is keyed by timestamp.
+   *
+   * @param table The kiji table.
+   * @param key The key to look up the associated value for.
+   * @param numVersions The maximum number of the most recent versions to retrieve.
+   * @return A navigable map with values that are the user defined values for the specified key
+   *     and table, and keys that correspond to timestamps, ordered from newest to oldest.
+   * @throws IOException If there is an error.
+   */
+  NavigableMap<Long, byte[]> getTimedValues(String table, String key, int numVersions)
+      throws IOException;
 
   /**
    * Removes all values associated with the specified table and key.
@@ -90,4 +120,22 @@ public interface KijiTableKeyValueDatabase {
    * @throws IOException If there is an error.
    */
   Set<String> tableSet() throws IOException;
+
+   /**
+   * Gets a list of the TableKeyValueBackupEntries.
+   *
+   * @param table The name of the Kiji table.
+   * @return A list of TableKeyValueBackupEntries.
+   * @throws IOException If there is an error.
+   */
+  List<KeyValueBackupEntry> keyValuesToBackup(String table) throws IOException;
+
+   /**
+   * Restores all table's key value history from a backup.
+   *
+   * @param table The name of the kiji table.
+   * @param keyValues The key values associated with the table to restore.
+   * @throws IOException on I/O error.
+   */
+  void keyValuesFromBackup(String table, List<KeyValueBackupEntry> keyValues) throws IOException;
 }

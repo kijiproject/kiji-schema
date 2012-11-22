@@ -32,7 +32,6 @@ import java.util.Set;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DatumReader;
@@ -66,7 +65,6 @@ import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.avro.MD5Hash;
-import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.ByteStreamArray.EncodingException;
@@ -697,9 +695,10 @@ public class HBaseSchemaTable extends KijiSchemaTable {
 
   /** {@inheritDoc} */
   @Override
-  public void writeToBackup(final MetadataBackup backup) throws IOException {
+  public List<SchemaTableEntry> toBackup() throws IOException {
     Preconditions.checkState(mIsOpen, "Schema tables are closed");
     mZKLock.lock();
+    List<SchemaTableEntry> entries = Lists.newArrayList();
     try {
       /** Entries from the schema hash table. */
       final Set<SchemaEntry> hashTableEntries = loadSchemaHashTable(mSchemaHashTable);
@@ -718,20 +717,18 @@ public class HBaseSchemaTable extends KijiSchemaTable {
       if (!checkConsistency(mergedEntries)) {
         LOG.error("Merged schema hash and ID tables are inconsistent");
       }
-
-      List<SchemaTableEntry> entries = Lists.newArrayList();
       for (SchemaEntry entry : mergedEntries) {
         entries.add(toAvroEntry(entry));
       }
-      backup.setSchemaTable(entries);
     } finally {
       mZKLock.unlock();
     }
+    return entries;
   }
 
   /** {@inheritDoc} */
   @Override
-  public void restoreFromBackup(final MetadataBackup backup) throws IOException {
+  public void fromBackup(final List<SchemaTableEntry> backup) throws IOException {
     Preconditions.checkState(mIsOpen, "Schema tables are closed");
     mZKLock.lock();
     try {
@@ -748,8 +745,8 @@ public class HBaseSchemaTable extends KijiSchemaTable {
       }
 
       final Set<SchemaEntry> backupEntries =
-          new HashSet<SchemaEntry>(backup.getSchemaTable().size());
-      for (SchemaTableEntry avroEntry : backup.getSchemaTable()) {
+          new HashSet<SchemaEntry>(backup.size());
+      for (SchemaTableEntry avroEntry : backup) {
         backupEntries.add(fromAvroEntry(avroEntry));
       }
       if (!checkConsistency(backupEntries)) {
