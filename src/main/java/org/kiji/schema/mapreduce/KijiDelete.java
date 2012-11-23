@@ -50,7 +50,7 @@ public class KijiDelete implements KijiMutation {
   /**
    * Helper enum to decide what to do with the Delete.
    */
-  private enum KijiDeleteOperation {
+  public enum KijiDeleteOperation {
     // Exact - version specified by timestamp
     // Upto - version until and including this timestamp
     // Latest - latest version
@@ -177,6 +177,51 @@ public class KijiDelete implements KijiMutation {
     } else {
       mOperation = KijiDeleteOperation.CELL_EXACT;
     }
+  }
+
+  /**
+   * Gets the entityId of this delete operation.
+   *
+   * @return The entityId of the data to delete.
+   */
+  public EntityId getEntityId() {
+    return mEntityId;
+  }
+
+  /**
+   * Gets the family of this delete operation.
+   *
+   * @return The family of the data to delete.
+   */
+  public String getFamily() {
+    return mFamily;
+  }
+
+  /**
+   * Gets the qualifier of this delete operation.
+   *
+   * @return The qualifier of the data to delete.
+   */
+  public String getQualifier() {
+    return mQualifier;
+  }
+
+  /**
+   * Gets the timestamp of this delete operation.
+   *
+   * @return The timestamp of the data to delete.
+   */
+  public long getTimestamp() {
+    return mTimestamp;
+  }
+
+  /**
+   * Gets the scope of cells being deleted.
+   *
+   * @return The cells to be deleted.
+   */
+  public KijiDeleteOperation getOperation() {
+    return mOperation;
   }
 
   /**
