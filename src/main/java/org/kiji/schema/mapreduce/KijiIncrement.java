@@ -65,6 +65,42 @@ public class KijiIncrement implements KijiMutation {
   }
 
   /**
+   * Gets the entityId of this increment operation.
+   *
+   * @return The entityId of the counter to increment.
+   */
+  public EntityId getEntityId() {
+    return mEntityId;
+  }
+
+  /**
+   * Gets the family of this increment operation.
+   *
+   * @return The family of the counter to increment.
+   */
+  public String getFamily() {
+    return mFamily;
+  }
+
+  /**
+   * Gets the qualifier of this increment operation.
+   *
+   * @return The qualifier of the counter to increment.
+   */
+  public String getQualifier() {
+    return mQualifier;
+  }
+
+  /**
+   * Gets the amount to increment by.
+   *
+   * @return The amount to increment during this increment operation.
+   */
+  public long getAmount() {
+    return mAmount;
+  }
+
+  /**
    * Converts this KijiIncrement into an HBase {@link Increment}.
    *
    * @param translator The ColumnNameTranslator used to convert kiji column names to their HBase
@@ -74,8 +110,8 @@ public class KijiIncrement implements KijiMutation {
    */
   public Increment toIncrement(ColumnNameTranslator translator) throws IOException {
     // Translate the Kiji column name to an HBase column name.
-    final HBaseColumnName hbaseColumnName = translator.toHBaseColumnName(
-        new KijiColumnName(mFamily, mQualifier));
+    final KijiColumnName columnName = new KijiColumnName(mFamily, mQualifier);
+    final HBaseColumnName hbaseColumnName = translator.toHBaseColumnName(columnName);
 
     // Build the HBase increment object.
     final Increment increment = new Increment(mEntityId.getHBaseRowKey());
