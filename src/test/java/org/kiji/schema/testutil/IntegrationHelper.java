@@ -19,6 +19,18 @@
 
 package org.kiji.schema.testutil;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.util.Arrays;
+
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
@@ -27,17 +39,21 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.util.ToolRunner;
-import org.kiji.schema.*;
-import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.tools.*;
-import org.kiji.schema.util.ToJson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.util.Arrays;
-
-import static org.junit.Assert.assertEquals;
+import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiConfiguration;
+import org.kiji.schema.KijiTable;
+import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.KijiURI;
+import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.tools.BaseTool;
+import org.kiji.schema.tools.CreateTableTool;
+import org.kiji.schema.tools.DeleteTableTool;
+import org.kiji.schema.tools.InstallTool;
+import org.kiji.schema.tools.UninstallTool;
+import org.kiji.schema.util.ToJson;
 
 /**
  * IntegrationHelper provides methods for installing and managing a Kiji instance during a test.
@@ -131,7 +147,7 @@ public class IntegrationHelper extends Configured {
    */
   public void uninstallKiji(KijiURI kijiURI) throws Exception {
     ToolResult result = runTool(getConf(), new UninstallTool(), new String[] {
-      "--kiji=" + kijiURI,
+      "--kiji=" + kijiURI.toString(),
       "--confirm",
     });
     if (0 != result.getReturnCode()) {
