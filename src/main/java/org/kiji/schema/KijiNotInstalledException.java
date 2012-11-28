@@ -21,13 +21,23 @@ package org.kiji.schema;
 
 /** Thrown when attempting to open a non existing/not installed Kiji instance. */
 public class KijiNotInstalledException extends RuntimeException {
+  /** The instance name of the missing Kiji instance. */
+  private final String mInstanceName;
+
   /**
    * Creates a new <code>KijiNotInstalledException</code> with the specified
    * detail message.
    *
    * @param message The exception message.
+   * @param instanceName the Kiji instance name that is not installed.
    */
-  public KijiNotInstalledException(String message) {
+  public KijiNotInstalledException(String message, String instanceName) {
     super(message);
+    mInstanceName = instanceName;
+  }
+
+  /** @return the name of the missing Kiji instance. */
+  public String getInstanceName() {
+    return mInstanceName;
   }
 }
