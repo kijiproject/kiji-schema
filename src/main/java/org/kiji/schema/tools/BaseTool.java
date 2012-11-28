@@ -80,6 +80,9 @@ public abstract class BaseTool extends Configured implements Tool {
   private String mInstanceURIStr = String.format("kiji://.env/%s",
       KijiConfiguration.DEFAULT_INSTANCE_NAME);
 
+  @Flag(name="debug", usage="Print stacktraces if the command terminates with an error.")
+  private boolean mDebugFlag = false;
+
   /**
    * A URI used to track what element in kiji a tool is operating on.
    */
@@ -159,6 +162,14 @@ public abstract class BaseTool extends Configured implements Tool {
       getPrintStream().println(knie.getMessage());
       getPrintStream().println("Try: kiji install --kiji=kiji://.env/" + knie.getInstanceName());
       return 2;
+    } catch (Exception e) {
+      if (mDebugFlag) {
+        throw e; // Debug mode enabled; throw error back to the user.
+      } else {
+        // Just pretty-print the error for the user.
+        getPrintStream().println("Error: " + e.getMessage());
+        return 3;
+      }
     }
   }
 
