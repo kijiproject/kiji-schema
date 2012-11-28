@@ -228,7 +228,7 @@ hadoop_cp=$(mutate_classpath 'slf4j-log4j12' "$hadoop_cp")
 
 # Note that we put the libjars before the hbase jars, in case there are conflicts.
 kiji_conf=$KIJI_HOME/conf
-kiji_jar=$KIJI_HOME/lib/kiji-core-${project.version}.jar
+kiji_jar=$KIJI_HOME/lib/${project.build.finalName}.jar
 # We put $KIJI_CLASSPATH at the beginning classpath to allow users to win when there are conflicts.
 kiji_cp="$KIJI_CLASSPATH:$kiji_conf:$kiji_jar:$libjars:$hadoop_cp:$hbase_cp"
 
