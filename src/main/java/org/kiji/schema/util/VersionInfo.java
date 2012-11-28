@@ -118,7 +118,8 @@ public final class VersionInfo {
       return dataVersion;
     } catch (TableNotFoundException e) {
       throw new KijiNotInstalledException(
-          String.format("Kiji instance '%s' is not installed.", kiji.getName()));
+          String.format("Kiji instance '%s' is not installed.", kiji.getName()),
+          kiji.getName());
     }
   }
 
