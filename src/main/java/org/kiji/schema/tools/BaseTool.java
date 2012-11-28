@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.util.Tool;
 
 import org.kiji.schema.KijiConfiguration;
+import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiURIException;
 
@@ -122,36 +123,42 @@ public abstract class BaseTool extends Configured implements Tool {
 
   @Override
   public int run(String[] args) throws Exception {
-    List<String> nonFlagArgs = FlagParser.init(this, args);
-    if (null == nonFlagArgs) {
-      // There was a problem parsing the flags.
-      return 1;
-    }
-
-    // Create a kiji URI from the string specified by the user, ignoring everything except
-    // zookeeper connection information and the instance name.
-    // Then use the URI to retrieve connection settings for the zookeeper quorum, which should be
-    // enough to talk to an HBase instance.
     try {
-      setURI(KijiURI.parse(mInstanceURIStr)
-          .setTableName(null)
-          .setColumnNames(Collections.<String>emptyList()));
-    } catch (KijiURIException e) {
-      throw new IllegalArgumentException("Invalid kiji URI specified with --instance."
-          + mInstanceURIStr, e);
-    }
-    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
-    getConf().set(HConstants.ZOOKEEPER_QUORUM,
-        Joiner.on(",").join(mURI.getZookeeperQuorumOrdered()));
-    setConf(HBaseConfiguration.addHbaseResources(getConf()));
+      List<String> nonFlagArgs = FlagParser.init(this, args);
+      if (null == nonFlagArgs) {
+        // There was a problem parsing the flags.
+        return 1;
+      }
 
-    // Execute custom functionality implemented in subclasses.
-    validateFlags();
-    try {
-      setup();
-      return run(nonFlagArgs);
-    } finally {
-      cleanup();
+      // Create a kiji URI from the string specified by the user, ignoring everything except
+      // zookeeper connection information and the instance name.
+      // Then use the URI to retrieve connection settings for the zookeeper quorum, which should be
+      // enough to talk to an HBase instance.
+      try {
+        setURI(KijiURI.parse(mInstanceURIStr)
+            .setTableName(null)
+            .setColumnNames(Collections.<String>emptyList()));
+      } catch (KijiURIException e) {
+        throw new IllegalArgumentException("Invalid kiji URI specified with --kiji."
+            + mInstanceURIStr, e);
+      }
+      getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
+      getConf().set(HConstants.ZOOKEEPER_QUORUM,
+          Joiner.on(",").join(mURI.getZookeeperQuorumOrdered()));
+      setConf(HBaseConfiguration.addHbaseResources(getConf()));
+
+      // Execute custom functionality implemented in subclasses.
+      validateFlags();
+      try {
+        setup();
+        return run(nonFlagArgs);
+      } finally {
+        cleanup();
+      }
+    } catch (KijiNotInstalledException knie) {
+      getPrintStream().println(knie.getMessage());
+      getPrintStream().println("Try: kiji install --kiji=kiji://.env/" + knie.getInstanceName());
+      return 2;
     }
   }
 
