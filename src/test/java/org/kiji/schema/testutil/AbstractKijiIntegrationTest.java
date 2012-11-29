@@ -27,11 +27,13 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -62,6 +64,9 @@ public abstract class AbstractKijiIntegrationTest {
 
   private static final String BASE_TEST_URI_PROPERTY = "baseTestURI";
 
+  /* Semaphore for tracking how many tests are currently running. */
+  private static final Semaphore RUNNING_TEST_SEMAPHORE = new Semaphore(0);
+
   /** An integration helper for installing and removing instances. */
   private IntegrationHelper mHelper;
 
@@ -84,9 +89,9 @@ public abstract class AbstractKijiIntegrationTest {
 
   // mCreationThread and mDeletionThread are lazily initialized in a @BeforeClass
   // handler. This ensures that only one such @Before method does the work.
-  private static final Object THREAD_CREATION_LOCK;
+  private static final Object THREAD_MANAGEMENT_LOCK;
   static {
-    THREAD_CREATION_LOCK = new Object();
+    THREAD_MANAGEMENT_LOCK = new Object();
   }
 
   /** A thread that creates Kiji instances for use by tests. */
@@ -112,13 +117,44 @@ public abstract class AbstractKijiIntegrationTest {
       mBaseTestURI = KijiURI.parse(HBASE_MAVEN_PLUGIN_URI);
     }
 
-    synchronized (THREAD_CREATION_LOCK) {
+    synchronized (THREAD_MANAGEMENT_LOCK) {
       // Create background worker threads if they're not already created.
       if (null == mCreationThread) {
         mCreationThread = new KijiCreationThread(mBaseTestURI);
-        mDeletionThread = new KijiDeletionThread(mCreationThread);
+        mDeletionThread = new KijiDeletionThread();
         mCreationThread.start();
         mDeletionThread.start();
+      }
+      RUNNING_TEST_SEMAPHORE.release();
+    }
+  }
+
+  @AfterClass
+  public static void teardownManagementThreads() {
+    synchronized (THREAD_MANAGEMENT_LOCK) {
+      // Should always have a permit available since each thread offers one
+      RUNNING_TEST_SEMAPHORE.tryAcquire();
+
+      // Last one out shuts off the lights.
+      if (RUNNING_TEST_SEMAPHORE.availablePermits() == 0) {
+        // Put the remaining created instances into the deletion queue
+        mCreationThread.stopKijiCreation();
+        KijiURI unusedKijiURI = mCreationThread.getKijiForCleanup();
+        while (null != unusedKijiURI) {
+          try {
+            mDeletionThread.destroyKiji(unusedKijiURI);
+          } catch (InterruptedException e) {
+            LOG.error("Failed to put Kiji instance [" + unusedKijiURI.toString()
+                + "] into the deletion queue: " + e.getMessage());
+            continue;
+          }
+          unusedKijiURI = mCreationThread.getKijiForCleanup();
+        }
+
+        // Finish deleting and clear the threads
+        mDeletionThread.waitForCompletion();
+        mCreationThread = null;
+        mDeletionThread = null;
       }
     }
   }
@@ -277,37 +313,41 @@ public abstract class AbstractKijiIntegrationTest {
      * Get a new Kiji instance from the pool. This may block if we're using Kiji
      * instances in tests too fast.
      *
-     * @return a String identifying an unused Kiji instance.
+     * @return a KijiURI identifying an unused Kiji instance.
      * @throws InterruptedException if the blocking call is interrupted.
-     * @throws KijiURIException if unable to generate a proper KijiURI
      */
     public KijiURI getFreshKiji() throws InterruptedException {
       return mKijiQueue.take();
     }
 
     /**
-     * Gets a remaining Kiji instance from the pool(or null if there's none remaining). This may
-     * block if this thread has not been shut down..
+     * Get a remaining Kiji instance from the pool for cleaning up. This may block if we're out
+     * of Kiji instances and there are still instances being created
      *
-     * @return a String identifying an unused Kiji instance(or null if there's none remaining).
-     * @throws InterruptedException if the blocking call is interrupted.
-     * @throws KijiURIException if unable to generate a proper KijiURI
+     * Package private as this should only be use for cleanup
+     *
+     * @return a KijiURI identifying an unused Kiji instance for cleaning up
      */
-    KijiURI getKijiForCleanup()  {
+    KijiURI getKijiForCleanup() {
+      if (!mKijiQueue.isEmpty()) {
+        return mKijiQueue.poll();
+      }
       synchronized (THREAD_CREATION_ACTIVE_LOCK) {
         return mKijiQueue.poll();
       }
     }
 
+    /**
+     * Stops the creation of new Kiji instances.  The creation thread will finish creating any
+     * instances that are still in progress.
+     */
+    public void stopKijiCreation() {
+      mActive = false;
+    }
+
     /** {@inheritDoc} */
     @Override
     public void run() {
-      Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-        public void run() {
-          mActive = false;
-        }
-      }));
-
       synchronized (THREAD_CREATION_ACTIVE_LOCK) {
         KijiURI kijiURI = null;
         while (mActive) {
@@ -346,7 +386,7 @@ public abstract class AbstractKijiIntegrationTest {
             continue;
           }
         }
-      } //synchronized
+      } // THREAD_CREATION_ACTIVE_LOCK
     }
   }
 
@@ -357,14 +397,19 @@ public abstract class AbstractKijiIntegrationTest {
     /** Unbounded producer/consumer queue that holds Kiji instances to destroy. */
     private LinkedBlockingQueue<KijiURI> mKijiQueue;
 
-    /** Creation thread that this deletion thread cleans up after. */
-    private final KijiCreationThread mCreationThread;
+    private boolean mActive;
 
-    private KijiDeletionThread(KijiCreationThread kijiCreationThread) {
+    /** Ensures that this thread is either in running mode or cleanup mode. */
+    private static final Object THREAD_DELETION_ACTIVE_LOCK;
+    static {
+      THREAD_DELETION_ACTIVE_LOCK = new Object();
+    }
+
+    private KijiDeletionThread() {
       setName("KijiDeletionThread");
       setDaemon(true);
       mKijiQueue = new LinkedBlockingQueue<KijiURI>();
-      mCreationThread = kijiCreationThread;
+      mActive = true;
     }
 
     /**
@@ -378,66 +423,44 @@ public abstract class AbstractKijiIntegrationTest {
       mKijiQueue.put(kijiURI);
     }
 
+    /**
+     * Tells the deletion thread to stop running and waits until all remaining instances have
+     * been uninstalled.
+     */
+    public void waitForCompletion() {
+      mActive = false;
+      synchronized (THREAD_DELETION_ACTIVE_LOCK) {
+        return;
+      }
+    }
+
     /** {@inheritDoc} */
     @Override
     public void run() {
-      /** Add a shutdown hook to clean up any remaining unused installed Kiji instances */
-      Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
-        public void run() {
-          KijiURI leftoverKijiURI = mCreationThread.getKijiForCleanup();
-          while (null != leftoverKijiURI) {
-            try {
-              destroyKiji(leftoverKijiURI);
-            } catch (InterruptedException e) {
-              LOG.error("Failed to put Kiji instance [" + leftoverKijiURI.toString()
-                  + "] into the deletion queue: " + e.getMessage());
-            }
-            leftoverKijiURI = mCreationThread.getKijiForCleanup();
-          }
-
-          IntegrationHelper intHelper = new IntegrationHelper(HBaseConfiguration.create());
-          while (!mKijiQueue.isEmpty()) {
-            KijiURI instanceURI;
-            try {
-              instanceURI = mKijiQueue.take();
-            } catch (InterruptedException ie) {
-              // Interruption in here is expected; as long as the queue is non-empty,
-              // keep trying to remove one.
-              continue;
-            }
-
-            try {
-              intHelper.uninstallKiji(instanceURI);
-            } catch (Exception e) {
-              LOG.error("Could not destroy Kiji instance [" + instanceURI.toString() + "]: "
-                  + e.getMessage());
-            }
-          }
-        }
-      }));
-
       IntegrationHelper intHelper = new IntegrationHelper(HBaseConfiguration.create());
-      while (true) {
-        KijiURI instanceURI = null;
+      synchronized (THREAD_DELETION_ACTIVE_LOCK) {
+        while (!mKijiQueue.isEmpty() || mActive) {
+          KijiURI instanceURI = null;
 
-        try {
-          instanceURI = mKijiQueue.take();
-        } catch (InterruptedException ie) {
-          // Interruption in here is expected; as long as the queue is non-empty,
-          // keep trying to remove one.
-          continue;
-        }
+          try {
+            instanceURI = mKijiQueue.take();
+          } catch (InterruptedException ie) {
+            // Interruption in here is expected; as long as the queue is non-empty,
+            // keep trying to remove one.
+            continue;
+          }
 
-        if (null == instanceURI) {
-          LOG.warn("Unexpected null Kiji instance after take() in destroy thread");
-          continue;
-        }
+          if (null == instanceURI) {
+            LOG.warn("Unexpected null Kiji instance after take() in destroy thread");
+            continue;
+          }
 
-        try {
-          intHelper.uninstallKiji(instanceURI);
-        } catch (Exception e) {
-          LOG.error("Could not destroy Kiji instance [" + instanceURI.toString() + "]: "
-              + e.getMessage());
+          try {
+            intHelper.uninstallKiji(instanceURI);
+          } catch (Exception e) {
+            LOG.error("Could not destroy Kiji instance [" + instanceURI.toString() + "]: "
+                + e.getMessage());
+          }
         }
       }
     }
