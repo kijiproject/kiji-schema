@@ -43,7 +43,7 @@ public class InstallTool extends BaseTool {
     KijiConfiguration kijiConf = new KijiConfiguration(getConf(), getURI().getInstance());
     new KijiInstaller().install(kijiConf);
 
-    System.out.println("Successfully created kiji instance: " + getURI());
+    getPrintStream().println("Successfully created kiji instance: " + getURI());
 
     return 0;
   }

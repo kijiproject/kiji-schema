@@ -1,4 +1,21 @@
-// (c) Copyright 2012 WibiData, Inc.
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package org.kiji.schema.mapreduce;
 
@@ -19,14 +36,15 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.junit.Test;
+
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.impl.RawEntityId;
+import org.kiji.schema.testutil.FooTableIntegrationTest;
 
-import com.wibidata.core.FooTableIntegrationTest;
 
 public class IntegrationTestKijiTableOutputFormat
     extends FooTableIntegrationTest {
@@ -56,6 +74,7 @@ public class IntegrationTestKijiTableOutputFormat
       } else {
         writer.increment(rowKey, "other", "counter", account.length());
       }
+      IOUtils.closeQuietly(writer);
     }
   }
 
@@ -70,6 +89,7 @@ public class IntegrationTestKijiTableOutputFormat
       final ContextKijiTableWriter writer = new ContextKijiTableWriter(context);
 
       writer.deleteCell(rowKey, "info", "b");
+      IOUtils.closeQuietly(writer);
     }
   }
 

@@ -1,6 +1,23 @@
-// (c) Copyright 2011 WibiData, Inc.
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.wibidata.core.testutil;
+package org.kiji.schema.testutil;
 
 import static org.junit.Assert.assertEquals;
 
@@ -22,49 +39,45 @@ import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.util.ToolRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.tools.BaseTool;
+import org.kiji.schema.tools.CreateTableTool;
+import org.kiji.schema.tools.DeleteTableTool;
+import org.kiji.schema.tools.InstallTool;
+import org.kiji.schema.tools.UninstallTool;
 import org.kiji.schema.util.ToJson;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.wibidata.core.license.PublicKeyUtil;
-import com.wibidata.core.license.SignedLicense;
-import com.wibidata.core.tools.BaseTool;
-import com.wibidata.core.tools.WibiCreateTable;
-import com.wibidata.core.tools.WibiDeleteTable;
-import com.wibidata.core.tools.WibiInstall;
-import com.wibidata.core.tools.WibiUninstall;
 
 /**
- * IntegrationHelper provides methods for installing and managing a wibi instance during a test.
+ * IntegrationHelper provides methods for installing and managing a Kiji instance during a test.
  *
- * <p>If you would like to install a new wibi instance, it will randomly generate a new
- * wibi instance name so you don't step on the toes of other tests.  If you do create wibi
+ * <p>If you would like to install a new Kiji instance, it will randomly generate a new
+ * Kiji instance name so you don't step on the toes of other tests.  If you do create Kiji
  * instances, you uninstall them when you are finished.</p>
  *
  * <p>Almost by definition, any test that uses this will be prefixed with
  * "IntegrationTest" and will thus be run in 'mvn integration-test' instead of a nice fast
  * 'mvn test'.</p>
  *
- * <p>If you only need one wibi instance during your test, you can extend {@link
- * com.wibidata.core.WibiIntegrationTest}.</p>
+ * <p>If you only need one Kiji instance during your test, you can extend {@link
+ * org.kiji.schema.testutil.AbstractKijiIntegrationTest}.</p>
  */
 public class IntegrationHelper extends Configured {
   private static final Logger LOG = LoggerFactory.getLogger(IntegrationHelper.class);
 
   /** Some test data that can be loaded into the "foo" table. */
-  public static final String INPUT_FILE = "com/wibidata/core/test-data.csv";
-
-  /** Resource name of the test wibi license. */
-  public static final String TEST_LICENSE = "wibi-license.txt";
+  public static final String INPUT_FILE = "org/kiji/schema/test-data.csv";
 
   /** A bulk import input-format file describing the test-data file above. */
   private static final String INPUT_FORMAT_FILE
-      = "com/wibidata/core/inputlayout/test-integration-helper-input.txt";
+      = "org/kiji/schema/inputlayout/test-integration-helper-input.txt";
 
   /** A directory within the DFS where tests can create files. */
   private static final String DFS_TEST_DIR = "test-data";
@@ -101,41 +114,24 @@ public class IntegrationHelper extends Configured {
    *
    * @param destPath A relative destination path to be used within the shared tmp dir.
    * @return The path to the file in the mini HDFS filesystem.
-   * @throws IOException If there is an error.
+   * @throws java.io.IOException If there is an error.
    */
   public Path getDfsPath(String destPath) throws IOException {
     return new Path(DFS_TEST_DIR, destPath).makeQualified(FileSystem.get(getConf()));
   }
 
   /**
-   * Installs wibi metadata tables in the HBase instance.
+   * Installs Kiji metadata tables in the HBase instance.
    *
-   * @param instanceName The name of the wibi instance to install.
-   * @param license A license.
+   * @param kijiURI The uri of the Kiji instance to install.
    * @throws Exception If there is an error.
    */
-  public void installWibi(String instanceName, SignedLicense license) throws Exception {
-    // TODO(aaronavril): Should move wibi-license.txt to a testing resource during
-    // maven pre-integration phase.  For now, explicitly point to the testing license.
-    //
-    // TODO: We need to copy the test license into a temporary directory first
-    // if we're going to distribute the test jar.
-    // More likely, though, we want this to hook into the client's existing license.
-
+  public void installKiji(KijiURI kijiURI) throws Exception {
     // TODO: We should be using command line tools programmatically in tester set up.
-    // Since we require a path, copy the wibi-license into a temporary directory.
-    File licenseFile = File.createTempFile("wibi-license", ".txt");
-    licenseFile.deleteOnExit();
-    license.writeSignedLicense(licenseFile);
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("License: " + SignedLicense.parse(licenseFile,
-          PublicKeyUtil.getDefaultPublicKey()).toString());
-    }
 
     // Write resource to a temporary file.
-    ToolResult result = runTool(getConf(), new WibiInstall(), new String[] {
-      "--instance=" + instanceName,
-      "--license=" + licenseFile.getPath(),
+    ToolResult result = runTool(getConf(), new InstallTool(), new String[] {
+      "--kiji=" + kijiURI.toString(),
     });
 
     if (0 != result.getReturnCode()) {
@@ -145,13 +141,13 @@ public class IntegrationHelper extends Configured {
   }
 
   /**
-   * Uninstall a wibi instance.
+   * Uninstall a Kiji instance.
    *
    * @throws Exception If there is an error.
    */
-  public void uninstallWibi(String instanceName) throws Exception {
-    ToolResult result = runTool(getConf(), new WibiUninstall(), new String[] {
-      "--instance=" + instanceName,
+  public void uninstallKiji(KijiURI kijiURI) throws Exception {
+    ToolResult result = runTool(getConf(), new UninstallTool(), new String[] {
+      "--kiji=" + kijiURI.toString(),
       "--confirm",
     });
     if (0 != result.getReturnCode()) {
@@ -202,7 +198,7 @@ public class IntegrationHelper extends Configured {
    * @param layoutFile A file to hold the table layout.
    * @param dataFile A file to hold the table data.
    * @param formatFile A file to hold the data format.
-   * @throws IOException If there is an error while writing the files.
+   * @throws java.io.IOException If there is an error while writing the files.
    */
   private void writeFooTableFiles(File layoutFile, File dataFile, File formatFile)
       throws IOException {
@@ -235,10 +231,10 @@ public class IntegrationHelper extends Configured {
   /**
    * Creates and populates a test table of users called 'foo'.
    *
-   * @param instanceName The instance to create the table in.
+   * @param kijiURI The KijiURI to create the table in.
    * @throws Exception If there is an error.
    */
-  public void createAndPopulateFooTable(String instanceName) throws Exception {
+  public void createAndPopulateFooTable(KijiURI kijiURI) throws Exception {
     // Create the temp files needed to create the foo table.
     final File layoutFile = File.createTempFile("layout", ".json");
     layoutFile.deleteOnExit();
@@ -252,15 +248,15 @@ public class IntegrationHelper extends Configured {
     // Create a foo table.
     String layoutFilename = layoutFile.getPath();
     LOG.info("layout file path: " + layoutFilename);
-    ToolResult createResult = runTool(getConf(), new WibiCreateTable(), new String[] {
-      "--instance=" + instanceName,
+    ToolResult createResult = runTool(getConf(), new CreateTableTool(), new String[] {
+      "--kiji=" + kijiURI,
       "--table=foo",
       "--layout=" + layoutFilename,
     });
     assertEquals(0, createResult.getReturnCode());
 
     // Add data to foo table.
-    final KijiConfiguration kijiConf = new KijiConfiguration(getConf(), instanceName);
+    final KijiConfiguration kijiConf = new KijiConfiguration(getConf(), kijiURI.getInstance());
     final Kiji kiji = Kiji.open(kijiConf);
     final KijiTable table = kiji.openTable("foo");
     final KijiTableWriter fooWriter = table.openTableWriter();
@@ -308,12 +304,12 @@ public class IntegrationHelper extends Configured {
   /**
    * Deletes the table created with createAndPopulateFooTable().
    *
-   * @param instanceName The instance to delete the table from.
+   * @param kijiURI The KijiURI to delete the table from.
    * @throws Exception If there is an error.
    */
-  public void deleteFooTable(String instanceName) throws Exception {
-    ToolResult result = runTool(getConf(), new WibiDeleteTable(), new String[] {
-      "--instance=" + instanceName,
+  public void deleteFooTable(KijiURI kijiURI) throws Exception {
+    ToolResult result = runTool(getConf(), new DeleteTableTool(), new String[] {
+      "--kiji=" + kijiURI,
       "--table=foo",
       "--confirm",
     });

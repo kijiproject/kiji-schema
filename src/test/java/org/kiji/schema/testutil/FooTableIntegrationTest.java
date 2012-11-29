@@ -1,15 +1,34 @@
-// (c) Copyright 2011 WibiData, Inc.
-package com.wibidata.core;
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.kiji.schema.testutil;
 
 import org.junit.After;
 import org.junit.Before;
+
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
 
 /**
- * An integration test that sets up the Wibi table "foo" before tests.
+ * An integration test that sets up the Kiji table "foo" before tests.
  */
-public class FooTableIntegrationTest extends WibiIntegrationTest {
+public class FooTableIntegrationTest extends AbstractKijiIntegrationTest {
 
   /** Kiji instance used for this test. */
   private Kiji mKiji;
@@ -29,7 +48,7 @@ public class FooTableIntegrationTest extends WibiIntegrationTest {
   /**
    * Gets the KijiTable instance configured to use the "foo" table.
    *
-   * @return The Wibi table.
+   * @return The Kiji table.
    */
   public KijiTable getFooTable() {
     return mKijiTable;

@@ -1,6 +1,23 @@
-// (c) Copyright 2011 WibiData, Inc.
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.wibidata.core;
+package org.kiji.schema.testutil;
 
 import java.io.File;
 import java.io.IOException;
@@ -10,67 +27,77 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
-import org.kiji.schema.KijiConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.wibidata.core.license.SignedLicense;
-import com.wibidata.core.testutil.IntegrationHelper;
-import com.wibidata.core.testutil.ToolResult;
-import com.wibidata.core.tools.WibiTool;
+import org.kiji.schema.KijiConfiguration;
+import org.kiji.schema.KijiURI;
+import org.kiji.schema.KijiURIException;
+import org.kiji.schema.tools.BaseTool;
 
 /**
- * A base class for all Wibi integration tests.
+ * A base class for all Kiji integration tests.
  *
- * <p>This class sets up a wibi instance before each test and tears it down afterwards.
+ * <p>This class sets up a Kiji instance before each test and tears it down afterwards.
  * It assumes there is an HBase cluster running already, and its configuration is on the
  * classpath.</p>
  *
- * <p>To avoid stepping on other wibi instances, the name of the instance created is
+ * <p>To avoid stepping on other Kiji instances, the name of the instance created is
  * a random unique identifier.</p>
  *
  * This class is abstract because it doesn't know where to get a license from.
  * Implement the getLicense() method to specify.
  */
-public abstract class AbstractWibiIntegrationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(AbstractWibiIntegrationTest.class);
+public abstract class AbstractKijiIntegrationTest {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractKijiIntegrationTest.class);
+
+  private static final String BASE_TEST_URI_PROPERTY = "baseTestURI";
+
+  /* Semaphore for tracking how many tests are currently running. */
+  private static final Semaphore RUNNING_TEST_SEMAPHORE = new Semaphore(0);
 
   /** An integration helper for installing and removing instances. */
   private IntegrationHelper mHelper;
 
-  /** The randomly generated name for the instance. */
-  private String mInstanceName;
+  private static final String HBASE_MAVEN_PLUGIN_URI = "kiji://.env/";
 
-  /** The wibi configuration for this test's private instance. */
+  private static KijiURI mBaseTestURI;
+
+  /** The randomly generated URI for the instance. */
+  private KijiURI mKijiURI;
+
+  /** The Kiji configuration for this tests' private instance. */
   private KijiConfiguration mKijiConf;
 
   // Disable checkstyle since mTempDir must be a public to work as a JUnit @Rule.
-  // CHECKSTYLE:OFF
+  // CSOFF: VisibilityModifierCheck
   /** A temporary directory for test data. */
   @Rule
   public TemporaryFolder mTempDir = new TemporaryFolder();
-  // CHECKSTYLE:ON
+  // CSON: VisibilityModifierCheck
 
-
-  // mCreationThread and mDeletionThread are lazily initialized in a @Before
+  // mCreationThread and mDeletionThread are lazily initialized in a @BeforeClass
   // handler. This ensures that only one such @Before method does the work.
-  private static final Object THREAD_CREATION_LOCK;
+  private static final Object THREAD_MANAGEMENT_LOCK;
   static {
-    THREAD_CREATION_LOCK = new Object();
+    THREAD_MANAGEMENT_LOCK = new Object();
   }
 
-  /** A thread that creates Wibi instances for use by tests. */
-  private static WibiCreationThread mCreationThread;
-  /** A thread that removes Wibi instances no longer in use by tests. */
-  private static WibiDeletionThread mDeletionThread;
+  /** A thread that creates Kiji instances for use by tests. */
+  private static KijiCreationThread mCreationThread;
+  /** A thread that removes Kiji instances no longer in use by tests. */
+  private static KijiDeletionThread mDeletionThread;
 
   /**
    * Creates a Configuration object for the HBase instance to use.
@@ -81,31 +108,73 @@ public abstract class AbstractWibiIntegrationTest {
     return HBaseConfiguration.create();
   }
 
-  @Before
-  public void setupWibi() throws Exception {
-    synchronized (THREAD_CREATION_LOCK) {
+  @BeforeClass
+  public static void setupManagementThreads() throws KijiURIException {
+    // Determine the base URI for Kiji instances
+    if (System.getProperty(BASE_TEST_URI_PROPERTY) != null) {
+      mBaseTestURI = KijiURI.parse(System.getProperty(BASE_TEST_URI_PROPERTY));
+    } else {
+      mBaseTestURI = KijiURI.parse(HBASE_MAVEN_PLUGIN_URI);
+    }
+
+    synchronized (THREAD_MANAGEMENT_LOCK) {
       // Create background worker threads if they're not already created.
       if (null == mCreationThread) {
-        mCreationThread = new WibiCreationThread();
-        mDeletionThread = new WibiDeletionThread();
+        mCreationThread = new KijiCreationThread(mBaseTestURI);
+        mDeletionThread = new KijiDeletionThread();
         mCreationThread.start();
         mDeletionThread.start();
       }
+      RUNNING_TEST_SEMAPHORE.release();
     }
+  }
 
-    // Get a new Wibi instance, with a randomly-generated name.
-    mInstanceName = mCreationThread.getFreshWibi();
+  @AfterClass
+  public static void teardownManagementThreads() {
+    synchronized (THREAD_MANAGEMENT_LOCK) {
+      // Should always have a permit available since each thread offers one
+      RUNNING_TEST_SEMAPHORE.tryAcquire();
+
+      // Last one out shuts off the lights.
+      if (RUNNING_TEST_SEMAPHORE.availablePermits() == 0) {
+        // Put the remaining created instances into the deletion queue
+        mCreationThread.stopKijiCreation();
+        KijiURI unusedKijiURI = mCreationThread.getKijiForCleanup();
+        while (null != unusedKijiURI) {
+          try {
+            mDeletionThread.destroyKiji(unusedKijiURI);
+          } catch (InterruptedException e) {
+            LOG.error("Failed to put Kiji instance [" + unusedKijiURI.toString()
+                + "] into the deletion queue: " + e.getMessage());
+            continue;
+          }
+          unusedKijiURI = mCreationThread.getKijiForCleanup();
+        }
+
+        // Finish deleting and clear the threads
+        mDeletionThread.waitForCompletion();
+        mCreationThread = null;
+        mDeletionThread = null;
+      }
+    }
+  }
+
+  @Before
+  public void setupKiji() throws Exception {
+
+    // Get a new Kiji instance, with a randomly-generated name.
+    mKijiURI = mCreationThread.getFreshKiji();
     mHelper = new IntegrationHelper(createConfiguration());
 
-    // Construct a wibi configuration.
-    mKijiConf = new KijiConfiguration(mHelper.getConf(), mInstanceName);
+    // Construct a Kiji configuration.
+    mKijiConf = new KijiConfiguration(mHelper.getConf(), mKijiURI.getInstance());
   }
 
   @After
-  public void teardownWibi() throws Exception {
-    // Schedule the Wibi instance for asynchronous deletion.
-    if (null != mInstanceName) {
-      mDeletionThread.destroyWibi(mInstanceName);
+  public void teardownKiji() throws Exception {
+    // Schedule the Kiji instance for asynchronous deletion.
+    if (null != mKijiURI) {
+      mDeletionThread.destroyKiji(mKijiURI);
     }
   }
 
@@ -114,14 +183,14 @@ public abstract class AbstractWibiIntegrationTest {
     return mHelper;
   }
 
-  /** @return The wibi configuration for this test instance. */
+  /** @return The Kiji configuration for this test instance. */
   protected KijiConfiguration getKijiConfiguration() {
     return mKijiConf;
   }
 
   /** @return The name of the instance installed for this test. */
   protected String getInstanceName() {
-    return mInstanceName;
+    return mKijiURI.getInstance();
   }
 
   /** @return The temporary directory to use for test data. */
@@ -136,7 +205,7 @@ public abstract class AbstractWibiIntegrationTest {
    *
    * @param localResource A local file resource.
    * @return The path to the file in the mini HDFS filesystem.
-   * @throws IOException If there is an error.
+   * @throws java.io.IOException If there is an error.
    */
   protected Path getDfsPath(URL localResource) throws IOException {
     return getDfsPath(localResource.getPath());
@@ -150,7 +219,7 @@ public abstract class AbstractWibiIntegrationTest {
    *
    * @param localPath A local file path (doesn't have to exist, but if it does it will be copied).
    * @return The path to the file in the mini HDFS filesystem.
-   * @throws IOException If there is an error.
+   * @throws java.io.IOException If there is an error.
    */
   protected Path getDfsPath(String localPath) throws IOException {
     return getDfsPath(new File(localPath));
@@ -163,7 +232,7 @@ public abstract class AbstractWibiIntegrationTest {
    *
    * @param localFile A local file.
    * @return The path to the file in the mini HDFS filesystem.
-   * @throws IOException If there is an error.
+   * @throws java.io.IOException If there is an error.
    */
   protected Path getDfsPath(File localFile) throws IOException {
     String uniquePath
@@ -182,12 +251,12 @@ public abstract class AbstractWibiIntegrationTest {
    * @return A result with the captured tool output.
    * @throws Exception If there is an error.
    */
-  protected ToolResult runTool(WibiTool tool, String[] args) throws Exception {
+  protected ToolResult runTool(BaseTool tool, String[] args) throws Exception {
     // Append the --instance=<instance-name> flag on the end of the args.
-    String[] argsWithWibi = Arrays.copyOf(args, args.length + 1);
-    argsWithWibi[args.length] = "--instance=" + mInstanceName;
+    String[] argsWithKiji = Arrays.copyOf(args, args.length + 1);
+    argsWithKiji[args.length] = "--kiji=" + mKijiURI;
 
-    return mHelper.runTool(mHelper.getConf(), tool, argsWithWibi);
+    return mHelper.runTool(mHelper.getConf(), tool, argsWithKiji);
   }
 
   /**
@@ -196,7 +265,7 @@ public abstract class AbstractWibiIntegrationTest {
    * @throws Exception If there is an error.
    */
   protected void createAndPopulateFooTable() throws Exception {
-    mHelper.createAndPopulateFooTable(mInstanceName);
+    mHelper.createAndPopulateFooTable(mKijiURI);
   }
 
   /**
@@ -205,138 +274,196 @@ public abstract class AbstractWibiIntegrationTest {
    * @throws Exception If there is an error.
    */
   public void deleteFooTable() throws Exception {
-    mHelper.deleteFooTable(mInstanceName);
+    mHelper.deleteFooTable(mKijiURI);
   }
 
   /**
-   * Thread that creates Wibi instances for use by integration tests.
+   * Thread that creates Kiji instances for use by integration tests.
    */
-  private final class WibiCreationThread extends Thread {
-    /** Maintain a pool of this many fresh Wibi instances ready to go. */
+  private static final class KijiCreationThread extends Thread {
+    /** Maintain a pool of this many fresh Kiji instances ready to go. */
     private static final int INSTANCE_POOL_SIZE = 4;
 
-    /** Bounded producer/consumer queue that holds the names of new Wibi instances. */
-    private LinkedBlockingQueue<String> mWibiQueue;
+    private final KijiURI mBaseTestURI;
 
-    private WibiCreationThread() {
-      setName("WibiCreationThread");
+    private final IntegrationHelper mIntegrationHelper;
+    /** Bounded producer/consumer queue that holds the names of new Kiji instances. */
+    private LinkedBlockingQueue<KijiURI> mKijiQueue;
+
+    /** Denotes whether this thread should continue to create Kiji instances. */
+    private boolean mActive;
+
+    /** Ensures that this thread is either in running mode or cleanup mode. */
+    private static final Object THREAD_CREATION_ACTIVE_LOCK;
+    static {
+      THREAD_CREATION_ACTIVE_LOCK = new Object();
+    }
+
+    private KijiCreationThread(KijiURI baseTestURI) {
+      setName("KijiCreationThread");
       setDaemon(true);
-      mWibiQueue = new LinkedBlockingQueue<String>(INSTANCE_POOL_SIZE);
+
+      mBaseTestURI = baseTestURI;
+      mIntegrationHelper = new IntegrationHelper(HBaseConfiguration.create());
+      mKijiQueue = new LinkedBlockingQueue<KijiURI>(INSTANCE_POOL_SIZE);
+      mActive = true;
     }
 
     /**
-     * Get a new Wibi instance from the pool. This may block if we're using Wibi
+     * Get a new Kiji instance from the pool. This may block if we're using Kiji
      * instances in tests too fast.
      *
-     * @return a String identifying an unused Wibi instance.
+     * @return a KijiURI identifying an unused Kiji instance.
      * @throws InterruptedException if the blocking call is interrupted.
      */
-    public String getFreshWibi() throws InterruptedException {
-      return mWibiQueue.take();
+    public KijiURI getFreshKiji() throws InterruptedException {
+      return mKijiQueue.take();
+    }
+
+    /**
+     * Get a remaining Kiji instance from the pool for cleaning up. This may block if we're out
+     * of Kiji instances and there are still instances being created
+     *
+     * Package private as this should only be use for cleanup
+     *
+     * @return a KijiURI identifying an unused Kiji instance for cleaning up
+     */
+    KijiURI getKijiForCleanup() {
+      if (!mKijiQueue.isEmpty()) {
+        return mKijiQueue.poll();
+      }
+      synchronized (THREAD_CREATION_ACTIVE_LOCK) {
+        return mKijiQueue.poll();
+      }
+    }
+
+    /**
+     * Stops the creation of new Kiji instances.  The creation thread will finish creating any
+     * instances that are still in progress.
+     */
+    public void stopKijiCreation() {
+      mActive = false;
     }
 
     /** {@inheritDoc} */
     @Override
     public void run() {
-      String instanceName = null;
+      synchronized (THREAD_CREATION_ACTIVE_LOCK) {
+        KijiURI kijiURI = null;
+        while (mActive) {
+          if (null == kijiURI) {
+            // Create a new Kiji instance.
+            String instanceName = UUID.randomUUID().toString().replaceAll("-", "_");
+            final IntegrationHelper intHelper =
+                new IntegrationHelper(HBaseConfiguration.create());
+            try {
+              kijiURI = mBaseTestURI.setInstanceName(instanceName);
+              intHelper.installKiji(kijiURI);
+            } catch (Exception exn) {
+              final StringWriter writer = new StringWriter();
+              final PrintWriter printWriter = new PrintWriter(writer);
+              exn.printStackTrace(printWriter);
+              printWriter.close();
+              LOG.error(String.format("Exception while installing Kiji instance [%s]: %s\n%s",
+                  instanceName, exn.toString(), writer.toString()));
+              instanceName = null;
+              continue;
+            }
+          }
 
-      while (true) {
-        if (null == instanceName) {
-          // Create a new Wibi instance.
-          instanceName = UUID.randomUUID().toString().replaceAll("-", "_");
-          final IntegrationHelper intHelper =
-              new IntegrationHelper(AbstractWibiIntegrationTest.this.createConfiguration());
+          if (null == kijiURI) {
+            LOG.error("Unexpected null Kiji instance in mid-loop creation thread");
+            continue;
+          }
+
           try {
-            intHelper.installWibi(instanceName, getLicense());
-          } catch (Exception exn) {
-            final StringWriter writer = new StringWriter();
-            final PrintWriter printWriter = new PrintWriter(writer);
-            exn.printStackTrace(printWriter);
-            printWriter.close();
-            LOG.error(String.format("Exception while installing Wibi instance [%s]: %s\n%s",
-                instanceName, exn.toString(), writer.toString()));
-            instanceName = null;
+            // If the queue is full, block til it's not. Then put this one in,
+            // and start making the next instance.
+            mKijiQueue.put(kijiURI);
+            kijiURI = null; // Forget this instance after we successfully put() it.
+          } catch (InterruptedException ie) {
+            // Ok, interrupted! Check if we're done or not, and try again.
             continue;
           }
         }
-
-        if (null == instanceName) {
-          LOG.error("Unexpected null wibi instance in mid-loop creation thread");
-          continue;
-        }
-
-        try {
-          // If the queue is full, block til it's not. Then put this one in,
-          // and start making the next instance.
-          mWibiQueue.put(instanceName);
-          instanceName = null; // Forget this instance after we successfully put() it.
-        } catch (InterruptedException ie) {
-          // Ok, interrupted! Check if we're done or not, and try again.
-          continue;
-        }
-      }
+      } // THREAD_CREATION_ACTIVE_LOCK
     }
   }
 
   /**
-   * Thread that destroys Wibi instances used by integration tests.
+   * Thread that destroys Kiji instances used by integration tests.
    */
-  private final class WibiDeletionThread extends Thread {
-    /** Unbounded producer/consumer queue that holds Wibi instances to destroy. */
-    private LinkedBlockingQueue<String> mWibiQueue;
+  private static final class KijiDeletionThread extends Thread {
+    /** Unbounded producer/consumer queue that holds Kiji instances to destroy. */
+    private LinkedBlockingQueue<KijiURI> mKijiQueue;
 
-    private WibiDeletionThread() {
-      setName("WibiDeletionThread");
+    private boolean mActive;
+
+    /** Ensures that this thread is either in running mode or cleanup mode. */
+    private static final Object THREAD_DELETION_ACTIVE_LOCK;
+    static {
+      THREAD_DELETION_ACTIVE_LOCK = new Object();
+    }
+
+    private KijiDeletionThread() {
+      setName("KijiDeletionThread");
       setDaemon(true);
-      mWibiQueue = new LinkedBlockingQueue<String>();
+      mKijiQueue = new LinkedBlockingQueue<KijiURI>();
+      mActive = true;
     }
 
     /**
-     * Add a Wibi instance to the list of Wibi instances to be destroyed.
+     * Add a Kiji instance to the list of Kiji instances to be destroyed.
      * The instance will be destroyed asynchronously.
      *
-     * @param wibiName a String identifying a Wibi instance we're done with.
+     * @param kijiURI a String identifying a Kiji instance we're done with.
      * @throws InterruptedException if the blocking call is interrupted.
      */
-    public void destroyWibi(String wibiName) throws InterruptedException {
-      mWibiQueue.put(wibiName);
+    public void destroyKiji(KijiURI kijiURI) throws InterruptedException {
+      mKijiQueue.put(kijiURI);
+    }
+
+    /**
+     * Tells the deletion thread to stop running and waits until all remaining instances have
+     * been uninstalled.
+     */
+    public void waitForCompletion() {
+      mActive = false;
+      synchronized (THREAD_DELETION_ACTIVE_LOCK) {
+        return;
+      }
     }
 
     /** {@inheritDoc} */
     @Override
     public void run() {
-      while (true) {
-        String instanceName = null;
+      IntegrationHelper intHelper = new IntegrationHelper(HBaseConfiguration.create());
+      synchronized (THREAD_DELETION_ACTIVE_LOCK) {
+        while (!mKijiQueue.isEmpty() || mActive) {
+          KijiURI instanceURI = null;
 
-        try {
-          instanceName = mWibiQueue.take();
-        } catch (InterruptedException ie) {
-          // Interruption in here is expected; as long as the queue is non-empty,
-          // keep trying to remove one.
-          continue;
-        }
+          try {
+            instanceURI = mKijiQueue.take();
+          } catch (InterruptedException ie) {
+            // Interruption in here is expected; as long as the queue is non-empty,
+            // keep trying to remove one.
+            continue;
+          }
 
-        if (null == instanceName) {
-          LOG.warn("Unexpected null wibi instance after take() in destroy thread");
-          continue;
-        }
+          if (null == instanceURI) {
+            LOG.warn("Unexpected null Kiji instance after take() in destroy thread");
+            continue;
+          }
 
-        final IntegrationHelper intHelper =
-            new IntegrationHelper(AbstractWibiIntegrationTest.this.createConfiguration());
-        try {
-          intHelper.uninstallWibi(instanceName);
-        } catch (Exception e) {
-          LOG.error("Could not destroy Wibi instance [" + instanceName + "]: "
-              + e.getMessage());
+          try {
+            intHelper.uninstallKiji(instanceURI);
+          } catch (Exception e) {
+            LOG.error("Could not destroy Kiji instance [" + instanceURI.toString() + "]: "
+                + e.getMessage());
+          }
         }
       }
     }
   }
 
-  /**
-   * Gets the license to use when installing Wibi instances.
-   *
-   * @return The license.
-   */
-  protected abstract SignedLicense getLicense() throws IOException;
 }
