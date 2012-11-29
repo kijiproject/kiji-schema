@@ -92,51 +92,6 @@ public class KijiPut implements KijiMutation {
   }
 
   /**
-   * Gets the entityId of this put operation.
-   *
-   * @return The entityId of the data to write.
-   */
-  public EntityId getEntityId() {
-    return mEntityId;
-  }
-
-  /**
-   * Gets the family of this put operation.
-   *
-   * @return The family of the data to write.
-   */
-  public String getFamily() {
-    return mFamily;
-  }
-
-  /**
-   * Gets the qualifier of this put operation.
-   *
-   * @return The qualifier of the data to write.
-   */
-  public String getQualifier() {
-    return mQualifier;
-  }
-
-  /**
-   * Gets the timestamp of this put operation.
-   *
-   * @return The timestamp of the data to write.
-   */
-  public long getTimestamp() {
-    return mTimestamp;
-  }
-
-  /**
-   * Gets the data to write.
-   *
-   * @return The data to write.
-   */
-  public KijiCell<?> getKijiCell() {
-    return mCell;
-  }
-
-  /**
    * Builds a HBase Put from this KijiPut.
    *
    * @param translator The ColumnNameTranslator used to convert kiji column names to their HBase

@@ -24,12 +24,15 @@ import java.io.IOException;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
+import org.kiji.schema.EntityId;
+import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCounter;
-import org.kiji.schema.impl.BaseKijiTableWriter;
+import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.mapreduce.KijiDelete.KijiDeleteScope;
 
 /**
- * ContextKijiTableWriter is a {@link org.kiji.schema.KijiTableWriter} used to perform mutations
- * to a Kiji table from within a Hadoop mapper or reducer.
+ * ContextKijiTableWriter is a {@link KijiTableWriter} used to perform mutations to a
+ * Kiji table from within a Hadoop mapper or reducer.
  *
  * This table writer expects the job to be configured to use the {@link KijiTableOutputFormat}.
  * To use this table writer, instantiate it with the provided mapper/reducer context:
@@ -53,7 +56,7 @@ import org.kiji.schema.impl.BaseKijiTableWriter;
  *   </pre>
  * </code>
  */
-public class ContextKijiTableWriter extends BaseKijiTableWriter {
+public class ContextKijiTableWriter extends KijiTableWriter {
   private final TaskInputOutputContext<?, ?, NullWritable, KijiOutput> mContext;
 
   /**
@@ -67,24 +70,31 @@ public class ContextKijiTableWriter extends BaseKijiTableWriter {
 
   /** {@inheritDoc} */
   @Override
-  public void put(KijiPut put)
-      throws IOException {
-    try {
-      mContext.write(NullWritable.get(), new KijiOutput(put));
-    } catch (InterruptedException ex) {
-      // It's unclear whether or not InterruptedExceptions get thrown at all ever by hadoop.
-      throw new IOException(ex);
-    }
+  public void put(EntityId entityId, String family, String qualifier, long timestamp,
+      KijiCell<?> cell) throws IOException, InterruptedException {
+    final KijiPut put = new KijiPut(entityId, family, qualifier, timestamp, cell);
+    mContext.write(NullWritable.get(), new KijiOutput(put));
   }
 
-  /** {@inheritDoc} */
+  /**
+   * Increments a counter in a kiji table. This call will always return null (KIJI-147).
+   *
+   * <p>This method will throw an exception if called on a column that isn't a counter.</p>
+   *
+   * @param entityId The entity (row) that contains the counter.
+   * @param family A column family.
+   * @param qualifier A column qualifier.
+   * @param amount The amount to increment the counter (may be negative).
+   * @return The new counter value, post increment.
+   * @throws IOException If there is an IO error.
+   */
   @Override
-  public KijiCounter increment(KijiIncrement increment)
+  public KijiCounter increment(EntityId entityId, String family, String qualifier, long amount)
       throws IOException {
+    final KijiIncrement increment = new KijiIncrement(entityId, family, qualifier, amount);
     try {
       mContext.write(NullWritable.get(), new KijiOutput(increment));
     } catch (InterruptedException ex) {
-      // It's unclear whether or not InterruptedExceptions get thrown at all ever by hadoop.
       throw new IOException(ex);
     }
 
@@ -93,12 +103,77 @@ public class ContextKijiTableWriter extends BaseKijiTableWriter {
 
   /** {@inheritDoc} */
   @Override
-  public void delete(KijiDelete delete)
+  public void setCounter(EntityId entityId, String family, String qualifier, long value)
       throws IOException {
+    try {
+      put(entityId, family, qualifier, value);
+    } catch (InterruptedException ex) {
+      throw new IOException(ex);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteRow(EntityId entityId) throws IOException {
+    final KijiDelete delete = new KijiDelete(entityId);
+
     try {
       mContext.write(NullWritable.get(), new KijiOutput(delete));
     } catch (InterruptedException ex) {
-      // It's unclear whether or not InterruptedExceptions get thrown at all ever by hadoop.
+      throw new IOException(ex);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {
+    final KijiDelete delete = new KijiDelete(entityId, upToTimestamp);
+
+    try {
+      mContext.write(NullWritable.get(), new KijiOutput(delete));
+    } catch (InterruptedException ex) {
+      throw new IOException(ex);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteFamily(EntityId entityId, String family, long upToTimestamp)
+      throws IOException {
+    final KijiDelete delete = new KijiDelete(entityId, family, upToTimestamp,
+        KijiDeleteScope.MULTIPLE_VERSIONS);
+
+    try {
+      mContext.write(NullWritable.get(), new KijiOutput(delete));
+    } catch (InterruptedException ex) {
+      throw new IOException(ex);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteColumn(EntityId entityId, String family, String qualifier, long upToTimestamp)
+      throws IOException {
+    final KijiDelete delete = new KijiDelete(entityId, family, qualifier, upToTimestamp,
+        KijiDeleteScope.MULTIPLE_VERSIONS);
+
+    try {
+      mContext.write(NullWritable.get(), new KijiOutput(delete));
+    } catch (InterruptedException ex) {
+      throw new IOException(ex);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteCell(EntityId entityId, String family, String qualifier, long timestamp)
+      throws IOException {
+    final KijiDelete delete = new KijiDelete(entityId, family, qualifier, timestamp,
+        KijiDeleteScope.SINGLE_VERSION);
+
+    try {
+      mContext.write(NullWritable.get(), new KijiOutput(delete));
+    } catch (InterruptedException ex) {
       throw new IOException(ex);
     }
   }

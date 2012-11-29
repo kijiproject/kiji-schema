@@ -131,7 +131,7 @@ public class TestHBaseKijiTableWriter extends KijiClientTest {
   }
 
   @Test(expected=IOException.class)
-  public void testIncrementAColumnThatIsNotACounter() throws Exception {
+  public void testIncrementAColumnThatIsNotACounter() throws IOException {
     // This should throw an exception because we are attempting to increment a column that
     // isn't a counter.
     mWriter.increment(mKijiTable.getEntityId("foo"), "info", "name", 5L);
