@@ -185,6 +185,28 @@
     </dependency>
   </dependencies>
 
+  <profiles>
+    <profile>
+      <activation>
+        <property>
+          <name>kiji.test.cluster.uri</name>
+        </property>
+      </activation>
+      <id>skip-hbase-maven-plugin</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.wibidata.maven.plugins</groupId>
+            <artifactId>hbase-maven-plugin</artifactId>
+            <configuration>
+              <skip>true</skip>
+            </configuration>
+          </plugin>
+         </plugins>
+      </build>
+    </profile>
+  </profiles>
+
   <repositories>
     <repository>
       <id>kiji-repos</id>

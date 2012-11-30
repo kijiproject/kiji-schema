@@ -62,7 +62,7 @@ import org.kiji.schema.tools.BaseTool;
 public abstract class AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractKijiIntegrationTest.class);
 
-  private static final String BASE_TEST_URI_PROPERTY = "baseTestURI";
+  private static final String BASE_TEST_URI_PROPERTY = "kiji.test.cluster.uri";
 
   /* Semaphore for tracking how many tests are currently running. */
   private static final Semaphore RUNNING_TEST_SEMAPHORE = new Semaphore(0);
@@ -70,14 +70,16 @@ public abstract class AbstractKijiIntegrationTest {
   /** An integration helper for installing and removing instances. */
   private IntegrationHelper mHelper;
 
+  /** The URI to be used for running tests on the hbase-maven-plugin. */
   private static final String HBASE_MAVEN_PLUGIN_URI = "kiji://.env/";
 
+  /** Base KijiURI for creating Kiji instances to run integration tests in. */
   private static KijiURI mBaseTestURI;
 
   /** The randomly generated URI for the instance. */
   private KijiURI mKijiURI;
 
-  /** The Kiji configuration for this tests' private instance. */
+  /** The Kiji configuration for this test's private instance. */
   private KijiConfiguration mKijiConf;
 
   // Disable checkstyle since mTempDir must be a public to work as a JUnit @Rule.
