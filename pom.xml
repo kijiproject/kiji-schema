@@ -75,6 +75,16 @@
       </plugin>
 
       <plugin>
+          <groupId>com.wibidata.maven.plugins</groupId>
+          <artifactId>hbase-maven-plugin</artifactId>
+      </plugin>
+
+      <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-failsafe-plugin</artifactId>
+      </plugin>
+
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
         <configuration>
@@ -94,9 +104,6 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-assembly-plugin</artifactId>
       </plugin>
-
-      <!-- TODO: Enable hbase-maven-plugin and maven-failsafe-plugin when integration
-           tests are added to this build. -->
 
       <plugin>
         <!-- must supply src/main/checkstyle/checkstyle.xml and suppressions.xml to use this -->
