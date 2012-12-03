@@ -56,8 +56,8 @@ import org.kiji.schema.tools.BaseTool;
  * <p>To avoid stepping on other Kiji instances, the name of the instance created is
  * a random unique identifier.</p>
  *
- * This class is abstract because it doesn't know where to get a license from.
- * Implement the getLicense() method to specify.
+ * This class is abstract because it has a lot of boilerplate for setting up integration
+ * tests but doesn't actually test anything.
  */
 public abstract class AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractKijiIntegrationTest.class);
@@ -190,6 +190,11 @@ public abstract class AbstractKijiIntegrationTest {
     return mKijiConf;
   }
 
+  /** @return The KijiURI for this test instance. */
+  protected KijiURI getKijiURI() {
+    return mKijiURI;
+  }
+
   /** @return The name of the instance installed for this test. */
   protected String getInstanceName() {
     return mKijiURI.getInstance();
@@ -255,8 +260,9 @@ public abstract class AbstractKijiIntegrationTest {
    */
   protected ToolResult runTool(BaseTool tool, String[] args) throws Exception {
     // Append the --instance=<instance-name> flag on the end of the args.
-    String[] argsWithKiji = Arrays.copyOf(args, args.length + 1);
+    String[] argsWithKiji = Arrays.copyOf(args, args.length + 2);
     argsWithKiji[args.length] = "--kiji=" + mKijiURI;
+    argsWithKiji[args.length + 1] = "--debug=true";
 
     return mHelper.runTool(mHelper.getConf(), tool, argsWithKiji);
   }
