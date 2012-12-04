@@ -187,12 +187,20 @@
 
   <profiles>
     <profile>
+      <!--
+        This profile runs integration tests against a cluster instead of
+        hbase-maven-plugin.  It is activated by specifying the kiji.test.cluster.uri
+        property as the Kiji URI without an instance name (e.g.,
+        -Dkiji.test.cluster.uri=kiji://localhost:2181/) to connect to for testing.
+        Tests will create Kiji instances within this cluster.
+      -->
+
+      <id>skip-hbase-maven-plugin</id>
       <activation>
         <property>
           <name>kiji.test.cluster.uri</name>
         </property>
       </activation>
-      <id>skip-hbase-maven-plugin</id>
       <build>
         <plugins>
           <plugin>
