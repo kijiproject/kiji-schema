@@ -22,8 +22,10 @@ package org.kiji.schema.impl;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
@@ -32,40 +34,71 @@ import org.kiji.schema.avro.*;
 
 /** Tests for FormattedEntityId. */
 public class TestFormattedEntityId {
-  @Test
-  public void testFormattedEntityId() {
-    // Fake list of storage encodings including a string, number, hash of string
-    // component and hash of number component.
-    ArrayList<StorageEncoding> storageEncodings = new ArrayList<StorageEncoding>();
-    storageEncodings.add(StorageEncoding.newBuilder().setComponentName("HS")
-        .setTransform(KeyTransform.HASH).setHashSize(4).setHashType(HashType.MD5)
-        .setTarget("ASTRING").build());
-    storageEncodings.add(StorageEncoding.newBuilder().setComponentName("ASTRING")
-        .setTransform(KeyTransform.IDENTITY).build());
-    storageEncodings.add(StorageEncoding.newBuilder().setComponentName("HN")
-        .setTransform(KeyTransform.HASH).setHashSize(4).setHashType(HashType.MD5)
-        .setTarget("ANUMBER").build());
-    storageEncodings.add(StorageEncoding.newBuilder().setComponentName("ANUMBER")
-        .setTransform(KeyTransform.IDENTITY).build());
-    storageEncodings.add(StorageEncoding.newBuilder().setComponentName("ALONG")
-        .setTransform(KeyTransform.IDENTITY).build());
 
-    // Create a fake Component Key Spec
-    HashMap<String, ComponentType> compMap = new HashMap<String, ComponentType>();
-    compMap.put("ASTRING", ComponentType.STRING);
-    compMap.put("ANUMBER", ComponentType.INTEGER);
-    compMap.put("ALONG", ComponentType.LONG);
+  private RowKeyFormat makeRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("astring").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("anint").setType(ComponentType.INTEGER).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("along").setType(ComponentType.LONG).build());
 
-    // Create a fake row key format to test with
+    // build the row key format
     RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
-        .setEncodedKeySpec(storageEncodings)
-        .setKeySpec(compMap)
+        .setSalt(HashSpec.newBuilder().build())
+        .setComponents(components)
         .build();
 
-    HashMap<String, Object> inputRowKey = new HashMap<String, Object>();
-    inputRowKey.put("ASTRING", new String("one"));
-    inputRowKey.put("ANUMBER", new Integer(1));
-    inputRowKey.put("ALONG", new Long(7L));
+    return format;
+  }
+
+  private RowKeyFormat makeRowKeyFormatNoNulls() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("astring").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("anint").setType(ComponentType.INTEGER).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("along").setType(ComponentType.LONG).build());
+
+    // build the row key format
+    RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setNullableIndex(components.size())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat makeIntRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("anint").setType(ComponentType.INTEGER).build());
+
+    // build the row key format
+    RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder()
+            .setHashSize(2).build())
+        .setNullableIndex(components.size())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  @Test
+  public void testFormattedEntityId() {
+    RowKeyFormat format = makeRowKeyFormat();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(new Integer(1));
+    inputRowKey.add(new Long(7L));
 
     FormattedEntityId formattedEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
     byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
@@ -76,32 +109,98 @@ public class TestFormattedEntityId {
     }
 
     FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
-    Map actuals = testEntityId.getKijiRowKey();
-    assertEquals(compMap.keySet(), actuals.keySet());
-    assertEquals(new String("one"), actuals.get("ASTRING"));
-    assertEquals(new Integer(1), actuals.get("ANUMBER"));
-    assertEquals(new Long(7L), actuals.get("ALONG"));
+    List<Object> actuals = testEntityId.getKijiRowKey();
+    assertEquals(format.getComponents().size(), actuals.size());
+    assertEquals(new String("one"), actuals.get(0));
+    assertEquals(new Integer(1), actuals.get(1));
+    assertEquals(new Long(7L), actuals.get(2));
+  }
 
-    // Now try it with a null component
-    HashMap<String, Object> partNullRowKey = new HashMap<String, Object>();
-    partNullRowKey.put("ASTRING", new String("one"));
-    partNullRowKey.put("ANUMBER", new Integer(1));
-    partNullRowKey.put("ALONG", null);
+  @Test
+  public void testFormattedEntityIdWithNull() {
+    RowKeyFormat format = makeRowKeyFormat();
 
-    formattedEntityId = FormattedEntityId.fromKijiRowKey(partNullRowKey, format);
-    hbaseRowKey = formattedEntityId.getHBaseRowKey();
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(new Integer(1));
+    inputRowKey.add(null);
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
+    byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
     assertNotNull(hbaseRowKey);
     System.out.println("Hbase Key is: ");
     for (byte b: hbaseRowKey) {
       System.out.format("%x ", b);
     }
 
-    testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
-    actuals = testEntityId.getKijiRowKey();
-    assertEquals(compMap.keySet(), actuals.keySet());
-    assertEquals(new String("one"), actuals.get("ASTRING"));
-    assertEquals(new Integer(1), actuals.get("ANUMBER"));
-    assertEquals(null, actuals.get("ALONG"));
+    FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+    List<Object> actuals = testEntityId.getKijiRowKey();
+    assertEquals(format.getComponents().size(), actuals.size());
+    assertEquals(new String("one"), actuals.get(0));
+    assertEquals(new Integer(1), actuals.get(1));
+    assertEquals(null, actuals.get(2));
+
+    // another way of doing nulls
+    List<Object> inputRowKey1 = new ArrayList<Object>();
+    inputRowKey1.add(new String("one"));
+    inputRowKey1.add(new Integer(1));
+    FormattedEntityId formattedEntityId1 = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
+    assertEquals(formattedEntityId, formattedEntityId1);
   }
 
+  @Test(expected = EntityIdException.class)
+  public void testBadNullFormattedEntityId() {
+    RowKeyFormat format = makeRowKeyFormat();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(null);
+    inputRowKey.add(new Long(7L));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
+  }
+
+  @Test(expected = EntityIdException.class)
+  public void testTooManyComponentsFormattedEntityId() {
+    RowKeyFormat format = makeRowKeyFormat();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(new Integer(1));
+    inputRowKey.add(new Long(7L));
+    inputRowKey.add(null);
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
+  }
+
+  @Test(expected = EntityIdException.class)
+  public void testWrongComponentTypeFormattedEntityId() {
+    RowKeyFormat format = makeRowKeyFormat();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(new Long(1L));
+    inputRowKey.add(new Long(7));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
+  }
+
+  @Test(expected = EntityIdException.class)
+  public void testUnexpectedNullFormattedEntityId() {
+    RowKeyFormat format = makeRowKeyFormatNoNulls();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(null);
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
+  }
+
+  @Test(expected = UnsupportedEncodingException.class)
+  public void testBadHbaseKey(){
+    RowKeyFormat format = makeIntRowKeyFormat();
+    byte[] hbkey =new byte[]{(byte)0x01, (byte)0x02, (byte)0x042};
+
+    FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbkey, format);
+  }
 }
