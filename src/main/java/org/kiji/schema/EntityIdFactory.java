@@ -19,6 +19,9 @@
 
 package org.kiji.schema;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Preconditions;
@@ -26,6 +29,7 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.schema.avro.*;
+import org.kiji.schema.impl.EntityIdException;
 import org.kiji.schema.impl.FormattedEntityId;
 import org.kiji.schema.impl.RawEntityId;
 
@@ -68,13 +72,12 @@ public abstract class EntityIdFactory {
 
     /** {@inheritDoc} */
     @Override
-    public EntityId fromKijiRowKey(Object kijiRowKey) {
-      if (kijiRowKey.getClass() == String.class) {
-        return RawEntityId.fromKijiRowKey(Bytes.toBytes(String.valueOf(kijiRowKey)));
-      } else if (kijiRowKey instanceof byte[]) {
-        return RawEntityId.fromKijiRowKey((byte[])kijiRowKey);
+    public EntityId fromKijiRowKey(Object ... kijiRowKey) {
+      Preconditions.checkArgument(kijiRowKey.length == 1);
+      if (kijiRowKey[0] instanceof byte[]) {
+        return RawEntityId.fromKijiRowKey((byte[])kijiRowKey[0]);
       } else {
-        throw new RuntimeException("Invalid RAW kiji Row Key");
+        throw new EntityIdException("Invalid RAW kiji Row Key");
       }
     }
 
@@ -94,25 +97,23 @@ public abstract class EntityIdFactory {
     private FormattedEntityIdFactory(RowKeyFormat format) {
       super(format);
       Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.FORMATTED);
-      // Ensure that components of type HASH have valid target components
-      for (StorageEncoding enc:format.getEncodedKeySpec()) {
-        if (enc.getTransform() == KeyTransform.HASH) {
-          if (!format.getKeySpec().containsKey(enc.getTarget())) {
-            throw new RuntimeException(enc.getTarget() + " is not a valid Component name");
-          }
-        }
-      }
     }
 
     /** {@inheritDoc} */
     @Override
     @SuppressWarnings("unchecked")
-    public EntityId fromKijiRowKey(Object componentValues) {
+    public EntityId fromKijiRowKey(Object ... componentValues) {
       // The user specified the row key in terms of a map of component values.
       Preconditions.checkNotNull(componentValues);
-      Preconditions.checkArgument(componentValues instanceof Map);
-      return FormattedEntityId.fromKijiRowKey((Map<String, Object>)componentValues,
-          getFormat());
+      if (componentValues.length == 1) {
+        // user provided kiji row key as a List
+        if (componentValues[0] instanceof List) {
+          Preconditions.checkArgument(((List) componentValues[0]).size() > 0);
+          return FormattedEntityId.fromKijiRowKey((List<Object>)componentValues[0],
+              getFormat());
+        }
+      }
+      return FormattedEntityId.fromKijiRowKey(Arrays.asList(componentValues), getFormat());
     }
 
     /** {@inheritDoc} */
@@ -149,7 +150,7 @@ public abstract class EntityIdFactory {
    *                   specified in the "key_spec" in the layout file).
    * @return a new EntityId with the specified Kiji row key.
    */
-  public abstract EntityId fromKijiRowKey(Object kijiRowKey);
+  public abstract EntityId fromKijiRowKey(Object ... kijiRowKey);
 
   /**
    * Creates an entity ID from an HBase row key.

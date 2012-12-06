@@ -32,26 +32,12 @@ import com.google.common.collect.Lists;
 import org.apache.avro.Schema;
 import org.junit.Assert;
 import org.junit.Test;
+import org.kiji.schema.avro.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiCellFormat;
 import org.kiji.schema.KijiColumnName;
-
-import org.kiji.schema.avro.CellSchema;
-import org.kiji.schema.avro.ColumnDesc;
-import org.kiji.schema.avro.ComponentType;
-import org.kiji.schema.avro.CompressionType;
-import org.kiji.schema.avro.FamilyDesc;
-import org.kiji.schema.avro.HashType;
-import org.kiji.schema.avro.KeyTransform;
-import org.kiji.schema.avro.LocalityGroupDesc;
-import org.kiji.schema.avro.RowKeyEncoding;
-import org.kiji.schema.avro.RowKeyFormat;
-import org.kiji.schema.avro.SchemaStorage;
-import org.kiji.schema.avro.SchemaType;
-import org.kiji.schema.avro.StorageEncoding;
-import org.kiji.schema.avro.TableLayoutDesc;
 
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
@@ -65,22 +51,15 @@ public class TestKijiTableLayout {
   private static final String TABLE_LAYOUT_VERSION = "kiji-1.0";
 
   private RowKeyFormat makeHashPrefixedRowKeyFormat() {
-    // create the Storage Encoding
-    ArrayList<StorageEncoding> storageEncodings = new ArrayList<StorageEncoding>();
-    storageEncodings.add(StorageEncoding.newBuilder().setComponentName("HS")
-        .setTransform(KeyTransform.HASH).setHashSize(4).setHashType(HashType.MD5)
-        .setTarget("ASTRING").build());
-    storageEncodings.add(StorageEncoding.newBuilder().setComponentName("ASTRING")
-        .setTransform(KeyTransform.IDENTITY).build());
-
-    // create the Component Type map
-    HashMap<String, ComponentType> compMap = new HashMap<String, ComponentType>();
-    compMap.put("ASTRING", ComponentType.STRING);
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
 
     // build the row key format
     RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
-        .setEncodedKeySpec(storageEncodings)
-        .setKeySpec(compMap)
+        .setSalt(HashSpec.newBuilder().build())
+        .setComponents(components)
         .build();
 
     return format;

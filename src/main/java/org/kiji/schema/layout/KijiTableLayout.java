@@ -21,11 +21,7 @@ package org.kiji.schema.layout;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -41,24 +37,17 @@ import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificData;
 import org.apache.commons.io.IOUtils;
+import org.kiji.schema.avro.*;
+import org.kiji.schema.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiCellFormat;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
-import org.kiji.schema.avro.CellSchema;
-import org.kiji.schema.avro.ColumnDesc;
-import org.kiji.schema.avro.FamilyDesc;
-import org.kiji.schema.avro.LocalityGroupDesc;
-import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.ColumnId;
-import org.kiji.schema.util.FromJson;
-import org.kiji.schema.util.JavaIdentifiers;
-import org.kiji.schema.util.KijiNameValidator;
-import org.kiji.schema.util.ToJson;
 
 /**
  * Layout of a Kiji table.
@@ -819,6 +808,59 @@ public class KijiTableLayout {
   /** All primary column names in the table (including names for map-type families). */
   private /*final*/ ImmutableSet<KijiColumnName> mColumnNames;
 
+  /**
+   * Ensure a row key format specified in a layout file is sane.
+   * @param format The RowKeyFormat created from the layout file for a table.
+   * @return Boolean indicating whether row key format is valid.
+   */
+  private boolean isValidRowKeyFormat(RowKeyFormat format) {
+    // For RAW encoding, ignore the rest of the fields.
+    if (format.getEncoding() == RowKeyEncoding.RAW) {
+      return true;
+    }
+
+    // At least one primitive component.
+    if (format.getComponents().size() <= 0) {
+      return false;
+    }
+
+    // Nullable index cannot be the first element or anything greater
+    // than the components length (number of components).
+    if (format.getNullableIndex() <= 0
+        || format.getNullableIndex() > format.getComponents().size()) {
+      return false;
+    }
+
+    // Range scan index cannot be the first element or anything greater
+    // than the components length (number of components).
+    if (format.getRangeScanIndex() < 0
+      || format.getRangeScanIndex() > format.getComponents().size()) {
+      return false;
+    }
+
+    Set nameset = new HashSet();
+    for (RowKeyComponent component: format.getComponents()) {
+      // ensure names are valid "[a-zA-Z_][a-zA-Z0-9_]*"
+      if (!isValidName(component.getName())) {
+        return false;
+      }
+      nameset.add(component.getName());
+    }
+
+    // repeated component names
+    if (nameset.size() != format.getComponents().size()) {
+      return false;
+    }
+
+    // hash size invalid
+    if (format.getSalt().getHashSize() <= 0
+        || format.getSalt().getHashSize() > Hasher.HASH_SIZE_BYTES) {
+      return false;
+    }
+
+    return true;
+  }
+
   // CSOFF: MethodLengthCheck
   /**
    * Constructs a KijiTableLayout from an Avro descriptor and an optional reference layout.
@@ -865,6 +907,11 @@ public class KijiTableLayout {
             "Reference layout for table '%s' has an invalid layout ID: '%s'",
             getName(), reference.getDesc().getLayoutId()));
       }
+    }
+
+    // Check validity of row key format.
+    if (!isValidRowKeyFormat(mDesc.getKeysFormat())) {
+      throw new InvalidLayoutException(String.format("Invalid row key format"));
     }
 
     // Build localities:
