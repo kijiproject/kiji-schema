@@ -32,6 +32,10 @@ import java.util.concurrent.Semaphore;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HBaseTestingUtility;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.MiniHBaseCluster;
+import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -49,19 +53,36 @@ import org.kiji.schema.tools.BaseTool;
 /**
  * A base class for all Kiji integration tests.
  *
- * <p>This class sets up a Kiji instance before each test and tears it down afterwards.
- * It assumes there is an HBase cluster running already, and its configuration is on the
- * classpath.</p>
+ * <p>
+ *   This class sets up a Kiji instance before each test and tears it down afterwards.
+ *   It assumes there is an HBase cluster running already, and its configuration is on the
+ *   classpath.
+ * </p>
  *
- * <p>To avoid stepping on other Kiji instances, the name of the instance created is
- * a random unique identifier.</p>
+ * <p>
+ *   To avoid stepping on other Kiji instances, the name of the instance created is
+ *   a random unique identifier.
+ * </p>
  *
  * This class is abstract because it has a lot of boilerplate for setting up integration
  * tests but doesn't actually test anything.
+ *
+ * The STANDALONE variable controls whether the test creates an embedded HBase and M/R mini-cluster
+ * for itself. This allows run a single test in a debugger without external setup.
  */
 public abstract class AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractKijiIntegrationTest.class);
 
+  /** Whether to start an embedded mini HBase and M/R cluster. */
+  private static final boolean STANDALONE =
+      Boolean.parseBoolean(System.getProperty("kiji.test.standalone", "false"));
+
+  /**
+   * Name of the property to specify an external HBase instance.
+   *
+   * From Maven, one may specify an external HBase cluster with:
+   *   mvn clean verify -Dkiji.test.cluster.uri=kiji://localhost:2181
+   */
   private static final String BASE_TEST_URI_PROPERTY = "kiji.test.cluster.uri";
 
   /* Semaphore for tracking how many tests are currently running. */
@@ -73,8 +94,55 @@ public abstract class AbstractKijiIntegrationTest {
   /** The URI to be used for running tests on the hbase-maven-plugin. */
   private static final String HBASE_MAVEN_PLUGIN_URI = "kiji://.env/";
 
-  /** Base KijiURI for creating Kiji instances to run integration tests in. */
-  private static KijiURI mBaseTestURI;
+  private static KijiURI mHBaseURI;
+
+  // -----------------------------------------------------------------------------------------------
+  // Stand-alone integration test setup
+
+  private static HBaseTestingUtility mHBaseUtil;
+
+  /** Configuration created by the standalone setup, if enabled. */
+  private static Configuration mStandaloneConf = null;
+
+  /** Mini HBase cluster instance. */
+  private static MiniHBaseCluster mCluster;
+
+  /** Mini ZooKeeper cluster instance. */
+  private static MiniZooKeeperCluster mZooKeeperCluster;
+
+  private static void startHBaseMiniCluster() throws Exception {
+    LOG.info("Starting MiniCluster");
+
+    /** Mini HBase utility helper. */
+    mHBaseUtil = new HBaseTestingUtility();
+
+    /** HBase configuration. */
+    mStandaloneConf = mHBaseUtil.getConfiguration();
+
+    mZooKeeperCluster = mHBaseUtil.startMiniZKCluster();
+    LOG.info(String.format("Mini ZooKeeper cluster quorum: localhost:%d",
+        mZooKeeperCluster.getClientPort()));
+
+    // Randomize HBase master info port:
+    mStandaloneConf.set("hbase.master.info.port", "0");
+
+    // Disable HBase region server info port:
+    mStandaloneConf.set("hbase.regionserver.info.port", "-1");
+
+    mCluster = mHBaseUtil.startMiniCluster();
+    mCluster.waitForActiveAndReadyMaster();
+    LOG.info("Mini HBase cluster is ready");
+
+    LOG.info("Mini Kibi instance is ready");
+
+    LOG.info("Starting mini map/reduce cluster");
+    mStandaloneConf.set("hadoop.log.dir", "/tmp/test_hadoop_log_dir");
+    mHBaseUtil.startMiniMapReduceCluster();
+
+    LOG.info(String.format("Job tracker on %s", mStandaloneConf.get("mapred.job.tracker")));
+  }
+
+  // -----------------------------------------------------------------------------------------------
 
   /** The randomly generated URI for the instance. */
   private KijiURI mKijiURI;
@@ -91,10 +159,7 @@ public abstract class AbstractKijiIntegrationTest {
 
   // mCreationThread and mDeletionThread are lazily initialized in a @BeforeClass
   // handler. This ensures that only one such @Before method does the work.
-  private static final Object THREAD_MANAGEMENT_LOCK;
-  static {
-    THREAD_MANAGEMENT_LOCK = new Object();
-  }
+  private static final Object THREAD_MANAGEMENT_LOCK = new Object();
 
   /** A thread that creates Kiji instances for use by tests. */
   private static KijiCreationThread mCreationThread;
@@ -107,22 +172,44 @@ public abstract class AbstractKijiIntegrationTest {
    * @return an HBase configuration to work against.
    */
   protected Configuration createConfiguration() {
+    if (null != mStandaloneConf) {
+      return HBaseConfiguration.create(mStandaloneConf);
+    }
     return HBaseConfiguration.create();
   }
 
-  @BeforeClass
-  public static void setupManagementThreads() throws KijiURIException {
-    // Determine the base URI for Kiji instances
-    if (System.getProperty(BASE_TEST_URI_PROPERTY) != null) {
-      mBaseTestURI = KijiURI.parse(System.getProperty(BASE_TEST_URI_PROPERTY));
-    } else {
-      mBaseTestURI = KijiURI.parse(HBASE_MAVEN_PLUGIN_URI);
+  /**
+   * Determine the URI for the HBase instance to use.
+   *
+   * @return the URI for the HBase instance to use.
+   */
+  protected static KijiURI getHBaseURI() throws KijiURIException {
+   if (STANDALONE) {
+     // We are running an embedded HBase and M/R mini-cluster in-process:
+      final Configuration conf = HBaseConfiguration.create(mStandaloneConf);
+      final String quorum = conf.get(HConstants.ZOOKEEPER_QUORUM);
+      final int clientPort =
+          conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT);
+      return KijiURI.parse(String.format("kiji://%s:%d", quorum, clientPort));
     }
+    if (System.getProperty(BASE_TEST_URI_PROPERTY) != null) {
+      return KijiURI.parse(System.getProperty(BASE_TEST_URI_PROPERTY));
+    } else {
+      return KijiURI.parse(HBASE_MAVEN_PLUGIN_URI);
+    }
+  }
+
+  @BeforeClass
+  public static void setupManagementThreads() throws Exception {
+    if (STANDALONE) {
+      startHBaseMiniCluster();
+    }
+    mHBaseURI = getHBaseURI();
 
     synchronized (THREAD_MANAGEMENT_LOCK) {
       // Create background worker threads if they're not already created.
       if (null == mCreationThread) {
-        mCreationThread = new KijiCreationThread(mBaseTestURI);
+        mCreationThread = new KijiCreationThread(mHBaseURI);
         mDeletionThread = new KijiDeletionThread();
         mCreationThread.start();
         mDeletionThread.start();
@@ -286,35 +373,43 @@ public abstract class AbstractKijiIntegrationTest {
   }
 
   /**
+   * Formats an exception stack trace into a string.
+   *
+   * @param exn Exception to format.
+   * @return the exception stack trace, as a string.
+   */
+  protected static String formatException(Exception exn) {
+    final StringWriter writer = new StringWriter();
+    final PrintWriter printWriter = new PrintWriter(writer);
+    exn.printStackTrace(printWriter);
+    printWriter.close();
+    return writer.toString();
+  }
+
+  /**
    * Thread that creates Kiji instances for use by integration tests.
    */
   private static final class KijiCreationThread extends Thread {
     /** Maintain a pool of this many fresh Kiji instances ready to go. */
     private static final int INSTANCE_POOL_SIZE = 4;
 
-    private final KijiURI mBaseTestURI;
+    /** Ensures that this thread is either in running mode or cleanup mode. */
+    private static final Object THREAD_CREATION_ACTIVE_LOCK = new Object();
 
-    private final IntegrationHelper mIntegrationHelper;
     /** Bounded producer/consumer queue that holds the names of new Kiji instances. */
-    private LinkedBlockingQueue<KijiURI> mKijiQueue;
+    private final LinkedBlockingQueue<KijiURI> mKijiQueue =
+        new LinkedBlockingQueue<KijiURI>(INSTANCE_POOL_SIZE);
+
+    private final KijiURI mHBaseURI;
 
     /** Denotes whether this thread should continue to create Kiji instances. */
-    private boolean mActive;
+    private boolean mActive = true;
 
-    /** Ensures that this thread is either in running mode or cleanup mode. */
-    private static final Object THREAD_CREATION_ACTIVE_LOCK;
-    static {
-      THREAD_CREATION_ACTIVE_LOCK = new Object();
-    }
 
-    private KijiCreationThread(KijiURI baseTestURI) {
+    private KijiCreationThread(KijiURI hbaseURI) {
       setName("KijiCreationThread");
       setDaemon(true);
-
-      mBaseTestURI = baseTestURI;
-      mIntegrationHelper = new IntegrationHelper(HBaseConfiguration.create());
-      mKijiQueue = new LinkedBlockingQueue<KijiURI>(INSTANCE_POOL_SIZE);
-      mActive = true;
+      mHBaseURI = hbaseURI;
     }
 
     /**
@@ -357,41 +452,20 @@ public abstract class AbstractKijiIntegrationTest {
     @Override
     public void run() {
       synchronized (THREAD_CREATION_ACTIVE_LOCK) {
-        KijiURI kijiURI = null;
         while (mActive) {
-          if (null == kijiURI) {
-            // Create a new Kiji instance.
-            String instanceName = UUID.randomUUID().toString().replaceAll("-", "_");
-            final IntegrationHelper intHelper =
-                new IntegrationHelper(HBaseConfiguration.create());
-            try {
-              kijiURI = mBaseTestURI.setInstanceName(instanceName);
-              intHelper.installKiji(kijiURI);
-            } catch (Exception exn) {
-              final StringWriter writer = new StringWriter();
-              final PrintWriter printWriter = new PrintWriter(writer);
-              exn.printStackTrace(printWriter);
-              printWriter.close();
-              LOG.error(String.format("Exception while installing Kiji instance [%s]: %s\n%s",
-                  instanceName, exn.toString(), writer.toString()));
-              instanceName = null;
-              continue;
-            }
-          }
-
-          if (null == kijiURI) {
-            LOG.error("Unexpected null Kiji instance in mid-loop creation thread");
-            continue;
-          }
-
+          // Create a new Kiji instance.
+          final String instanceName = UUID.randomUUID().toString().replaceAll("-", "_");
+          final IntegrationHelper intHelper = new IntegrationHelper(HBaseConfiguration.create());
           try {
-            // If the queue is full, block til it's not. Then put this one in,
-            // and start making the next instance.
+            final KijiURI kijiURI = mHBaseURI.setInstanceName(instanceName);
+            intHelper.installKiji(kijiURI);
+
+            // This blocks if the queue is full:
             mKijiQueue.put(kijiURI);
-            kijiURI = null; // Forget this instance after we successfully put() it.
-          } catch (InterruptedException ie) {
-            // Ok, interrupted! Check if we're done or not, and try again.
-            continue;
+
+          } catch (Exception exn) {
+            LOG.error(String.format("Exception while installing Kiji instance [%s]: %s\n%s",
+                instanceName, exn.toString(), formatException(exn)));
           }
         }
       } // THREAD_CREATION_ACTIVE_LOCK
@@ -408,10 +482,7 @@ public abstract class AbstractKijiIntegrationTest {
     private boolean mActive;
 
     /** Ensures that this thread is either in running mode or cleanup mode. */
-    private static final Object THREAD_DELETION_ACTIVE_LOCK;
-    static {
-      THREAD_DELETION_ACTIVE_LOCK = new Object();
-    }
+    private static final Object THREAD_DELETION_ACTIVE_LOCK = new Object();
 
     private KijiDeletionThread() {
       setName("KijiDeletionThread");
