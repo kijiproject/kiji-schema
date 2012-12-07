@@ -42,22 +42,15 @@ public class TestKijiTableLayoutAddColumn {
   private static final String TABLE_LAYOUT_VERSION = "kiji-1.0";
 
   private RowKeyFormat makeHashPrefixedRowKeyFormat() {
-    // create the Storage Encoding
-    ArrayList<StorageEncoding> storageEncodings = new ArrayList<StorageEncoding>();
-    storageEncodings.add(StorageEncoding.newBuilder().setComponentName("HS")
-        .setTransform(KeyTransform.HASH).setHashSize(4).setHashType(HashType.MD5)
-        .setTarget("ASTRING").build());
-    storageEncodings.add(StorageEncoding.newBuilder().setComponentName("ASTRING")
-        .setTransform(KeyTransform.IDENTITY).build());
-
-    // create the Component Type map
-    HashMap<String, ComponentType> compMap = new HashMap<String, ComponentType>();
-    compMap.put("ASTRING", ComponentType.STRING);
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
 
     // build the row key format
     RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
-        .setEncodedKeySpec(storageEncodings)
-        .setKeySpec(compMap)
+        .setSalt(HashSpec.newBuilder().build())
+        .setComponents(components)
         .build();
 
     return format;

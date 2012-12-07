@@ -31,9 +31,7 @@ import static org.junit.Assert.assertNull;
 import static org.kiji.schema.util.GetEquals.eqGet;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.NavigableMap;
+import java.util.*;
 
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
@@ -63,8 +61,8 @@ public class TestKijiColumnPager extends KijiClientTest {
     mColumnNameTranslator = new ColumnNameTranslator(tableLayout);
 
     RowKeyFormat format = tableLayout.getDesc().getKeysFormat();
-    Map<String, Object> inputRowKey = new HashMap<String, Object>();
-    inputRowKey.put("NAME", "Garrett");
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("Garrett"));
 
     mEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
 
