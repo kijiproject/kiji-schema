@@ -20,16 +20,13 @@
   name : "user",
   keys_format : {
     encoding : "FORMATTED",
-    key_spec: {
-      "NAME": "STRING"
+    salt: {
     },
-    encoded_key_spec: [ {
-      component_name: "HN",
-      transform: "HASH",
-      hash_type: "MD5",
-      hash_size: 16,
-      target: "NAME"
-    } ]
+    nullable_index: 1,
+    components: [ {
+      name: "user_id",
+      type: “STRING”
+    }]
   },
   locality_groups : [ {
     name : "default",
