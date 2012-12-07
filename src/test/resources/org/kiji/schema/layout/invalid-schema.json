@@ -26,7 +26,7 @@
     nullable_index: 1,
     components: [ {
       name: "fooz",
-      type: “STRING”
+      type: "STRING"
     }]
   },
   locality_groups : [ {

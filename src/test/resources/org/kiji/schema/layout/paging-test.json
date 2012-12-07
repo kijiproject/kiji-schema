@@ -25,7 +25,7 @@
     nullable_index: 1,
     components: [ {
       name: "user_id",
-      type: “STRING”
+      type: "STRING"
     }]
   },
   locality_groups : [ {
