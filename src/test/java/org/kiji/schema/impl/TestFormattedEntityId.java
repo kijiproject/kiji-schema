@@ -24,9 +24,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
+import org.apache.avro.generic.GenericData;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import org.kiji.schema.avro.*;
@@ -90,6 +91,30 @@ public class TestFormattedEntityId {
     return format;
   }
 
+  private RowKeyFormat makeOrderingTestRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("dummy").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("str1").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("str2").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("anint").setType(ComponentType.INTEGER).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("along").setType(ComponentType.LONG).build());
+
+    // build the row key format
+    RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder()
+            .setHashSize(2).build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
   @Test
   public void testFormattedEntityId() {
     RowKeyFormat format = makeRowKeyFormat();
@@ -106,6 +131,7 @@ public class TestFormattedEntityId {
     for (byte b: hbaseRowKey) {
       System.out.format("%x ", b);
     }
+    System.out.format("\n");
 
     FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
     List<Object> actuals = testEntityId.getKijiRowKey();
@@ -144,6 +170,62 @@ public class TestFormattedEntityId {
     FormattedEntityId formattedEntityId1 = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
 
     assertArrayEquals(formattedEntityId.getHBaseRowKey(), formattedEntityId1.getHBaseRowKey());
+  }
+
+  @Test
+  public void testFormattedEntityIdOrdering() {
+    RowKeyFormat rkf = makeOrderingTestRowKeyFormat();
+
+    List<FormattedEntityId> expected = new ArrayList<FormattedEntityId>();
+
+    // We expect this to be the ordering for the keys below.
+    // x is the dummy key to make all hashes equal.
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object) new String("x"), new String("a"), new String("bc")), rkf));
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object)new String("x"), new String("a0"), new String("aa")), rkf));
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object)new String("x"), new String("a0"), new String("aa"),
+            Integer.valueOf(-1)), rkf));
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object)new String("x"), new String("a0"), new String("aa"),
+            Integer.valueOf(0)), rkf));
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object)new String("x"), new String("a0"), new String("aa"),
+            Integer.valueOf(Integer.MAX_VALUE)), rkf));
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object)new String("x"), new String("a0"), new String("aa0"),
+            Integer.valueOf(-1)), rkf));
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object)new String("x"), new String("a0"), new String("aa0"),
+            Integer.valueOf(0)), rkf));
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object)new String("x"), new String("a0"), new String("aa0"),
+            Integer.valueOf(0), Long.valueOf(Long.MIN_VALUE)), rkf));
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object)new String("x"), new String("a0"), new String("aa0"),
+            Integer.valueOf(0), Long.valueOf(0)), rkf));
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object)new String("x"), new String("a0"), new String("aa0"),
+            Integer.valueOf(0), Long.valueOf(Long.MAX_VALUE)), rkf));
+    expected.add(FormattedEntityId.fromKijiRowKey(
+        Arrays.asList((Object)new String("x"), new String("a0"), new String("aa0"),
+            Integer.valueOf(Integer.MAX_VALUE)), rkf));
+
+    SortedMap<byte[], FormattedEntityId> hashedOrder = new TreeMap(new Bytes.ByteArrayComparator());
+    for (FormattedEntityId fid: expected) {
+      hashedOrder.put(fid.getHBaseRowKey(), fid);
+    }
+
+    int i = 0;
+    for (byte[] key: hashedOrder.keySet()) {
+      assertEquals(expected.get(i), hashedOrder.get(key));
+      for (byte b: key) {
+        System.out.format("%x ", b);
+      }
+      System.out.format("\n");
+      i += 1;
+    }
   }
 
   @Test(expected = EntityIdException.class)
