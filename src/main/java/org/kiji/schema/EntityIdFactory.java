@@ -73,6 +73,7 @@ public abstract class EntityIdFactory {
     /** {@inheritDoc} */
     @Override
     public EntityId fromKijiRowKey(Object ... kijiRowKey) {
+      Preconditions.checkNotNull(kijiRowKey);
       Preconditions.checkArgument(kijiRowKey.length == 1);
       if (kijiRowKey[0] instanceof byte[]) {
         return RawEntityId.fromKijiRowKey((byte[])kijiRowKey[0]);
@@ -105,6 +106,7 @@ public abstract class EntityIdFactory {
     public EntityId fromKijiRowKey(Object ... componentValues) {
       // The user specified the row key in terms of a map of component values.
       Preconditions.checkNotNull(componentValues);
+      Preconditions.checkNotNull(componentValues[0]);
       if (componentValues.length == 1) {
         // user provided kiji row key as a List
         if (componentValues[0] instanceof List) {

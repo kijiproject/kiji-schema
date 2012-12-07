@@ -24,6 +24,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.*;
 
+import com.google.common.base.Preconditions;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.avro.*;
 import org.kiji.schema.util.Hasher;
@@ -63,6 +64,7 @@ public class FormattedEntityId extends EntityId {
   public static FormattedEntityId fromKijiRowKey(List<Object> kijiRowKey,
       RowKeyFormat format) {
 
+    Preconditions.checkNotNull(kijiRowKey);
     // Validity check for kiji  Row Key.
     if (kijiRowKey.size() > format.getComponents().size()) {
       throw new EntityIdException("Too many components in kiji Row Key");

@@ -32,6 +32,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
@@ -78,8 +79,8 @@ public class TestKijiRowScanner extends KijiClientTest {
     final KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     final Scan expectedScan = dataRequestAdapter.toScan(tableLayout);
 
-    HashMap<String, Object> kijiFooKey = new HashMap<String, Object>();
-    kijiFooKey.put("NAME", "foo");
+    List<Object> kijiFooKey = new ArrayList<Object>();
+    kijiFooKey.add("foo");
     expectedScan.setStartRow(table.getEntityId(kijiFooKey).getHBaseRowKey());
 
     final ResultScanner cannedResultScanner = createMock(ResultScanner.class);

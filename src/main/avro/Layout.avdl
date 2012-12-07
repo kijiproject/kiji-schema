@@ -242,7 +242,7 @@ protocol KijiTableLayoutRecords {
     /**
      * Specification for hashing. Hashing is left prefixed.
      */
-     HashSpec salt;
+     union {null, HashSpec} salt = null;
 
     /**
      * The first component index from which point we support range scans. This means

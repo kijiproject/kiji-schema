@@ -72,8 +72,8 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     });
 
     // Construct the expected get request.
-    HashMap<String, Object> kijiRowKey = new HashMap<String, Object>();
-    kijiRowKey.put("NAME", "foo");
+    List<Object> kijiRowKey = new ArrayList<Object>();
+    kijiRowKey.add("row0");
     Get expectedGet = new Get(table.getEntityId(kijiRowKey).getHBaseRowKey());
     final ColumnNameTranslator columnNameTranslator =
         new ColumnNameTranslator(getKiji().getMetaTable().getTableLayout("table"));
@@ -126,8 +126,8 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     });
 
     // Set the expected calls onto the mock htable.
-    HashMap<String, Object> kijiRowKey = new HashMap<String, Object>();
-    kijiRowKey.put("NAME", "foo");
+    List<Object> kijiRowKey = new ArrayList<Object>();
+    kijiRowKey.add("row0");
     Get expectedGet = new Get(table.getEntityId(kijiRowKey).getHBaseRowKey());
     ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(
         getKiji().getMetaTable().getTableLayout("user"));
@@ -181,10 +181,10 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(
         getKiji().getMetaTable().getTableLayout("table"));
 
-    HashMap<String, Object> kijiFooKey = new HashMap<String, Object>();
-    kijiFooKey.put("NAME", "FOO");
-    HashMap<String, Object> kijiBarKey = new HashMap<String, Object>();
-    kijiBarKey.put("NAME", "BAR");
+    List<Object> kijiFooKey = new ArrayList<Object>();
+    kijiFooKey.add("FOO");
+    List<Object> kijiBarKey = new ArrayList<Object>();
+    kijiBarKey.add("BAR");
     List<Get> expectedGets = new ArrayList<Get>(2);
     expectedGets.add(makeHBaseGet(kijiFooKey, "family:column", table, columnNameTranslator));
     expectedGets.add(makeHBaseGet(kijiBarKey, "family:column", table, columnNameTranslator));

@@ -29,7 +29,9 @@ import static org.kiji.schema.util.IncrementEquals.eqIncrement;
 import static org.kiji.schema.util.PutEquals.eqPut;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
@@ -86,8 +88,8 @@ public class TestHBaseKijiTableWriter extends KijiClientTest {
   @Test
   public void testPutWithTimestamp() throws Exception {
     // Set the expectations that the writer will execute on the HTable.
-    HashMap<String, Object> kijiFooKey = new HashMap<String, Object>();
-    kijiFooKey.put("NAME", "foo");
+    List<Object> kijiFooKey = new ArrayList<Object>();
+    kijiFooKey.add("foo");
     Put expectedPut = new Put(mKijiTable.getEntityId(kijiFooKey).getHBaseRowKey());
     KijiCellEncoder cellEncoder = new KijiCellEncoder(getKiji().getSchemaTable());
     final KijiColumnName column = new KijiColumnName("info", "name");
@@ -109,8 +111,8 @@ public class TestHBaseKijiTableWriter extends KijiClientTest {
   @Test
   public void testIncrement() throws Exception {
     // Set the expectations that the writer will execute on the HTable.
-    HashMap<String, Object> kijiFooKey = new HashMap<String, Object>();
-    kijiFooKey.put("NAME", "foo");
+    List<Object> kijiFooKey = new ArrayList<Object>();
+    kijiFooKey.add("foo");
     final HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(
         new KijiColumnName("info", "visits"));
     final Increment expectedIncrement =
@@ -139,16 +141,16 @@ public class TestHBaseKijiTableWriter extends KijiClientTest {
   public void testIncrementAColumnThatIsNotACounter() throws IOException {
     // This should throw an exception because we are attempting to increment a column that
     // isn't a counter.
-    HashMap<String, Object> kijiFooKey = new HashMap<String, Object>();
-    kijiFooKey.put("NAME", "foo");
+    List<Object> kijiFooKey = new ArrayList<Object>();
+    kijiFooKey.add("foo");
     mWriter.increment(mKijiTable.getEntityId(kijiFooKey), "info", "name", 5L);
   }
 
   @Test
   public void testSetCounter() throws Exception {
     // Set the expectations that the writer will execute on the HTable.
-    HashMap<String, Object> kijiFooKey = new HashMap<String, Object>();
-    kijiFooKey.put("NAME", "foo");
+    List<Object> kijiFooKey = new ArrayList<Object>();
+    kijiFooKey.add("foo");
     final HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(
         new KijiColumnName("info", "visits"));
     final Put expectedPut = new Put(mKijiTable.getEntityId(kijiFooKey).getHBaseRowKey());

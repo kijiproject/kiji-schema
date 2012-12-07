@@ -26,7 +26,9 @@ import static org.junit.Assert.assertEquals;
 import static org.kiji.schema.util.PutEquals.eqPut;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
@@ -90,8 +92,8 @@ public class TestPutLocalApiWriter
   @Test
   public void testWrite() throws Exception {
     // Record expected behavior
-    HashMap<String, Object> kijiFooKey = new HashMap<String, Object>();
-    kijiFooKey.put("NAME", "foo");
+    List<Object> kijiFooKey = new ArrayList<Object>();
+    kijiFooKey.add("foo");
     Put expectedPut = new Put(mEntityIdFactory.fromKijiRowKey(kijiFooKey).getHBaseRowKey());
     KijiCellEncoder cellEncoder = new KijiCellEncoder(getKiji().getSchemaTable());
     HBaseColumnName hBaseColumnName = mColumnNameTranslator.toHBaseColumnName(
@@ -125,10 +127,10 @@ public class TestPutLocalApiWriter
   @Test
   public void testBuffering() throws Exception {
     // Record expectation
-    HashMap<String, Object> kijiFooKey = new HashMap<String, Object>();
-    kijiFooKey.put("NAME", "foo2");
-    HashMap<String, Object> kijiBarKey = new HashMap<String, Object>();
-    kijiBarKey.put("NAME", "bar2");
+    List<Object> kijiFooKey = new ArrayList<Object>();
+    kijiFooKey.add("foo");
+    List<Object> kijiBarKey = new ArrayList<Object>();
+    kijiBarKey.add("bar");
     Put expectedPut1 = new Put(mEntityIdFactory.fromKijiRowKey(kijiFooKey).getHBaseRowKey());
     Put expectedPut2 = new Put(mEntityIdFactory.fromKijiRowKey(kijiBarKey).getHBaseRowKey());
     Put expectedPut3 = new Put(mEntityIdFactory.fromKijiRowKey(kijiBarKey).getHBaseRowKey());
