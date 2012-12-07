@@ -142,6 +142,9 @@ public class FormattedEntityId extends EntityId {
       }
       switch (getType(kijiRowKey.get(pos))) {
         case STRING:
+          if (((String)kijiRowKey.get(pos)).contains("\u0000")) {
+            throw new EntityIdException("String component cannot contain \u0000");
+          }
           try {
             hbaseKey.add(((String)kijiRowKey.get(pos)).getBytes("UTF-8"));
           } catch (UnsupportedEncodingException e) {

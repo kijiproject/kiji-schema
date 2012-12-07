@@ -294,4 +294,13 @@ public class TestFormattedEntityId {
     FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbkey, format);
   }
 
+  @Test(expected = EntityIdException.class)
+  public void testUnicodeZeroStringFormattedEntityId() {
+    RowKeyFormat format = makeRowKeyFormat();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one\u0000two"));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
+  }
 }
