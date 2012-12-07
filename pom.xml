@@ -67,20 +67,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <executions>
-            <execution>
-              <id>default-testCompile</id>
-              <phase>test-compile</phase>
-              <configuration>
-                <testExcludes>
-                  <exclude>**/TestKiji*.java</exclude>
-                </testExcludes>
-              </configuration>
-              <goals>
-                <goal>testCompile</goal>
-              </goals>
-            </execution>
-        </executions>
       </plugin>
 
       <plugin>
