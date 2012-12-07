@@ -26,7 +26,7 @@ import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 
 /** Implements the raw row key format. */
-public class RawEntityId extends EntityId {
+public final class RawEntityId extends EntityId {
   private static final RowKeyFormat RAW_KEY_FORMAT = RowKeyFormat.newBuilder()
       .setEncoding(RowKeyEncoding.RAW)
       .build();
@@ -62,7 +62,7 @@ public class RawEntityId extends EntityId {
    *
    * @param rowKey Kiji/HBase row key (both row keys are identical).
    */
-  public RawEntityId(byte[] rowKey) {
+  private RawEntityId(byte[] rowKey) {
     mBytes = Preconditions.checkNotNull(rowKey);
   }
 

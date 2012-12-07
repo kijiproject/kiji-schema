@@ -39,7 +39,7 @@ import org.kiji.schema.util.Hasher;
  * of either the primitive types of string, integer or long with some flexibility to specify
  * hash prefixing.
  */
-public class FormattedEntityId extends EntityId {
+public final class FormattedEntityId extends EntityId {
   private final RowKeyFormat mFormat;
 
   /** HBase row key bytes. */
@@ -132,9 +132,16 @@ public class FormattedEntityId extends EntityId {
   /**
    * Create an hbase row key, which is a byte array from the given formatted kijiRowKey.
    * The following encoding will be used to ensure correct ordering:
-   * Strings are UTF-8 encoded and terminated by a null byte.
+   * Strings are UTF-8 encoded and terminated by a null byte. Strings cannot contain "\u0000".
    * Integers are exactly 4 bytes long.
-   * Hashed components are exactly hash_size bytes long.
+   * Longs are exactly 8 bytes long.
+   * Hashed components are exactly hash_size bytes long and are the first component of
+   * the hbase key.
+   * Except for the first, all components of a kijiRowKey can be null. However, to maintain
+   * ordering, all components to the right of a null component must also be null. Nullable index
+   * in the row key format specifies which component (and hence following components) are nullable.
+   * By default, the hash only uses the first component, but this can be changed using the Range
+   * Scan index.
    * @param format The formatted row key format for this table.
    * @param kijiRowKey An ordered list of Objects of the key components.
    * @return A byte array representing the encoded Hbase row key.
@@ -296,7 +303,7 @@ public class FormattedEntityId extends EntityId {
    * @param hbaseRowKey Byte array containing the hbase row key.
    * @param kijiRowKey An ordered list of row key components.
    */
-  public FormattedEntityId(RowKeyFormat format, byte[] hbaseRowKey, List<Object> kijiRowKey) {
+  private FormattedEntityId(RowKeyFormat format, byte[] hbaseRowKey, List<Object> kijiRowKey) {
     mFormat = format;
     mHBaseRowKey = hbaseRowKey;
     mComponentValues = kijiRowKey;

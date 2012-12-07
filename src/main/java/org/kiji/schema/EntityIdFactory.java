@@ -90,6 +90,7 @@ public abstract class EntityIdFactory {
   private static final class FormattedEntityIdFactory extends EntityIdFactory {
     /**
      * Creates a FormattedEntityIdFactory.
+     *
      * @param format The row key format as specified in the layout file.
      */
     private FormattedEntityIdFactory(RowKeyFormat format) {

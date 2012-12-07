@@ -218,7 +218,8 @@ public class TestFormattedEntityId {
         Arrays.asList((Object)new String("x"), new String("a0"), new String("aa0"),
             Integer.valueOf(Integer.MAX_VALUE)), rkf));
 
-    SortedMap<byte[], FormattedEntityId> hashedOrder = new TreeMap(new Bytes.ByteArrayComparator());
+    SortedMap<byte[], FormattedEntityId> hashedOrder =
+        new TreeMap<byte[], FormattedEntityId>(new Bytes.ByteArrayComparator());
     for (FormattedEntityId fid: expected) {
       hashedOrder.put(fid.getHBaseRowKey(), fid);
     }
