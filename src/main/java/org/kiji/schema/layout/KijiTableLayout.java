@@ -833,7 +833,7 @@ public class KijiTableLayout {
 
     // Range scan index cannot be the first element or anything greater
     // than the components length (number of components).
-    if (format.getRangeScanIndex() < 0
+    if (format.getRangeScanIndex() <= 0
       || format.getRangeScanIndex() > format.getComponents().size()) {
       return false;
     }

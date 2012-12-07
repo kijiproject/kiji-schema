@@ -64,6 +64,103 @@ public class TestKijiTableLayout {
 
     return format;
   }
+
+  private RowKeyFormat noComponentsRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    // build the row key format
+    RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat badNullableIndexRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setNullableIndex(-1)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat badRangeScanIndexRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setRangeScanIndex(0)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat badCompNameRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("0").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setRangeScanIndex(0)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat badHashSizeRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    HashSpec hs = HashSpec.newBuilder()
+        .setHashSize(20).build();
+
+    // build the row key format
+    RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(hs)
+        .setRangeScanIndex(0)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat repeatedNamesRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
   /** Tests for a empty layout with no reference layout. */
   @Test
   public void testEmptyLayoutWithNoReference() throws Exception {
@@ -704,5 +801,65 @@ public class TestKijiTableLayout {
     } catch (InvalidLayoutException ile) {
       assertTrue(ile.getMessage().contains("Invalid max versions for locality group"));
     }
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void testNoComponentsRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(noComponentsRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void testBadNullableIndexRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(badNullableIndexRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void badRangeScanIndexRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(badRangeScanIndexRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void badCompNameRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(badCompNameRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void badHashSizeRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(badHashSizeRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+  }
+
+  @Test (expected = InvalidLayoutException.class)
+  public void repeatedNamesRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(repeatedNamesRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
   }
 }
