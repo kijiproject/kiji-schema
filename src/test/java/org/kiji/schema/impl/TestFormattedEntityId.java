@@ -19,14 +19,13 @@
 
 package org.kiji.schema.impl;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.junit.Test;
 
@@ -114,6 +113,8 @@ public class TestFormattedEntityId {
     assertEquals(new String("one"), actuals.get(0));
     assertEquals(new Integer(1), actuals.get(1));
     assertEquals(new Long(7L), actuals.get(2));
+
+    assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
   }
 
   @Test
@@ -128,10 +129,6 @@ public class TestFormattedEntityId {
     FormattedEntityId formattedEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
     byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
     assertNotNull(hbaseRowKey);
-    System.out.println("Hbase Key is: ");
-    for (byte b: hbaseRowKey) {
-      System.out.format("%x ", b);
-    }
 
     FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
     List<Object> actuals = testEntityId.getKijiRowKey();
@@ -145,7 +142,8 @@ public class TestFormattedEntityId {
     inputRowKey1.add(new String("one"));
     inputRowKey1.add(new Integer(1));
     FormattedEntityId formattedEntityId1 = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
-    assertEquals(formattedEntityId, formattedEntityId1);
+
+    assertArrayEquals(formattedEntityId.getHBaseRowKey(), formattedEntityId1.getHBaseRowKey());
   }
 
   @Test(expected = EntityIdException.class)
@@ -196,11 +194,22 @@ public class TestFormattedEntityId {
     FormattedEntityId formattedEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
   }
 
-  @Test(expected = UnsupportedEncodingException.class)
+  @Test(expected = EntityIdException.class)
+  public void testTooFewComponentsFormattedEntityId() {
+    RowKeyFormat format = makeRowKeyFormatNoNulls();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.fromKijiRowKey(inputRowKey, format);
+  }
+
+  @Test(expected = EntityIdException.class)
   public void testBadHbaseKey(){
     RowKeyFormat format = makeIntRowKeyFormat();
     byte[] hbkey =new byte[]{(byte)0x01, (byte)0x02, (byte)0x042};
 
     FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbkey, format);
   }
+
 }

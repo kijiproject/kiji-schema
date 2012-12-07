@@ -67,6 +67,10 @@ public class FormattedEntityId extends EntityId {
     if (kijiRowKey.size() > format.getComponents().size()) {
       throw new EntityIdException("Too many components in kiji Row Key");
     }
+    if (kijiRowKey.size() < format.getNullableIndex()) {
+      throw new EntityIdException("Too few components in kiji Row key");
+    }
+
     boolean flag_null = false;
     for (int i = 0; i < kijiRowKey.size(); i++) {
       if (flag_null) {
@@ -76,7 +80,7 @@ public class FormattedEntityId extends EntityId {
           throw new EntityIdException("Non null component follows null component");
         }
       }
-      if (null == kijiRowKey) {
+      if (null == kijiRowKey.get(i)) {
         if (format.getNullableIndex() <= i) {
           flag_null = true;
           continue;
@@ -93,12 +97,9 @@ public class FormattedEntityId extends EntityId {
     }
 
     byte[] hbaserowkey = null;
-    try {
-      hbaserowkey = makeHbaseRowKey(format, kijiRowKey);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return null;
-    }
+
+    hbaserowkey = makeHbaseRowKey(format, kijiRowKey);
+
     return new FormattedEntityId(format, hbaserowkey, kijiRowKey);
   }
 
@@ -112,13 +113,8 @@ public class FormattedEntityId extends EntityId {
   public static FormattedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat format) {
     List<Object> kijiRowKey = null;
     byte[] originalKey = hbaseRowKey.clone();
-    try {
-      kijiRowKey = makeKijiRowKey(format, hbaseRowKey);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return null;
-    }
-    return new FormattedEntityId(format, originalKey, kijiRowKey);
+    kijiRowKey = makeKijiRowKey(format, originalKey);
+    return new FormattedEntityId(format, hbaseRowKey, kijiRowKey);
   }
 
   /**
@@ -130,19 +126,27 @@ public class FormattedEntityId extends EntityId {
    * @param format The formatted row key format for this table.
    * @param kijiRowKey An ordered list of Objects representing the key components.
    * @return A byte array representing the encoded Hbase row key.
-   * @throws UnsupportedEncodingException If encoding any string component fails.
    */
-  private static byte[] makeHbaseRowKey(RowKeyFormat format, List<Object> kijiRowKey)
-      throws UnsupportedEncodingException {
+  private static byte[] makeHbaseRowKey(RowKeyFormat format, List<Object> kijiRowKey) {
 
     ArrayList<byte[]> hbaseKey = new ArrayList<byte[]>();
     final byte zeroDelim = 0;
 
     int pos;
     for (pos = 0; pos < kijiRowKey.size(); pos++) {
+      // we have already done the validation check for null cascades.
+      if (null == kijiRowKey.get(pos)) {
+        continue;
+      }
       switch (getType(kijiRowKey.get(pos))) {
         case STRING:
-          hbaseKey.add(((String)kijiRowKey.get(pos)).getBytes("UTF-8"));
+          try {
+            hbaseKey.add(((String)kijiRowKey.get(pos)).getBytes("UTF-8"));
+          } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            throw new EntityIdException(String.format(
+                "UnsupportedEncoding for component %d", pos));
+          }
           break;
         case INTEGER:
           int temp = (Integer)kijiRowKey.get(pos);
@@ -207,8 +211,7 @@ public class FormattedEntityId extends EntityId {
    * @return An ordered list of component values in the key.
    * @throws UnsupportedEncodingException If the string component cannot be converted to UTF-8.
    */
-  private static List<Object> makeKijiRowKey(RowKeyFormat format, byte[] hbaseRowKey)
-      throws UnsupportedEncodingException {
+  private static List<Object> makeKijiRowKey(RowKeyFormat format, byte[] hbaseRowKey) {
     if (hbaseRowKey.length == 0) {
       throw new EntityIdException("Invalid hbase row key");
     }
@@ -226,7 +229,14 @@ public class FormattedEntityId extends EntityId {
           while (endpos < hbaseRowKey.length && (hbaseRowKey[endpos] != (byte)0)) {
             endpos += 1;
           }
-          String str = new String(hbaseRowKey, pos, endpos - pos, "UTF-8");
+          String str = null;
+          try {
+            str = new String(hbaseRowKey, pos, endpos - pos, "UTF-8");
+          } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            throw new EntityIdException(String.format(
+                "UnsupportedEncoding for component %d", kijiRowElem));
+          }
           kijiRowKey.add(str);
           pos = endpos + 1;
           break;
