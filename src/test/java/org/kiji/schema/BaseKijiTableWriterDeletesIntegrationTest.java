@@ -1,6 +1,23 @@
-// (c) Copyright 2011 WibiData, Inc.
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.wibidata.core.client;
+package org.kiji.schema;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -14,27 +31,21 @@ import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiCell;
-import org.kiji.schema.KijiDataRequest;
-import org.kiji.schema.KijiRowData;
-import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableReader;
-import org.kiji.schema.KijiTableWriter;
-import org.kiji.schema.layout.KijiTableLayouts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.wibidata.core.WibiIntegrationTest;
-import com.wibidata.core.testutil.ToolResult;
-import com.wibidata.core.tools.WibiCreateTable;
+import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
+import org.kiji.schema.testutil.ToolResult;
+import org.kiji.schema.tools.CreateTableTool;
 
 /**
  * Base class for integration tests that exercise KijiTableWriter delete functionality.
  */
-public abstract class BaseWibiTableWriterDeletesIntegrationTest extends WibiIntegrationTest {
+public abstract class BaseKijiTableWriterDeletesIntegrationTest
+    extends AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(
-      BaseWibiTableWriterDeletesIntegrationTest.class);
+      BaseKijiTableWriterDeletesIntegrationTest.class);
 
   public static final String TABLE_NAME = "test";
 
@@ -67,7 +78,7 @@ public abstract class BaseWibiTableWriterDeletesIntegrationTest extends WibiInte
     LOG.info("Creating test table.");
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.DELETES_TEST));
-    final ToolResult createResult = runTool(new WibiCreateTable(), new String[] {
+    final ToolResult createResult = runTool(new CreateTableTool(), new String[] {
       "--table=" + TABLE_NAME,
       "--layout=" + layoutFile,
     });

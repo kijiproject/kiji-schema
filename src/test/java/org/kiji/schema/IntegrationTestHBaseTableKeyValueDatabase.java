@@ -1,4 +1,21 @@
-// (c) Copyright 2012 WibiData, Inc.
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package org.kiji.schema;
 
@@ -23,15 +40,15 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.kiji.schema.impl.HBaseTableKeyValueDatabase;
 
-import com.wibidata.core.WibiIntegrationTest;
+import org.kiji.schema.impl.HBaseTableKeyValueDatabase;
+import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
 
 /**
  * This class tests that HBaseTableLayoutDatabase is correctly writing and reading from HBase
  * when performing its operations.
  */
-public class IntegrationTestHBaseTableKeyValueDatabase extends WibiIntegrationTest {
+public class IntegrationTestHBaseTableKeyValueDatabase extends AbstractKijiIntegrationTest {
   private static final String TABLE_NAME =  "metaTable";
   private static final Map<String, Map<String, byte[]>> TABLE_KV_MAP = createTableMap();
   private static final String FAMILY_NAME = "meta";
@@ -86,7 +103,6 @@ public class IntegrationTestHBaseTableKeyValueDatabase extends WibiIntegrationTe
     }
   }
 
-
   @Test
   public void testGet() throws IOException {
     byte[] result = mDb.getValue("table1", "config1");
@@ -112,7 +128,6 @@ public class IntegrationTestHBaseTableKeyValueDatabase extends WibiIntegrationTe
     assertTrue("The key set should still contain config2", mDb.keySet("table1")
         .contains("config2"));
   }
-
 
   @Test(expected=IOException.class)
   public void testRemoveAllValues() throws IOException {

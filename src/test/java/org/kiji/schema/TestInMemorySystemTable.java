@@ -1,4 +1,21 @@
-// (c) Copyright 2012 WibiData, Inc.
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 package org.kiji.schema;
 
@@ -7,13 +24,11 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 
 import org.junit.Test;
-import org.kiji.schema.impl.InMemorySystemTable;
-import org.kiji.schema.util.VersionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.wibidata.core.license.LicenseTestObjects;
-import com.wibidata.core.license.SignedLicense;
+import org.kiji.schema.impl.InMemorySystemTable;
+import org.kiji.schema.util.VersionInfo;
 
 public class TestInMemorySystemTable {
   private static final Logger LOG = LoggerFactory.getLogger(TestInMemorySystemTable.class);
@@ -37,16 +52,4 @@ public class TestInMemorySystemTable {
     systemTable.close();
   }
 
-  // TODO: Kiji-76. Update this test to not be specific to licensing.
-  @Test
-  public void testSignedLicense() throws IOException {
-    KijiSystemTable systemTable = new InMemorySystemTable();
-    SignedLicense license = LicenseTestObjects.getMockLicense();
-    systemTable.putValue(SignedLicense.KEY_LICENSE, license.toBytes());
-    byte[] licenseBytes = systemTable.getValue(SignedLicense.KEY_LICENSE);
-
-    assertEquals(license,
-        SignedLicense.fromBytes(licenseBytes, LicenseTestObjects.getMockPublicKey()));
-    systemTable.close();
-  }
 }

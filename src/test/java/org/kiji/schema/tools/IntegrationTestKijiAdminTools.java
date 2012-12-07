@@ -1,6 +1,23 @@
-// (c) Copyright 2011 WibiData, Inc.
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-package com.wibidata.core.tools;
+package org.kiji.schema.tools;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -12,27 +29,26 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 import org.junit.Test;
-import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.layout.InvalidLayoutException;
-import org.kiji.schema.layout.KijiTableLayouts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.wibidata.core.JobHistoryWibiTable;
-import com.wibidata.core.WibiIntegrationTest;
-import com.wibidata.core.testutil.ToolResult;
+import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.layout.InvalidLayoutException;
+import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
+import org.kiji.schema.testutil.ToolResult;
 
 /**
- * Integration test for the wibi administrative commands, e.g., create a table, scan it, delete it.
+ * Integration test for the kiji administrative commands, e.g., create a table, scan it, delete it.
  */
-public class IntegrationTestWibiAdminTools extends WibiIntegrationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(IntegrationTestWibiAdminTools.class);
+public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
+  private static final Logger LOG = LoggerFactory.getLogger(IntegrationTestKijiAdminTools.class);
 
-  public static final String SPLIT_KEY_FILE = "com/wibidata/core/split-keys.txt";
+  public static final String SPLIT_KEY_FILE = "org/kiji/schema/tools/split-keys.txt";
 
   /**
    * A utility function that returns a sorted list of table names in a string. Used to test the
-   * output of 'wibi ls' in {@link #testTables() testTables}.
+   * output of 'kiji ls' in {@link #testTables() testTables}.
    *
    * @param names A List of table names in arbitrary order. Will be sorted in place.
    * @return A string consisting of the table names sorted case sensitively, each ending in a
@@ -43,48 +59,51 @@ public class IntegrationTestWibiAdminTools extends WibiIntegrationTest {
     return StringUtils.join(names, "\n") + "\n";
   }
 
-  public List<String> namesOfDefaultWibiTables() {
+  public List<String> namesOfDefaultKijiTables() {
     List<String> names = new ArrayList<String>();
-    names.add(JobHistoryWibiTable.getInstallName());
     return names;
+  }
+
+  /** Removes the first line of a string. */
+  public String trimHead(String output) {
+    return output.substring(output.indexOf("\n") + 1);
   }
 
   @Test
   public void testTables() throws Exception {
-    // The names of tables in the wibi instance. Updated as we add more.
-    List<String> tableNames = namesOfDefaultWibiTables(); //
-    // Fresh wibi, so 'wibi ls' should report the default tables.
-    ToolResult lsFreshResult = runTool(new WibiLs(), new String[0]);
+    // The names of tables in the kiji instance. Updated as we add more.
+    List<String> tableNames = namesOfDefaultKijiTables(); //
+    // Fresh Kiji, so 'kiji ls' should report the default tables.
+    ToolResult lsFreshResult = runTool(new LsTool(), new String[0]);
     assertEquals(0, lsFreshResult.getReturnCode());
-    assertEquals(sortAndJoinTableNames(tableNames), lsFreshResult.getStdoutUtf8());
+    assertTrue(trimHead(lsFreshResult.getStdoutUtf8()).isEmpty());
 
     // Add a table.
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
-    ToolResult createFooTableResult = runTool(new WibiCreateTable(), new String[] {
+    ToolResult createFooTableResult = runTool(new CreateTableTool(), new String[] {
       "--table=foo",
       "--layout=" + layoutFile,
     });
     assertEquals(0, createFooTableResult.getReturnCode());
     assertEquals("Parsing table layout: " + layoutFile + "\n"
-        + "Creating wibi table: foo...\n",
+        + "Creating kiji table: "
+        + getKijiURI().toString() + "foo/...\n",
         createFooTableResult.getStdoutUtf8());
 
-
-    // Now when we 'wibi ls' again, we should see table 'foo'.
+    // Now when we 'kiji ls' again, we should see table 'foo'.
     tableNames.add("foo");
-    ToolResult lsFooResult = runTool(new WibiLs(), new String[0]);
+    ToolResult lsFooResult = runTool(new LsTool(), new String[0]);
     assertEquals(0, lsFooResult.getReturnCode());
-    assertEquals(sortAndJoinTableNames(tableNames), lsFooResult.getStdoutUtf8());
-
+    assertEquals(sortAndJoinTableNames(tableNames), trimHead(lsFooResult.getStdoutUtf8()));
 
     // Synthesize some user data.
-    ToolResult synthesizeResult = runTool(new WibiSynthesizeMoreUserData(), new String[] {
+    ToolResult synthesizeResult = runTool(new SynthesizeUserDataTool(), new String[] {
       "--table=foo",
       "--num-users=10",
     });
     assertEquals(0, synthesizeResult.getReturnCode());
-    assertEquals("Generating 10 users on wibi table 'foo'...\n"
+    assertEquals("Generating 10 users on kiji table '" + getKijiURI().toString() + "foo/'...\n"
         + "0 rows synthesized...\n"
         + "10 rows synthesized...\n"
         + "Done.\n",
@@ -92,23 +111,24 @@ public class IntegrationTestWibiAdminTools extends WibiIntegrationTest {
 
 
     // Make sure there are 10 rows.
-    ToolResult ls10RowsResult = runTool(new WibiLs(), new String[] {
+    ToolResult ls10RowsResult = runTool(new LsTool(), new String[] {
       "--table=foo",
     });
     assertEquals(0, ls10RowsResult.getReturnCode());
     LOG.debug("Output from 'wibi ls --table=foo' after synthesized users:\n"
         + ls10RowsResult.getStdoutUtf8());
     // 10 rows, each with:
-    //   3 columns, each with:
+    //   2 columns, each with:
     //     1 line for column name, timestamp.
     //     1 line for column data.
     //   1 blank line.
-    assertEquals(10 * ((3 * 2) + 1),
+    // + 1 row for the header
+    assertEquals(10 * ((2 * 2) + 1) + 1,
         StringUtils.countMatches(ls10RowsResult.getStdoutUtf8(), "\n"));
 
 
     // Look at just the "name" column for 3 rows.
-    ToolResult ls3NameResult = runTool(new WibiLs(), new String[] {
+    ToolResult ls3NameResult = runTool(new LsTool(), new String[] {
       "--table=foo",
       "--columns=info:name",
       "--max-rows=3",
@@ -119,93 +139,66 @@ public class IntegrationTestWibiAdminTools extends WibiIntegrationTest {
     //     1 line for column name, timestamp.
     //     1 line for column data.
     //   1 blank line.
-    assertEquals(3 * ((1 * 2) + 1),
+    // + 1 row for the header
+    assertEquals(3 * ((1 * 2) + 1) + 1,
         StringUtils.countMatches(ls3NameResult.getStdoutUtf8(), "\n"));
 
-    // Look at just the "searches" map family for 3 rows.
-    ToolResult ls4SearchesResult = runTool(new WibiLs(), new String[] {
-      "--table=foo",
-      "--columns=searches",
-      "--max-rows=3",
-    });
-    assertEquals(0, ls4SearchesResult.getReturnCode());
-    // 3 rows, each with:
-    //   1 column, with:
-    //     1 line for column name, timestamp.
-    //     1 line for column data.
-    //   1 blank line.
-    assertEquals(3 * ((1 * 2) + 1),
-        StringUtils.countMatches(ls4SearchesResult.getStdoutUtf8(), "\n"));
-
-    // Look at just the "searches:tabby_cat" column for 3 rows.
-    ToolResult ls5TabbySearchResult = runTool(new WibiLs(), new String[] {
-      "--table=foo",
-      "--columns=searches:tabby_cat",
-      "--max-rows=3",
-    });
-    assertEquals(0, ls5TabbySearchResult.getReturnCode());
-    // 1 rows, with:
-    //   1 column, with:
-    //     1 line for column name, timestamp.
-    //     1 line for column data.
-    //   1 blank line.
-    assertEquals(1 * ((1 * 2) + 1),
-        StringUtils.countMatches(ls5TabbySearchResult.getStdoutUtf8(), "\n"));
-
-
     // Delete the foo table.
-    ToolResult deleteResult = runTool(new WibiDeleteTable(), new String[] {
+    ToolResult deleteResult = runTool(new DeleteTableTool(), new String[] {
       "--table=foo",
       "--confirm",
     });
     assertEquals(0, deleteResult.getReturnCode());
-    assertEquals("Deleting wibi table: foo...\nOK.\n",
+    assertEquals("Deleting kiji table: " + getKijiURI().toString() + "foo/\n"
+        + "Deleted kiji table: " + getKijiURI().toString() + "foo/\n",
         deleteResult.getStdoutUtf8());
 
 
     // Make sure there are only the standard tables left.
     tableNames.remove("foo");
-    ToolResult lsCleanedUp = runTool(new WibiLs(), new String[0]);
+    ToolResult lsCleanedUp = runTool(new LsTool(), new String[0]);
     assertEquals(0, lsCleanedUp.getReturnCode());
-    assertEquals(sortAndJoinTableNames(tableNames), lsCleanedUp.getStdoutUtf8());
+    assertTrue(trimHead(lsCleanedUp.getStdoutUtf8()).isEmpty());
   }
 
   @Test
-  public void testWibiLsStartAndLimitRow() throws Exception {
+  public void testKijiLsStartAndLimitRow() throws Exception {
     createAndPopulateFooTable();
     try {
       // There should be 7 rows of input.
-      ToolResult lsAllResult = runTool(new WibiLs(), new String[] {
+      ToolResult lsAllResult = runTool(new LsTool(), new String[] {
         "--table=foo",
         "--columns=info:name",
       });
       assertEquals(0, lsAllResult.getReturnCode());
-      // Expect 6 rows of 'wibi ls' output, each with:
+      // Expect 6 rows of 'kiji ls' output, each with:
       //   1 column, with:
       //     1 line for the column name, timestamp.
       //     1 line for column data.
       //   1 blank line.
-      assertEquals(6 * ((1 * 2) + 1),
+      // + 1 row for the header
+      assertEquals(6 * ((1 * 2) + 1) + 1,
           StringUtils.countMatches(lsAllResult.getStdoutUtf8(), "\n"));
 
-      // The foo table has row key hashing enabled.  Now let's run another 'wibi ls'
+      // The foo table has row key hashing enabled.  Now let's run another 'kiji ls'
       // command starting from after the second row and before the last row, which
       // should only give us 3 results.  The start-row and limit-row keys here are just
-      // numbers that I picked after looking at the results of the 'wibi ls' execution
+      // numbers that I picked after looking at the results of the 'kiji ls' execution
       // above.
-      ToolResult lsLimitResult = runTool(new WibiLs(), new String[] {
+      ToolResult lsLimitResult = runTool(new LsTool(), new String[] {
         "--table=foo",
         "--columns=info:name",
         "--start-row=hex:50000000000000000000000000000000",  // after the second row.
         "--limit-row=hex:e0000000000000000000000000000000",  // before the last row.
       });
       assertEquals(0, lsLimitResult.getReturnCode());
-      // Expect 2 rows of 'wibi ls' output, each with:
+      // Expect 2 rows of 'kiji ls' output, each with:
       //   1 column, with:
       //     1 line for the column name, timestamp.
       //     1 line for column data.
       //   1 blank line.
-      assertEquals(2 * ((1 * 2) + 1),
+      // + 1 row for the header
+      assertEquals(2 * ((1 * 2) + 1) + 1,
           StringUtils.countMatches(lsLimitResult.getStdoutUtf8(), "\n"));
     } finally {
       deleteFooTable();
@@ -217,41 +210,40 @@ public class IntegrationTestWibiAdminTools extends WibiIntegrationTest {
     // Create a table.
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
-    ToolResult createFooTableResult = runTool(new WibiCreateTable(), new String[] {
+    ToolResult createFooTableResult = runTool(new CreateTableTool(), new String[] {
       "--table=foo",
       "--layout=" + layoutFile,
     });
     assertEquals(0, createFooTableResult.getReturnCode());
     assertEquals("Parsing table layout: " + layoutFile + "\n"
-        + "Creating wibi table: foo...\n",
+        + "Creating kiji table: " + getKijiURI().toString() + "foo/...\n",
         createFooTableResult.getStdoutUtf8());
 
     // Attempt to change hashRowKeys (should not be possible).
     final File changedLayoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getFooChangeHashingTestLayout());
-    boolean exceptionThrown = false;
     try {
-      runTool(new WibiLayout(), new String[] {
+      ToolResult setHashRowKeyResult = runTool(new LayoutTool(), new String[] {
         "--do=set",
         "--table=foo",
         "--layout=" + changedLayoutFile,
       });
+      assertEquals(3, setHashRowKeyResult.getReturnCode());
     } catch (InvalidLayoutException e) {
       LOG.debug("Exception message: " + e.getMessage());
       assertTrue(e.getMessage().contains("Invalid layout update from reference row keys format"));
-      exceptionThrown = true;
     } finally {
       // Delete the table.
-      ToolResult deleteResult = runTool(new WibiDeleteTable(), new String[] {
+      ToolResult deleteResult = runTool(new DeleteTableTool(), new String[] {
             "--table=foo",
             "--confirm",
           });
       assertEquals(0, deleteResult.getReturnCode());
-      assertEquals("Deleting wibi table: foo...\nOK.\n",
+      assertEquals("Deleting kiji table: " + getKijiURI().toString() + "foo/\n"
+          + "Deleted kiji table: " + getKijiURI().toString() + "foo/\n",
           deleteResult.getStdoutUtf8());
     }
 
-    assertTrue(exceptionThrown);
   }
 
   @Test
@@ -259,23 +251,24 @@ public class IntegrationTestWibiAdminTools extends WibiIntegrationTest {
     // Create a table.
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
-    ToolResult createFooTableResult = runTool(new WibiCreateTable(), new String[] {
+    ToolResult createFooTableResult = runTool(new CreateTableTool(), new String[] {
       "--table=foo",
       "--layout=" + layoutFile,
       "--num-regions=" + 2,
     });
     assertEquals(0, createFooTableResult.getReturnCode());
     assertEquals("Parsing table layout: " + layoutFile + "\n"
-        + "Creating wibi table: foo...\n",
+        + "Creating kiji table: " + getKijiURI().toString() + "foo/...\n",
         createFooTableResult.getStdoutUtf8());
 
     // Delete the table.
-    ToolResult deleteResult = runTool(new WibiDeleteTable(), new String[] {
+    ToolResult deleteResult = runTool(new DeleteTableTool(), new String[] {
           "--table=foo",
           "--confirm",
         });
     assertEquals(0, deleteResult.getReturnCode());
-    assertEquals("Deleting wibi table: foo...\nOK.\n",
+    assertEquals("Deleting kiji table: " + getKijiURI().toString() + "foo/\n"
+        + "Deleted kiji table: " + getKijiURI().toString() + "foo/\n",
         deleteResult.getStdoutUtf8());
   }
 
@@ -286,7 +279,7 @@ public class IntegrationTestWibiAdminTools extends WibiIntegrationTest {
         KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
     String splitKeyPath = getClass().getClassLoader().getResource(SPLIT_KEY_FILE).getPath();
     @SuppressWarnings("unused")
-    ToolResult createFooTableResult = runTool(new WibiCreateTable(), new String[] {
+    ToolResult createFooTableResult = runTool(new CreateTableTool(), new String[] {
       "--table=foo",
       "--layout=" + layoutFile,
       "--split-key-file=file://" + splitKeyPath,
@@ -298,10 +291,10 @@ public class IntegrationTestWibiAdminTools extends WibiIntegrationTest {
     // Create a table.
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getFooChangeHashingTestLayout());
-    runTool(new WibiCreateTable(), new String[] {
-      "--table=foo",
-      "--layout=" + layoutFile,
-      "--num-regions=4",
+    ToolResult createUnhashedTable = runTool(new CreateTableTool(), new String[]{
+        "--table=foo",
+        "--layout=" + layoutFile,
+        "--num-regions=4",
     });
   }
 
@@ -312,23 +305,24 @@ public class IntegrationTestWibiAdminTools extends WibiIntegrationTest {
     final String tableName = desc.getName();
     final File layoutFile = KijiTableLayouts.getTempFile(desc);
     String splitKeyPath = getClass().getClassLoader().getResource(SPLIT_KEY_FILE).getPath();
-    ToolResult createFooTableResult = runTool(new WibiCreateTable(), new String[] {
+    ToolResult createFooTableResult = runTool(new CreateTableTool(), new String[] {
       "--table=" + tableName,
       "--layout=" + layoutFile,
       "--split-key-file=file://" + splitKeyPath,
     });
     assertEquals(0, createFooTableResult.getReturnCode());
     assertEquals("Parsing table layout: " + layoutFile + "\n"
-        + "Creating wibi table: " + tableName + "...\n",
+        + "Creating kiji table: " + getKijiURI().toString() + tableName + "/...\n",
         createFooTableResult.getStdoutUtf8());
 
     // Delete the table.
-    ToolResult deleteResult = runTool(new WibiDeleteTable(), new String[] {
+    ToolResult deleteResult = runTool(new DeleteTableTool(), new String[] {
           "--table=" + tableName,
           "--confirm",
         });
     assertEquals(0, deleteResult.getReturnCode());
-    assertEquals("Deleting wibi table: " + tableName + "...\nOK.\n",
+    assertEquals("Deleting kiji table: " + getKijiURI().toString() + desc.getName() + "/\n"
+        + "Deleted kiji table: " + getKijiURI().toString() + desc.getName() + "/\n",
         deleteResult.getStdoutUtf8());
   }
 
@@ -336,9 +330,9 @@ public class IntegrationTestWibiAdminTools extends WibiIntegrationTest {
   public void testCreateTableWithInvalidSchemaClassInLayout() throws Exception {
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.INVALID_SCHEMA));
-    runTool(new WibiCreateTable(), new String[] {
-      "--table=foo",
-      "--layout=" + layoutFile,
+    ToolResult createFailResult = runTool(new CreateTableTool(), new String[]{
+        "--table=foo",
+        "--layout=" + layoutFile,
     });
   }
 }
