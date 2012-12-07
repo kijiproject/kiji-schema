@@ -20,9 +20,14 @@
   name : "foo",
   description : "the foo table",
   keys_format : {
-    encoding : "HASH",
-    hash_type : "MD5",
-    hash_size : 16
+    encoding : "FORMATTED",
+    salt: {
+    },
+    nullable_index: 1,
+    components: [ {
+      name: "fooz",
+      type: "STRING"
+    }]
   },
   locality_groups : [ {
     name : "default",

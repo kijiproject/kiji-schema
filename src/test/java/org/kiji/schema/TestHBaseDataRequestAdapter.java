@@ -23,6 +23,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Scan;
@@ -100,7 +103,9 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
         .addColumn(new KijiDataRequest.Column("purchases").withMaxVersions(2))
         .withTimeRange(1L, 3L);
 
-    EntityId entityId = mEntityIdFactory.fromKijiRowKey("entity");
+    List<Object> kijiRowKey = new ArrayList<Object>();
+    kijiRowKey.add("entity");
+    EntityId entityId = mEntityIdFactory.fromKijiRowKey(kijiRowKey);
     Get expectedGet = new Get(entityId.getHBaseRowKey());
     HBaseColumnName hbaseColumn = mColumnNameTranslator.toHBaseColumnName(
         new KijiColumnName("info:name"));
@@ -120,9 +125,11 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
 
   @Test
   public void testDataRequestToGetEmpty() throws IOException {
+    List<Object> kijiRowKey = new ArrayList<Object>();
+    kijiRowKey.add("entity");
     KijiDataRequest request = new KijiDataRequest();
     HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(request);
     assertNull(
-        hbaseDataRequest.toGet(mEntityIdFactory.fromKijiRowKey("entity"), mTableLayout));
+        hbaseDataRequest.toGet(mEntityIdFactory.fromKijiRowKey(kijiRowKey), mTableLayout));
   }
 }

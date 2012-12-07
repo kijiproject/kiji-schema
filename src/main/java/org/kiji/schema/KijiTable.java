@@ -48,7 +48,7 @@ public interface KijiTable extends Closeable {
    * @param kijiRowKey UTF8 encoded Kiji row key.
    * @return a new entity ID for the specified Kiji row key.
    */
-  EntityId getEntityId(String kijiRowKey);
+  EntityId getEntityId(Object kijiRowKey);
 
   /**
    * Opens an appropriate implementation of KijiTableReader for this table.  The caller is

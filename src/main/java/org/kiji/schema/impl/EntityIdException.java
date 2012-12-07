@@ -16,35 +16,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-{
-  name : "hashedSampleTestTable",
-  keys_format : {
-    encoding : "FORMATTED",
-    salt: {
-      suppress_key_materialization: true
-    },
-    nullable_index: 1,
-    components: [ {
-      name: "id",
-      type: "STRING"
-    }]
-  },
-  locality_groups : [ {
-    name : "default",
-    in_memory : false,
-    max_versions : 2,
-    ttl_seconds : 2147483647,
-    compression_type : "GZ",
-    families : [ {
-      name : "family",
-      columns : [ {
-        name : "qualifier",
-        column_schema : {
-          type : "INLINE",
-          value : '"string"'
-        }
-      } ]
-    } ]
-  } ],
-  version : "kiji-1.0"
+
+package org.kiji.schema.impl;
+
+/**
+ * Thrown when kiji encounters a column name that is not valid.
+ */
+public class EntityIdException extends RuntimeException {
+  /**
+   * Creates a new <code>EntityIdException</code> with the specified detail message.
+   *
+   * @param message The exception message.
+   */
+  public EntityIdException(String message) {
+    super(message);
+  }
 }

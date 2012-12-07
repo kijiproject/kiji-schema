@@ -19,15 +19,19 @@
 
 package org.kiji.schema;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
 import com.google.common.base.Preconditions;
+
 import org.apache.hadoop.hbase.util.Bytes;
 
-import org.kiji.schema.avro.RowKeyEncoding;
-import org.kiji.schema.avro.RowKeyFormat;
-import org.kiji.schema.impl.HashPrefixedEntityId;
-import org.kiji.schema.impl.HashedEntityId;
+import org.kiji.schema.avro.*;
+import org.kiji.schema.impl.EntityIdException;
+import org.kiji.schema.impl.FormattedEntityId;
 import org.kiji.schema.impl.RawEntityId;
-
 
 /**
  * Factory class for creating EntityIds.
@@ -47,10 +51,8 @@ public abstract class EntityIdFactory {
     switch (format.getEncoding()) {
     case RAW:
       return new RawEntityIdFactory(format);
-    case HASH:
-      return new HashedEntityIdFactory(format);
-    case HASH_PREFIX:
-      return new HashPrefixedEntityIdFactory(format);
+    case FORMATTED:
+      return new FormattedEntityIdFactory(format);
     default:
       throw new RuntimeException(String.format("Unknown row key format: '%s'.", format));
     }
@@ -70,8 +72,14 @@ public abstract class EntityIdFactory {
 
     /** {@inheritDoc} */
     @Override
-    public EntityId fromKijiRowKey(byte[] kijiRowKey) {
-      return RawEntityId.fromKijiRowKey(kijiRowKey);
+    public EntityId fromKijiRowKey(Object ... kijiRowKey) {
+      Preconditions.checkNotNull(kijiRowKey);
+      Preconditions.checkArgument(kijiRowKey.length == 1);
+      if (kijiRowKey[0] instanceof byte[]) {
+        return RawEntityId.fromKijiRowKey((byte[])kijiRowKey[0]);
+      } else {
+        throw new EntityIdException("Invalid RAW kiji Row Key");
+      }
     }
 
     /** {@inheritDoc} */
@@ -81,53 +89,39 @@ public abstract class EntityIdFactory {
     }
   }
 
-  /** Factory for hashed entity IDs. */
-  private static final class HashedEntityIdFactory extends EntityIdFactory {
+  /** Factory for formatted entity IDs. */
+  private static final class FormattedEntityIdFactory extends EntityIdFactory {
     /**
-     * Creates a HashedEntityIdFactory.
-     *
-     * @param format Row key format.
+     * Creates a FormattedEntityIdFactory.
+     * @param format The row key format as specified in the layout file.
      */
-    private HashedEntityIdFactory(RowKeyFormat format) {
+    private FormattedEntityIdFactory(RowKeyFormat format) {
       super(format);
-      Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH);
+      Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.FORMATTED);
     }
 
     /** {@inheritDoc} */
     @Override
-    public EntityId fromKijiRowKey(byte[] kijiRowKey) {
-      return HashedEntityId.fromKijiRowKey(kijiRowKey, getFormat());
+    @SuppressWarnings("unchecked")
+    public EntityId fromKijiRowKey(Object ... componentValues) {
+      // The user specified the row key in terms of a map of component values.
+      Preconditions.checkNotNull(componentValues);
+      Preconditions.checkNotNull(componentValues[0]);
+      if (componentValues.length == 1) {
+        // user provided kiji row key as a List
+        if (componentValues[0] instanceof List) {
+          Preconditions.checkArgument(((List) componentValues[0]).size() > 0);
+          return FormattedEntityId.fromKijiRowKey((List<Object>)componentValues[0],
+              getFormat());
+        }
+      }
+      return FormattedEntityId.fromKijiRowKey(Arrays.asList(componentValues), getFormat());
     }
 
     /** {@inheritDoc} */
     @Override
     public EntityId fromHBaseRowKey(byte[] hbaseRowKey) {
-      return HashedEntityId.fromHBaseRowKey(hbaseRowKey, getFormat());
-    }
-  }
-
-  /** Factory for hash-prefixed entity IDs. */
-  private static final class HashPrefixedEntityIdFactory extends EntityIdFactory {
-    /**
-     * Creates a HashPrefixedEntityIdFactory.
-     *
-     * @param format Row key format.
-     */
-    private HashPrefixedEntityIdFactory(RowKeyFormat format) {
-      super(format);
-      Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH_PREFIX);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public EntityId fromKijiRowKey(byte[] kijiRowKey) {
-      return HashPrefixedEntityId.fromKijiRowKey(kijiRowKey, getFormat());
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public EntityId fromHBaseRowKey(byte[] hbaseRowKey) {
-      return HashPrefixedEntityId.fromHBaseRowKey(hbaseRowKey, getFormat());
+      return FormattedEntityId.fromHBaseRowKey(hbaseRowKey, getFormat());
     }
   }
 
@@ -151,20 +145,14 @@ public abstract class EntityIdFactory {
   /**
    * Creates an entity ID from a Kiji row key.
    *
-   * @param kijiRowKey Kiji row key.
+   * @param kijiRowKey A Kiji row key can be one of the following:
+   *                   Raw EntityId: A String or byte array
+   *                   Formatted EntityId: A map whose keys
+   *                   are named components of the kiji Row key (as
+   *                   specified in the "key_spec" in the layout file).
    * @return a new EntityId with the specified Kiji row key.
    */
-  public abstract EntityId fromKijiRowKey(byte[] kijiRowKey);
-
-  /**
-   * Creates an entity ID from a UTF8 text Kiji row key.
-   *
-   * @param text UTF8 encoded Kiji row key.
-   * @return a new EntityId with the specified Kiji row key.
-   */
-  public EntityId fromKijiRowKey(String text) {
-    return fromKijiRowKey(Bytes.toBytes(text));
-  }
+  public abstract EntityId fromKijiRowKey(Object ... kijiRowKey);
 
   /**
    * Creates an entity ID from an HBase row key.
