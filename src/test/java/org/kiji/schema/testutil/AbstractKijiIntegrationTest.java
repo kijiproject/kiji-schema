@@ -75,7 +75,7 @@ public abstract class AbstractKijiIntegrationTest {
 
   /** Whether to start an embedded mini HBase and M/R cluster. */
   private static final boolean STANDALONE =
-      Boolean.parseBoolean(System.getProperty("integration-test.standalone", "false"));
+      Boolean.parseBoolean(System.getProperty("kiji.test.standalone", "false"));
 
   /**
    * Name of the property to specify an external HBase instance.
@@ -133,7 +133,7 @@ public abstract class AbstractKijiIntegrationTest {
     mCluster.waitForActiveAndReadyMaster();
     LOG.info("Mini HBase cluster is ready");
 
-    LOG.info("Mini Wibi instance is ready");
+    LOG.info("Mini Kibi instance is ready");
 
     LOG.info("Starting mini map/reduce cluster");
     mStandaloneConf.set("hadoop.log.dir", "/tmp/test_hadoop_log_dir");
