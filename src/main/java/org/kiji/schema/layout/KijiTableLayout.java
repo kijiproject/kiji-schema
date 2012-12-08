@@ -844,19 +844,19 @@ public class KijiTableLayout {
 
     // Nullable index cannot be the first element or anything greater
     // than the components length (number of components).
-    if (format.getNullableIndex() <= 0
-        || format.getNullableIndex() > format.getComponents().size()) {
+    if (format.getNullableStartIndex() <= 0
+        || format.getNullableStartIndex() > format.getComponents().size()) {
       return false;
     }
 
     // Range scan index cannot be the first element or anything greater
     // than the components length (number of components).
-    if (format.getRangeScanIndex() <= 0
-      || format.getRangeScanIndex() > format.getComponents().size()) {
+    if (format.getRangeScanStartIndex() <= 0
+      || format.getRangeScanStartIndex() > format.getComponents().size()) {
       return false;
     }
 
-    Set nameset = new HashSet();
+    Set<String> nameset = new HashSet<String>();
     for (RowKeyComponent component: format.getComponents()) {
       // ensure names are valid "[a-zA-Z_][a-zA-Z0-9_]*"
       if (!isValidName(component.getName())) {

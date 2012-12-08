@@ -79,7 +79,7 @@ public final class FormattedEntityId extends EntityId {
     if (kijiRowKey.size() > format.getComponents().size()) {
       throw new EntityIdException("Too many components in kiji Row Key");
     }
-    if (kijiRowKey.size() < format.getNullableIndex()) {
+    if (kijiRowKey.size() < format.getNullableStartIndex()) {
       throw new EntityIdException("Too few components in kiji Row key");
     }
 
@@ -93,7 +93,7 @@ public final class FormattedEntityId extends EntityId {
         }
       }
       if (null == kijiRowKey.get(i)) {
-        if (format.getNullableIndex() <= i) {
+        if (format.getNullableStartIndex() <= i) {
           nullFlag = true;
           continue;
         } else {
@@ -189,7 +189,7 @@ public final class FormattedEntityId extends EntityId {
     }
 
     // hash stuff
-    int hashUpto = format.getRangeScanIndex() - 1;
+    int hashUpto = format.getRangeScanStartIndex() - 1;
     ByteArrayOutputStream tohash = new ByteArrayOutputStream();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     for (pos = 0; pos <= hashUpto; pos++) {
@@ -201,7 +201,7 @@ public final class FormattedEntityId extends EntityId {
 
     // to materialize or not to materialize that is the question
     if (format.getSalt().getSuppressKeyMaterialization()) {
-      pos = format.getRangeScanIndex();
+      pos = format.getRangeScanStartIndex();
     } else {
       pos = 0;
     }
