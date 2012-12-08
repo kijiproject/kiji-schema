@@ -194,7 +194,7 @@ protocol KijiTableLayoutRecords {
 
   /**
   * Type of a component of a row key.
-  * We allow string and numerical types only.
+  * We currently support string, integers and longs.
   */
   enum ComponentType {
     STRING,
@@ -206,7 +206,10 @@ protocol KijiTableLayoutRecords {
    * Specifies a single element of the row key.
    */
   record RowKeyComponent {
-    /** Name of element. */
+    /**
+     * Name of element. This name must match the regular expression for
+     * identifiers: [A-Za-z_][A-Za-z0-9_].
+     */
     string name;
 
     /** Primitive type of the component. */
@@ -251,7 +254,7 @@ protocol KijiTableLayoutRecords {
      * It is invalid to make the first component of key support range scans.
      * 0 indexed. Set to key_spec.length to hash over the entire key.
      */
-    int range_scan_index = 1;
+    int range_scan_start_index = 1;
 
     /**
      * The component at this index, and all following components can take null values.
@@ -260,10 +263,11 @@ protocol KijiTableLayoutRecords {
      * the first component of a key nullable.
      * 0 indexed. Set to key_spec.length to disallow nulls.
      */
-    int nullable_index = 1;
+    int nullable_start_index = 1;
 
     /**
-     * An ordered list of the individual components that make up this key.
+     * An ordered list of the individual components that make up this key. Must contain
+     * at least one component.
      */
     array<RowKeyComponent> components = [];
   }

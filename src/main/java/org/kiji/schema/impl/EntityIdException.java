@@ -20,7 +20,7 @@
 package org.kiji.schema.impl;
 
 /**
- * Thrown when kiji encounters a column name that is not valid.
+ * Thrown when kiji encounters a row key component name that is not valid.
  */
 public class EntityIdException extends RuntimeException {
   /**
