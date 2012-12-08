@@ -23,6 +23,7 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
+import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,14 +59,19 @@ public class IntegrationTestStripValueRowFilter extends FooTableIntegrationTest 
    */
   @Test(expected=IOException.class)
   public void testStripValuesFilter() throws IOException {
-    KijiDataRequest dataRequest = new KijiDataRequest()
-      .addColumn(new KijiDataRequest.Column("info", "name"));
-    KijiRowFilter rowFilter = new StripValueRowFilter();
+    KijiRowScanner rowScanner = null;
+    try {
+      KijiDataRequest dataRequest = new KijiDataRequest()
+          .addColumn(new KijiDataRequest.Column("info", "name"));
+      KijiRowFilter rowFilter = new StripValueRowFilter();
 
-    KijiRowScanner rowScanner = mReader.getScanner(dataRequest, null, null, rowFilter,
-      new HBaseScanOptions());
-    for (KijiRowData rowData : rowScanner) {
-      rowData.getStringValue("info", "name");
+      rowScanner = mReader.getScanner(dataRequest, null, null, rowFilter,
+          new HBaseScanOptions());
+      for (KijiRowData rowData : rowScanner) {
+        rowData.getStringValue("info", "name");
+      }
+    } finally {
+      IOUtils.closeQuietly(rowScanner);
     }
     fail("Should have gotten an IOException in attempting to get filtered values.");
   }
