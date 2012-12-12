@@ -75,7 +75,7 @@
       </plugin>
 
       <plugin>
-          <groupId>com.wibidata.maven.plugins</groupId>
+          <groupId>org.kiji.maven.plugins</groupId>
           <artifactId>hbase-maven-plugin</artifactId>
       </plugin>
 
@@ -125,8 +125,8 @@
       <artifactId>guava</artifactId>
     </dependency>
     <dependency>
-      <groupId>com.odiago.common</groupId>
-      <artifactId>odiago-common-flags</artifactId>
+      <groupId>org.kiji.common</groupId>
+      <artifactId>kiji-common-flags</artifactId>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -217,7 +217,7 @@
       <build>
         <plugins>
           <plugin>
-            <groupId>com.wibidata.maven.plugins</groupId>
+            <groupId>org.kiji.maven.plugins</groupId>
             <artifactId>hbase-maven-plugin</artifactId>
             <configuration>
               <skip>true</skip>

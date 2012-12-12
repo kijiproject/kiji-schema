@@ -27,7 +27,6 @@ import java.util.Map;
 import java.util.NavigableMap;
 
 import com.google.common.base.Preconditions;
-import com.odiago.common.flags.Flag;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -37,6 +36,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
