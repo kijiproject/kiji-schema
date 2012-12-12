@@ -21,7 +21,6 @@ package org.kiji.schema.tools;
 
 import java.util.List;
 
-import com.odiago.common.flags.Flag;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
@@ -31,6 +30,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;

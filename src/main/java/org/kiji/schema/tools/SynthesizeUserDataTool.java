@@ -23,10 +23,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 
-import com.odiago.common.flags.Flag;
 import org.apache.avro.Schema;
 import org.apache.hadoop.util.ToolRunner;
 
+import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiTable;

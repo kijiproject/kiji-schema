@@ -28,13 +28,13 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import com.google.common.base.Joiner;
-import com.odiago.common.flags.Flag;
-import com.odiago.common.flags.FlagParser;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.util.Tool;
 
+import org.kiji.common.flags.Flag;
+import org.kiji.common.flags.FlagParser;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiURI;

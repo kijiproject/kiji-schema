@@ -21,9 +21,9 @@ package org.kiji.schema.tools;
 
 import java.util.List;
 
-import com.odiago.common.flags.Flag;
 import org.apache.hadoop.util.ToolRunner;
 
+import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiInstaller;
 
