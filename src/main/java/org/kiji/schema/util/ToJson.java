@@ -45,9 +45,12 @@ import org.codehaus.jackson.node.JsonNodeFactory;
 import org.codehaus.jackson.node.ObjectNode;
 import org.codehaus.jackson.util.DefaultPrettyPrinter;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Encode an Avro record into JSON.
  */
+@ApiAudience.Private
 public final class ToJson {
 
   /** Utility class cannot be instantiated. */

@@ -26,9 +26,12 @@ import java.io.InputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Utility for getting/closing system resources.
  */
+@ApiAudience.Private
 public final class Resources {
   private static final Logger LOG = LoggerFactory.getLogger(Resources.class);
 

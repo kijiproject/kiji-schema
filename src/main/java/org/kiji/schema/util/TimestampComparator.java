@@ -21,9 +21,12 @@ package org.kiji.schema.util;
 
 import java.util.Comparator;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * A comparator that sorts Longs in reverse chronological order.
  */
+@ApiAudience.Private
 public final class TimestampComparator implements Comparator<Long> {
   /** A singleton instance. */
   public static final TimestampComparator INSTANCE = new TimestampComparator();

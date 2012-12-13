@@ -19,11 +19,14 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when a key is not found in a map-like API implemented by one of the
  * Kiji tables, the system or meta table for example.
  */
-public class TableKeyNotFoundException extends RuntimeException {
+@ApiAudience.Framework
+public final class TableKeyNotFoundException extends RuntimeException {
     /**
    * Constructor.
    *

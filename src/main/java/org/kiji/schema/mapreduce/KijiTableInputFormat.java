@@ -49,6 +49,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
@@ -72,7 +73,8 @@ import org.kiji.schema.layout.TableLayoutSerializer;
  * An InputFormat for MapReduce jobs over Kiji tables. Use the KijiTableInputFormat#setOptions
  * method to configure this input format for use in a mapreduce job.
  */
-public class KijiTableInputFormat
+@ApiAudience.Public
+public final class KijiTableInputFormat
     extends InputFormat<EntityId, KijiRowData>
     implements Configurable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTableInputFormat.class);
@@ -315,22 +317,23 @@ public class KijiTableInputFormat
   /**
    * Record reader that KijiTableInputFormat uses.
    */
-  public static class KijiTableRecordReader
+  @ApiAudience.Private
+  public static final class KijiTableRecordReader
       extends RecordReader<EntityId, KijiRowData> {
     /** Kiji instance to read from. */
-    protected final String mInstance;
+    private final String mInstance;
 
     /** Kiji table to read from. */
-    protected final String mTable;
+    private final String mTable;
 
     /** The data request. */
-    protected final KijiDataRequest mRequest;
+    private final KijiDataRequest mRequest;
 
     /** Hadoop Configuration object containing settings. */
-    protected final Configuration mConf;
+    private final Configuration mConf;
 
     /** True if paging has been enabled in mRequest. */
-    protected final boolean mPagingEnabled;
+    private final boolean mPagingEnabled;
 
     private HBaseTableRecordReader mDelegate;
     private KijiTableLayout mLayout;
@@ -345,7 +348,7 @@ public class KijiTableInputFormat
      *
      * @param conf The configuration object for this Kiji.
      */
-    public KijiTableRecordReader(Configuration conf) {
+    KijiTableRecordReader(Configuration conf) {
       mConf = conf;
 
       // Get data request from the job configuration.

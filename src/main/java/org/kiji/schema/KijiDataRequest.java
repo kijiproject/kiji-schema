@@ -26,6 +26,7 @@ import java.util.HashMap;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.filter.KijiColumnFilter;
 
 /**
@@ -42,7 +43,8 @@ import org.kiji.schema.filter.KijiColumnFilter;
  *
  * </p>
  */
-public class KijiDataRequest implements Serializable {
+@ApiAudience.Public
+public final class KijiDataRequest implements Serializable {
   private static final long serialVersionUID = 1L;
 
   /**
@@ -60,7 +62,8 @@ public class KijiDataRequest implements Serializable {
   /**
    * Describes a request for a Kiji Table column.
    */
-  public static class Column implements Serializable {
+  @ApiAudience.Public
+  public static final class Column implements Serializable {
     private static final long serialVersionUID = 1L;
 
     /** The column family requested. */

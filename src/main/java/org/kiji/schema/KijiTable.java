@@ -22,6 +22,7 @@ package org.kiji.schema;
 import java.io.Closeable;
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**
@@ -29,6 +30,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  *
  * Instantiated from {@link KijiTableFactory#openTable(String)}
  */
+@ApiAudience.Public
 public interface KijiTable extends Closeable {
   /** @return the Kiji instance this table belongs to. */
   Kiji getKiji();

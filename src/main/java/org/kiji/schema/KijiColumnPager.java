@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.impl.HBaseDataRequestAdapter;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -40,7 +41,8 @@ import org.kiji.schema.layout.KijiTableLayout;
 /**
  * Fetches new pages of column data in Kiji, and maintains state for which page each column is on.
  */
-public class KijiColumnPager {
+@ApiAudience.Private
+public final class KijiColumnPager {
   private static final Logger LOG = LoggerFactory.getLogger(KijiColumnPager.class);
 
   /** The entity id for the row we are reading from. */

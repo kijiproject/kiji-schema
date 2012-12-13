@@ -21,6 +21,7 @@ package org.kiji.schema.util;
 
 import java.util.regex.Pattern;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiInvalidNameException;
 
 /**
@@ -28,6 +29,7 @@ import org.kiji.schema.KijiInvalidNameException;
  * (including table names, locality group names, family names, and column names)
  * and Kiji instance names.
  */
+@ApiAudience.Private
 public final class KijiNameValidator {
 
   /** Unused private constructor since this is a utility class. */

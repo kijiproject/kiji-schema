@@ -30,11 +30,13 @@ import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.hadoop.conf.Configuration;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.TableLayoutDesc;
 
 /**
  * Serialize TableLayout instances into job configurations.
  */
+@ApiAudience.Framework
 public final class TableLayoutSerializer {
   /** The configuration variable that stores the avro json-encoded input table layout. */
   public static final String CONF_INPUT_TABLE_LAYOUT = "kiji.input.table.layout";

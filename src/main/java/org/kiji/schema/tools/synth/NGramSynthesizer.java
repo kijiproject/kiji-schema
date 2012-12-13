@@ -24,10 +24,13 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Generates n-grams.
  */
-public class NGramSynthesizer implements Synthesizer<String> {
+@ApiAudience.Private
+public final class NGramSynthesizer implements Synthesizer<String> {
   /** The number of words in the n-gram. */
   private int mN;
   /** A word synthesizer. */

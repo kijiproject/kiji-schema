@@ -26,13 +26,15 @@ import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.util.ToolRunner;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiAdmin;
 
 /**
  * Command-line tool for deleting kiji tables from kiji instances.
  */
-public class DeleteTableTool extends VersionValidatedTool {
+@ApiAudience.Private
+public final class DeleteTableTool extends VersionValidatedTool {
   @Flag(name="table", usage="The name of the kiji table to delete.")
   private String mTableName = "";
 

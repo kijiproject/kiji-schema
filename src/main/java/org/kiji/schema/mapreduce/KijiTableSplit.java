@@ -30,11 +30,14 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.mapreduce.TableSplit;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * An KijiTableSplit stores exactly the same data as TableSplit, but is
  * more intelligent about how it reports its size to other systems.
  */
-class KijiTableSplit extends TableSplit {
+@ApiAudience.Private
+final class KijiTableSplit extends TableSplit {
   private byte[] mRegionStartKey;
   private long mSplitSize; // lazily calculated and populated via getLength().
 

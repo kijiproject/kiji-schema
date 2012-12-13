@@ -19,14 +19,32 @@
 
 package org.kiji.schema.util;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * An interface for a wall clock.
  */
-public interface Clock {
+@ApiAudience.Public
+public abstract class Clock {
+
+  /**
+   * Package-private default constructor. Clients should use Clock.getDefaultClock()
+   * to get a new Clock instance.
+   */
+  Clock() {
+  }
+
   /**
    * Gets the current time.
    *
    * @return The current time.
    */
-  long getTime();
+  public abstract long getTime();
+
+  /**
+   * @return a default clock instance that uses the system clock.
+   */
+  public static Clock getDefaultClock() {
+    return new DefaultClock();
+  }
 }

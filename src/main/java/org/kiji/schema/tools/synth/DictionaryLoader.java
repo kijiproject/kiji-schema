@@ -29,10 +29,13 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Loads a dictionary file, which is simply a list of words, one per line.
  */
-public class DictionaryLoader {
+@ApiAudience.Private
+public final class DictionaryLoader {
   /**
    * Creates a new <code>DictionaryLoader</code> instance.
    */

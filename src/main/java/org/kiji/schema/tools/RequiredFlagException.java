@@ -19,10 +19,13 @@
 
 package org.kiji.schema.tools;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown to indicate that a flag is required but not supplied.
  */
-public class RequiredFlagException extends Exception {
+@ApiAudience.Framework
+public final class RequiredFlagException extends Exception {
   /**
    * Creates a new <code>RequiredFlagException</code> for the specified flag name.
    *

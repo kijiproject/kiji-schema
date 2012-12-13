@@ -35,6 +35,7 @@ import org.apache.hadoop.mapreduce.OutputFormat;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiConfiguration;
@@ -64,7 +65,8 @@ import org.kiji.schema.layout.ColumnNameTranslator;
  *
  * @param <K> The key is ignored in this OutputFormat.
  */
-public class KijiTableOutputFormat<K> extends OutputFormat<K, KijiOutput>
+@ApiAudience.Public
+public final class KijiTableOutputFormat<K> extends OutputFormat<K, KijiOutput>
     implements Configurable {
   /** Configuration variable for the input kiji instance. */
   public static final String INSTANCE_CONF_NAME = "kiji.output.instance";

@@ -22,15 +22,19 @@ package org.kiji.schema.util;
 import java.io.IOException;
 import java.util.Arrays;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Wraps a byte array of binary-encoded data into a byte stream.
  *
  * Provides various binary decoding functions.
  * Heavily inspired from protocol buffer's CodedOutputStream and Avro's BinaryDecoder.
  */
-public class ByteStreamArray {
+@ApiAudience.Private
+public final class ByteStreamArray {
   /** Raised when decoding some data fails (eg. a variable-length integer). */
-  public static class EncodingException extends IOException {
+  @ApiAudience.Private
+  public static final class EncodingException extends IOException {
   }
 
   private byte[] mBytes;

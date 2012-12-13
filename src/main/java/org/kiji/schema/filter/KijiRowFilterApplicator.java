@@ -24,6 +24,7 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiCell;
@@ -41,7 +42,8 @@ import org.kiji.schema.layout.KijiTableLayout;
 /**
  * Applies a KijiRowFilter to various row-savvy objects.
  */
-public class KijiRowFilterApplicator {
+@ApiAudience.Private
+public final class KijiRowFilterApplicator {
   /** The row filter to be applied by this applicator. */
   private final KijiRowFilter mRowFilter;
 

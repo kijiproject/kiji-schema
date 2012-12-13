@@ -22,7 +22,7 @@ package org.kiji.schema.util;
 /**
  * A clock implementation that increments the time each time you query for it.
  */
-public class IncrementingClock implements Clock {
+public class IncrementingClock extends Clock {
   /** The current clock time. */
   private long mCurrentTime;
 

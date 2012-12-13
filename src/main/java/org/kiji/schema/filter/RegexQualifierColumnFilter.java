@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.apache.hadoop.hbase.filter.RegexStringComparator;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
 
@@ -34,7 +35,8 @@ import org.kiji.schema.KijiColumnName;
 /**
  * A KijiColumnFilter that only allows qualifiers that match a given regular expression.
  */
-public class RegexQualifierColumnFilter extends KijiColumnFilter {
+@ApiAudience.Public
+public final class RegexQualifierColumnFilter extends KijiColumnFilter {
   private static final long serialVersionUID = 1L;
 
   private final String mRegularExpression;

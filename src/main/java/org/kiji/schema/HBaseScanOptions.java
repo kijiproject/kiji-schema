@@ -19,11 +19,14 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Customizable parameters for KijiRowScanners backed by an HBase scan.
  * Any parameters that are not set will default to HBase values.
  */
-public class HBaseScanOptions {
+@ApiAudience.Public
+public final class HBaseScanOptions {
   /** The number of rows to buffer on the client. */
   private Integer mClientBufferSize = null;
   /** The number of rows for each server to prefetch. */

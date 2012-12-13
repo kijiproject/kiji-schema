@@ -19,10 +19,13 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when attempting to read data from a cell that doesn't exist.
  */
-public class NoCellDataException extends Exception {
+@ApiAudience.Public
+public final class NoCellDataException extends Exception {
   /**
    * Creates a new <code>NoCellDataException</code> with the specified detail message.
    *

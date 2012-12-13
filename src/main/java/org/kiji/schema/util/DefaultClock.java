@@ -19,11 +19,14 @@
 
 package org.kiji.schema.util;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * A default implementation of a wall clock that returns the system time (milliseconds since the
  * unix epoch).
  */
-public class DefaultClock implements Clock {
+@ApiAudience.Private
+final class DefaultClock extends Clock {
   /** {@inheritDoc} */
   @Override
   public long getTime() {

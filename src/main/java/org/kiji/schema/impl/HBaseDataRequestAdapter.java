@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.HBaseScanOptions;
@@ -51,6 +52,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  * land, like {@link org.apache.hadoop.hbase.client.Put}s and {@link
  * org.apache.hadoop.hbase.client.Get}s.
  */
+@ApiAudience.Private
 public class HBaseDataRequestAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseDataRequestAdapter.class);
 

@@ -19,10 +19,13 @@
 
 package org.kiji.schema.impl;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when kiji encounters a column name that is not valid.
  */
-public class InvalidColumnNameException extends RuntimeException {
+@ApiAudience.Private
+public final class InvalidColumnNameException extends RuntimeException {
   /**
    * Creates a new <code>InvalidColumnNameException</code> with the specified detail message.
    *

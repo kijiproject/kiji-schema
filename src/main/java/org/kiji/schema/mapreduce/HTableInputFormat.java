@@ -27,6 +27,8 @@ import org.apache.hadoop.hbase.mapreduce.TableInputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.JobContext;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * An InputFormat for MapReduce jobs over HBase HTables.
  *
@@ -34,7 +36,8 @@ import org.apache.hadoop.mapreduce.JobContext;
  * HTable/Zookeeper connections correctly, so we've extended it here and fixed the bug.
  * Otherwise, it behaves exactly like the HBase TableInputFormat.</p>
  */
-public class HTableInputFormat extends TableInputFormat {
+@ApiAudience.Private
+public final class HTableInputFormat extends TableInputFormat {
   /** {@inheritDoc} */
   @Override
   public List<InputSplit> getSplits(JobContext context) throws IOException {

@@ -19,12 +19,14 @@
 
 package org.kiji.schema.impl;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiCounter;
 
 /**
  * The default implementation of a Kiji counter, which contains the data in a counter cell
  * of a column.
  */
+@ApiAudience.Private
 public class DefaultKijiCounter implements KijiCounter {
   private final long mTimestamp;
   private final long mValue;

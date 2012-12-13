@@ -21,11 +21,14 @@ package org.kiji.schema;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when there is an attempt to operate on a Kiji instance whose data format version
  * is incompatible with the Kiji client version.
  */
-public class IncompatibleKijiVersionException extends IOException {
+@ApiAudience.Public
+public final class IncompatibleKijiVersionException extends IOException {
   /**
    * Creates a new <code>IncompatibleKijiVersionException</code> with the specified
    * detail message.

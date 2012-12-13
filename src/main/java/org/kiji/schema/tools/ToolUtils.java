@@ -24,6 +24,7 @@ import java.io.IOException;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.avro.RowKeyFormat;
@@ -32,6 +33,7 @@ import org.kiji.schema.util.ByteArrayFormatter;
 /**
  * Utility class providing static methods used by command-line tools.
  */
+@ApiAudience.Framework
 public final class ToolUtils {
   /** Disable this constructor. */
   private ToolUtils() {}

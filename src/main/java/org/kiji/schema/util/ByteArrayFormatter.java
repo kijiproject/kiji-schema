@@ -21,7 +21,10 @@ package org.kiji.schema.util;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
+
 /** Utility class to format byte arrays. */
+@ApiAudience.Private
 public final class ByteArrayFormatter {
   /** Utility class cannot be instantiated. */
   private ByteArrayFormatter() {

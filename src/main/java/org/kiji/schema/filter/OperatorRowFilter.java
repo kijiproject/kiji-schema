@@ -26,11 +26,13 @@ import java.util.List;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiDataRequest;
 
 /**
  * A KijiRowFilter for a logical operator of composed of other filters.
  */
+@ApiAudience.Public
 public class OperatorRowFilter extends KijiRowFilter {
   /** The operator to use on the filter operands. */
   private final Operator mOperator;
@@ -50,12 +52,12 @@ public class OperatorRowFilter extends KijiRowFilter {
   }
 
   /**
-   * Creates a new <code>AndRowFilter</code> instance.
+   * Creates a new <code>OperatorRowFilter</code> instance.
    *
    * @param operator The operator to use for joining the filters into a logical expression.
    * @param filters The filters that should be used in the filter conjunction.
    */
-  public OperatorRowFilter(Operator operator, List<? extends KijiRowFilter> filters) {
+  OperatorRowFilter(Operator operator, List<? extends KijiRowFilter> filters) {
     if (null == filters || filters.isEmpty()) {
       throw new IllegalArgumentException("filters must be non-empty");
     }

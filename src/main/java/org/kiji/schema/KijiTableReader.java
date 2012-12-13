@@ -27,6 +27,7 @@ import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.filter.KijiRowFilter;
 
 /**
@@ -34,6 +35,7 @@ import org.kiji.schema.filter.KijiRowFilter;
  *
  * Instantiated from {@link org.kiji.schema.KijiTable#openTableReader()}
  */
+@ApiAudience.Public
 public abstract class KijiTableReader implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTableReader.class);
 

@@ -24,10 +24,13 @@ import java.util.Comparator;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Comparator for HColumnDescriptors.  They are sorted by name, then
  * by max versions, ttl, and whether it is in memory.
  */
+@ApiAudience.Private
 public class HColumnDescriptorComparator implements Comparator<HColumnDescriptor> {
   @Override
   public int compare(HColumnDescriptor o1, HColumnDescriptor o2) {

@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import java.util.Arrays;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.RowKeyFormat;
 
 /**
@@ -43,6 +44,7 @@ import org.kiji.schema.avro.RowKeyFormat;
  *   <li> Composite: to be determined.
  * </ul>
  */
+@ApiAudience.Public
 public abstract class EntityId {
   /** @return the format of this row key. */
   public abstract RowKeyFormat getFormat();

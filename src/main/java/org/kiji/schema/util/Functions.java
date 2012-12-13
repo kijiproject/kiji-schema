@@ -24,9 +24,12 @@ import java.util.Map;
 
 import com.google.common.base.Function;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * A collection of useful functions.
  */
+@ApiAudience.Private
 public final class Functions {
   /** Disable the constructor for this utility class. */
   private Functions() {}

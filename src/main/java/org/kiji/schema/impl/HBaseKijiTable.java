@@ -24,6 +24,7 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HTableInterface;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
@@ -42,6 +43,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  * access to the HTable interface.  Methods that Kiji clients should
  * have access to should be added to org.kiji.schema.KijiTable.</p>
  */
+@ApiAudience.Private
 public class HBaseKijiTable extends AbstractKijiTable {
   /** The underlying HTable that stores this Kiji table's data. */
   private final HTableInterface mHTable;
