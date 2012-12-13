@@ -21,12 +21,14 @@ package org.kiji.schema.impl;
 
 import com.google.common.base.Preconditions;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.util.Hasher;
 
 /** Implements the hashed row key format. */
+@ApiAudience.Private
 public final class HashedEntityId extends EntityId {
   private final RowKeyFormat mFormat;
 

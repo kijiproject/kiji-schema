@@ -33,6 +33,7 @@ import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.TableBackup;
@@ -40,7 +41,6 @@ import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 import org.kiji.schema.util.Clock;
-import org.kiji.schema.util.DefaultClock;
 import org.kiji.schema.util.TimestampComparator;
 
 /**
@@ -48,7 +48,8 @@ import org.kiji.schema.util.TimestampComparator;
  *
  * <p>This class is thread-safe.</p>
  */
-public class InMemoryTableLayoutDatabase implements KijiTableLayoutDatabase {
+@ApiAudience.Private
+public final class InMemoryTableLayoutDatabase implements KijiTableLayoutDatabase {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryTableLayoutDatabase.class);
 
   /** A clock. */
@@ -61,7 +62,7 @@ public class InMemoryTableLayoutDatabase implements KijiTableLayoutDatabase {
    * Creates a new <code>InMemoryTableLayoutDatabase</code> instance.
    */
   public InMemoryTableLayoutDatabase() {
-    this(new DefaultClock());
+    this(Clock.getDefaultClock());
   }
 
   /**

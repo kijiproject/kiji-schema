@@ -23,12 +23,14 @@ import java.util.Arrays;
 
 import com.google.common.base.Preconditions;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.util.Hasher;
 
 /** Implements the hash-prefixed row key format. */
+@ApiAudience.Private
 public final class HashPrefixedEntityId extends EntityId {
   private final RowKeyFormat mFormat;
 

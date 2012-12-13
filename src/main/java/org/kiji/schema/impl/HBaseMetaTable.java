@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiMetaTable;
@@ -49,6 +50,7 @@ import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
  * An implementation of the KijiMetaTable that uses the 'kiji-meta'
  * HBase table as the backing store.
  */
+@ApiAudience.Private
 public class HBaseMetaTable extends KijiMetaTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseMetaTable.class);
   /** The HBase column family that will store table layout specific metadata. */

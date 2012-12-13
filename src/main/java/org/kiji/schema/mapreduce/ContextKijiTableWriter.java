@@ -24,6 +24,7 @@ import java.io.IOException;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCounter;
@@ -56,6 +57,7 @@ import org.kiji.schema.mapreduce.KijiDelete.KijiDeleteScope;
  *   </pre>
  * </code>
  */
+@ApiAudience.Public
 public class ContextKijiTableWriter extends KijiTableWriter {
   private final TaskInputOutputContext<?, ?, NullWritable, KijiOutput> mContext;
 

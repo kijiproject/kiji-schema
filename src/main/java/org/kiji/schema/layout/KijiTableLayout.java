@@ -44,6 +44,7 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiCellFormat;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
@@ -216,17 +217,21 @@ import org.kiji.schema.util.ToJson;
  * <p>Column IDs cannot be changed (a column ID change is equivalent to deleting the existing column
  * and then re-creating it as a new empty column).
  */
-public class KijiTableLayout {
+@ApiAudience.Public
+public final class KijiTableLayout {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTableLayout.class);
 
   /** Concrete layout of a locality group. */
-  public class LocalityGroupLayout {
+  @ApiAudience.Public
+  public final class LocalityGroupLayout {
 
     /** Concrete layout of a family. */
-    public class FamilyLayout {
+    @ApiAudience.Public
+    public final class FamilyLayout {
 
       /** Concrete layout of a column. */
-      public class ColumnLayout {
+      @ApiAudience.Public
+      public final class ColumnLayout {
         /** Column layout descriptor. */
         private final ColumnDesc mDesc;
 

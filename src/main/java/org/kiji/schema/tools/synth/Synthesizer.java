@@ -19,11 +19,14 @@
 
 package org.kiji.schema.tools.synth;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Synthesizers create objects from nothing.
  *
  * @param <T> The type of data to be synthesized.
  */
+@ApiAudience.Private
 public interface Synthesizer<T> {
   /**
    * Synthesizes a piece of data.

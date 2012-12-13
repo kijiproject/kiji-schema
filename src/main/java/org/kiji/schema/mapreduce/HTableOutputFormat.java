@@ -35,12 +35,15 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * An output format that writes to the HBase table underlying a Kiji table.
  *
  * @param <K> The type of the MapReduce key, which is ignored in this class.
  */
-public class HTableOutputFormat<K> extends TableOutputFormat<K> {
+@ApiAudience.Private
+public final class HTableOutputFormat<K> extends TableOutputFormat<K> {
   private static final Logger LOG = LoggerFactory.getLogger(HTableOutputFormat.class);
 
   /** The job configuration. */

@@ -21,7 +21,10 @@ package org.kiji.schema;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
+
 /** Factory for KijiTable instances. */
+@ApiAudience.Public
 public interface KijiTableFactory {
   /**
    * Opens a KijiTable by name.

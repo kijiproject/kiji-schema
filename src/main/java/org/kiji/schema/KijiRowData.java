@@ -27,9 +27,12 @@ import java.util.NavigableSet;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecord;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * The input data for a single entity in Kiji.  Implementations should be thread-safe.
  */
+@ApiAudience.Public
 public interface KijiRowData {
   /**
    * Gets the entity id for this row of kiji data.

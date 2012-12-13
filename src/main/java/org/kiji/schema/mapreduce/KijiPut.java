@@ -32,6 +32,7 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiCell;
@@ -49,7 +50,8 @@ import org.kiji.schema.layout.KijiTableLayout;
 /**
  * KijiPuts are used to build writes to a Kiji table.
  */
-public class KijiPut implements KijiMutation {
+@ApiAudience.Framework
+public final class KijiPut implements KijiMutation {
   private EntityId mEntityId;
   private String mFamily;
   private String mQualifier;

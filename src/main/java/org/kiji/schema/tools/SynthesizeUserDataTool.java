@@ -26,6 +26,7 @@ import java.util.Random;
 import org.apache.avro.Schema;
 import org.apache.hadoop.util.ToolRunner;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiCell;
@@ -39,7 +40,8 @@ import org.kiji.schema.tools.synth.WordSynthesizer;
 /**
  * Synthesize some user data into a kiji table.
  */
-public class SynthesizeUserDataTool extends VersionValidatedTool {
+@ApiAudience.Private
+public final class SynthesizeUserDataTool extends VersionValidatedTool {
   @Flag(name="name-dict", usage="File that contains people names, one per line")
   private String mNameDictionaryFilename = "org/kiji/schema/tools/synth/top_names.txt";
 

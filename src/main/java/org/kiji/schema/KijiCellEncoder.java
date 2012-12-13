@@ -32,6 +32,7 @@ import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.BytesKey;
 
@@ -42,7 +43,8 @@ import org.kiji.schema.util.BytesKey;
  * A Kiji cell is encoded as an Extension record, although this class implements the encoder
  * in a specific way for efficiency.
  */
-public class KijiCellEncoder {
+@ApiAudience.Public
+public final class KijiCellEncoder {
   /** The kiji schema table. */
   private final KijiSchemaTable mSchemaTable;
 

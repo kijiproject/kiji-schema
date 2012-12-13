@@ -43,6 +43,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
@@ -79,7 +80,8 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
  * List all data in the info:email and derived:domain columns of a table foo in row bar:
  *   kiji ls --table=foo --columns=info:email,derived:domain --entity=bar
  */
-public class LsTool extends VersionValidatedTool {
+@ApiAudience.Private
+public final class LsTool extends VersionValidatedTool {
   private static final Logger LOG = LoggerFactory.getLogger(LsTool.class);
 
   @Flag(name="table", usage="kiji table name")

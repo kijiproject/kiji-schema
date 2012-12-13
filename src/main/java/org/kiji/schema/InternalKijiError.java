@@ -19,13 +19,16 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when there is something wrong with the internal Kiji
  * implementation.  Clients should never catch one of these.  Please
  * file a bug report if you ever see one at the
  * <a target="_top" href="https://jira.kiji.org/">Kiji Issue tracker</a>.
  */
-public class InternalKijiError extends Error {
+@ApiAudience.Public
+public final class InternalKijiError extends Error {
   /**
    * Creates a new <code>InternalKijiError</code> with the specified cause.
    *

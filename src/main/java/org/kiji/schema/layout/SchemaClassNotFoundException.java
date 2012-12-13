@@ -19,11 +19,14 @@
 
 package org.kiji.schema.layout;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when a Kiji table layout has a schema class reference that cannot be loaded
  * (probably because it is not on the class path).
  */
-public class SchemaClassNotFoundException extends InvalidLayoutException {
+@ApiAudience.Public
+public final class SchemaClassNotFoundException extends InvalidLayoutException {
   /**
    * Creates a new <code>SchemaClassNotFoundException</code> with the specified detail message..
    *

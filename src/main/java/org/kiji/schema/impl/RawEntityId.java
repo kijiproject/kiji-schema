@@ -21,13 +21,15 @@ package org.kiji.schema.impl;
 
 import com.google.common.base.Preconditions;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.avro.HashType;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 
 /** Implements the raw row key format. */
-public class RawEntityId extends EntityId {
+@ApiAudience.Private
+public final class RawEntityId extends EntityId {
   private static final RowKeyFormat RAW_KEY_FORMAT = RowKeyFormat.newBuilder()
       .setEncoding(RowKeyEncoding.RAW)
       .setHashType(HashType.MD5)  // HashType.NONE or INVALID?

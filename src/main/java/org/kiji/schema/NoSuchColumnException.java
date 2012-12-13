@@ -21,10 +21,13 @@ package org.kiji.schema;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when attempting to access a column that does not exist.
  */
-public class NoSuchColumnException extends IOException {
+@ApiAudience.Public
+public final class NoSuchColumnException extends IOException {
   /**
    * Creates a new <code>NoSuchColumnException</code> with the specified detail message.
    *

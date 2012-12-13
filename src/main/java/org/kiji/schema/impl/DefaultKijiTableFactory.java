@@ -21,6 +21,7 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableFactory;
@@ -28,6 +29,7 @@ import org.kiji.schema.KijiTableFactory;
 /**
  * The default implementation of a KijiTableFactory that creates KijiTables via KijiTable.open().
  */
+@ApiAudience.Private
 public class DefaultKijiTableFactory implements KijiTableFactory {
   /** Kiji instance. */
   private final Kiji mKiji;

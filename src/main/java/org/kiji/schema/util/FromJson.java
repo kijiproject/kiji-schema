@@ -44,9 +44,12 @@ import org.codehaus.jackson.JsonParser.Feature;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Decode a JSON string into an Avro record.
  */
+@ApiAudience.Private
 public final class FromJson {
 
   /** Utility class cannot be instantiated. */

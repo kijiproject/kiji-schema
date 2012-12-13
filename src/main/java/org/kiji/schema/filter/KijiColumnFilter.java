@@ -24,6 +24,7 @@ import java.io.Serializable;
 
 import org.apache.hadoop.hbase.filter.Filter;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
@@ -42,6 +43,7 @@ import org.kiji.schema.layout.ColumnNameTranslator;
  * @see org.kiji.schema.filter.KijiRowFilter
  * @see org.kiji.schema.KijiDataRequest.Column#withFilter(KijiColumnFilter)
  */
+@ApiAudience.Public
 public abstract class KijiColumnFilter implements Serializable {
   /**
    * An object available to KijiColumnFilters that can be used to help implement the

@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 
 /**
@@ -33,6 +34,7 @@ import org.kiji.schema.EntityId;
  *
  * @param <T> The type of the elements being stored in the buffer.
  */
+@ApiAudience.Private
 public class KijiDataBuffer<T> {
   /** Stores a list of the internal representation of the wrapped data by EntityId. */
   private Map<EntityId, List<T>> mBuffer;

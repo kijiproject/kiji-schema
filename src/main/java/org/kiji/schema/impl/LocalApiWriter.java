@@ -22,6 +22,7 @@ package org.kiji.schema.impl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiDataWrapper;
@@ -34,6 +35,7 @@ import org.kiji.schema.WrappedDataWriter;
  * @param <WRAPPER> The {@link KijiDataWrapper} class used to wrap data elements.
  * @param <DATUM> The type of the wrapped data elements.
  */
+@ApiAudience.Private
 public abstract class LocalApiWriter<WRAPPER extends KijiDataWrapper<DATUM>, DATUM>
     extends WrappedDataWriter<WRAPPER, DATUM> {
   private static final Logger LOG = LoggerFactory.getLogger(LocalApiWriter.class);

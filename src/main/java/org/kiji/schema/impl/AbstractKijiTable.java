@@ -26,6 +26,7 @@ import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
@@ -37,6 +38,7 @@ import org.kiji.schema.KijiTable;
  * Entity data is keyed by the entityId.
  * Each row in the table represents one entity.
  */
+@ApiAudience.Private
 public abstract class AbstractKijiTable implements KijiTable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTable.class);
 

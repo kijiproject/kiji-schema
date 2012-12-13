@@ -32,6 +32,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -41,7 +42,8 @@ import org.kiji.schema.util.SplitKeyFile;
 /**
  * Command-line tool for creating kiji tables in kiji instances.
  */
-public class CreateTableTool extends VersionValidatedTool {
+@ApiAudience.Private
+public final class CreateTableTool extends VersionValidatedTool {
   private static final Logger LOG = LoggerFactory.getLogger(CreateTableTool.class);
 
   @Flag(name="table", usage="The name of the kiji table to create.")

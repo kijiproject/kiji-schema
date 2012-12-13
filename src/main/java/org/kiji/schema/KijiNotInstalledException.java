@@ -19,8 +19,11 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
+
 /** Thrown when attempting to open a non existing/not installed Kiji instance. */
-public class KijiNotInstalledException extends RuntimeException {
+@ApiAudience.Public
+public final class KijiNotInstalledException extends RuntimeException {
   /** The instance name of the missing Kiji instance. */
   private final String mInstanceName;
 

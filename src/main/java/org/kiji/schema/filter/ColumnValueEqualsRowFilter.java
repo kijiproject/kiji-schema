@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.SkipFilter;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;
@@ -38,7 +39,8 @@ import org.kiji.schema.KijiDataRequest;
  * <p>This filter will only pass if the data in the Kiji cell matches the specified value
  * <i>exactly</i>.  Both the data and the Avro schema must be the same.</p>
  */
-public class ColumnValueEqualsRowFilter extends KijiRowFilter {
+@ApiAudience.Public
+public final class ColumnValueEqualsRowFilter extends KijiRowFilter {
   /** The name of the column family to check for data in. */
   private final String mFamily;
 

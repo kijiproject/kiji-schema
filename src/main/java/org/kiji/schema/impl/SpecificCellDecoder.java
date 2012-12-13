@@ -26,6 +26,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellFormat;
 import org.kiji.schema.KijiSchemaTable;
@@ -35,7 +36,8 @@ import org.kiji.schema.KijiSchemaTable;
  *
  * @param <T> The type of the decoded data.
  */
-public class SpecificCellDecoder<T> extends KijiCellDecoder<T> {
+@ApiAudience.Private
+public final class SpecificCellDecoder<T> extends KijiCellDecoder<T> {
   /**
    * Use a {@link org.kiji.schema.KijiCellDecoderFactory} to get an instance.
    *

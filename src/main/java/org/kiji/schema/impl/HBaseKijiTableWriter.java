@@ -38,6 +38,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.HBaseColumnName;
@@ -59,6 +60,7 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 /**
  * Makes modifications to a Kiji table by sending requests directly to HBase from the local client.
  */
+@ApiAudience.Private
 public class HBaseKijiTableWriter extends KijiTableWriter {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTableWriter.class);
 

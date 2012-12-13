@@ -36,6 +36,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -46,7 +47,8 @@ import org.kiji.schema.util.ToJson;
  * Command-line tool for interacting with table layouts. Actions include reading a layout,
  * setting a table layout, and viewing a table's layout history.
  */
-public class LayoutTool extends VersionValidatedTool {
+@ApiAudience.Private
+public final class LayoutTool extends VersionValidatedTool {
   private static final Logger LOG = LoggerFactory.getLogger(LayoutTool.class);
 
   @Flag(name="do", usage="Action to perform: dump, set, or history.")

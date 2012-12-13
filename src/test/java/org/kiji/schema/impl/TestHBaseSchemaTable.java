@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.impl;
 
 import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.aryEq;
@@ -40,10 +40,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiSchemaTable.SchemaEntry;
-import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.util.BytesKey;
-import org.kiji.schema.util.ZooKeeperLock;
 
 
 public class TestHBaseSchemaTable {
@@ -57,14 +56,14 @@ public class TestHBaseSchemaTable {
 
   private HTable mHashHTable;
   private HTable mIdHTable;
-  private ZooKeeperLock mZKLock;
+  private HBaseSchemaTable.ZooKeeperLock mZKLock;
 
 
   @Before
   public void setup() {
     mHashHTable = createMock(HTable.class);
     mIdHTable = createMock(HTable.class);
-    mZKLock = createMock(ZooKeeperLock.class);
+    mZKLock = createMock(HBaseSchemaTable.ZooKeeperLock.class);
   }
 
   @Test

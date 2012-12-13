@@ -22,13 +22,15 @@ package org.kiji.schema;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecord;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.impl.GenericCellDecoder;
 
 /**
  * A factory for creating KijiCellDecoders which uses a GenericCellDecoder
  * to handle record-based schemas.
  */
-public class GenericCellDecoderFactory extends KijiCellDecoderFactory {
+@ApiAudience.Framework
+public final class GenericCellDecoderFactory extends KijiCellDecoderFactory {
   /**
    * Default c'tor.
    *

@@ -21,10 +21,13 @@ package org.kiji.schema;
 
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * An HBase column name.
  */
-public class HBaseColumnName {
+@ApiAudience.Public
+public final class HBaseColumnName {
   /** The HBase column family. */
   private final byte[] mFamily;
 

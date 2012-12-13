@@ -19,10 +19,13 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when there is an error validating a KijiDataRequest against a Kiji table.
  */
-public class KijiDataRequestException extends RuntimeException {
+@ApiAudience.Public
+public final class KijiDataRequestException extends RuntimeException {
   /**
    * Creates a new <code>KijiDataRequestException</code> with the specified detail message.
    *

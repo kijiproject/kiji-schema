@@ -25,11 +25,13 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.util.ByteArrayFormatter;
 
 /**
  * Utility class for splitting the Kiji row key space.
  */
+@ApiAudience.Framework
 public final class KijiRowKeySplitter {
   private static final Logger LOG = LoggerFactory.getLogger(KijiRowKeySplitter.class);
 

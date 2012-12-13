@@ -24,6 +24,7 @@ import java.util.Iterator;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
@@ -33,6 +34,7 @@ import org.kiji.schema.KijiRowScanner;
 /**
  * The internal implementation of KijiRowScanner that reads from HTables.
  */
+@ApiAudience.Private
 public class HBaseKijiRowScanner implements KijiRowScanner {
   /** The HBase result scanner. */
   private final ResultScanner mResultScanner;

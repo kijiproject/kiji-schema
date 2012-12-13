@@ -21,7 +21,10 @@ package org.kiji.schema.util;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
+
 /** Factory for Lock instances. */
+@ApiAudience.Private
 public interface LockFactory {
 
   /**

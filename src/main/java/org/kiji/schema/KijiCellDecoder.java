@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.BytesKey;
 import org.kiji.schema.util.Hasher;
@@ -37,6 +38,7 @@ import org.kiji.schema.util.Hasher;
  *
  * @param <T> The type of the decoded cell data.
  */
+@ApiAudience.Framework
 public abstract class KijiCellDecoder<T> {
   /** The Kiji schema table. */
   private final KijiSchemaTable mSchemaTable;

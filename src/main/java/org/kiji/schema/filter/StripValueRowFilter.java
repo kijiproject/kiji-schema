@@ -24,6 +24,7 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiDataRequest;
 
 /**
@@ -32,7 +33,8 @@ import org.kiji.schema.KijiDataRequest;
  * attempting to decode the data (through calls like KijiRowData.getValues()) will
  * result in an IOException.
  */
-public class StripValueRowFilter extends KijiRowFilter {
+@ApiAudience.Public
+public final class StripValueRowFilter extends KijiRowFilter {
   /** {@inheritDoc} */
   @Override
   public KijiDataRequest getDataRequest() {

@@ -30,9 +30,12 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSortedSet;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+
+import org.kiji.annotations.ApiAudience;
 
 /**
  * URI that fully qualifies a Kiji instance/table/column.
@@ -50,7 +53,8 @@ import org.apache.hadoop.hbase.HConstants;
  * <li> "kiji://.env/instance/table"
  * <li> "kiji://.unset/instance/table"
  */
-public class KijiURI {
+@ApiAudience.Public
+public final class KijiURI {
 
   /** URI/URL scheme used to fully qualify a Kiji table. */
   public static final String KIJI_SCHEME = "kiji";

@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.KijiTableNotFoundException;
 
@@ -45,6 +46,7 @@ import org.kiji.schema.KijiTableNotFoundException;
  * Manages key-value pairs on a per table basis. Storage of these key-value pairs is provided by
  * a column family of an HTable.
  */
+@ApiAudience.Private
 public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
   public static final Logger LOG = LoggerFactory.getLogger(HBaseTableKeyValueDatabase.class);
 

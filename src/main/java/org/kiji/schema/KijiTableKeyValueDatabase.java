@@ -22,12 +22,15 @@ package org.kiji.schema;
 import java.io.IOException;
 import java.util.Set;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * A database of per table key-value pairs. This is used to store meta data (in the form of
  * key-value pairs) on a per table basis.
  *
  * @see KijiMetaTable
  */
+@ApiAudience.Framework
 public interface KijiTableKeyValueDatabase {
 
   /**

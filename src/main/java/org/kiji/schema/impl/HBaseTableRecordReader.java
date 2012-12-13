@@ -29,12 +29,14 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 
 /**
  * A record reader that reads from a HBase table that reports progress correctly.
  */
+@ApiAudience.Private
 public class HBaseTableRecordReader extends TableRecordReader {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseTableRecordReader.class);
 

@@ -27,6 +27,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiColumnName;
@@ -39,7 +40,8 @@ import org.kiji.schema.layout.KijiTableLayout;
 /**
  * Command-line tool to increment a counter in a cell of a kiji table.
  */
-public class IncrementTool extends VersionValidatedTool {
+@ApiAudience.Private
+public final class IncrementTool extends VersionValidatedTool {
   private static final Logger LOG = LoggerFactory.getLogger(IncrementTool.class);
 
   @Flag(name="table", usage="kiji table name")
