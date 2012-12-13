@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
@@ -35,7 +36,8 @@ import org.kiji.schema.util.KijiNameValidator;
 /**
  * A kiji installer installs or uninstalls kiji instances from an HBase cluster.
  **/
-public class KijiInstaller {
+@ApiAudience.Public
+public final class KijiInstaller {
   private static final Logger LOG = LoggerFactory.getLogger(KijiInstaller.class);
 
   /**

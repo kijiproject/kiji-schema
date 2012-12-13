@@ -28,6 +28,7 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hbase.client.Increment;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
@@ -37,7 +38,8 @@ import org.kiji.schema.layout.ColumnNameTranslator;
 /**
  * KijiIncrements are used to increment counters in a Kiji table from within a map-reduce job.
  */
-public class KijiIncrement implements KijiMutation {
+@ApiAudience.Framework
+public final class KijiIncrement implements KijiMutation {
   private EntityId mEntityId;
   private String mFamily;
   private String mQualifier;

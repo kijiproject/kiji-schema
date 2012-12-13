@@ -26,6 +26,7 @@ import java.util.Properties;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.TableNotFoundException;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.IncompatibleKijiVersionException;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiNotInstalledException;
@@ -35,6 +36,7 @@ import org.kiji.schema.impl.HBaseSystemTable;
 /**
  * Reads the version info from the jar manifest for this version of Kiji.
  */
+@ApiAudience.Public
 public final class VersionInfo {
   /** No constructor since this is a utility class. */
   private VersionInfo() {}

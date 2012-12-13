@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.NavigableMap;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -30,6 +31,7 @@ import org.kiji.schema.avro.TableLayoutDesc;
 /**
  * A database of Kiji table layouts.
  */
+@ApiAudience.Framework
 public interface KijiTableLayoutDatabase {
   /**
    * Lists the tables in this Kiji instance.

@@ -21,6 +21,8 @@ package org.kiji.schema.filter;
 
 import java.util.List;
 
+import org.kiji.annotations.ApiAudience;
+
 
 /**
  * A KijiRowFilter for a conjunction (AND operator) of other filters.
@@ -28,7 +30,8 @@ import java.util.List;
  * <p>If a row <i>R</i> is accepted by both filter <i>A</i> and <i>B</i>, <i>R</i>
  * will be accepted by AndRowFilter(<i>A</i>, <i>B</i>).</p>
  */
-public class AndRowFilter extends OperatorRowFilter {
+@ApiAudience.Public
+public final class AndRowFilter extends OperatorRowFilter {
   /**
    * Creates a new <code>AndRowFilter</code> instance.
    *

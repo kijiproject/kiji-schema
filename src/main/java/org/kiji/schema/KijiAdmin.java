@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.impl.HTableDescriptorComparator;
@@ -44,7 +45,8 @@ import org.kiji.schema.layout.impl.HTableSchemaTranslator;
 /**
  * Administration API for managing a Kiji instance.
  */
-public class KijiAdmin {
+@ApiAudience.Public
+public final class KijiAdmin {
   private static final Logger LOG = LoggerFactory.getLogger(KijiAdmin.class);
 
   /** HBase admin. */

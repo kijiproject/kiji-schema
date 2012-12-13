@@ -24,9 +24,12 @@ import java.util.List;
 import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * General purpose Avro utilities.
  */
+@ApiAudience.Private
 public final class AvroUtils {
 
   /** Utility class cannot be instantiated. */

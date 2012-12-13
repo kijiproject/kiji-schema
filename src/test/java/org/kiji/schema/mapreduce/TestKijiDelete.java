@@ -19,35 +19,15 @@
 
 package org.kiji.schema.mapreduce;
 
-import static org.junit.Assert.*;
-
 import static org.kiji.schema.util.WritableTestUtil.assertWritable;
 
-import java.io.IOException;
-
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import org.kiji.schema.EntityId;
 import org.kiji.schema.impl.HBaseEntityId;
-import org.kiji.schema.layout.ColumnNameTranslator;
-import org.kiji.schema.layout.IdentityColumnNameTranslator;
 
 public class TestKijiDelete {
-  @Test
-  public void testDeleteEntireRow() throws IOException {
-    final ColumnNameTranslator translator = new IdentityColumnNameTranslator();
-
-    final EntityId entityId = new HBaseEntityId(Bytes.toBytes("rowkey"));
-    final KijiDelete kijiDelete = new KijiDelete(entityId);
-    final Delete hbaseDelete = kijiDelete.toDelete(translator);
-
-    assertArrayEquals(Bytes.toBytes("rowkey"), hbaseDelete.getRow());
-    assertEquals(HConstants.LATEST_TIMESTAMP, hbaseDelete.getTimeStamp());
-    assertTrue(hbaseDelete.getFamilyMap().isEmpty());
-  }
 
   @Test
   public void testWritableSerialization() throws Exception {

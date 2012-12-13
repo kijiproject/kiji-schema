@@ -22,9 +22,12 @@ package org.kiji.schema;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecord;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * A factory for creating KijiCellDecoders.
  */
+@ApiAudience.Framework
 public abstract class KijiCellDecoderFactory {
   /** The kiji schema table for looking up full schemas. */
   protected final KijiSchemaTable mSchemaTable;

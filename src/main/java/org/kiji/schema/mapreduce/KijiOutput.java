@@ -25,6 +25,8 @@ import java.io.IOException;
 
 import org.apache.hadoop.io.Writable;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * KijiOutput is a class used to wrap {@link KijiMutation}s. This class is necessary to
  * use when writing to Kiji from within a map-reduce job because Hadoop's job runners only
@@ -36,7 +38,8 @@ import org.apache.hadoop.io.Writable;
  *   context.write(NullWritable.get(), new KijiOutput(put));
  * </code>
  */
-public class KijiOutput implements Writable {
+@ApiAudience.Public
+public final class KijiOutput implements Writable {
   private KijiMutation mOperation;
 
   /** Empty constructor for Writable serialization. */

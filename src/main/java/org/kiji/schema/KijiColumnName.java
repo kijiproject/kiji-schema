@@ -22,13 +22,16 @@ package org.kiji.schema;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * A Kiji column name is composed of one or two parts: a family and a qualifier.
  * The qualifier is sometimes also referred to as the key.
  * If the column is of type map, the qualifier is null.
  * If the column is of type group, then the qualifier is required but may be empty.
  */
-public class KijiColumnName implements Comparable<KijiColumnName> {
+@ApiAudience.Public
+public final class KijiColumnName implements Comparable<KijiColumnName> {
 
   /** The full name of the column "family(:qualifier)?". */
   private final String mFullName;

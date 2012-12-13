@@ -28,6 +28,7 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hbase.client.Delete;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
@@ -40,7 +41,8 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 /**
  * KijiDeletes are used to delete rows or specific columns of a row from Kiji Tables.
  */
-public class KijiDelete implements KijiMutation {
+@ApiAudience.Framework
+public final class KijiDelete implements KijiMutation {
   private EntityId mEntityId;
   private String mFamily;
   private String mQualifier;

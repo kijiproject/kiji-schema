@@ -29,6 +29,7 @@ import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.impl.HBaseMetaTable;
@@ -53,6 +54,7 @@ import org.kiji.schema.util.VersionInfo;
  * </p>
  * <p>The default Kiji instance name is <em>default</em>.</p>
  */
+@ApiAudience.Public
 public class Kiji implements KijiTableFactory, Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(Kiji.class);
 

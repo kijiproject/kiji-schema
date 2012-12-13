@@ -26,6 +26,7 @@ import java.util.NavigableMap;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificRecord;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCounter;
 import org.kiji.schema.KijiRowData;
@@ -34,6 +35,7 @@ import org.kiji.schema.KijiRowData;
 /**
  * An abstract base class that implements the convenience methods of the KijiRowData interface.
  */
+@ApiAudience.Private
 public abstract class AbstractKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override

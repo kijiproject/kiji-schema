@@ -31,6 +31,8 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * <p>The configuration for a single instance of Kiji, as a cluster could
  * contain multiple instances.</p>
@@ -46,7 +48,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>The default Kiji instance name is <em>default</em>.</p>
  */
-public class KijiConfiguration extends Configured {
+@ApiAudience.Public
+public final class KijiConfiguration extends Configured {
   private static final Logger LOG = LoggerFactory.getLogger(KijiConfiguration.class);
 
   /** The default Kiji configuration file. */

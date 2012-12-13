@@ -29,6 +29,7 @@ import com.google.common.base.Objects;
 import org.apache.avro.Schema;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.util.BytesKey;
 import org.kiji.schema.util.Hasher;
@@ -40,6 +41,7 @@ import org.kiji.schema.util.Hasher;
  * @see KijiMetaTable
  * @see KijiSystemTable
  */
+@ApiAudience.Framework
 public abstract class KijiSchemaTable implements Closeable {
   /**
    * Looks up a schema ID given an Avro schema object.
@@ -104,6 +106,7 @@ public abstract class KijiSchemaTable implements Closeable {
      * @param hash the schema hash
      * @param schema the Avro schema object
      */
+    @ApiAudience.Private
     public SchemaEntry(long id, BytesKey hash, Schema schema) {
       this.mId = id;
       this.mHash = hash;
@@ -176,7 +179,8 @@ public abstract class KijiSchemaTable implements Closeable {
    * Computing the hash code of a schema is expensive as it serializes the Avro schema object
    * into JSON.
    */
-  public static class SchemaHashCache {
+  @ApiAudience.Private
+  private static class SchemaHashCache {
     private final Map<Schema, BytesKey> mCache =
         Collections.synchronizedMap(new HashMap<Schema, BytesKey>());
 

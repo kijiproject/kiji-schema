@@ -19,10 +19,13 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when parsing a bogus Kiji table URI.
  */
-public class KijiURIException extends Exception {
+@ApiAudience.Public
+public final class KijiURIException extends Exception {
   /**
    * Creates a new <code>KijiURIException</code>.
    *

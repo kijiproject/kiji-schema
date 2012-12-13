@@ -25,6 +25,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
@@ -32,7 +33,8 @@ import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 /**
  * A command-line tool for installing kiji instances on hbase clusters.
  */
-public class InstallTool extends BaseTool {
+@ApiAudience.Private
+public final class InstallTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(InstallTool.class);
 
   @Override

@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.hadoop.util.ToolRunner;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiInstaller;
@@ -30,7 +31,8 @@ import org.kiji.schema.KijiInstaller;
 /**
  * A command-line tool for uninstalling kiji instances from an hbase cluster.
  */
-public class UninstallTool extends BaseTool {
+@ApiAudience.Private
+public final class UninstallTool extends BaseTool {
 
   @Flag(name="confirm", usage="If true, uninstall will be performed without prompt.")
   private boolean mConfirm = false;

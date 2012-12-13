@@ -30,6 +30,8 @@ import com.google.common.collect.Lists;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Parses region boundaries split files.
  *
@@ -43,6 +45,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  * everything before the first split key, and the last region will contain everything after the last
  * split key.
  */
+@ApiAudience.Private
 public final class SplitKeyFile {
   /** Utility class. */
   private SplitKeyFile() {

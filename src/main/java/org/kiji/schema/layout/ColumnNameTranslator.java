@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
@@ -41,7 +42,8 @@ import org.kiji.schema.layout.impl.ColumnId;
  * <p>This class defines a mapping between names of HBase HTable families/qualifiers and
  * Kiji table family/qualifiers.</p>
  */
-public class ColumnNameTranslator {
+@ApiAudience.Public
+public final class ColumnNameTranslator {
   private static final Logger LOG = LoggerFactory.getLogger(ColumnNameTranslator.class);
 
   /** Used to separate the Kiji family from the Kiji qualifier in an HBase qualifier. */

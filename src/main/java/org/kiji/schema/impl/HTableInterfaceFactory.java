@@ -24,11 +24,14 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.HTableInterface;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Factory for HTableInterface instances.
  *
  * This interface exists because the HBase HTableInstanceFactory doesn't throw IOException.
  */
+@ApiAudience.Private
 public interface HTableInterfaceFactory {
   /**
    * Creates a new HTableInterface instance.

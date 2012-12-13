@@ -19,6 +19,7 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 
@@ -26,7 +27,8 @@ import org.kiji.schema.layout.KijiTableLayout;
  * This class validates a {@link KijiDataRequest} against the layout
  * of a Kiji table to make sure it contains all of the columns requested.
  */
-public class KijiDataRequestValidator {
+@ApiAudience.Framework
+public final class KijiDataRequestValidator {
   /** The Kiji data request to validate. */
   private KijiDataRequest mDataRequest;
 

@@ -21,10 +21,13 @@ package org.kiji.schema;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when an attempt to access a table fails because it does not exist.
  */
-public class KijiTableNotFoundException extends IOException {
+@ApiAudience.Public
+public final class KijiTableNotFoundException extends IOException {
   /**
    * Creates a new <code>KijiTableNotFoundException</code> for the specified table.
    *

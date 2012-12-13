@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.util.Tool;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.common.flags.FlagParser;
 import org.kiji.schema.KijiConfiguration;
@@ -71,6 +72,7 @@ import org.kiji.schema.KijiURIException;
  *
  * Tools needing to prompt the user for a yes/no answer should use the {@link #yesNoPrompt} method.
  */
+@ApiAudience.Framework
 public abstract class BaseTool extends Configured implements Tool {
   /** Used when prompting the user for feedback. */
   private static final Pattern YES_PATTERN = Pattern.compile("y|yes", Pattern.CASE_INSENSITIVE);

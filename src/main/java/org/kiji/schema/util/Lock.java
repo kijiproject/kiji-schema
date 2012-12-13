@@ -22,7 +22,10 @@ package org.kiji.schema.util;
 import java.io.Closeable;
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
+
 /** Lock interface. */
+@ApiAudience.Private
 public interface Lock extends Closeable {
 
   /**

@@ -19,10 +19,12 @@
 
 package org.kiji.schema.impl;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.avro.RowKeyFormat;
 
 /** Entity ID encapsulating an HBase row key. */
+@ApiAudience.Private
 public class HBaseEntityId extends EntityId {
   private byte[] mHBaseRowKey;
 

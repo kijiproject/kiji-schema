@@ -42,6 +42,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellDecoderFactory;
@@ -76,7 +77,8 @@ import org.kiji.schema.layout.KijiTableLayoutDatabase;
  * <p>A static method, <code>getHColumnDescriptor</code> returns the description of an
  * HColumn that should be used to construct the HTable for the backing store.</p>
  */
-public class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
+@ApiAudience.Private
+public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseTableLayoutDatabase.class);
 
   /**

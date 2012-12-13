@@ -22,10 +22,13 @@ package org.kiji.schema.tools.synth;
 import java.util.List;
 import java.util.Random;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Synthesizes a random email address.
  */
-public class EmailSynthesizer implements Synthesizer<String> {
+@ApiAudience.Private
+public final class EmailSynthesizer implements Synthesizer<String> {
   /** A random number generator. */
   private Random mRandom;
 

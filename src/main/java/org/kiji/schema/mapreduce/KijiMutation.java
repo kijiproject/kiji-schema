@@ -21,11 +21,15 @@ package org.kiji.schema.mapreduce;
 
 import org.apache.hadoop.io.Writable;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * An output operation from a Kiji map-reduce job. The available operations are:
  * <ul>
+ *   <li>{@link KijiDelete}</li>
  *   <li>{@link KijiPut}</li>
  *   <li>{@link KijiIncrement}</li>
  * </ul>
  */
+@ApiAudience.Framework
 public interface KijiMutation extends Writable { }

@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiSystemTable;
@@ -48,6 +49,7 @@ import org.kiji.schema.TableKeyNotFoundException;
  * key-value property (K,V), the key K is stored as the row key in the HTable,
  * and the value V is stored in the "value:" column.<p>
  */
+@ApiAudience.Private
 public class HBaseSystemTable extends KijiSystemTable {
   /** The HBase column family that stores the value of the properties. */
   public static final String VALUE_COLUMN_FAMILY = "value";

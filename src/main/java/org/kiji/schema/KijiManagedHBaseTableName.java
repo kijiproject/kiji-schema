@@ -25,6 +25,8 @@ import com.google.common.base.Joiner;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * <p>Multiple instances of Kiji can be installed on a single HBase
  * cluster.  Within a Kiji instance, several HBase tables are created
@@ -81,6 +83,7 @@ import org.apache.hadoop.hbase.util.Bytes;
  * Kiji table "baz."
  * </p>
  */
+@ApiAudience.Framework
 public final class KijiManagedHBaseTableName {
   /** The delimited used to separate the components of an HBase table name. */
   private static final char DELIMITER = '.';

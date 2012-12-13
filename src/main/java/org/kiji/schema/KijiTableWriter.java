@@ -30,11 +30,14 @@ import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Interface for performing writes to a Kiji table.
  *
  * Instantiated from {@link org.kiji.schema.KijiTable#openTableWriter()}
  */
+@ApiAudience.Public
 public abstract class KijiTableWriter implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTableWriter.class);
 

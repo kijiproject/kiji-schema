@@ -21,6 +21,7 @@ package org.kiji.schema.tools;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.IncompatibleKijiVersionException;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiConfiguration;
@@ -31,6 +32,7 @@ import org.kiji.schema.KijiConfiguration;
  * version of the kiji instance in hbase matches that of the client.  If not, the tool
  * will exit early.
  */
+@ApiAudience.Framework
 public abstract class VersionValidatedTool extends KijiTool {
   /**
    * Constructor.

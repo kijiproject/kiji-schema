@@ -39,6 +39,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.HBaseColumnName;
@@ -61,6 +62,7 @@ import org.kiji.schema.util.TimestampComparator;
 /**
  * An implementation of KijiRowData that wraps an HBase Result object.
  */
+@ApiAudience.Private
 public class HBaseKijiRowData extends AbstractKijiRowData {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiRowData.class);
 

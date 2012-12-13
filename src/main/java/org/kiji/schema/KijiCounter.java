@@ -19,6 +19,8 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * A counter value stored in a column of a Kiji table.
  *
@@ -26,6 +28,7 @@ package org.kiji.schema;
  *
  * @see KijiTableWriter#increment(EntityId, String, String, long)
  */
+@ApiAudience.Public
 public interface KijiCounter {
   /**
    * Gets the timestamp at which the counter was incremented.

@@ -22,6 +22,7 @@ package org.kiji.schema;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.impl.HashPrefixedEntityId;
@@ -34,6 +35,7 @@ import org.kiji.schema.impl.RawEntityId;
  *
  * Light-weight object, so as many can be created as needed.
  */
+@ApiAudience.Public
 public abstract class EntityIdFactory {
 
   /**

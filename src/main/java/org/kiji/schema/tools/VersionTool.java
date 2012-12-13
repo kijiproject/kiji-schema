@@ -23,6 +23,7 @@ import java.util.List;
 
 import org.apache.hadoop.util.ToolRunner;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.util.VersionInfo;
 
 
@@ -30,7 +31,8 @@ import org.kiji.schema.util.VersionInfo;
  * Command-line tool for displaying the kiji software version running and the kiji data version
  * in use for a specified kiji instance.
  */
-public class VersionTool extends KijiTool {
+@ApiAudience.Private
+public final class VersionTool extends KijiTool {
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     String clientSoftwareVersion = VersionInfo.getSoftwareVersion();

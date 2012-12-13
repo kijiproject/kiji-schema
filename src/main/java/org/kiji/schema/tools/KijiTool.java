@@ -23,6 +23,7 @@ import java.io.IOException;
 
 import org.apache.commons.io.IOUtils;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
@@ -35,7 +36,8 @@ import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
  * The kiji instance is lazily opened on the first call to {@link #getKiji()} and closed in
  * {@link #cleanup()}.
  */
-public abstract class KijiTool extends BaseTool {
+@ApiAudience.Framework
+abstract class KijiTool extends BaseTool {
   /** The kiji instance. */
   private Kiji mKiji = null;
 

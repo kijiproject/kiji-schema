@@ -28,6 +28,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiManagedHBaseTableName;
@@ -35,7 +36,8 @@ import org.kiji.schema.KijiManagedHBaseTableName;
 /**
  * Command-line tool for flushing kiji meta and user tables in hbase.
  */
-public class FlushTableTool extends VersionValidatedTool {
+@ApiAudience.Private
+public final class FlushTableTool extends VersionValidatedTool {
   private static final Logger LOG = LoggerFactory.getLogger(FlushTableTool.class.getName());
 
   @Flag(name="table", usage="The name of a kiji user table to flush.")

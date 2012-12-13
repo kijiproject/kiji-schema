@@ -23,9 +23,12 @@ import java.io.UnsupportedEncodingException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * A thread-safe utility for computing hashes of strings.
  */
+@ApiAudience.Private
 public final class Hasher {
   /** The number of bytes in a hash. */
   public static final int HASH_SIZE_BYTES = 16;

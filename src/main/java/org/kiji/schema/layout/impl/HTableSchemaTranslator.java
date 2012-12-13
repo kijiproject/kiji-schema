@@ -22,6 +22,7 @@ package org.kiji.schema.layout.impl;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
@@ -34,7 +35,8 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
  * only has HColumns.  This classes maps between the Kiji layout components and the HTable
  * schema components, which ultimately determines how we map Kiji data onto an HTable.</p>
  */
-public class HTableSchemaTranslator {
+@ApiAudience.Private
+public final class HTableSchemaTranslator {
   /**
    * Creates a new <code>HTableSchemaTranslator</code> instance.
    */

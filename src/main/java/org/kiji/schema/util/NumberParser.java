@@ -19,10 +19,13 @@
 
 package org.kiji.schema.util;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Utility for parsing strings to numbers.  It allows certain numbers to be
  * represented by easy-to-write strings.
  */
+@ApiAudience.Private
 public final class NumberParser {
   /** Utility is not instantiable. */
   private NumberParser() {}

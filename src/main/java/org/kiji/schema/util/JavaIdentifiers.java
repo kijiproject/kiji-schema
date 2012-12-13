@@ -21,9 +21,12 @@ package org.kiji.schema.util;
 
 import org.apache.commons.lang.StringUtils;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * A utility class for dealing with identifiers in the Java language.
  */
+@ApiAudience.Private
 public final class JavaIdentifiers {
   /** Disable constructor for this utility class. */
   private JavaIdentifiers() {}

@@ -24,6 +24,7 @@ import java.util.Comparator;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiManagedHBaseTableName;
 
 /**
@@ -31,6 +32,7 @@ import org.kiji.schema.KijiManagedHBaseTableName;
  * are equal if they have the same HTable name with the same column
  * families.
  */
+@ApiAudience.Private
 public class HTableDescriptorComparator implements Comparator<HTableDescriptor> {
   @Override
   public int compare(HTableDescriptor o1, HTableDescriptor o2) {

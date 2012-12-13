@@ -31,9 +31,9 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.impl.DefaultKijiTableFactory;
 import org.kiji.schema.util.Clock;
-import org.kiji.schema.util.DefaultClock;
 
 /**
  * Maintains a pool of opened KijiTables.
@@ -47,7 +47,8 @@ import org.kiji.schema.util.DefaultClock;
  *
  * <p>This class is thread-safe.</p>
  */
-public class KijiTablePool implements Closeable {
+@ApiAudience.Public
+public final class KijiTablePool implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTablePool.class);
 
   /** A factory for creating new opened HTables. */
@@ -77,7 +78,8 @@ public class KijiTablePool implements Closeable {
   /**
    * Describes the options that can be configured on the KijiTablePool.
    */
-  public static class Options {
+  @ApiAudience.Public
+  public static final class Options {
     private int mMaxSize;
     private long mIdleTimeout;
     private long mIdlePollPeriod;
@@ -90,7 +92,7 @@ public class KijiTablePool implements Closeable {
       mMaxSize = 0;
       mIdleTimeout = 0L;
       mIdlePollPeriod = 10000L; // 10 seconds.
-      mClock = new DefaultClock();
+      mClock = Clock.getDefaultClock();
     }
 
     /**
@@ -215,7 +217,8 @@ public class KijiTablePool implements Closeable {
   /**
    * Thrown when an attempt to get a table connection fails because there is no room in the pool.
    */
-  public static class NoCapacityException extends IOException {
+  @ApiAudience.Public
+  public static final class NoCapacityException extends IOException {
     /**
      * Creates a new <code>NoCapacityException</code> with the specified detail message.
      * @param message The exception message.

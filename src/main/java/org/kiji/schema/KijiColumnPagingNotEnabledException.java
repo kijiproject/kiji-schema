@@ -21,6 +21,8 @@ package org.kiji.schema;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when a client attempts to fetch the next page of data from a Kiji column, but paging is
  * not enabled on the column.
@@ -28,7 +30,8 @@ import java.io.IOException;
  * <p>To enable paging on a column, use the {@link
  * KijiDataRequest.Column#withPageSize(int)} method in your {@link KijiDataRequest}.</p>
  */
-public class KijiColumnPagingNotEnabledException extends IOException {
+@ApiAudience.Public
+public final class KijiColumnPagingNotEnabledException extends IOException {
   /**
    * Creates a new <code>KijiColumnPagingNotEnabledException</code> with the specified
    * detail message.

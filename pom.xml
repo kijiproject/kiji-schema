@@ -34,6 +34,10 @@
   <description>A schema management layer for Apache HBase</description>
   <inceptionYear>2012</inceptionYear>
 
+  <properties>
+    <annotations.version>1.0.0-rc2-SNAPSHOT</annotations.version>
+  </properties>
+
   <build>
     <resources>
       <!-- Generate kiji-schema.properties with the project's version ID. -->
@@ -121,6 +125,10 @@
 
   <dependencies>
     <dependency>
+      <groupId>commons-io</groupId>
+      <artifactId>commons-io</artifactId>
+    </dependency>
+    <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
     </dependency>
@@ -175,7 +183,12 @@
       <groupId>org.hamcrest</groupId>
       <artifactId>hamcrest-all</artifactId>
     </dependency>
-      <dependency>
+    <dependency>
+      <groupId>org.kiji.annotations</groupId>
+      <artifactId>annotations</artifactId>
+      <version>${annotations.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
     </dependency>

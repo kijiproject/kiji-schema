@@ -21,6 +21,8 @@ package org.kiji.schema.layout;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Thrown when an invalid Kiji layout is encountered.  Possible reasons why a layout may be
  * invalid include:
@@ -30,6 +32,7 @@ import java.io.IOException;
  *   <li>The family or column ids were not assigned.</li>
  * </ul>
  */
+@ApiAudience.Public
 public class InvalidLayoutException extends IOException {
   /**
    * Creates a new <code>InvalidLayoutException</code> with the specified reason.

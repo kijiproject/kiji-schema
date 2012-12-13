@@ -22,6 +22,8 @@ package org.kiji.schema;
 import org.apache.avro.Schema;
 import org.apache.avro.util.Utf8;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * <p>The data held in one cell of a kiji table.  A KijiCell is a single
  * unit of data in Kiji, addressed by a tuple of (table, row, family,
@@ -47,7 +49,8 @@ import org.apache.avro.util.Utf8;
  *
  * @param <T> The type of the data in the cell.
  */
-public class KijiCell<T> {
+@ApiAudience.Public
+public final class KijiCell<T> {
   /** The schema used to write the cell data. */
   private Schema mWriterSchema;
   /** The data in the Kiji cell. */

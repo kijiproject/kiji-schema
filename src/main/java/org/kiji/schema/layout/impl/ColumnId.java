@@ -25,6 +25,7 @@ import java.util.Map;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.impl.InvalidColumnNameException;
 
@@ -63,7 +64,8 @@ import org.kiji.schema.impl.InvalidColumnNameException;
  * layout, all of the names used in HBase will only be one byte.  The next 64 names will
  * only be two bytes, and so on.
  */
-public class ColumnId {
+@ApiAudience.Private
+public final class ColumnId {
   /**
    * The special value reserved to mean that a symbolic name has not been assigned a column id.
    */

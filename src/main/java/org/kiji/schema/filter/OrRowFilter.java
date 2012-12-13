@@ -21,6 +21,8 @@ package org.kiji.schema.filter;
 
 import java.util.List;
 
+import org.kiji.annotations.ApiAudience;
+
 
 /**
  * A KijiRowFilter for a disjunction (OR operator) of other filters.
@@ -28,7 +30,8 @@ import java.util.List;
  * <p>If a row <i>R</i> is accepted by filter <i>A</i> or <i>B</i>, <i>R</i>
  * will be accepted by OrRowFilter(<i>A</i>, <i>B</i>).</p>
  */
-public class OrRowFilter extends OperatorRowFilter {
+@ApiAudience.Public
+public final class OrRowFilter extends OperatorRowFilter {
   /**
    * Creates a new <code>OrRowFilter</code> instance.
    *
