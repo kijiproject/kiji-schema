@@ -42,10 +42,10 @@ public class TestKijiDataBuffer {
     final EntityIdFactory eif = EntityIdFactory.create(RowKeyFormat.newBuilder()
         .setEncoding(RowKeyEncoding.RAW)
         .build());
-    final EntityId idFoo1 = eif.fromKijiRowKey("foo1");
-    final EntityId idFoo2 = eif.fromKijiRowKey("foo2");
-    final EntityId idFoo3 = eif.fromKijiRowKey("foo3");
-    final EntityId idFoo4 = eif.fromKijiRowKey("foo4");
+    final EntityId idFoo1 = eif.fromKijiRowKey("foo1".getBytes());
+    final EntityId idFoo2 = eif.fromKijiRowKey("foo2".getBytes());
+    final EntityId idFoo3 = eif.fromKijiRowKey("foo3".getBytes());
+    final EntityId idFoo4 = eif.fromKijiRowKey("foo4".getBytes());
 
     Map<EntityId, List<String>> expectedBuffer = new HashMap<EntityId, List<String>>();
     List<String> foo1List = new ArrayList<String>();

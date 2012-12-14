@@ -106,7 +106,7 @@ public class KijiIncrement implements KijiMutation {
     // EntityId.
     final byte[] bytes = new byte[in.readInt()];
     in.readFully(bytes);
-    mEntityId = new RawEntityId(bytes);
+    mEntityId = RawEntityId.fromKijiRowKey(bytes);
 
     // Family/Qualifier/Timestamp.
     mFamily = in.readUTF();

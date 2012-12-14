@@ -19,9 +19,15 @@
 {
   name : "kijiTableExportTyped",
   keys_format : {
-    encoding : "HASH",
-    hash_type : "MD5",
-    hash_size : 16
+    encoding : "FORMATTED",
+    salt: {
+      suppress_key_materialization: true
+    },
+    nullable_index: 1,
+    components: [ {
+      name: "id",
+      type: "STRING"
+    }]
   },
   locality_groups : [ {
     name : "default",

@@ -31,7 +31,7 @@ public class TestRawEntityId {
   @Test
   public void testRawEntityId() {
     final byte[] bytes = new byte[] {0x11, 0x22};
-    final RawEntityId eid = new RawEntityId(bytes);
+    final RawEntityId eid = RawEntityId.fromKijiRowKey(bytes);
     assertEquals(RowKeyEncoding.RAW, eid.getFormat().getEncoding());
     assertArrayEquals(bytes, eid.getKijiRowKey());
     assertArrayEquals(bytes, eid.getHBaseRowKey());

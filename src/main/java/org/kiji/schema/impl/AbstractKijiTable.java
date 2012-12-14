@@ -107,7 +107,7 @@ public abstract class AbstractKijiTable implements KijiTable {
    * @param kijiRowKey UTF8 encoded Kiji row key.
    * @return an entity ID with the specified Kiji row key.
    */
-  public EntityId getEntityId(String kijiRowKey) {
+  public EntityId getEntityId(Object kijiRowKey) {
     return getEntityIdFactory().fromKijiRowKey(kijiRowKey);
   }
 

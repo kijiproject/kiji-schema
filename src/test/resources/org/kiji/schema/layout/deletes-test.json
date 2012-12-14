@@ -20,9 +20,14 @@
   name : "test",
   description : "A table for testing deletes.",
   keys_format : {
-    encoding : "HASH",
-    hash_type : "MD5",
-    hash_size : 16
+    encoding : "FORMATTED",
+    salt: {
+    },
+    nullable_index: 1,
+    components: [ {
+      name: "user_id",
+      type: "STRING"
+    }]
   },
   locality_groups : [ {
     name : "default",

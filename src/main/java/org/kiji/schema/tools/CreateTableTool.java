@@ -51,8 +51,8 @@ public class CreateTableTool extends VersionValidatedTool {
   private String mLayout = "";
 
   // The following two flags are used to specify the initial number of regions in the table.
-  // Only one of them may be specified -- if your layout has key format encoding HASH or
-  // HASH_PREFIX, then you may only use --num-regions.  Otherwise, you must specify the split key
+  // Only one of them may be specified -- if your layout has key format encoding FORMATTED
+  // then you may only use --num-regions.  Otherwise, you must specify the split key
   // file with --split-key-file.
   @Flag(name="num-regions", usage="The number of initial regions to create in the table")
   private int mNumRegions = 1;
@@ -117,10 +117,9 @@ public class CreateTableTool extends VersionValidatedTool {
       admin.createTable(mTableName, tableLayout, false, mNumRegions);
     } else if (!mSplitKeyFilePath.isEmpty()) {
       switch (tableLayout.getDesc().getKeysFormat().getEncoding()) {
-      case HASH:
-      case HASH_PREFIX:
+      case FORMATTED:
         throw new RuntimeException(
-            "Row key hashing is enabled for the table.  Use --num-regions instead.");
+            "Formatted row keys used for the table.  Use --num-regions instead.");
       case RAW:
         break;
       default:
