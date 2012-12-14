@@ -218,7 +218,6 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
       for (Long timestamp : versionedValues.descendingKeySet()) {
         keyValueBackups.add(KeyValueBackupEntry.newBuilder()
             .setKey(key)
-            .setTimestamp(timestamp)
             .setValue(ByteBuffer.wrap(versionedValues.get(timestamp)))
             .build());
       }

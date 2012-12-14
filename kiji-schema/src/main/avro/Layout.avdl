@@ -253,8 +253,6 @@ protocol KijiTableLayoutRecords {
 
   /** Entry to backup a table layout update. */
   record TableLayoutBackupEntry {
-    /** Update timestamp, in ms. */
-    long timestamp;
 
     /**
      * Table layout update, as specified by the submitter/user.
@@ -268,8 +266,6 @@ protocol KijiTableLayoutRecords {
 
   /** Entry to backup user defined meta data. */
   record KeyValueBackupEntry {
-    /** Update timestamp, in ms. */
-    long timestamp;
 
     /** Key. */
     string key;
@@ -283,10 +279,10 @@ protocol KijiTableLayoutRecords {
     /** Table name. */
     string name;
 
-    /** Sequence of layouts, in order. */
+    /** Sequence of layouts for the specified table, in order */
     array<TableLayoutBackupEntry> layouts = [];
 
-    /** Sequence of user defined key-value pairs, in order. */
+    /** Sequence of user defined key-value pairs for the specified table, in order. */
     array<KeyValueBackupEntry> key_values = [];
   }
 

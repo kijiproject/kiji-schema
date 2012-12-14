@@ -1,22 +1,19 @@
 /**
  * (c) Copyright 2012 WibiData, Inc.
  *
- * See the NOTICE file distributed with this work for additional
- * information regarding copyright ownership.
+ * See the NOTICE file distributed with this work for additional information regarding copyright
+ * ownership.
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software distributed under the License
+ * is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+ * or implied. See the License for the specific language governing permissions and limitations under
+ * the License.
  */
-
 package org.kiji.schema;
 
 import java.io.Closeable;
@@ -38,7 +35,8 @@ import org.kiji.schema.layout.KijiTableLayoutDatabase;
  */
 @ApiAudience.Framework
 public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabase,
-    KijiTableKeyValueDatabase {
+  KijiTableKeyValueDatabase {
+
   private static final Logger LOG = LoggerFactory.getLogger(KijiMetaTable.class);
   /**
    * Whether the table is open.
@@ -46,7 +44,8 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
   private boolean mIsOpen;
 
   /**
-   * Creates a new <code>KijiMetaTable</code> instance.
+   * Creates a new
+   * <code>KijiMetaTable</code> instance.
    */
   protected KijiMetaTable() {
     mIsOpen = true;
@@ -60,7 +59,9 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
    */
   public abstract void deleteTable(String table) throws IOException;
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void close() throws IOException {
     if (!mIsOpen) {
@@ -70,7 +71,9 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
     mIsOpen = false;
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected void finalize() throws Throwable {
     if (mIsOpen) {
@@ -80,22 +83,21 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
     super.finalize();
   }
 
-   /**
-   * Writes metadata backup entries into the specified record.
-   * This consists of table layouts, schemas, and user defined key-value pairs.
+  /**
+   * Writes metadata backup entries into the specified record. This consists of table layouts,
+   * schemas, and user defined key-value pairs.
    *
    * @param backup Backup record builder.
    * @throws IOException on I/O error.
    */
   public abstract void writeToBackup(MetadataBackup.Builder backup) throws IOException;
 
-   /**
-   * Restores metadata from a backup record.
-   * This consists of table layouts, schemas, and user defined key-value pairs.
+  /**
+   * Restores metadata from a backup record. This consists of table layouts, schemas, and user
+   * defined key-value pairs.
    *
    * @param backup Backup record.
    * @throws IOException on I/O error.
    */
   public abstract void restoreFromBackup(MetadataBackup backup) throws IOException;
-
 }

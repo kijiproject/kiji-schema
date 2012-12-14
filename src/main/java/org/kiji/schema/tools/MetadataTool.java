@@ -28,7 +28,6 @@ import java.util.Set;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
-import com.odiago.common.flags.Flag;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.io.DatumReader;
@@ -40,6 +39,7 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.common.flags.Flag;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiMetaTable;
@@ -327,11 +327,8 @@ public class MetadataTool extends VersionValidatedTool  {
       return 1;
     }
 
-    if (!mInFile.isEmpty() && !mConfirm) {
-      getPrintStream().println("Would restore metadata from " + mInFile
-          + ", overwriting current metadata.");
-      getPrintStream().println("Use --confirm=true if you're sure.");
-      getPrintStream().println("(No restore operation performed.)");
+      if (!yesNoPrompt()) {
+      getPrintStream().println("No metadata restore operation performed.");
       return 1;
     }
 

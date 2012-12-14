@@ -81,9 +81,8 @@ public interface KijiTableKeyValueDatabase {
    * @param table The kiji table.
    * @param key The key to look up the associated value for.
    * @param numVersions The maximum number of the most recent versions to retrieve.
-   * @return A navigable map with values that are the user definedvalues for the specified key
-   *     and table, and keys that correspond to timestamps, ordered from most recent first to
-   *     least recent last.
+   * @return A navigable map with values that are the user defined values for the specified key
+   *     and table, and keys that correspond to timestamps, ordered from newest to oldest.
    * @throws IOException If there is an error.
    */
   NavigableMap<Long, byte[]> getTimedValues(String table, String key, int numVersions)

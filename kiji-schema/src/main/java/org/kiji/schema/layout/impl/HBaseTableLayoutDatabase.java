@@ -348,9 +348,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
                update = decodeTableLayoutDesc(bytes);
              }
            }
-
            history.add(TableLayoutBackupEntry.newBuilder()
-               .setTimestamp(timestamp)
                .setLayout(layout)
                .setUpdate(update)
                .build());
