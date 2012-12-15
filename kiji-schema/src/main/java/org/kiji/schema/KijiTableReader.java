@@ -38,6 +38,8 @@ import org.kiji.schema.filter.KijiRowFilter;
 @ApiAudience.Public
 public abstract class KijiTableReader implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTableReader.class);
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger(KijiTableReader.class.getName() + ".Cleanup");
 
   /** The kiji table being read from. */
   private KijiTable mTable;
@@ -59,7 +61,7 @@ public abstract class KijiTableReader implements Closeable {
   protected KijiTableReader(KijiTable table) {
     mTable = table;
     mIsOpen = true;
-    if (LOG.isDebugEnabled()) {
+    if (CLEANUP_LOG.isDebugEnabled()) {
       try {
         throw new Exception();
       } catch (Exception e) {
@@ -197,8 +199,8 @@ public abstract class KijiTableReader implements Closeable {
   @Override
   protected void finalize() throws Throwable {
     if (mIsOpen) {
-      LOG.warn("Closing KijiTableReader in finalize(). You should close it explicitly.");
-      LOG.debug(mConstructorStack);
+      CLEANUP_LOG.warn("Closing KijiTableReader in finalize(). You should close it explicitly.");
+      CLEANUP_LOG.debug(mConstructorStack);
       close();
     }
     super.finalize();

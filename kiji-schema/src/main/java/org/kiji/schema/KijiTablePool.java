@@ -50,6 +50,8 @@ import org.kiji.schema.util.Clock;
 @ApiAudience.Public
 public final class KijiTablePool implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTablePool.class);
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger(KijiTablePool.class.getName() + ".Cleanup");
 
   /** A factory for creating new opened HTables. */
   private final KijiTableFactory mTableFactory;
@@ -321,7 +323,7 @@ public final class KijiTablePool implements Closeable {
   @Override
   protected void finalize() throws Throwable {
     if (mIsOpen) {
-      LOG.warn("Closing KijiTablePool in finalize(). You should close it explicitly");
+      CLEANUP_LOG.warn("Closing KijiTablePool in finalize(). You should close it explicitly");
       close();
     }
     super.finalize();

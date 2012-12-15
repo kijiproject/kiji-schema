@@ -34,6 +34,9 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiConfiguration;
@@ -51,6 +54,10 @@ import org.kiji.schema.TableKeyNotFoundException;
  */
 @ApiAudience.Private
 public class HBaseSystemTable extends KijiSystemTable {
+  private static final Logger LOG = LoggerFactory.getLogger(HBaseSystemTable.class);
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger(HBaseSystemTable.class.getName() + ".Cleanup");
+
   /** The HBase column family that stores the value of the properties. */
   public static final String VALUE_COLUMN_FAMILY = "value";
 
@@ -66,6 +73,12 @@ public class HBaseSystemTable extends KijiSystemTable {
 
   /** The HTable that stores the Kiji instance properties. */
   private final HTableInterface mTable;
+
+  /** Whether the table is open. */
+  private boolean mIsOpen;
+
+  /** Used for testing finalize() behavior. */
+  private String mConstructorStack = "";
 
   /**
    * Creates a new HTableInterface for the Kiji system table.
@@ -106,6 +119,15 @@ public class HBaseSystemTable extends KijiSystemTable {
    */
   public HBaseSystemTable(HTableInterface htable) {
     mTable = htable;
+    mIsOpen = true;
+
+    if (CLEANUP_LOG.isDebugEnabled()) {
+      try {
+        throw new Exception();
+      } catch (Exception e) {
+        mConstructorStack = StringUtils.stringifyException(e);
+      }
+    }
   }
 
   /** {@inheritDoc} */
@@ -124,7 +146,23 @@ public class HBaseSystemTable extends KijiSystemTable {
   /** {@inheritDoc} */
   @Override
   public synchronized void close() throws IOException {
+    if (!mIsOpen) {
+      LOG.warn("close() called on a KijiSystemTable that was already closed.");
+      return;
+    }
     mTable.close();
+    mIsOpen = false;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void finalize() throws Throwable {
+    if (mIsOpen) {
+      CLEANUP_LOG.warn("Closing KijiSystemTable in finalize(). You should close it explicitly");
+      CLEANUP_LOG.debug("Stack when HBaseSystemTable was constructed:\n" + mConstructorStack);
+      close();
+    }
+    super.finalize();
   }
 
   /**
