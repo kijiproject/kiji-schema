@@ -100,6 +100,9 @@ public class IntegrationTestHBaseTableKeyValueDatabase extends AbstractKijiInteg
       admin.deleteTable(TABLE_NAME);
     } finally {
       admin.close();
+      mTable.close();
+      mTable = null;
+      mDb = null;
     }
   }
 

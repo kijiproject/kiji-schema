@@ -53,7 +53,7 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
       .addColumn(new KijiDataRequest.Column("map").withMaxVersions(Integer.MAX_VALUE))
       .addColumn(new KijiDataRequest.Column("memoryMap").withMaxVersions(Integer.MAX_VALUE));
 
-  private Kiji mWibi = null;
+  private Kiji mKiji = null;
   private KijiTable mTable = null;
   private KijiTableWriter mWriter = null;
   private KijiTableReader mReader = null;
@@ -72,7 +72,7 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
    */
   @Before
   public void setup() throws Exception {
-    mWibi = Kiji.open(getKijiConfiguration());
+    mKiji = Kiji.open(getKijiConfiguration());
 
     LOG.info("Creating test table.");
     final File layoutFile =
@@ -84,7 +84,7 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
     assertEquals(0, createResult.getReturnCode());
 
     LOG.info("Populating test table.");
-    mTable = mWibi.openTable(TABLE_NAME);
+    mTable = mKiji.openTable(TABLE_NAME);
     mWriter = createWriter(mTable);
 
     mWriter.put(mTable.getEntityId("alpha"), "group", "a", 1L, "1");
@@ -114,7 +114,7 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
     IOUtils.closeQuietly(mReader);
     IOUtils.closeQuietly(mWriter);
     IOUtils.closeQuietly(mTable);
-    IOUtils.closeQuietly(mWibi);
+    IOUtils.closeQuietly(mKiji);
   }
 
   @Test
