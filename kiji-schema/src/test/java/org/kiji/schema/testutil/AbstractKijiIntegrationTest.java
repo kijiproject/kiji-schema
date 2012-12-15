@@ -244,6 +244,11 @@ public abstract class AbstractKijiIntegrationTest {
         mDeletionThread.waitForCompletion();
         mCreationThread = null;
         mDeletionThread = null;
+
+        // Force garbage compaction to find any remaining references to
+        // opened tables, etc.
+        System.gc();
+        System.runFinalization();
       }
     }
   }
