@@ -27,8 +27,10 @@ import org.kiji.annotations.ApiAudience;
  * <p>Use a {@link KijiTableWriter} to increment a counter value.</p>
  *
  * @see KijiTableWriter#increment(EntityId, String, String, long)
+ * @deprecated KijiCounter will be merged into KijiCell.
  */
 @ApiAudience.Public
+@Deprecated
 public interface KijiCounter {
   /**
    * Gets the timestamp at which the counter was incremented.

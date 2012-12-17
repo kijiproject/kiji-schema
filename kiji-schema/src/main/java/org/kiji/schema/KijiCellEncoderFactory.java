@@ -17,12 +17,22 @@
  * limitations under the License.
  */
 
-/**
- * Kiji map-reduce utilities.
- *
- * <p>This package provides support for building map-reduce jobs that read from and/or write to
- * a Kiji table. For reading from Kiji, use {@link
- * org.kiji.schema.mapreduce.KijiTableInputFormat}. For writing to
- * kiji use {@link org.kiji.schema.mapreduce.KijiTableOutputFormat}.</p>
- */
-package org.kiji.schema.mapreduce;
+package org.kiji.schema;
+
+import java.io.IOException;
+
+import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.layout.impl.CellSpec;
+
+/** Interface for factories of KijiCellEncoder instances. */
+@ApiAudience.Framework
+public interface KijiCellEncoderFactory {
+  /**
+   * Creates a new Kiji cell encoder.
+   *
+   * @param cellSpec Specification of the cell encoding.
+   * @return a new Kiji cell encoder.
+   * @throws IOException on I/O error.
+   */
+  KijiCellEncoder create(CellSpec cellSpec) throws IOException;
+}

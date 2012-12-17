@@ -115,7 +115,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       "--table=foo",
     });
     assertEquals(0, ls10RowsResult.getReturnCode());
-    LOG.debug("Output from 'wibi ls --table=foo' after synthesized users:\n"
+    LOG.debug("Output from 'kiji ls --table=foo' after synthesized users:\n"
         + ls10RowsResult.getStdoutUtf8());
     // 10 rows, each with:
     //   2 columns, each with:

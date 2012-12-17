@@ -25,9 +25,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiConfiguration;
+import org.kiji.schema.HBaseFactory;
 import org.kiji.schema.KijiInstaller;
-import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 
 /**
  * A command-line tool for installing kiji instances on hbase clusters.
@@ -57,15 +56,10 @@ public final class InstallTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-
     getPrintStream().println("Creating kiji instance: " + getURI());
     getPrintStream().println("Creating meta tables for kiji instance in hbase...");
-
-    KijiConfiguration kijiConf = new KijiConfiguration(getConf(), getURI().getInstance());
-    new KijiInstaller().install(kijiConf, DefaultHTableInterfaceFactory.get());
-
+    KijiInstaller.install(getURI(), HBaseFactory.Provider.get(), getConf());
     getPrintStream().println("Successfully created kiji instance: " + getURI());
-
     return 0;
   }
 

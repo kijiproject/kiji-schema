@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
@@ -45,7 +46,7 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   /** The table being scanned. */
   private final HBaseKijiTable mTable;
 
-  /** A cell decoder factory. */
+  /** Cell decoder factory. */
   private final KijiCellDecoderFactory mCellDecoderFactory;
 
   /**
@@ -195,18 +196,15 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     /** {@inheritDoc} */
     @Override
     public KijiRowData next() {
-      Result hbaseResult = mResults.next();
-      if (null == hbaseResult) {
+      final Result result = mResults.next();
+      if (null == result) {
         return null;
       }
 
-      HBaseKijiRowData rowData = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-          .withHBaseResult(hbaseResult)
-          .withDataRequest(mKijiDataRequest)
-          .withTableLayout(mTable.getLayout())
-          .withCellDecoderFactory(mCellDecoderFactory)
-          .withHTable(mTable.getHTable()));
-      return rowData;
+      // Read the entity id from the HBase result.
+      final EntityId entityId = mTable.getEntityIdFactory().fromHBaseRowKey(result.getRow());
+      // TODO: Inject the cell decoder factory in the row data
+      return new HBaseKijiRowData(entityId, mKijiDataRequest, mTable, result);
     }
 
     /** {@inheritDoc} */

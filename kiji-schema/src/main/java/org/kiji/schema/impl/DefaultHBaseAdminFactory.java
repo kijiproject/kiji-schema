@@ -21,33 +21,29 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 
-import org.apache.avro.Schema;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.specific.SpecificDatumReader;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.layout.impl.CellSpec;
 
-/**
- * Decodes cells encoded using Avro into specific types.
- *
- * @param <T> The type of the decoded data.
- */
+/** Factory for HBaseAdmin that creates concrete HBaseAdmin instances. */
 @ApiAudience.Private
-public final class SpecificCellDecoder<T> extends AvroCellDecoder<T> {
-  /**
-   * Initializes a cell decoder that creates specific Avro types.
-   *
-   * @param cellSpec Specification of the cell encoding.
-   * @throws IOException on I/O error.
-   */
-  public SpecificCellDecoder(CellSpec cellSpec) throws IOException {
-    super(cellSpec);
+public final class DefaultHBaseAdminFactory implements HBaseAdminFactory {
+  /** Singleton. */
+  private static final HBaseAdminFactory DEFAULT = new DefaultHBaseAdminFactory();
+
+  /** @return an instance of the default factory. */
+  public static HBaseAdminFactory get() {
+    return DEFAULT;
+  }
+
+  /** Disallow new instances, enforce singleton. */
+  private DefaultHBaseAdminFactory() {
   }
 
   /** {@inheritDoc} */
   @Override
-  protected DatumReader<T> createDatumReader(Schema writer, Schema reader) {
-    return new SpecificDatumReader<T>(writer, reader);
+  public HBaseAdmin create(Configuration conf) throws IOException {
+    return new HBaseAdmin(conf);
   }
 }

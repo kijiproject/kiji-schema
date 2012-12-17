@@ -32,7 +32,6 @@ import java.util.Set;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import org.apache.avro.Schema;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -308,7 +307,7 @@ public final class LsTool extends VersionValidatedTool {
         // If this map family of non-counters has no qualifiers, print entire family.
         if (entry.getValue().isEmpty()) {
           NavigableMap<String, NavigableMap<Long, Object>> keyTimeseriesMap =
-              row.getValues(family.getName(), (Schema) null);
+              row.getValues(family.getName());
           for (String key : keyTimeseriesMap.keySet()) {
             for (Entry<Long, Object> timestampedCell : keyTimeseriesMap.get(key).entrySet()) {
               long timestamp = timestampedCell.getKey();
@@ -320,7 +319,7 @@ public final class LsTool extends VersionValidatedTool {
         } else {
           for (String key : entry.getValue()) {
             NavigableMap<Long, Object> timeseriesMap =
-                row.getValues(family.getName(), key, (Schema) null);
+                row.getValues(family.getName(), key);
             for (Entry<Long, Object> timestampedCell : timeseriesMap.entrySet()) {
               long timestamp = timestampedCell.getKey();
               printCell(row.getEntityId(), timestamp, family.getName(), key,
@@ -344,7 +343,7 @@ public final class LsTool extends VersionValidatedTool {
           }
         } else {
           for (Entry<Long, Object> timestampedCell
-              : row.getValues(colName.getFamily(), colName.getQualifier(), (Schema) null)
+              : row.getValues(colName.getFamily(), colName.getQualifier())
                   .entrySet()) {
             long timestamp = timestampedCell.getKey();
             printCell(row.getEntityId(), timestamp, colName.getFamily(),

@@ -19,66 +19,93 @@
 
 package org.kiji.schema;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import org.apache.avro.Schema;
-import org.apache.avro.util.Utf8;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import org.kiji.schema.avro.MyEnum;
-import org.kiji.schema.avro.TestSpecificEnum;
+import org.kiji.schema.avro.CellSchema;
+import org.kiji.schema.avro.SchemaStorage;
+import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.avro.TestRecord;
+import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
+import org.kiji.schema.layout.impl.CellSpec;
 
+/** Tests for Kiji cell encoders. */
 public class TestKijiCellEncoder extends KijiClientTest {
   @Test
-  public void testEncode() throws IOException {
-    for (KijiCellFormat format : KijiCellFormat.values()) {
-      encode(format);
-    }
-  }
-
-  private void encode(KijiCellFormat format) throws IOException {
-    final KijiCell<CharSequence> original =
-        new KijiCell<CharSequence>(Schema.create(Schema.Type.STRING), new Utf8("foo"));
-
-    final KijiCellEncoder encoder = new KijiCellEncoder(getKiji().getSchemaTable());
-    final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    encoder.encode(original, out, KijiCellFormat.HASH);
-
-    final KijiCellDecoderFactory decoderFactory =
-        new SpecificCellDecoderFactory(getKiji().getSchemaTable());
-    final KijiCellDecoder<CharSequence> decoder =
-        decoderFactory.create(Schema.create(Schema.Type.STRING), KijiCellFormat.HASH);
-    final KijiCell<CharSequence> decoded = decoder.decode(out.toByteArray());
-    assertEquals(decoded, original);
+  public void testEncodeCounter() throws IOException {
+    final KijiCellEncoder encoder =
+        DefaultKijiCellEncoderFactory.get().create(CellSpec.newCounter());
+    assertArrayEquals(Bytes.toBytes(3181L), encoder.encode(3181));
+    assertArrayEquals(Bytes.toBytes(3181L), encoder.encode(3181L));
   }
 
   @Test
-  public void testEncodeSpecificEnum() throws IOException {
-    for (KijiCellFormat format : KijiCellFormat.values()) {
-      encodeSpecificEnum(format);
-    }
+  public void testEncodeAvroInline() throws IOException {
+    final CellSpec cellSpec = new CellSpec()
+        .setCellSchema(CellSchema.newBuilder()
+            .setStorage(SchemaStorage.FINAL)
+            .setType(SchemaType.INLINE)
+            .setValue("\"long\"")
+            .build());
+    final KijiCellEncoder encoder =
+        DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    // Avro encodes 3181L as bytes [-38, 49]:
+    assertArrayEquals(new byte[]{-38, 49}, encoder.encode(3181L));
   }
 
-  private void encodeSpecificEnum(KijiCellFormat format) throws IOException {
-    // Test that a specific record containing a union of an enum and null can be serialized.
-    final TestSpecificEnum myEnumRecord = new TestSpecificEnum();
-    myEnumRecord.setA(MyEnum.Cat);
-    final KijiCell<TestSpecificEnum> original =
-        new KijiCell<TestSpecificEnum>(TestSpecificEnum.SCHEMA$, myEnumRecord);
+  @Test
+  public void testEncodeAvroClass() throws IOException {
+    final CellSpec cellSpec = new CellSpec()
+        .setCellSchema(CellSchema.newBuilder()
+            .setStorage(SchemaStorage.FINAL)
+            .setType(SchemaType.CLASS)
+            .setValue(TestRecord.class.getName())
+            .build());
+    final KijiCellEncoder encoder =
+        DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final TestRecord record = TestRecord.newBuilder()
+        .setA("a")  // encodes as [2, 97]
+        .setB(1)    // encodes as [2]
+        .setC(2)    // encodes as [4]
+        .build();
+    assertArrayEquals(new byte[]{2, 97, 2, 4}, encoder.encode(record));
+  }
 
-    final KijiCellEncoder encoder = new KijiCellEncoder(getKiji().getSchemaTable());
-    final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    encoder.encode(original, out, format);
+  @Test
+  public void testEncodeAvroSchemaUID() throws IOException {
+    final CellSpec cellSpec = new CellSpec()
+        .setCellSchema(CellSchema.newBuilder()
+            .setStorage(SchemaStorage.UID)
+            .setType(SchemaType.INLINE)
+            .setValue("\"long\"")
+            .build())
+        .setSchemaTable(getKiji().getSchemaTable());
+    final KijiCellEncoder encoder =
+        DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    // Avro schema "long" has UID #3, and Avro encodes 3181L as bytes [-38, 49]:
+    assertArrayEquals(new byte[]{3, -38, 49}, encoder.encode(3181L));
+  }
 
-    final KijiCellDecoderFactory decoderFactory =
-        new SpecificCellDecoderFactory(getKiji().getSchemaTable());
-    final KijiCellDecoder<TestSpecificEnum> decoder =
-        decoderFactory.create(TestSpecificEnum.SCHEMA$, format);
-    final KijiCell<TestSpecificEnum> decoded = decoder.decode(out.toByteArray());
-    assertEquals(decoded, original);
-
+  @Test
+  public void testEncodeAvroSchemaHash() throws IOException {
+    final CellSpec cellSpec = new CellSpec()
+        .setCellSchema(CellSchema.newBuilder()
+            .setStorage(SchemaStorage.HASH)
+            .setType(SchemaType.INLINE)
+            .setValue("\"long\"")
+            .build())
+        .setSchemaTable(getKiji().getSchemaTable());
+    final KijiCellEncoder encoder =
+        DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final byte[] bytes = encoder.encode(3181L);
+    assertEquals(16 + 2, bytes.length);
+    // Avro encodes 3181L as bytes [-38, 49]:
+    assertEquals(-38, bytes[16]);
+    assertEquals(49, bytes[17]);
   }
 }

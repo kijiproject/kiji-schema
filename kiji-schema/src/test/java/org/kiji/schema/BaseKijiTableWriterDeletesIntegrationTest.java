@@ -26,7 +26,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 
-import org.apache.avro.Schema;
 import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -88,14 +87,14 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
     mTable = mWibi.openTable(TABLE_NAME);
     mWriter = createWriter(mTable);
 
-    mWriter.put(mTable.getEntityId("alpha"), "group", "a", 1L, createCell("1"));
-    mWriter.put(mTable.getEntityId("alpha"), "group", "a", 2L, createCell("2"));
-    mWriter.put(mTable.getEntityId("alpha"), "group", "a", 3L, createCell("3"));
-    mWriter.put(mTable.getEntityId("alpha"), "group", "b", 3L, createCell("3"));
-    mWriter.put(mTable.getEntityId("alpha"), "map", "key1", 1L, createCell("1"));
-    mWriter.put(mTable.getEntityId("alpha"), "map", "key2", 3L, createCell("3"));
-    mWriter.put(mTable.getEntityId("alpha"), "memoryMap", "key1", 2L, createCell("2"));
-    mWriter.put(mTable.getEntityId("alpha"), "memoryMap", "key2", 4L, createCell("4"));
+    mWriter.put(mTable.getEntityId("alpha"), "group", "a", 1L, "1");
+    mWriter.put(mTable.getEntityId("alpha"), "group", "a", 2L, "2");
+    mWriter.put(mTable.getEntityId("alpha"), "group", "a", 3L, "3");
+    mWriter.put(mTable.getEntityId("alpha"), "group", "b", 3L, "3");
+    mWriter.put(mTable.getEntityId("alpha"), "map", "key1", 1L, "1");
+    mWriter.put(mTable.getEntityId("alpha"), "map", "key2", 3L, "3");
+    mWriter.put(mTable.getEntityId("alpha"), "memoryMap", "key1", 2L, "2");
+    mWriter.put(mTable.getEntityId("alpha"), "memoryMap", "key2", 4L, "4");
 
     mWriter.flush();
 
@@ -238,15 +237,5 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
     assertTrue(result.getTimestamps("group", "a").contains(1L));
     assertTrue(result.containsColumn("map"));
     assertTrue(result.containsColumn("memoryMap"));
-  }
-
-  /**
-   * Creates a string cell.
-   *
-   * @param value The value to put in the string cell.
-   * @return A Wibi cell.
-   */
-  private KijiCell<CharSequence> createCell(String value) {
-    return new KijiCell<CharSequence>(Schema.create(Schema.Type.STRING), value);
   }
 }

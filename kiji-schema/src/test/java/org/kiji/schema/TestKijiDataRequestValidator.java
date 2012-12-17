@@ -33,7 +33,7 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
   @Before
   public void setupLayout() throws Exception {
     mTableLayout = getKiji().getMetaTable()
-        .updateTableLayout("table", KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED));
+        .updateTableLayout("user", KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED));
   }
 
   @Test

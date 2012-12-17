@@ -35,7 +35,6 @@ import org.kiji.schema.EntityId;
 import org.kiji.schema.HBaseScanOptions;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestValidator;
 import org.kiji.schema.KijiRowData;
@@ -100,18 +99,9 @@ public class HBaseKijiTableReader extends KijiTableReader {
     // Send the HTable Get.
     LOG.debug("Sending HBase Get: " + hbaseGet);
     Result result = mTable.getHTable().get(hbaseGet);
+
     // Parse the result.
-    HBaseKijiRowData rowData = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withEntityId(entityId)
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getKijiCellDecoderFactory())
-        .withHTable(mTable.getHTable()));
-
-    return rowData;
-
-
+    return new HBaseKijiRowData(entityId, dataRequest, mTable, result);
   }
 
 
@@ -156,24 +146,14 @@ public class HBaseKijiTableReader extends KijiTableReader {
   private List<KijiRowData> parseResults(Result[] results, List<EntityId> entityIds,
       KijiDataRequest dataRequest, KijiTableLayout tableLayout) throws IOException {
     List<KijiRowData> rowDataList = new ArrayList<KijiRowData>(results.length);
-    KijiCellDecoderFactory cellDecoderFactory = getKijiCellDecoderFactory();
 
     for (int i = 0; i < results.length; i++) {
       Result result = results[i];
       EntityId entityId = entityIds.get(i);
 
-      HBaseKijiRowData rowData;
-      if (null == result) {
-        rowData = null;
-      } else {
-         rowData =  new HBaseKijiRowData(new HBaseKijiRowData.Options()
-              .withEntityId(entityId)
-              .withHBaseResult(result)
-              .withDataRequest(dataRequest)
-              .withTableLayout(tableLayout)
-              .withCellDecoderFactory(cellDecoderFactory)
-              .withHTable(mTable.getHTable()));
-      }
+      HBaseKijiRowData rowData = (null == result)
+          ? null
+          : new HBaseKijiRowData(entityId, dataRequest, mTable, result);
       rowDataList.add(rowData);
     }
     return rowDataList;
@@ -223,8 +203,8 @@ public class HBaseKijiTableReader extends KijiTableReader {
       }
 
       if (null != rowFilter) {
-        KijiRowFilterApplicator applicator = new KijiRowFilterApplicator(rowFilter,
-          mKiji.getSchemaTable(), tableLayout);
+        final KijiRowFilterApplicator applicator =
+            new KijiRowFilterApplicator(rowFilter, tableLayout, mKiji.getSchemaTable());
         applicator.applyTo(scan);
       }
 

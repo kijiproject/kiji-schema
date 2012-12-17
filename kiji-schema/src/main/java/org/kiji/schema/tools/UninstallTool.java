@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiInstaller;
 
 /**
@@ -67,8 +66,7 @@ public final class UninstallTool extends BaseTool {
       }
     }
     try {
-      KijiInstaller installer = new KijiInstaller();
-      installer.uninstall(new KijiConfiguration(getConf(), getURI().getInstance()));
+      KijiInstaller.uninstall(getURI(), getConf());
       getPrintStream().println("Deleted kiji instance: " + getURI().toString());
       return 0;
     } catch (Exception e) {

@@ -45,16 +45,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiCellFormat;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
 import org.kiji.schema.avro.FamilyDesc;
 import org.kiji.schema.avro.LocalityGroupDesc;
+import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
+import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.util.FromJson;
 import org.kiji.schema.util.JavaIdentifiers;
@@ -199,8 +200,8 @@ import org.kiji.schema.util.ToJson;
  *   <li> Final: each Kiji cell is encoded as the binary encoding of the Avro value.
  *   </li>
  * </ul>
- * See {@link org.kiji.schema.KijiCellEncoder KijiCellEncoder}
- * and {@link org.kiji.schema.KijiCellDecoder KijiCellDecoder}
+ * See {@link org.kiji.schema.impl.AvroCellEncoder KijiCellEncoder}
+ * and {@link org.kiji.schema.impl.AvroCellDecoder KijiCellDecoder}
  * for more implementation details.
  *
  * <h1>Column IDs</h1>
@@ -1101,8 +1102,17 @@ public final class KijiTableLayout {
    * @return the cell format for the column.
    * @throws NoSuchColumnException if the column does not exist.
    */
-  public KijiCellFormat getCellFormat(KijiColumnName column) throws NoSuchColumnException {
-    return KijiCellFormat.fromSchemaStorage(getCellSchema(column).getStorage());
+  public SchemaStorage getCellFormat(KijiColumnName column) throws NoSuchColumnException {
+    return getCellSchema(column).getStorage();
+  }
+
+  /**
+   * @return the cell specification for a given column.
+   * @param column Column to look up.
+   * @throws IOException on I/O error.
+   */
+  public CellSpec getCellSpec(KijiColumnName column) throws IOException {
+    return CellSpec.fromCellSchema(getCellSchema(column));
   }
 
   /**

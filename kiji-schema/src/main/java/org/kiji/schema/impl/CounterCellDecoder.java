@@ -21,33 +21,36 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 
-import org.apache.avro.Schema;
-import org.apache.avro.io.DatumReader;
-import org.apache.avro.specific.SpecificDatumReader;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.KijiCell;
+import org.kiji.schema.KijiCellDecoder;
 
-/**
- * Decodes cells encoded using Avro into specific types.
- *
- * @param <T> The type of the decoded data.
- */
+/** Cell decoder for counters. */
 @ApiAudience.Private
-public final class SpecificCellDecoder<T> extends AvroCellDecoder<T> {
-  /**
-   * Initializes a cell decoder that creates specific Avro types.
-   *
-   * @param cellSpec Specification of the cell encoding.
-   * @throws IOException on I/O error.
-   */
-  public SpecificCellDecoder(CellSpec cellSpec) throws IOException {
-    super(cellSpec);
+public final class CounterCellDecoder implements KijiCellDecoder<Long> {
+  /** Singleton instance. */
+  private static final CounterCellDecoder SINGLETON = new CounterCellDecoder();
+
+  /** @return the counter cell decoder singleton. */
+  public static CounterCellDecoder get() {
+    return SINGLETON;
+  }
+
+  /** Singleton constructor. */
+  private CounterCellDecoder() {
   }
 
   /** {@inheritDoc} */
   @Override
-  protected DatumReader<T> createDatumReader(Schema writer, Schema reader) {
-    return new SpecificDatumReader<T>(writer, reader);
+  public KijiCell<Long> decodeCell(byte[] bytes) throws IOException {
+    return new KijiCell<Long>(null, Bytes.toLong(bytes));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Long decodeValue(byte[] bytes) throws IOException {
+    return Bytes.toLong(bytes);
   }
 }

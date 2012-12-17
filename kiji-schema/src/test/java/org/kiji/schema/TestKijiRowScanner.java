@@ -32,7 +32,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -42,12 +41,14 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.HBaseDataRequestAdapter;
 import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.layout.impl.CellSpec;
 
 public class TestKijiRowScanner extends KijiClientTest {
   @Before
@@ -85,28 +86,29 @@ public class TestKijiRowScanner extends KijiClientTest {
     final KijiColumnName column = new KijiColumnName("family:column");
     final HBaseColumnName hcolumn = columnNameTranslator.toHBaseColumnName(column);
 
-    final KijiCellEncoder encoder = new KijiCellEncoder(getKiji().getSchemaTable());
-    final KijiCellFormat format = tableLayout.getCellFormat(column);
+    final CellSpec cellSpec = tableLayout.getCellSpec(column)
+        .setSchemaTable(getKiji().getSchemaTable());
+    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
 
     final Result cannedResult1 = new Result(new KeyValue[] {
       new KeyValue(table.getEntityId("foo").getHBaseRowKey(),
           hcolumn.getFamily(),
           hcolumn.getQualifier(),
-          encoder.encode(new KijiCell<Integer>(Schema.create(Schema.Type.INT), 2), format)),
+          encoder.encode("a")),
     });
 
     final Result cannedResult2 = new Result(new KeyValue[] {
       new KeyValue(table.getEntityId("foo").getHBaseRowKey(),
           hcolumn.getFamily(),
           hcolumn.getQualifier(),
-          encoder.encode(new KijiCell<Integer>(Schema.create(Schema.Type.INT), 4), format)),
+          encoder.encode("b")),
     });
 
     final Result cannedResult3 = new Result(new KeyValue[] {
       new KeyValue(table.getEntityId("foo").getHBaseRowKey(),
           hcolumn.getFamily(),
           hcolumn.getQualifier(),
-          encoder.encode(new KijiCell<Integer>(Schema.create(Schema.Type.INT), 6), format)),
+          encoder.encode("c")),
     });
 
     cannedIterable.add(cannedResult1);
@@ -127,20 +129,20 @@ public class TestKijiRowScanner extends KijiClientTest {
     Iterator<KijiRowData> iterator = scanner.iterator();
 
     assertTrue(iterator.hasNext());
-    assertEquals(Integer.valueOf(2), iterator.next().getIntValue("family", "column"));
+    assertEquals("a", iterator.next().getMostRecentValue("family", "column").toString());
     assertTrue(iterator.hasNext());
-    assertEquals(Integer.valueOf(4), iterator.next().getIntValue("family", "column"));
+    assertEquals("b", iterator.next().getMostRecentValue("family", "column").toString());
 
     // Open another iterator on the scanner.
-    int sum = 0;
+    String sum = "";
     for (KijiRowData kijiRowData : scanner) {
-      sum += kijiRowData.getIntValue("family", "column");
+      sum += kijiRowData.getMostRecentValue("family", "column").toString();
     }
-    assertEquals(12, sum);
+    assertEquals("abc", sum);
 
     // Test original iterator continues as expected.
     assertTrue(iterator.hasNext());
-    assertEquals(Integer.valueOf(6), iterator.next().getIntValue("family", "column"));
+    assertEquals("c", iterator.next().getMostRecentValue("family", "column").toString());
     assertTrue(!iterator.hasNext());
 
     scanner.close();

@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
@@ -43,10 +42,12 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.layout.impl.CellSpec;
 
 public class TestHBaseKijiTableReader extends KijiClientTest {
   @Before
@@ -79,13 +80,16 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     expectedGet.addColumn(hcolumn.getFamily(), hcolumn.getQualifier());
 
     // And the canned result response.
+    final CellSpec cellSpec = columnNameTranslator.getTableLayout().getCellSpec(column)
+        .setSchemaTable(getKiji().getSchemaTable());
+    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+
     Result cannedResult = new Result(new KeyValue[] {
-      new KeyValue(table.getEntityId("foo").getHBaseRowKey(),
+      new KeyValue(
+          table.getEntityId("foo").getHBaseRowKey(),
           hcolumn.getFamily(),
           hcolumn.getQualifier(),
-          new KijiCellEncoder(getKiji().getSchemaTable()).encode(
-              new KijiCell<CharSequence>(Schema.create(Schema.Type.STRING), "Bob"),
-              columnNameTranslator.getTableLayout().getCellFormat(column))),
+          encoder.encode("Bob")),
     });
 
     // Set the expectation.
@@ -101,7 +105,7 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
 
     // Verify that the returned row data is as expected.
     assertTrue(rowData.containsColumn("family", "column"));
-    assertEquals("Bob", rowData.getStringValue("family", "column").toString());
+    assertEquals("Bob", rowData.getMostRecentValue("family", "column").toString());
 
     reader.close();
     table.close();
@@ -149,7 +153,7 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
 
     // Verify that the returned row data is as expected.
     assertTrue(rowData.containsColumn("info", "visits"));
-    assertEquals(42L, rowData.getCounterValue("info", "visits"));
+    assertEquals(42L, rowData.getCounter("info", "visits").getValue());
 
     reader.close();
     table.close();
@@ -199,8 +203,8 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     List<KijiRowData> listRowData = reader.bulkGet(entityIds, dataRequest);
 
     assertEquals(2, listRowData.size());
-    assertEquals("foo-val", listRowData.get(0).getStringValue("family", "column").toString());
-    assertEquals("bar-val", listRowData.get(1).getStringValue("family", "column").toString());
+    assertEquals("foo-val", listRowData.get(0).getMostRecentValue("family", "column").toString());
+    assertEquals("bar-val", listRowData.get(1).getMostRecentValue("family", "column").toString());
 
     table.close();
     reader.close();
@@ -243,9 +247,10 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
       KijiTable table, ColumnNameTranslator translator) throws IOException {
     final KijiColumnName column = new KijiColumnName(columnName);
     final HBaseColumnName hColumn = translator.toHBaseColumnName(column);
-    final byte[] encodedKijiCell = new KijiCellEncoder(getKiji().getSchemaTable()).encode(
-        new KijiCell<CharSequence>(Schema.create(Schema.Type.STRING), cellValue),
-        translator.getTableLayout().getCellFormat(column));
+    final CellSpec cellSpec = translator.getTableLayout().getCellSpec(column)
+        .setSchemaTable(getKiji().getSchemaTable());
+    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final byte[] encodedKijiCell = encoder.encode(cellValue);
 
     final EntityId entityId = table.getEntityIdFactory().fromKijiRowKey(kijiRowKey);
     return new Result(new KeyValue[] {

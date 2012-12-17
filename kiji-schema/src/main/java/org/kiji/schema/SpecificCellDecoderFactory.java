@@ -19,39 +19,43 @@
 
 package org.kiji.schema;
 
-import org.apache.avro.Schema;
-import org.apache.avro.specific.SpecificData;
-import org.apache.avro.specific.SpecificRecord;
+import java.io.IOException;
+
+import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.impl.CounterCellDecoder;
 import org.kiji.schema.impl.SpecificCellDecoder;
+import org.kiji.schema.layout.impl.CellSpec;
 
-/**
- * A factory for creating KijiCellDecoders which uses a SpecificCellDecoder
- * to handle record-based schemas.
- */
+/** Factory for Kiji cell decoders using SpecificCellDecoder to handle record-based schemas. */
 @ApiAudience.Framework
-public final class SpecificCellDecoderFactory extends KijiCellDecoderFactory {
-  /**
-   * Default c'tor.
-   *
-   * @param schemaTable the kiji schema table.
-   */
-  public SpecificCellDecoderFactory(KijiSchemaTable schemaTable) {
-    super(schemaTable);
+public final class SpecificCellDecoderFactory implements KijiCellDecoderFactory {
+  /** Singleton instance. */
+  private static final SpecificCellDecoderFactory SINGLETON = new SpecificCellDecoderFactory();
+
+  /** @return an instance of the SpecificCellDecoderFactory. */
+  public static KijiCellDecoderFactory get() {
+    return SINGLETON;
+  }
+
+  /** Singleton constructor. */
+  private SpecificCellDecoderFactory() {
   }
 
   /** {@inheritDoc} */
   @Override
-  public <T> KijiCellDecoder<T> create(Schema readerSchema, KijiCellFormat format) {
-    return new SpecificCellDecoder<T>(getSchemaTable(), readerSchema, format);
+  public KijiCellDecoder<?> create(CellSpec cellSpec) throws IOException {
+    Preconditions.checkNotNull(cellSpec);
+    switch (cellSpec.getCellSchema().getType()) {
+    case CLASS:
+    case INLINE:
+      return new SpecificCellDecoder(cellSpec);
+    case COUNTER:
+      return CounterCellDecoder.get();
+    default:
+      throw new RuntimeException("Unhandled cell encoding: " + cellSpec.getCellSchema());
+    }
   }
 
-  /** {@inheritDoc} */
-  @Override
-  public <T extends SpecificRecord> KijiCellDecoder<T> create(Class<T> specificRecordClass,
-      KijiCellFormat format) {
-    Schema readerSchema = SpecificData.get().getSchema(specificRecordClass);
-    return new SpecificCellDecoder<T>(mSchemaTable, readerSchema, format);
-  }
 }

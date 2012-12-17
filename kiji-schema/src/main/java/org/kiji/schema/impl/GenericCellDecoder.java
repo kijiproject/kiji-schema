@@ -20,47 +20,34 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.io.DecoderFactory;
+import org.apache.avro.io.DatumReader;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiCellDecoder;
-import org.kiji.schema.KijiCellFormat;
-import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.layout.impl.CellSpec;
 
 /**
- * Decodes Kiji cells into generic avro types.
+ * Decodes cells encoded using Avro into generic types.
  *
  * @param <T> The type of the decoded data.
  */
 @ApiAudience.Private
-public class GenericCellDecoder<T> extends KijiCellDecoder<T> {
+public class GenericCellDecoder<T> extends AvroCellDecoder<T> {
   /**
-   * Use a {@link org.kiji.schema.KijiCellDecoderFactory} to get a GenericCellDecoder.
+   * Initializes a cell decoder that creates generic Avro types.
    *
-   * @param schemaTable A Kiji schema table.
-   * @param readerSchema The expected avro schema during reading.
-   * @param format Cell coding format.
+   * @param cellSpec Specification of the cell encoding.
+   * @throws IOException on I/O error.
    */
-  public GenericCellDecoder(
-      KijiSchemaTable schemaTable,
-      Schema readerSchema,
-      KijiCellFormat format) {
-    super(schemaTable, readerSchema, format);
+  public GenericCellDecoder(CellSpec cellSpec) throws IOException {
+    super(cellSpec);
   }
 
+  /** {@inheritDoc} */
   @Override
-  protected T decodeData(ByteBuffer encodedData, Schema writerSchema, Schema readerSchema, T reuse)
-      throws IOException {
-    GenericDatumReader<T> reader = new GenericDatumReader<T>(writerSchema, readerSchema);
-    return reader.read(reuse,
-        DecoderFactory.get().binaryDecoder(
-            encodedData.array(),
-            encodedData.position(),
-            encodedData.limit() - encodedData.position(),
-            null));
+  protected DatumReader<T> createDatumReader(Schema writer, Schema reader) {
+    return new GenericDatumReader<T>(writer, reader);
   }
 }
