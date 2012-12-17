@@ -30,7 +30,6 @@ import static org.kiji.schema.util.PutEquals.eqPut;
 
 import java.io.IOException;
 
-import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -42,11 +41,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.layout.impl.CellSpec;
 
 public class TestHBaseKijiTableWriter extends KijiClientTest {
   private boolean mShouldVerifyMocks;
@@ -86,14 +87,15 @@ public class TestHBaseKijiTableWriter extends KijiClientTest {
   public void testPutWithTimestamp() throws Exception {
     // Set the expectations that the writer will execute on the HTable.
     Put expectedPut = new Put(mKijiTable.getEntityId("foo").getHBaseRowKey());
-    KijiCellEncoder cellEncoder = new KijiCellEncoder(getKiji().getSchemaTable());
     final KijiColumnName column = new KijiColumnName("info", "name");
     final HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(column);
     final KijiTableLayout layout = getKiji().getMetaTable().getTableLayout("user");
+    final CellSpec cellSpec = layout.getCellSpec(column)
+        .setSchemaTable(getKiji().getSchemaTable());
+    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+
     expectedPut.add(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), 123L,
-        cellEncoder.encode(
-            new KijiCell<CharSequence>(Schema.create(Schema.Type.STRING), "baz"),
-            layout.getCellFormat(column)));
+        encoder.encode("baz"));
     mHTable.put(eqPut(expectedPut));
     mHTable.flushCommits();
     mHTable.close();
@@ -131,7 +133,7 @@ public class TestHBaseKijiTableWriter extends KijiClientTest {
   }
 
   @Test(expected=IOException.class)
-  public void testIncrementAColumnThatIsNotACounter() throws IOException {
+  public void testIncrementAColumnThatIsNotACounter() throws Exception {
     // This should throw an exception because we are attempting to increment a column that
     // isn't a counter.
     mWriter.increment(mKijiTable.getEntityId("foo"), "info", "name", 5L);
@@ -150,6 +152,6 @@ public class TestHBaseKijiTableWriter extends KijiClientTest {
     mHTable.close();
     replay(mHTable);
 
-    mWriter.setCounter(mKijiTable.getEntityId("foo"), "info", "visits", 5L);
+    mWriter.put(mKijiTable.getEntityId("foo"), "info", "visits", 5L);
   }
 }

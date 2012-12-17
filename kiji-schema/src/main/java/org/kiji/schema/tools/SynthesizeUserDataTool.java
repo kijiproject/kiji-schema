@@ -23,12 +23,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 
-import org.apache.avro.Schema;
-
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.tools.synth.DictionaryLoader;
@@ -111,10 +108,8 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
       String email = EmailSynthesizer.formatEmail(fullName.replace(" ", "."),
           emailSynth.synthesizeDomain());
       EntityId entityId = kijiTable.getEntityId(email);
-      tableWriter.put(entityId, "info", "name",
-          new KijiCell<CharSequence>(Schema.create(Schema.Type.STRING), fullName));
-      tableWriter.put(entityId, "info", "email",
-          new KijiCell<CharSequence>(Schema.create(Schema.Type.STRING), email));
+      tableWriter.put(entityId, "info", "name", fullName);
+      tableWriter.put(entityId, "info", "email", email);
 
       // Print some status so the user knows it's working.
       if (i % 1000 == 0) {

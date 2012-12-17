@@ -22,87 +22,127 @@ package org.kiji.schema;
 import java.io.IOException;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.impl.HBaseAdminFactory;
 import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.util.KijiNameValidator;
+import org.kiji.schema.util.LockFactory;
 
-/**
- * A kiji installer installs or uninstalls kiji instances from an HBase cluster.
- **/
+/** Installs or uninstalls Kiji instances from an HBase cluster. */
 @ApiAudience.Public
 public final class KijiInstaller {
   private static final Logger LOG = LoggerFactory.getLogger(KijiInstaller.class);
 
   /**
-   * Installs a kiji instance into the HBase cluster.
+   * Installs the specified Kiji instance.
    *
-   * @param kijiConf The configuration for the kiji instance to install.
-   * @param tableFactory HTableInterface factory.
-   * @throws IOException If there is an error.
-   * @throws org.kiji.schema.KijiInvalidNameException If the kiji instance already exists.
+   * @param uri URI of the Kiji instance to install.
+   * @param conf Hadoop configuration.
+   * @throws IOException on I/O error.
+   * @throws KijiInvalidNameException if the Kiji instance name is invalid or already exists.
    */
-  public void install(
-      KijiConfiguration kijiConf,
-      HTableInterfaceFactory tableFactory)
+  public static void install(KijiURI uri, Configuration conf)
       throws IOException, KijiInvalidNameException {
+    install(uri, HBaseFactory.Provider.get(), conf);
+  }
 
-    LOG.info("Installing a kiji instance named '" + kijiConf.getName() + "'...");
-    HBaseAdmin hbaseAdmin = new HBaseAdmin(kijiConf.getConf());
+  /**
+   * Uninstalls the specified Kiji instance.
+   *
+   * @param uri URI of the Kiji instance to uninstall.
+   * @param conf Hadoop configuration.
+   * @throws IOException on I/O error.
+   */
+  public static void uninstall(KijiURI uri, Configuration conf) throws IOException {
+    uninstall(uri, HBaseFactory.Provider.get(), conf);
+  }
+
+  /**
+   * Installs a Kiji instance.
+   *
+   * @param uri URI of the Kiji instance to install.
+   * @param hbaseFactory Factory for HBase instances.
+   * @param conf Hadoop configuration.
+   * @throws IOException on I/O error.
+   * @throws KijiInvalidNameException if the instance name is invalid or already exists.
+   */
+  public static void install(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
+      throws IOException, KijiInvalidNameException {
+    final KijiConfiguration kijiConf = new KijiConfiguration(conf, uri);
+    final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
+    final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
+    final LockFactory lockFactory = hbaseFactory.getLockFactory(uri, conf);
+
+    LOG.info(String.format("Installing a kiji instance '%s'.", uri.getInstance()));
+    final HBaseAdmin hbaseAdmin = adminFactory.create(kijiConf.getConf());
     try {
-      if (kijiConf.exists()) {
-        throw new KijiInvalidNameException(
-            "A Kiji instance named " + kijiConf.getName() + " already exists.");
+      if (kijiConf.exists(hbaseAdmin)) {
+        throw new KijiInvalidNameException("A Kiji instance named " + kijiConf.getName()
+            + " already exists.");
       } else {
         KijiNameValidator.validateKijiName(kijiConf.getName());
       }
       HBaseSystemTable.install(hbaseAdmin, kijiConf, tableFactory);
       HBaseMetaTable.install(hbaseAdmin, kijiConf);
-      HBaseSchemaTable.install(hbaseAdmin, kijiConf, tableFactory);
+      HBaseSchemaTable.install(hbaseAdmin, kijiConf, tableFactory, lockFactory);
 
     } finally {
       IOUtils.closeQuietly(hbaseAdmin);
     }
-
-    LOG.info("Installed kiji '" + kijiConf.getName() + "'");
+    LOG.info(String.format("Installed kiji instance '%s'.", uri.getInstance()));
   }
 
   /**
    * Removes a kiji instance from the HBase cluster including any user tables.
    *
-   * @param kijiConf The configuration for the kiji instance to uninstall.
-   * @throws IOException If there is an error.
+   * @param uri URI of the Kiji instance to install.
+   * @param hbaseFactory Factory for HBase instances.
+   * @param conf Hadoop configuration.
+   * @throws IOException on I/O error.
    */
-  public void uninstall(KijiConfiguration kijiConf) throws IOException {
-    LOG.info("Removing the kiji instance named '" + kijiConf.getName() + "'...");
+  public static void uninstall(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
+      throws IOException {
+    final KijiConfiguration kijiConf = new KijiConfiguration(conf, uri);
+    final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
+    final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
+    final LockFactory lockFactory = hbaseFactory.getLockFactory(uri, conf);
 
-    Kiji kiji = null;
-    HBaseAdmin hbaseAdmin = null;
+    LOG.info(String.format("Removing the kiji instance '%s'.", uri.getInstance()));
+
+    final Kiji kiji = new Kiji(kijiConf, true, tableFactory, lockFactory);
     try {
-      // Delete the user tables.
-      // Explicitly instantiate Kiji with license checks disabled.
-      kiji = new Kiji(kijiConf);
-      hbaseAdmin = new HBaseAdmin(kijiConf.getConf());
-      KijiAdmin kijiAdmin = new KijiAdmin(hbaseAdmin, kiji);
-      for (String tableName : kijiAdmin.getTableNames()) {
-        LOG.debug("Deleting kiji table " + tableName + "...");
-        kijiAdmin.deleteTable(tableName);
-      }
+      // Delete the user tables:
+      final HBaseAdmin hbaseAdmin = adminFactory.create(kijiConf.getConf());
+      try {
+        final KijiAdmin kijiAdmin = new KijiAdmin(hbaseAdmin, kiji);
+        for (String tableName : kijiAdmin.getTableNames()) {
+          LOG.debug("Deleting kiji table " + tableName + "...");
+          kijiAdmin.deleteTable(tableName);
+        }
 
-      // Delete the system tables.
-      HBaseSystemTable.uninstall(hbaseAdmin, kijiConf);
-      HBaseMetaTable.uninstall(hbaseAdmin, kijiConf);
-      HBaseSchemaTable.uninstall(hbaseAdmin, kijiConf);
+        // Delete the system tables:
+        HBaseSystemTable.uninstall(hbaseAdmin, kijiConf);
+        HBaseMetaTable.uninstall(hbaseAdmin, kijiConf);
+        HBaseSchemaTable.uninstall(hbaseAdmin, kijiConf);
+
+      } finally {
+        IOUtils.closeQuietly(hbaseAdmin);
+      }
     } finally {
-      IOUtils.closeQuietly(hbaseAdmin);
       IOUtils.closeQuietly(kiji);
     }
-    LOG.info("Removed '" + kijiConf.getName() + "'");
+    LOG.info(String.format("Removed kiji instance '%s'.", uri.getInstance()));
+  }
+
+  /** Utility class may not be instantiated. */
+  private KijiInstaller() {
   }
 }

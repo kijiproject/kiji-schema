@@ -45,10 +45,14 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.kiji.schema.KijiCell;
-import org.kiji.schema.KijiCellFormat;
+import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.avro.CellSchema;
+import org.kiji.schema.avro.SchemaStorage;
+import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
+import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
 
 
@@ -59,6 +63,18 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
   private HTableInterface mHTable;
   private String mFamily;
   private HBaseTableLayoutDatabase mDb;
+
+  private byte[] encode(TableLayoutDesc desc) throws IOException {
+    final CellSpec cellSpec = new CellSpec()
+        .setCellSchema(CellSchema.newBuilder()
+            .setStorage(SchemaStorage.HASH)
+            .setType(SchemaType.CLASS)
+            .setValue(TableLayoutDesc.SCHEMA$.getFullName())
+            .build())
+        .setSchemaTable(getKiji().getSchemaTable());
+    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    return encoder.encode(desc);
+  }
 
   @Before
   public void setupDb() throws IOException {
@@ -84,14 +100,10 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
         new Put(Bytes.toBytes(layout.getDesc().getName()))
             .add(Bytes.toBytes(mFamily),
                 Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_UPDATE),
-                getCellEncoder().encode(
-                    new KijiCell<TableLayoutDesc>(TableLayoutDesc.SCHEMA$, layoutDesc),
-                    KijiCellFormat.HASH))
+                encode(layoutDesc))
             .add(Bytes.toBytes(mFamily),
                 Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT),
-                getCellEncoder().encode(
-                    new KijiCell<TableLayoutDesc>(TableLayoutDesc.SCHEMA$, layout.getDesc()),
-                    KijiCellFormat.HASH))
+                encode(layout.getDesc()))
             .add(Bytes.toBytes(mFamily),
                 Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT_ID),
                 Bytes.toBytes("1"));
@@ -113,11 +125,9 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
         .addColumn(Bytes.toBytes(mFamily), Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT))
         .setMaxVersions(1);
     final List<KeyValue> kvs = new ArrayList<KeyValue>();
-    final KijiCell<TableLayoutDesc> cell =
-        new KijiCell<TableLayoutDesc>(TableLayoutDesc.SCHEMA$, version1.getDesc());
     kvs.add(new KeyValue(Bytes.toBytes(version1.getDesc().getName()),
         Bytes.toBytes(mFamily), Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT), 1L,
-        getCellEncoder().encode(cell, KijiCellFormat.HASH)));
+        encode(version1.getDesc())));
     final Result cannedResult = new Result(kvs);
     expect(mHTable.get(eqGet(expectedGet))).andReturn(cannedResult);
 
@@ -149,16 +159,12 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
             .setMaxVersions(2);
 
     final List<KeyValue> kvs = new ArrayList<KeyValue>();
-    final KijiCell<TableLayoutDesc> cell3 =
-        new KijiCell<TableLayoutDesc>(TableLayoutDesc.SCHEMA$, layout3.getDesc());
     kvs.add(new KeyValue(Bytes.toBytes(layout3.getDesc().getName()),
             Bytes.toBytes(mFamily), Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT),
-            3L, getCellEncoder().encode(cell3, KijiCellFormat.HASH)));
-    KijiCell<TableLayoutDesc> cell2 = new KijiCell<TableLayoutDesc>(
-        TableLayoutDesc.SCHEMA$, layout2.getDesc());
+            3L, encode(layout3.getDesc())));
     kvs.add(new KeyValue(Bytes.toBytes(layout2.getDesc().getName()),
             Bytes.toBytes(mFamily), Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT),
-            2L, getCellEncoder().encode(cell2, KijiCellFormat.HASH)));
+            2L, encode(layout2.getDesc())));
     Result cannedResult = new Result(kvs);
     expect(mHTable.get(eqGet(expectedGet))).andReturn(cannedResult);
 

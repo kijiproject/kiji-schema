@@ -29,29 +29,33 @@ import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellEncoder;
-import org.kiji.schema.KijiCellFormat;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.HBaseDataRequestAdapter;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.impl.CellSpec;
 
 
 /**
  * Applies a KijiRowFilter to various row-savvy objects.
+ *
+ * There are several limitations when filtering cells this way, as the filter relies on byte
+ * comparisons, which does not play well with Avro records.
  */
 @ApiAudience.Private
 public final class KijiRowFilterApplicator {
   /** The row filter to be applied by this applicator. */
   private final KijiRowFilter mRowFilter;
 
-  /** The kiji schema table. */
-  private final KijiSchemaTable mSchemaTable;
-
   /** The layout of the table the row filter will be applied to. */
   private final KijiTableLayout mTableLayout;
+
+  /** Schema table. */
+  private final KijiSchemaTable mSchemaTable;
 
   /**
    * An implementation of KijiRowFilter.Context that translates kiji entityIds, column
@@ -59,19 +63,14 @@ public final class KijiRowFilterApplicator {
    */
   private class KijiRowFilterContext extends KijiRowFilter.Context {
     private final ColumnNameTranslator mColumnNameTranslator;
-    private final KijiCellEncoder mCellEncoder;
 
     /**
      * Constructs a KijiRowFilterContext.
      *
-     * @param columnNameTranslator A column name translator for the table the filter will
-     *     be applied to.
-     * @param cellEncoder A kiji cell encoder.
+     * @param columnNameTranslator Column name translator for the table to apply filter to.
      */
-    public KijiRowFilterContext(
-        ColumnNameTranslator columnNameTranslator, KijiCellEncoder cellEncoder) {
+    public KijiRowFilterContext(ColumnNameTranslator columnNameTranslator) {
       mColumnNameTranslator = columnNameTranslator;
-      mCellEncoder = cellEncoder;
     }
 
     /** {@inheritDoc} */
@@ -91,8 +90,10 @@ public final class KijiRowFilterApplicator {
     @Override
     public byte[] getHBaseCellValue(KijiColumnName column, KijiCell<?> kijiCell)
         throws IOException {
-      final KijiCellFormat format = mColumnNameTranslator.getTableLayout().getCellFormat(column);
-      return mCellEncoder.encode(kijiCell, format);
+      final CellSpec cellSpec = mColumnNameTranslator.getTableLayout().getCellSpec(column)
+          .setSchemaTable(mSchemaTable);
+      final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+      return encoder.encode(kijiCell);
     }
   }
 
@@ -103,11 +104,11 @@ public final class KijiRowFilterApplicator {
    * @param schemaTable The kiji schema table.
    * @param tableLayout The layout of the table this filter applies to.
    */
-  public KijiRowFilterApplicator(
-      KijiRowFilter rowFilter, KijiSchemaTable schemaTable, KijiTableLayout tableLayout) {
+  public KijiRowFilterApplicator(KijiRowFilter rowFilter, KijiTableLayout tableLayout,
+      KijiSchemaTable schemaTable) {
     mRowFilter = rowFilter;
-    mSchemaTable = schemaTable;
     mTableLayout = tableLayout;
+    mSchemaTable = schemaTable;
   }
 
   /**
@@ -129,8 +130,8 @@ public final class KijiRowFilterApplicator {
     }
 
     // Set the filter.
-    KijiRowFilter.Context context = new KijiRowFilterContext(
-        new ColumnNameTranslator(mTableLayout), new KijiCellEncoder(mSchemaTable));
+    final KijiRowFilter.Context context =
+        new KijiRowFilterContext(new ColumnNameTranslator(mTableLayout));
     scan.setFilter(mRowFilter.toHBaseFilter(context));
   }
 }

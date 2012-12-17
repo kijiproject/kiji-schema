@@ -29,8 +29,8 @@ import org.kiji.annotations.ApiAudience;
  * unit of data in Kiji, addressed by a tuple of (table, row, family,
  * qualifier, timestamp).</p>
  *
- * <p>Use a {@link org.kiji.schema.KijiCellDecoder} or a
- * {@link org.kiji.schema.KijiCellEncoder} to serialize/deserialize this cell in and out of a
+ * <p>Use a {@link org.kiji.schema.impl.AvroCellDecoder} or a
+ * {@link org.kiji.schema.impl.AvroCellEncoder} to serialize/deserialize this cell in and out of a
  * Kiji table.</p>
  *
  * <p>This class has a Java type parameter <code>T</code>, which should be the Java type
@@ -49,10 +49,16 @@ import org.kiji.annotations.ApiAudience;
  *
  * @param <T> The type of the data in the cell.
  */
-@ApiAudience.Public
+@ApiAudience.Framework
 public final class KijiCell<T> {
-  /** The schema used to write the cell data. */
+  /**
+   * The schema used to write the cell data.
+   *
+   * Null for a counter.
+   */
+  // TODO: Should there be KijiCellCounter and KijiCellAvro?
   private Schema mWriterSchema;
+
   /** The data in the Kiji cell. */
   private T mData;
 

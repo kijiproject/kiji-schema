@@ -27,10 +27,10 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.TreeMap;
-import java.util.TreeSet;
 
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
-import org.apache.avro.specific.SpecificRecord;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
@@ -46,24 +46,24 @@ import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellDecoderFactory;
-import org.kiji.schema.KijiCellFormat;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiColumnPager;
 import org.kiji.schema.KijiCounter;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiSchemaTable;
-import org.kiji.schema.NoCellDataException;
 import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.util.TimestampComparator;
-
 
 /**
  * An implementation of KijiRowData that wraps an HBase Result object.
  */
 @ApiAudience.Private
-public class HBaseKijiRowData extends AbstractKijiRowData {
+public final class HBaseKijiRowData implements KijiRowData {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiRowData.class);
 
   /** The entity id for the row. */
@@ -87,177 +87,111 @@ public class HBaseKijiRowData extends AbstractKijiRowData {
   /** A column pager (will only be used if paging is enabled, otherwise set to null). */
   private final KijiColumnPager mColumnPager;
 
+  /** Schema table to resolve schema hashes or IDs. */
+  private final KijiSchemaTable mSchemaTable;
+
   /** A map from kiji family to kiji qualifier to timestamp to raw encoded cell values. */
   private NavigableMap<String, NavigableMap<String, NavigableMap<Long, byte[]>>> mFilteredMap;
 
-  /** Options for constructing an HBaseKijiRowData instance. */
-  public static class Options {
-    /** The entity the data in this object came from. */
-    private EntityId mEntityId;
-
-    /** The data request that populated this KijiRowData. */
-    private KijiDataRequest mDataRequest;
-
-    /** The layout of the table the data came from. */
-    private KijiTableLayout mTableLayout;
-
-    /** The HBase Result that contains the row data. */
-    private Result mResult;
-
-    /** A factory for creating Kiji cell decoders. */
-    private KijiCellDecoderFactory mCellDecoderFactory;
-
-    /** An optional HTable instance, required for implementing nextPage() RPCs. */
-    private HTableInterface mHTable;
-
-    /**
-     * If this is not called, the EntityId is read from the HBase Result. Therefore, if
-     * the HBase Result is empty you need to specify the EntityId.
-     *
-     * @param entityId The entity id.
-     * @return This options instance.
-     */
-    public Options withEntityId(EntityId entityId) {
-      mEntityId = entityId;
-      return this;
-    }
-
-    /**
-     * Sets the data request used to fetch the data in this row.
-     *
-     * @param dataRequest The data request.
-     * @return This options instance.
-     */
-    public Options withDataRequest(KijiDataRequest dataRequest) {
-      mDataRequest = dataRequest;
-      return this;
-    }
-
-    /**
-     * Sets the layout of the table this data comes from.
-     *
-     * @param tableLayout The table layout.
-     * @return This options instance.
-     */
-    public Options withTableLayout(KijiTableLayout tableLayout) {
-      mTableLayout = tableLayout;
-      return this;
-    }
-
-    /**
-     * The HBase Result object containing the row data.
-     *
-     * @param hbaseResult The hbase result.
-     * @return This options instance.
-     */
-    public Options withHBaseResult(Result hbaseResult) {
-      mResult = hbaseResult;
-      return this;
-    }
-
-    /**
-     * Sets the cell decoder factory to use.
-     *
-     * @param factory A cell decoder factory.
-     * @return This options instance.
-     */
-    public Options withCellDecoderFactory(KijiCellDecoderFactory factory) {
-      mCellDecoderFactory = factory;
-      return this;
-    }
-
-    /**
-     * Sets the HTable object from which the data came, used to fetch more data if
-     * nextPage() is called on a column with paging enabled.
-     *
-     * @param htable An HTable instance.
-     * @return This options instance.
-     */
-    public Options withHTable(HTableInterface htable) {
-      mHTable = htable;
-      return this;
-    }
-
-    /**
-     * Gets the entity id for the row.
-     *
-     * @return The entity id.
-     */
-    public EntityId getEntityId() {
-      return mEntityId;
-    }
-
-    /**
-     * Gets the data request.
-     *
-     * @return The data request.
-     */
-    public KijiDataRequest getDataRequest() {
-      return mDataRequest;
-    }
-
-    /**
-     * Gets the table layout.
-     *
-     * @return The table layout.
-     */
-    public KijiTableLayout getTableLayout() {
-      return mTableLayout;
-    }
-
-    /**
-     * Gets the HBase result.
-     *
-     * @return The HBase result.
-     */
-    public Result getHBaseResult() {
-      return mResult;
-    }
-
-    /**
-     * Gets the cell decoder factory.
-     *
-     * @return The cell decoder factory.
-     */
-    public KijiCellDecoderFactory getCellDecoderFactory() {
-      return mCellDecoderFactory;
-    }
-
-    /**
-     * Gets the HTable to use for fetching paged data.
-     *
-     * @return The HTable instance.
-     */
-    public HTableInterface getHTable() {
-      return mHTable;
-    }
+  /**
+   * Initializes a row data.
+   *
+   * @param entityId Entity ID of the row.
+   * @param request Data request to build the row.
+   * @param decoderFactory Factory for cell decoders.
+   * @param layout Layout of the table the row belongs to.
+   * @param result HTable result with the encoded row content.
+   * @param schemaTable Schema table.
+   */
+  // TODO: Delete after tests are refactored.
+  @Deprecated
+  public HBaseKijiRowData(
+      EntityId entityId,
+      KijiDataRequest request,
+      KijiCellDecoderFactory decoderFactory,
+      KijiTableLayout layout,
+      Result result,
+      KijiSchemaTable schemaTable) {
+    mEntityId = entityId;
+    mDataRequest = request;
+    mTableLayout = layout;
+    mResult = result;
+    mCellDecoderFactory = decoderFactory;
+    mHTable = null;
+    mColumnPager = null;
+    mSchemaTable = schemaTable;
   }
 
   /**
-   * Constructor.
+   * Initializes a row data.
    *
-   * @param options The options for the HBaseKijiRowData instance.
+   * The entity ID is constructed from the HTable encoded result.
+   * This may fail if the table uses hashed row keys.
+   *
+   * @param request Data request to build the row.
+   * @param decoderFactory Factory for cell decoders.
+   * @param layout Layout of the table the row belongs to.
+   * @param result HTable result with the encoded row content.
+   * @param schemaTable Schema table.
    */
-  public HBaseKijiRowData(Options options) {
-    EntityId entityId = options.getEntityId();
-    if (null == entityId) {
-      // Read the entity id from the HBase result if not provided.
-      final EntityIdFactory entityIdFactory =
-          EntityIdFactory.create(options.getTableLayout().getDesc().getKeysFormat());
-      entityId = entityIdFactory.fromHBaseRowKey(options.getHBaseResult().getRow());
-    }
+  // TODO: Delete after tests are refactored.
+  @Deprecated
+  public HBaseKijiRowData(
+      KijiDataRequest request,
+      KijiCellDecoderFactory decoderFactory,
+      KijiTableLayout layout,
+      Result result,
+      KijiSchemaTable schemaTable) {
+    this(EntityIdFactory.create(layout.getDesc().getKeysFormat()).fromHBaseRowKey(result.getRow()),
+        request, decoderFactory, layout, result, schemaTable);
+  }
+
+  /**
+   * Initializes a row data.
+   *
+   * @param entityId The entityId of the row.
+   * @param request The requested data.
+   * @param table The Kiji table that this row belongs to.
+   * @param result The HBase result containing the row data.
+   */
+  public HBaseKijiRowData(EntityId entityId, KijiDataRequest request, HBaseKijiTable table,
+      Result result) {
     mEntityId = entityId;
-    mDataRequest = options.getDataRequest();
-    mTableLayout = options.getTableLayout();
-    mResult = options.getHBaseResult();
-    mCellDecoderFactory = options.getCellDecoderFactory();
-    mHTable = options.getHTable();
-    mColumnPager = (null != mHTable)
+    mDataRequest = request;
+    mTableLayout = table.getLayout();
+    mResult = result;
+    mCellDecoderFactory = SpecificCellDecoderFactory.get();
+    mHTable = mDataRequest.isPagingEnabled()
+        ? table.getHTable()
+        : null;
+    mColumnPager = mDataRequest.isPagingEnabled()
         ? new KijiColumnPager(mEntityId, mDataRequest, mTableLayout, mHTable)
         : null;
 
+    try {
+      mSchemaTable = table.getKiji().getSchemaTable();
+    } catch (IOException ioe) {
+      throw new RuntimeException(ioe); // :(
+    }
+
     // Compute this lazily.
     mFilteredMap = null;
+  }
+
+  /**
+   * Initializes a row data.
+   *
+   * The entity ID is constructed from the HTable encoded result.
+   * This may fail if the table uses hashed row keys.
+   *
+   * @param request The requested data.
+   * @param table The Kiji table that this row belongs to.
+   * @param result The HBase result containing the row data.
+   * @throws IOException If there is an error reading the entityId from the hbase result.
+   */
+  public HBaseKijiRowData(KijiDataRequest request, HBaseKijiTable table, Result result)
+      throws IOException {
+    this(table.getEntityIdFactory().fromHBaseRowKey(result.getRow()), request, table, result);
   }
 
   /**
@@ -290,7 +224,7 @@ public class HBaseKijiRowData extends AbstractKijiRowData {
    * @return The schema table.
    */
   public KijiSchemaTable getSchemaTable() {
-    return mCellDecoderFactory.getSchemaTable();
+    return mSchemaTable;
   }
 
   /**
@@ -454,22 +388,21 @@ public class HBaseKijiRowData extends AbstractKijiRowData {
   /** {@inheritDoc} */
   @Override
   public synchronized NavigableSet<String> getQualifiers(String family) {
-    final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
-    return null == columnMap ? new TreeSet<String>() : columnMap.navigableKeySet();
+    final NavigableMap<String, NavigableMap<Long, byte[]>> qmap = getRawQualifierMap(family);
+    if (null == qmap) {
+      return Sets.newTreeSet();
+    }
+    return qmap.navigableKeySet();
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized NavigableSet<Long> getTimestamps(String family, String qualifier) {
-    final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
-    if (null == columnMap) {
-      return new TreeSet<Long>(TimestampComparator.INSTANCE);
+    final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
+    if (null == tmap) {
+      return Sets.newTreeSet(TimestampComparator.INSTANCE);
     }
-    final NavigableMap<Long, byte[]> versionMap = columnMap.get(qualifier);
-    if (null == versionMap) {
-      return new TreeSet<Long>(TimestampComparator.INSTANCE);
-    }
-    return versionMap.navigableKeySet();
+    return tmap.navigableKeySet();
   }
 
   /** {@inheritDoc} */
@@ -481,294 +414,6 @@ public class HBaseKijiRowData extends AbstractKijiRowData {
           "Cannot retrieve schema for non-existent column: " + family + ":" + qualifier);
     }
     return schema;
-  }
-
-  /**
-   * Gets the raw kiji-cell-encoded values.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return Map of the raw bytes for each version of the cell.
-   * @throws NoCellDataException If there is no data there.
-   */
-  private NavigableMap<Long, byte[]> getRawValues(String family, String qualifier)
-      throws NoCellDataException {
-
-    final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
-    if (null == columnMap) {
-      throw new NoCellDataException("No family: " + family);
-    }
-    final NavigableMap<Long, byte[]> versionMap = columnMap.get(qualifier);
-    if (null == versionMap) {
-      throw new NoCellDataException("No column: " + family + ":" + qualifier);
-    }
-    if (versionMap.isEmpty()) {
-      throw new NoCellDataException("No versions: " + family + ":" + qualifier);
-    }
-    return versionMap;
-  }
-
-  /**
-   * Gets the latest version of a raw kiji-cell-encoded value.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The raw bytes of the cell.
-   * @throws NoCellDataException If there is no data there.
-   */
-  private byte[] getMostRecentRawValue(String family, String qualifier)
-      throws NoCellDataException {
-    final NavigableMap<Long, byte[]> versionMap = getRawValues(family, qualifier);
-    return versionMap.firstEntry().getValue();
-  }
-
-  /**
-   * Gets the specified version of a raw kiji-cell-encoded value.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The version of the cell.
-   * @return The raw bytes of the cell.
-   * @throws NoCellDataException If there is no data there.
-   */
-  private byte[] getRawValue(String family, String qualifier, long timestamp)
-      throws NoCellDataException {
-    final NavigableMap<Long, byte[]> versionMap = getRawValues(family, qualifier);
-    final byte[] rawBytes = versionMap.get(timestamp);
-    if (null == rawBytes) {
-      throw new NoCellDataException(
-          "No cell version in " + family + ":" + qualifier + " with " + timestamp);
-    }
-    return rawBytes;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized <T> KijiCell<T> getCell(String family, String qualifier, Schema readerSchema)
-      throws IOException {
-    final KijiCellDecoder<T> decoder =
-        mCellDecoderFactory.create(readerSchema, getCellFormat(family, qualifier));
-    try {
-      return decoder.decode(getMostRecentRawValue(family, qualifier));
-    } catch (NoCellDataException e) {
-      return null;
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized <T> KijiCell<T> getCell(String family, String qualifier,
-      long timestamp, Schema readerSchema) throws IOException {
-    final KijiCellDecoder<T> decoder =
-        mCellDecoderFactory.create(readerSchema, getCellFormat(family, qualifier));
-    try {
-      return decoder.decode(getRawValue(family, qualifier, timestamp));
-    } catch (NoCellDataException e) {
-      return null;
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized <T extends SpecificRecord> KijiCell<T> getCell(
-      String family, String qualifier, Class<T> type) throws IOException {
-    try {
-      return mCellDecoderFactory.create(type, getCellFormat(family, qualifier))
-          .decode(getMostRecentRawValue(family, qualifier));
-    } catch (NoCellDataException e) {
-      return null;
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized <T extends SpecificRecord> KijiCell<T> getCell(
-      String family, String qualifier, long timestamp, Class<T> type) throws IOException {
-    try {
-      return mCellDecoderFactory.create(type, getCellFormat(family, qualifier))
-          .decode(getRawValue(family, qualifier, timestamp));
-    } catch (NoCellDataException e) {
-      return null;
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized KijiCounter getCounter(String family, String qualifier) throws IOException {
-    try {
-      final Map.Entry<Long, byte[]> rawValue = getRawValues(family, qualifier).firstEntry();
-      return new DefaultKijiCounter(rawValue.getKey(), Bytes.toLong(rawValue.getValue()));
-    } catch (NoCellDataException e) {
-      return null;
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized KijiCounter getCounter(String family, String qualifier, long timestamp)
-      throws IOException {
-    try {
-      final NavigableMap<Long, byte[]> counterValues = getRawValues(family, qualifier);
-      final Map.Entry<Long, byte[]> counterEntry = counterValues.floorEntry(timestamp);
-      if (null == counterEntry) {
-        return null;
-      }
-      return new DefaultKijiCounter(counterEntry.getKey(), Bytes.toLong(counterEntry.getValue()));
-    } catch (NoCellDataException e) {
-      return null;
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized <T> NavigableMap<String, NavigableMap<Long, T>> getValues(
-      String family, Schema readerSchema) throws IOException {
-    final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
-    if (null == columnMap) {
-      return new TreeMap<String, NavigableMap<Long, T>>();
-    }
-
-    final NavigableMap<String, NavigableMap<Long, T>> result =
-        new TreeMap<String, NavigableMap<Long, T>>();
-
-    for (Map.Entry<String, NavigableMap<Long, byte[]>> columnEntry : columnMap.entrySet()) {
-      final NavigableMap<Long, byte[]> inVersionMap = columnEntry.getValue();
-      if (inVersionMap.isEmpty()) {
-        // No data here.
-        continue;
-      }
-      final KijiCellDecoder<T> decoder =
-          mCellDecoderFactory.create(readerSchema, getCellFormat(family, columnEntry.getKey()));
-
-      final NavigableMap<Long, T> outVersionMap =
-          new TreeMap<Long, T>(TimestampComparator.INSTANCE);
-      for (Map.Entry<Long, byte[]> inEntry : inVersionMap.entrySet()) {
-        final Long ts = inEntry.getKey();
-        final byte[] valBytes = inEntry.getValue();
-        outVersionMap.put(ts, decoder.decode(valBytes).getData());
-      }
-
-      result.put(columnEntry.getKey(), outVersionMap);
-    }
-    return result;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized <T> NavigableMap<String, T> getRecentValues(
-      String family, Schema readerSchema) throws IOException {
-    final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
-    if (null == columnMap) {
-      return new TreeMap<String, T>();
-    }
-    final NavigableMap<String, T> result = new TreeMap<String, T>();
-    for (Map.Entry<String, NavigableMap<Long, byte[]>> columnEntry : columnMap.entrySet()) {
-      final NavigableMap<Long, byte[]> versionMap = columnEntry.getValue();
-      if (versionMap.isEmpty()) {
-        // No data here.
-        continue;
-      }
-      final KijiCellDecoder<T> decoder =
-          mCellDecoderFactory.create(readerSchema, getCellFormat(family, columnEntry.getKey()));
-      result.put(columnEntry.getKey(),
-          decoder.decode(versionMap.firstEntry().getValue()).getData());
-    }
-    return result;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized <T> NavigableMap<Long, T> getValues(
-      String family, String qualifier, Schema readerSchema) throws IOException {
-    if (!containsColumn(family, qualifier)) {
-      return new TreeMap<Long, T>(TimestampComparator.INSTANCE);
-    }
-    final NavigableMap<Long, byte[]> versionMap = getMap().get(family).get(qualifier);
-    assert null != versionMap;
-    assert !versionMap.isEmpty();
-
-    final KijiCellDecoder<T> decoder =
-        mCellDecoderFactory.create(readerSchema, getCellFormat(family, qualifier));
-    final NavigableMap<Long, T> result = new TreeMap<Long, T>(TimestampComparator.INSTANCE);
-    for (NavigableMap.Entry<Long, byte[]> versionEntry : versionMap.entrySet()) {
-      result.put(versionEntry.getKey(), decoder.decode(versionEntry.getValue()).getData());
-    }
-    return result;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized <T extends SpecificRecord> NavigableMap<String, NavigableMap<Long, T>>
-      getValues(String family, Class<T> type) throws IOException {
-    final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
-
-    if (null == columnMap) {
-      return new TreeMap<String, NavigableMap<Long, T>>();
-    }
-
-    final KijiCellDecoder<T> decoder = mCellDecoderFactory.create(type, getCellFormat(family));
-    final NavigableMap<String, NavigableMap<Long, T>> result =
-        new TreeMap<String, NavigableMap<Long, T>>();
-
-    for (Map.Entry<String, NavigableMap<Long, byte[]>> columnEntry : columnMap.entrySet()) {
-      final NavigableMap<Long, byte[]> inVersionMap = columnEntry.getValue();
-      if (inVersionMap.isEmpty()) {
-        // No data here.
-        continue;
-      }
-
-      final NavigableMap<Long, T> outVersionMap =
-          new TreeMap<Long, T>(TimestampComparator.INSTANCE);
-      for (Map.Entry<Long, byte[]> inEntry : inVersionMap.entrySet()) {
-        final Long ts = inEntry.getKey();
-        final byte[] valBytes = inEntry.getValue();
-        outVersionMap.put(ts, decoder.decode(valBytes).getData());
-      }
-
-      result.put(columnEntry.getKey(), outVersionMap);
-    }
-    return result;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized <T extends SpecificRecord> NavigableMap<String, T> getRecentValues(
-      String family, Class<T> type) throws IOException {
-    final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
-    final NavigableMap<String, T> result = new TreeMap<String, T>();
-    if (null == columnMap) {
-      return result;
-    }
-    for (NavigableMap.Entry<String, NavigableMap<Long, byte[]>> columnEntry
-             : columnMap.entrySet()) {
-      if (columnEntry.getValue().isEmpty()) {
-        // No versions of cells.
-        continue;
-      }
-      final KijiCellDecoder<T> decoder =
-          mCellDecoderFactory.create(type, getCellFormat(family, columnEntry.getKey()));
-      result.put(columnEntry.getKey(),
-          decoder.decode(columnEntry.getValue().firstEntry().getValue()).getData());
-    }
-    return result;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized <T extends SpecificRecord> NavigableMap<Long, T> getValues(
-      String family, String qualifier, Class<T> type) throws IOException {
-    final NavigableMap<Long, T> result = new TreeMap<Long, T>(TimestampComparator.INSTANCE);
-    if (!containsColumn(family, qualifier)) {
-      return result;
-    }
-
-    final NavigableMap<Long, byte[]> versionMap = getMap().get(family).get(qualifier);
-    final KijiCellDecoder<T> decoder =
-        mCellDecoderFactory.create(type, getCellFormat(family, qualifier));
-    for (NavigableMap.Entry<Long, byte[]> versionEntry : versionMap.entrySet()) {
-      result.put(versionEntry.getKey(), decoder.decode(versionEntry.getValue()).getData());
-    }
-    return result;
   }
 
   /** {@inheritDoc} */
@@ -827,26 +472,209 @@ public class HBaseKijiRowData extends AbstractKijiRowData {
   }
 
   /**
-   * Determines the cell encoding format from the column layout.
+   * Reports the encoded map of qualifiers of a given family.
    *
-   * @param family Column family name.
-   * @param qualifier Column qualifier name.
-   * @return the cell encoding format.
-   * @throws NoSuchColumnException if the column does not exist.
+   * @param family Family to look up.
+   * @return the encoded map of qualifiers in the specified family, or null.
    */
-  private KijiCellFormat getCellFormat(String family, String qualifier)
-      throws NoSuchColumnException {
-    return mTableLayout.getCellFormat(new KijiColumnName(family, qualifier));
+  private NavigableMap<String, NavigableMap<Long, byte[]>> getRawQualifierMap(String family) {
+    return getMap().get(family);
   }
 
   /**
-   * Determines the cell encoding format from the map-type column layout.
+   * Reports the specified raw encoded time-series of a given column.
    *
-   * @param family Column family name.
-   * @return the cell encoding format.
-   * @throws NoSuchColumnException if the column does not exist.
+   * @param family Family to look up.
+   * @param qualifier Qualifier to look up.
+   * @return the encoded time-series in the specified family:qualifier column, or null.
    */
-  private KijiCellFormat getCellFormat(String family) throws NoSuchColumnException {
-    return mTableLayout.getCellFormat(new KijiColumnName(family, null));
+  private NavigableMap<Long, byte[]> getRawTimestampMap(String family, String qualifier) {
+    final NavigableMap<String, NavigableMap<Long, byte[]>> qmap = getRawQualifierMap(family);
+    if (null == qmap) {
+      return null;
+    }
+    return qmap.get(qualifier);
+  }
+
+  /**
+   * Reports the encoded content of a given cell.
+   *
+   * @param family Family to look up.
+   * @param qualifier Qualifier to look up.
+   * @param timestamp Timestamp to look up.
+   * @return the encoded cell content, or null.
+   */
+  private byte[] getRawCell(String family, String qualifier, long timestamp) {
+    final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
+    if (null == tmap) {
+      return null;
+    }
+    return tmap.get(timestamp);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> T getValue(String family, String qualifier, long timestamp) throws IOException {
+    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+    final byte[] bytes = getRawCell(family, qualifier, timestamp);
+    return decoder.decodeValue(bytes);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> KijiCell<T> getCell(String family, String qualifier, long timestamp)
+      throws IOException {
+    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+    final byte[] bytes = getRawCell(family, qualifier, timestamp);
+    return decoder.decodeCell(bytes);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> T getMostRecentValue(String family, String qualifier) throws IOException {
+    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+    final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
+    if (null == tmap) {
+      return null;
+    }
+    final byte[] bytes = tmap.values().iterator().next();
+    return decoder.decodeValue(bytes);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> NavigableMap<String, T> getMostRecentValues(String family) throws IOException {
+    final NavigableMap<String, T> result = Maps.newTreeMap();
+    for (String qualifier : getQualifiers(family)) {
+      final T value = getMostRecentValue(family, qualifier);
+      result.put(qualifier, value);
+    }
+    return result;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> NavigableMap<Long, T> getValues(String family, String qualifier)
+      throws IOException {
+    final NavigableMap<Long, T> result = Maps.newTreeMap();
+    for (Map.Entry<Long, KijiCell<T>> entry : this.<T>getCells(family, qualifier).entrySet()) {
+      result.put(entry.getKey(), entry.getValue().getData());
+    }
+    return result;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> NavigableMap<String, NavigableMap<Long, T>> getValues(String family)
+      throws IOException {
+    final NavigableMap<String, NavigableMap<Long, T>> result = Maps.newTreeMap();
+    for (String qualifier : getQualifiers(family)) {
+      final NavigableMap<Long, T> timeseries = getValues(family, qualifier);
+      result.put(qualifier, timeseries);
+    }
+    return result;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> KijiCell<T> getMostRecentCell(String family, String qualifier) throws IOException {
+    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+    final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
+    if (null == tmap) {
+      return null;
+    }
+    final byte[] bytes = tmap.values().iterator().next();
+    return decoder.decodeCell(bytes);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> NavigableMap<String, KijiCell<T>> getMostRecentCells(String family)
+      throws IOException {
+    final NavigableMap<String, KijiCell<T>> result = Maps.newTreeMap();
+    for (String qualifier : getQualifiers(family)) {
+      final KijiCell<T> cell = getMostRecentCell(family, qualifier);
+      result.put(qualifier, cell);
+    }
+    return result;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> NavigableMap<Long, KijiCell<T>> getCells(String family, String qualifier)
+      throws IOException {
+    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+
+    final NavigableMap<Long, KijiCell<T>> result = Maps.newTreeMap(TimestampComparator.INSTANCE);
+    final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
+    if (tmap != null) {
+      for (Map.Entry<Long, byte[]> entry : tmap.entrySet()) {
+        final Long timestamp = entry.getKey();
+        final byte[] bytes = entry.getValue();
+        result.put(timestamp, decoder.decodeCell(bytes));
+      }
+    }
+    return result;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> NavigableMap<String, NavigableMap<Long, KijiCell<T>>> getCells(String family)
+      throws IOException {
+    final NavigableMap<String, NavigableMap<Long, KijiCell<T>>> result = Maps.newTreeMap();
+    for (String qualifier : getQualifiers(family)) {
+      final NavigableMap<Long, KijiCell<T>> cells = getCells(family, qualifier);
+      result.put(qualifier, cells);
+    }
+    return result;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @Deprecated
+  // TODO(SCHEMA-82): merge KijiCounter into KijiCell (ie. add timestamp to KijiCell).
+  public synchronized KijiCounter getCounter(String family, String qualifier) throws IOException {
+      final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
+      if ((null == tmap) || tmap.isEmpty()) {
+        return null;
+      }
+      final Map.Entry<Long, byte[]> mostRecent = tmap.firstEntry();
+      return new DefaultKijiCounter(mostRecent.getKey(), Bytes.toLong(mostRecent.getValue()));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @Deprecated
+  // TODO(SCHEMA-82): merge KijiCounter into KijiCell (ie. add timestamp to KijiCell).
+  public synchronized KijiCounter getCounter(String family, String qualifier, long timestamp)
+      throws IOException {
+    final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
+    if (null == tmap) {
+      return null;
+    }
+    final Map.Entry<Long, byte[]> counterEntry = tmap.floorEntry(timestamp);
+    if (null == counterEntry) {
+      return null;
+    }
+    return new DefaultKijiCounter(counterEntry.getKey(), Bytes.toLong(counterEntry.getValue()));
+  }
+
+  /**
+   * Creates a decoder for the specified column.
+   *
+   * @param family Name of the column family.
+   * @param qualifier Column qualifier.
+   * @return a decoder for the specific column.
+   * @throws IOException on I/O error.
+   *
+   * @param <T> type of the value to decode.
+   */
+  private <T> KijiCellDecoder<T> getDecoder(String family, String qualifier)
+      throws IOException {
+    // TODO: there is a need for caching decoders, or at least cell specs, as building the cell
+    //     spec causes parsing a JSON schema or looking up a class by name.
+    final CellSpec cellSpec = mTableLayout.getCellSpec(new KijiColumnName(family, qualifier))
+        .setSchemaTable(mSchemaTable);
+    return mCellDecoderFactory.create(cellSpec);
   }
 }

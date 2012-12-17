@@ -64,6 +64,7 @@ public final class HelpTool extends Configured implements KijiTool {
     return "Help";
   }
 
+  /** {@inheritDoc} */
   @Override
   public int toolMain(List<String> args) throws Exception {
     List<String> nonFlagArgs = FlagParser.init(this, args.toArray(new String[args.size()]));
@@ -133,7 +134,10 @@ public final class HelpTool extends Configured implements KijiTool {
     return 0;
   }
 
-  /** Print details of environment variables and so-on. */
+  /**
+   * Print details of environment variables and so-on.
+   * @throws IOException on I/O error.
+   */
   private static void printVerboseHelp() throws IOException {
     final InputStream envHelp = Preconditions.checkNotNull(
         Resources.openSystemResource("org/kiji/schema/tools/HelpTool.envHelp.txt"));

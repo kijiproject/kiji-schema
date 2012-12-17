@@ -17,19 +17,19 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.mapreduce;
+package org.kiji.schema;
 
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.junit.Test;
 
-import org.kiji.annotations.ApiAudience;
-
-/**
- * An output operation from a Kiji map-reduce job. The available operations are:
- * <ul>
- *   <li>{@link KijiDelete}</li>
- *   <li>{@link KijiPut}</li>
- *   <li>{@link KijiIncrement}</li>
- * </ul>
- */
-@ApiAudience.Framework
-public interface KijiMutation extends Writable { }
+/** Tests for KijiInstaller. */
+public class TestKijiInstaller {
+  @Test
+  public void testInstallThenUninstall() throws Exception {
+    final Configuration conf = HBaseConfiguration.create();
+    final KijiURI uri = KijiURI.parse("kiji://.fake.kiji-installer/test");
+    KijiInstaller.install(uri, conf);
+    KijiInstaller.uninstall(uri, conf);
+  }
+}

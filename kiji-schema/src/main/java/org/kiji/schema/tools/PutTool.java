@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
@@ -122,7 +121,7 @@ public final class PutTool extends VersionValidatedTool {
         if (-1 == mTimestamp) {
           try {
             long value = Long.parseLong(mJsonValue);
-            writer.setCounter(entityId, column.getFamily(), column.getQualifier(), value);
+            writer.put(entityId, column.getFamily(), column.getQualifier(), value);
           } catch (NumberFormatException nfe) {
             LOG.error("Could not parse value flag to a long: " + nfe.getMessage());
             return 1;
@@ -159,13 +158,11 @@ public final class PutTool extends VersionValidatedTool {
         Object datum = reader.read(null,
             new DecoderFactory().jsonDecoder(mSchema, mJsonValue));
 
-        KijiCell<Object> kijiCell = new KijiCell<Object>(mSchema, datum);
-
         // Write the put.
         if (-1 == mTimestamp) {
-          writer.put(entityId, column.getFamily(), column.getQualifier(), kijiCell);
+          writer.put(entityId, column.getFamily(), column.getQualifier(), datum);
         } else {
-          writer.put(entityId, column.getFamily(), column.getQualifier(), mTimestamp, kijiCell);
+          writer.put(entityId, column.getFamily(), column.getQualifier(), mTimestamp, datum);
         }
       }
     } finally {

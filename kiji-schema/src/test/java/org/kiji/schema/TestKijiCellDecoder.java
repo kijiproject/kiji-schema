@@ -22,61 +22,77 @@ package org.kiji.schema;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.util.Collections;
 
-import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericRecord;
 import org.junit.Test;
 
+import org.kiji.schema.avro.CellSchema;
+import org.kiji.schema.avro.Edge;
 import org.kiji.schema.avro.Node;
+import org.kiji.schema.avro.SchemaStorage;
+import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
+import org.kiji.schema.layout.impl.CellSpec;
 
+/** Tests for Kiji cell decoders. */
 public class TestKijiCellDecoder extends KijiClientTest {
   @Test
-  public void testDecodeSpecific() throws IOException {
-    for (KijiCellFormat format : KijiCellFormat.values()) {
-      decodeSpecific(format);
-    }
+  public void testDecodeCounter() throws IOException {
+    final CellSpec cellSpec = CellSpec.newCounter();
+    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final KijiCellDecoder<Long> decoder = SpecificCellDecoderFactory.get().create(cellSpec);
+    assertEquals(3181L, (long) decoder.decodeValue(encoder.encode(3181L)));
   }
 
-  private void decodeSpecific(KijiCellFormat format) throws IOException {
-    final Node expected = new Node();
-    expected.setWeight(1.0);
-    expected.setLabel("foo");
-    final byte[] encodedBytes = getCellEncoder()
-        .encode(new KijiCell<Node>(Node.SCHEMA$, expected), format);
+  private void testDecodeAvroSchema(SchemaStorage storage) throws IOException {
+    final CellSpec cellSpec = new CellSpec()
+        .setCellSchema(CellSchema.newBuilder()
+            .setType(SchemaType.CLASS)
+            .setValue(Node.class.getName())
+            .setStorage(storage)
+            .build())
+        .setSchemaTable(getKiji().getSchemaTable());
 
-    final KijiCellDecoderFactory cellDecoderFactory =
-        new SpecificCellDecoderFactory(getKiji().getSchemaTable());
-    final KijiCellDecoder<Node> cellDecoder =
-        cellDecoderFactory.create(Node.class, format);
-    final KijiCell<Node> cell = cellDecoder.decode(encodedBytes);
-    final Node node = cell.getData();
-    assertEquals("foo", node.getLabel().toString());
+    final Node node = Node.newBuilder()
+        .setWeight(1.0)
+        .setLabel("foo")
+        .setAnnotations(Collections.<String, String>emptyMap())
+        .setEdges(Collections.<Edge>emptyList())
+        .build();
+
+    // Encode the node:
+    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final byte[] bytes = encoder.encode(node);
+
+    // Decode as a specific record:
+    {
+      final KijiCellDecoder<Node> decoder = SpecificCellDecoderFactory.get().create(cellSpec);
+      final Node decoded = decoder.decodeValue(bytes);
+      assertEquals("foo", decoded.getLabel().toString());
+    }
+
+    // Decode as a generic record:
+    {
+      final KijiCellDecoder<GenericRecord> decoder =
+          GenericCellDecoderFactory.get().create(cellSpec);
+      final GenericRecord decoded = decoder.decodeValue(bytes);
+      assertEquals("foo", decoded.get("label").toString());
+    }
   }
 
   @Test
-  public void testDecodeGeneric() throws IOException {
-    for (KijiCellFormat format : KijiCellFormat.values()) {
-      decodeGeneric(format);
-    }
+  public void testDecodeAvroSchemaUID() throws IOException {
+    testDecodeAvroSchema(SchemaStorage.UID);
   }
 
-  private void decodeGeneric(KijiCellFormat format) throws IOException {
-    final byte[] encodedBytes = getCellEncoder()
-        .encode(new KijiCell<Integer>(Schema.create(Schema.Type.INT), new Integer(42)), format);
-
-    final KijiCellDecoderFactory cellDecoderFactory =
-        new GenericCellDecoderFactory(getKiji().getSchemaTable());
-    final KijiCellDecoder<Integer> cellDecoder =
-        cellDecoderFactory.create(Schema.create(Schema.Type.INT), format);
-    final KijiCell<Integer> cell = cellDecoder.decode(encodedBytes);
-    final Integer value = cell.getData();
-    assertEquals(42, value.intValue());
+  @Test
+  public void testDecodeAvroSchemaHash() throws IOException {
+    testDecodeAvroSchema(SchemaStorage.HASH);
   }
 
-  @Test(expected=UnsupportedOperationException.class)
-  public void testExceptionWhenPassingTypesToGenericDecoderFactory() throws IOException {
-    final KijiCellDecoderFactory cellDecoderFactory =
-        new GenericCellDecoderFactory(getKiji().getSchemaTable());
-    final KijiCellDecoder<Node> cellDecoder =
-        cellDecoderFactory.create(Node.class, KijiCellFormat.HASH);
+  @Test
+  public void testDecodeAvroSchemaFinal() throws IOException {
+    testDecodeAvroSchema(SchemaStorage.FINAL);
   }
 }

@@ -43,18 +43,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellDecoder;
-import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiCellEncoder;
-import org.kiji.schema.KijiCellFormat;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.SpecificCellDecoderFactory;
+import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.MetadataBackup;
+import org.kiji.schema.avro.SchemaStorage;
+import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 
@@ -102,9 +103,6 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   public static final String QUALIFIER_LAYOUT_ID = "layout_id";
   private static final byte[] QUALIFIER_LAYOUT_ID_BYTES = Bytes.toBytes(QUALIFIER_LAYOUT_ID);
 
-  /** Layout cells are encoded using Avro schema hashes. */
-  private static final KijiCellFormat CELL_FORMAT = KijiCellFormat.HASH;
-
   /** The HTable to use to store the layouts. */
   private final HTableInterface mTable;
 
@@ -120,11 +118,15 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   /** Kiji cell encoder. */
   private final KijiCellEncoder mCellEncoder;
 
-  /** Kiji cell decoder factory. */
-  private final KijiCellDecoderFactory mCellDecoderFactory;
-
   /** Decoder for concrete layout cells. */
   private final KijiCellDecoder<TableLayoutDesc> mCellDecoder;
+
+  private static final CellSchema CELL_SCHEMA = CellSchema.newBuilder()
+      .setStorage(SchemaStorage.HASH)
+      .setType(SchemaType.CLASS)
+      .setValue(TableLayoutDesc.SCHEMA$.getFullName())
+      .build();
+
 
   /**
    * Creates a new <code>HBaseTableLayoutDatabase</code> instance.
@@ -135,17 +137,20 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    * @param htable The HTable used to store the layout data.
    * @param family The name of the column family within the HTable used to store layout data.
    * @param schemaTable The Kiji schema table.
+   * @throws IOException on I/O error.
    */
   public HBaseTableLayoutDatabase(
-      HTableInterface htable, String family, KijiSchemaTable schemaTable) {
-
+      HTableInterface htable,
+      String family,
+      KijiSchemaTable schemaTable)
+      throws IOException {
     mTable = Preconditions.checkNotNull(htable);
     mFamily = Preconditions.checkNotNull(family);
     mFamilyBytes = Bytes.toBytes(mFamily);
     mSchemaTable = Preconditions.checkNotNull(schemaTable);
-    mCellEncoder = new KijiCellEncoder(schemaTable);
-    mCellDecoderFactory = new SpecificCellDecoderFactory(schemaTable);
-    mCellDecoder = mCellDecoderFactory.create(TableLayoutDesc.class, CELL_FORMAT);
+    final CellSpec cellSpec = CellSpec.fromCellSchema(CELL_SCHEMA, mSchemaTable);
+    mCellEncoder = new AvroCellEncoder(cellSpec);
+    mCellDecoder = SpecificCellDecoderFactory.get().create(cellSpec);
   }
 
   /** {@inheritDoc} */
@@ -417,7 +422,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    * @throws IOException on I/O or decoding error.
    */
   private TableLayoutDesc decodeTableLayoutDesc(byte[] bytes) throws IOException {
-    return mCellDecoder.decode(bytes).getData();
+    return mCellDecoder.decodeValue(bytes);
   }
 
   /**
@@ -428,8 +433,6 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    * @throws IOException on I/O or encoding error.
    */
   private byte[] encodeTableLayoutDesc(TableLayoutDesc desc) throws IOException {
-    return mCellEncoder.encode(
-        new KijiCell<TableLayoutDesc>(TableLayoutDesc.SCHEMA$, desc),
-        CELL_FORMAT);
+    return mCellEncoder.encode(desc);
   }
 }

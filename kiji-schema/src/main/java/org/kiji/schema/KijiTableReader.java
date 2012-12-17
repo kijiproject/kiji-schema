@@ -108,9 +108,9 @@ public abstract class KijiTableReader implements Closeable {
    *
    * @param dataRequest Specifies the columns of data to retrieve.
    * @param startRow The entity id for the row to start the scan from.  If null, the scanner
-   *                 will read all rows up to the stopRow.
+   *     will read all rows up to the stopRow.
    * @param stopRow The entity id for the row to end the scan at.  If null, the scanner will
-   *                read all rows after the startRow.
+   *     read all rows after the startRow.
    * @return The KijiRowScanner.
    * @throws IOException If there is an IO error.
    * @throws KijiDataRequestException If the data request is invalid.
@@ -125,9 +125,9 @@ public abstract class KijiTableReader implements Closeable {
    *
    * @param dataRequest Specifies the columns of data to retrieve.
    * @param startRow The entity id for the row to start the scan from.  If null, the scanner
-   *                 will read all rows up to the stopRow.
+   *     will read all rows up to the stopRow.
    * @param stopRow The entity id for the row to end the scan at.  If null, the scanner will
-   *                read all rows after the startRow.
+   *     read all rows after the startRow.
    * @param scanOptions The custom scanner configuration to use.
    * @return The KijiRowScanner.
    * @throws IOException If there is an IO error.
@@ -144,9 +144,9 @@ public abstract class KijiTableReader implements Closeable {
    *
    * @param dataRequest Specifies the columns of data to retrieve.
    * @param startRow The entity id for the row to start the scan from.  If null, the scanner
-   *                 will read all rows up to the stopRow.
+   *     will read all rows up to the stopRow.
    * @param stopRow The entity id for the row to end the scan at.  If null, the scanner will
-   *                read all rows after the startRow.
+   *     read all rows after the startRow.
    * @param rowFilter The KijiRowFilter to filter these results on
    * @param scanOptions The custom scanner configuration to use.
    * @return The KijiRowScanner.
@@ -161,16 +161,16 @@ public abstract class KijiTableReader implements Closeable {
    * Gets the KijiCellDecoderFactory to use for decoding KijiCells.
    *
    * Defaults to SpecificCellDecoderFactory (creating it if necessary).
-   * This behavior can be changed by calling {@link
-   * #setKijiCellDecoderFactory(KijiCellDecoderFactory)} or overriding
-   * this method in a subclass.
+   * This behavior can be changed by calling
+   *   {@link #setKijiCellDecoderFactory(KijiCellDecoderFactory)}
+   * or overriding this method in a subclass.
    *
    * @return The KijiCellDecoderFactory to be used when retrieving a KijiCell.
    * @throws IOException if there is an error retrieving the KijiSchemaTable
    */
   public KijiCellDecoderFactory getKijiCellDecoderFactory() throws IOException {
     if (mKijiCellDecoderFactory == null) {
-      mKijiCellDecoderFactory = new SpecificCellDecoderFactory(mTable.getKiji().getSchemaTable());
+      mKijiCellDecoderFactory = SpecificCellDecoderFactory.get();
     }
     return mKijiCellDecoderFactory;
   }

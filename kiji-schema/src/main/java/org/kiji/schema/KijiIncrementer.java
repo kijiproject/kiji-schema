@@ -19,39 +19,31 @@
 
 package org.kiji.schema;
 
+import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
 
 /**
- * Interface for Kiji cell encoders.
+ * Interface for performing increments on a Kiji table.
  *
- * A cell encoder is configured to encode precisely one specific column and knows exactly the type
- * of data it is supposed to encode.
- *
- * Cell encoders are instantiated via {@link KijiCellEncoderFactory}.
- *
- * Intended for framework developers only.
+ * Instantiated via {@code KijiTable.openTableWriter()}
  */
 @ApiAudience.Framework
-public interface KijiCellEncoder {
+public interface KijiIncrementer extends Closeable, Flushable {
   /**
-   * Encodes the specified Kiji cell.
+   * Atomically increments a counter in a kiji table.
    *
-   * @param cell Kiji cell to encode.
-   * @return the binary encoding of the cell.
+   * <p>Throws an exception if the specified column is not a counter.</p>
+   *
+   * @param entityId Entity ID of the row containing the counter.
+   * @param family Column family.
+   * @param qualifier Column qualifier.
+   * @param amount Amount to increment the counter (may be negative).
+   * @return the new counter value, post increment.
    * @throws IOException on I/O error.
    */
-  byte[] encode(KijiCell<?> cell) throws IOException;
-
-  /**
-   * Encodes the specified value.
-   *
-   * @param cellValue value to encode.
-   * @return the binary encoding of the cell.
-   * @throws IOException on I/O error.
-   *
-   * @param <T> type of the value to encode.
-   */
-  <T> byte[] encode(T cellValue) throws IOException;
+  KijiCounter increment(EntityId entityId, String family, String qualifier, long amount)
+      throws IOException;
 }

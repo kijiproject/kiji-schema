@@ -25,8 +25,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URL;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +73,21 @@ public final class KijiConfiguration extends Configured {
   public KijiConfiguration(Configuration conf, String instanceName) {
     super(conf);
     conf.set(CONF_KIJI_INSTANCE_NAME, instanceName);
+  }
+
+  /**
+   * Initializes a Kiji configuration from a Hadoop configuration and a Kiji URI.
+   *
+   * @param conf Hadoop configuration.
+   * @param uri Kiji URI of the instance to initialize.
+   */
+  public KijiConfiguration(Configuration conf, KijiURI uri) {
+    super(conf);
+    conf.set(CONF_KIJI_INSTANCE_NAME, Preconditions.checkNotNull(uri.getInstance()));
+    conf.set(
+        HConstants.ZOOKEEPER_QUORUM,
+        Joiner.on(",").join(uri.getZookeeperQuorumOrdered()));
+    conf.setInt(HConstants.ZOOKEEPER_CLIENT_PORT, uri.getZookeeperClientPort());
   }
 
   /**

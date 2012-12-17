@@ -33,7 +33,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.KijiCellFormat;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
@@ -154,7 +153,7 @@ public class TestKijiTableLayout {
     assertTrue(fLayout.isMapType());
     assertEquals(fLayout, layout.getFamilies().iterator().next());
 
-    assertEquals(KijiCellFormat.HASH, layout.getCellFormat(new KijiColumnName("family_name")));
+    assertEquals(SchemaStorage.HASH, layout.getCellFormat(new KijiColumnName("family_name")));
     assertEquals(Schema.Type.INT, layout.getSchema(new KijiColumnName("family_name")).getType());
   }
 
@@ -197,7 +196,7 @@ public class TestKijiTableLayout {
     assertNotNull(cLayout);
     assertEquals(cLayout, fLayout.getColumns().iterator().next());
 
-    assertEquals(KijiCellFormat.UID,
+    assertEquals(SchemaStorage.UID,
         layout.getCellFormat(new KijiColumnName("family_name:column_name")));
     assertEquals(Schema.Type.STRING,
         layout.getSchema(new KijiColumnName("family_name:column_name")).getType());

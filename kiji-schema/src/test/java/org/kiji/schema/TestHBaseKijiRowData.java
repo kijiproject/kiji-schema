@@ -40,12 +40,17 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.Node;
+import org.kiji.schema.avro.SchemaStorage;
+import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.RawEntityId;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.layout.impl.CellSpec;
 
 public class TestHBaseKijiRowData extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestHBaseKijiRowData.class);
@@ -55,15 +60,31 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   private byte[] mHBaseQual1;
   private byte[] mHBaseQual2;
   private byte[] mHBaseQual3;
+  private byte[] mHBaseNodequal0;
+  private byte[] mHBaseNodequal1;
   private byte[] mHBaseEmpty;
   private byte[] mHBaseMapFamily;
 
   private EntityIdFactory mEntityIdFactory;
 
+  private byte[] n(Node node) throws IOException {
+    final CellSchema cellSchema = CellSchema.newBuilder()
+        .setStorage(SchemaStorage.HASH)
+        .setType(SchemaType.CLASS)
+        .setValue(Node.SCHEMA$.getFullName())
+        .build();
+    final CellSpec cellSpec = new CellSpec()
+        .setCellSchema(cellSchema)
+        .setSchemaTable(getKiji().getSchemaTable());
+    final KijiCellEncoder encoder =
+        DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    return encoder.encode(node);
+  }
+
   @Before
   public void setupLayout() throws Exception {
     final KijiTableLayout tableLayout = getKiji().getMetaTable()
-        .updateTableLayout("foo", KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
+        .updateTableLayout("table", KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
 
     ColumnNameTranslator translator = new ColumnNameTranslator(tableLayout);
     HBaseColumnName hcolumn = translator.toHBaseColumnName(new KijiColumnName("family", "empty"));
@@ -73,6 +94,10 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     mHBaseQual1 = translator.toHBaseColumnName(new KijiColumnName("family:qual1")).getQualifier();
     mHBaseQual2 = translator.toHBaseColumnName(new KijiColumnName("family:qual2")).getQualifier();
     mHBaseQual3 = translator.toHBaseColumnName(new KijiColumnName("family:qual3")).getQualifier();
+    mHBaseNodequal0 = translator.toHBaseColumnName(new KijiColumnName("family:nodequal0"))
+        .getQualifier();
+    mHBaseNodequal1 = translator.toHBaseColumnName(new KijiColumnName("family:nodequal1"))
+        .getQualifier();
     mHBaseMapFamily = translator.toHBaseColumnName(new KijiColumnName("map")).getFamily();
 
     mEntityIdFactory = EntityIdFactory.create(tableLayout.getDesc().getKeysFormat());
@@ -88,14 +113,11 @@ public class TestHBaseKijiRowData extends KijiClientTest {
             Bytes.toBytes("car")));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual0"));
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
+    KijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(), tableLayout,
+        result, getKiji().getSchemaTable());
     assertEquals(foo, input.getEntityId());
   }
 
@@ -106,20 +128,18 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
 
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual3,
-            1L, encode(Schema.Type.INT, 42)));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual3, 1L, i(42)));
 
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(new KijiDataRequest.Column("family"));
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
-    assertEquals(Integer.valueOf(42), input.getIntValue("family", "qual3"));
+    HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
+    input.getMap();
+    final int integer = (Integer) input.getMostRecentValue("family", "qual3");
+    assertEquals(42, integer);
     LOG.info("stop testReadInts");
   }
 
@@ -127,14 +147,11 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   public void testGetReaderSchema() throws IOException {
     Result result = new Result();
     KijiDataRequest dataRequest = new KijiDataRequest();
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
 
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withEntityId(RawEntityId.fromKijiRowKey(Bytes.toBytes("row-key")))
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
+    KijiRowData input = new HBaseKijiRowData(
+        RawEntityId.fromKijiRowKey(Bytes.toBytes("row-key")), dataRequest,
+        getCellDecoderFactory(), tableLayout, result, getKiji().getSchemaTable());
 
     assertEquals(Schema.create(Schema.Type.STRING), input.getReaderSchema("family", "empty"));
     assertEquals(Schema.create(Schema.Type.INT), input.getReaderSchema("family", "qual3"));
@@ -144,14 +161,11 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   public void testGetReaderSchemaNoSuchColumn() throws IOException {
     Result result = new Result();
     KijiDataRequest dataRequest = new KijiDataRequest();
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
 
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withEntityId(RawEntityId.fromKijiRowKey(Bytes.toBytes("row-key")))
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
+    KijiRowData input = new HBaseKijiRowData(
+        RawEntityId.fromKijiRowKey(Bytes.toBytes("row-key")), dataRequest,
+        getCellDecoderFactory(), tableLayout, result, getKiji().getSchemaTable());
 
     input.getReaderSchema("this-family", "does-not-exist");
   }
@@ -170,14 +184,11 @@ public class TestHBaseKijiRowData extends KijiClientTest {
             Bytes.toBytes("car")));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     // We didn't request any data, so the map should be null.
-    HBaseKijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
+    HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
     assertTrue(input.getMap().isEmpty());
   }
 
@@ -200,20 +211,17 @@ public class TestHBaseKijiRowData extends KijiClientTest {
             4L, e("cat")));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual0").withMaxVersions(1));
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual1").withMaxVersions(2));
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
-    assertEquals(1, input.getStringValues("family", "qual0").size());
-    assertEquals("apple", input.getStringValue("family",  "qual0").toString());
-    assertEquals(2, input.getStringValues("family", "qual1").size());
-    assertEquals("antelope", input.getStringValues("family", "qual1").get(6L).toString());
-    assertEquals("bear", input.getStringValues("family", "qual1").get(5L).toString());
+    KijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
+    assertEquals(1, input.getValues("family", "qual0").size());
+    assertEquals("apple", input.getMostRecentValue("family",  "qual0").toString());
+    assertEquals(2, input.getValues("family", "qual1").size());
+    assertEquals("antelope", input.getValues("family", "qual1").get(6L).toString());
+    assertEquals("bear", input.getValues("family", "qual1").get(5L).toString());
   }
 
   @Test
@@ -221,33 +229,22 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
     EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0,
-            3L, encode(Schema.Type.STRING, "apple")));
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0,
-            2L, encode(Schema.Type.STRING, "banana")));
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0,
-            1L, encode(Schema.Type.STRING, "carrot")));
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1,
-            6L, Bytes.toBytes("antelope")));
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1,
-            5L, Bytes.toBytes("bear")));
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1,
-            4L, Bytes.toBytes("cat")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, 3L, e("apple")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, 2L, e("banana")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, 1L, e("carrot")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, 6L, Bytes.toBytes("antelope")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, 5L, Bytes.toBytes("bear")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, 4L, Bytes.toBytes("cat")));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual0").withMaxVersions(1));
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual1").withMaxVersions(2));
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
-    assertEquals(1, input.getValues("family", "qual0",
-            Schema.create(Schema.Type.STRING)).size());
-    NavigableMap<Long, CharSequence> typedValues
-        = input.getValues("family", "qual0", Schema.create(Schema.Type.STRING));
+    KijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
+    assertEquals(1, input.getValues("family", "qual0").size());
+    NavigableMap<Long, CharSequence> typedValues = input.getValues("family", "qual0");
     assertEquals("apple", typedValues.get(3L).toString());
     assertEquals(2, input.getTimestamps("family", "qual1").size());
   }
@@ -269,24 +266,20 @@ public class TestHBaseKijiRowData extends KijiClientTest {
             4L, e("cat")));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.withTimeRange(2L, 6L);
     dataRequest.addColumn(
         new KijiDataRequest.Column("family", "qual0").withMaxVersions(1));
     dataRequest.addColumn(
         new KijiDataRequest.Column("family", "qual1").withMaxVersions(2));
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
+    KijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
     assertEquals(1, input.getTimestamps("family", "qual0").size());
-    assertEquals("apple", input.getStringValue("family", "qual0").toString());
+    assertEquals("apple", input.getMostRecentValue("family", "qual0").toString());
     assertEquals(2, input.getTimestamps("family", "qual1").size());
-    assertEquals("bear", input.getStringValue("family", "qual1").toString());
-    assertEquals("cat",
-        input.getValue("family", "qual1", 4L, Schema.create(Schema.Type.STRING)).toString());
+    assertEquals("bear", input.getMostRecentValue("family", "qual1").toString());
+    assertEquals("cat", input.getValue("family", "qual1", 4L).toString());
   }
 
   @Test
@@ -294,18 +287,14 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     LOG.info("start testReadColumnTypes");
     List<KeyValue> kvs = new ArrayList<KeyValue>();
     EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
-    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0,
-            encode(Schema.Type.STRING, "value")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, e("value")));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual0"));
-    HBaseKijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
+    HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
     for (String family : input.getMap().keySet()) {
       LOG.info("Family: " + family);
       for (String qual : input.getMap().get(family).keySet()) {
@@ -315,9 +304,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     assertFalse(input.containsColumn("not-a-family"));
     assertTrue(input.containsColumn("family"));
     assertTrue(input.containsColumn("family", "qual0"));
-    assertEquals("value",
-        input.getValue("family", "qual0", Schema.create(Schema.Type.STRING)).toString());
-    assertEquals("value", input.getStringValue("family", "qual0").toString());
+    assertEquals("value", input.getMostRecentValue("family", "qual0").toString());
+    assertEquals("value", input.getMostRecentValue("family", "qual0").toString());
     LOG.info("stop testReadColumnTypes");
   }
 
@@ -326,37 +314,29 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     final List<KeyValue> kvs = new ArrayList<KeyValue>();
     final EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
     final byte[] hbaseRowKey = row0.getHBaseRowKey();
-    kvs.add(new KeyValue(
-        hbaseRowKey, mHBaseFamily, mHBaseQual0, encode(Schema.Type.STRING, "value0")));
-    kvs.add(new KeyValue(
-        hbaseRowKey, mHBaseFamily, mHBaseQual1, encode(Schema.Type.STRING, "value1")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, e("value0")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, e("value1")));
     final Result result = new Result(kvs);
 
-    final KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    final KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     final KijiDataRequest dataRequest = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("family", "qual0"))
         .addColumn(new KijiDataRequest.Column("family", "qual1"));
-    final KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
+    KijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
     assertTrue(input.containsColumn("family", "qual0"));
-    assertEquals("value0",
-        input.getValue("family", "qual0", Schema.create(Schema.Type.STRING)).toString());
-    assertEquals("value0", input.getStringValue("family", "qual0").toString());
+    assertEquals("value0", input.getMostRecentValue("family", "qual0").toString());
+    assertEquals("value0", input.getMostRecentValue("family", "qual0").toString());
     assertTrue(input.containsColumn("family", "qual1"));
-    assertEquals("value1",
-        input.getValue("family", "qual1", Schema.create(Schema.Type.STRING)).toString());
-    assertEquals("value1", input.getStringValue("family", "qual1").toString());
-    final NavigableMap<String, CharSequence> strings =
-        input.getRecentValues("family", Schema.create(Schema.Type.STRING));
+    assertEquals("value1", input.getMostRecentValue("family", "qual1").toString());
+    assertEquals("value1", input.getMostRecentValue("family", "qual1").toString());
+    final NavigableMap<String, CharSequence> strings = input.getMostRecentValues("family");
     assertEquals(2, strings.size());
     assertEquals("value0", strings.get("qual0").toString());
     assertEquals("value1", strings.get("qual1").toString());
 
     final NavigableMap<String, NavigableMap<Long, CharSequence>> stringsByTime =
-       input.getValues("family", Schema.create(Schema.Type.STRING));
+       input.getValues("family");
     assertEquals(2, stringsByTime.size());
     final NavigableMap<Long, CharSequence> qual0Strings = stringsByTime.get("qual0");
     assertEquals("value0", qual0Strings.get(qual0Strings.firstKey()).toString());
@@ -369,28 +349,23 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     Node node0 = new Node();
     node0.setLabel("node0");
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, getCellEncoder()
-        .encode(new KijiCell<Node>(node0.getSchema(), node0), KijiCellFormat.HASH)));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseNodequal0, n(node0)));
     Node node1 = new Node();
     node1.setLabel("node1");
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, getCellEncoder()
-        .encode(new KijiCell<Node>(node1.getSchema(), node1), KijiCellFormat.HASH)));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseNodequal1, n(node1)));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(new KijiDataRequest.Column("family"));
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
-    assertTrue(input.containsColumn("family", "qual0"));
-    assertTrue(input.containsColumn("family", "qual1"));
-    NavigableMap<String, Node> values = input.getRecentValues("family", Node.class);
+    KijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
+    assertTrue(input.containsColumn("family", "nodequal0"));
+    assertTrue(input.containsColumn("family", "nodequal1"));
+    NavigableMap<String, Node> values = input.getMostRecentValues("family");
     assertEquals(2, values.size());
-    assertEquals("node0", values.get("qual0").getLabel().toString());
-    assertEquals("node1", values.get("qual1").getLabel().toString());
+    assertEquals("node0", values.get("nodequal0").getLabel().toString());
+    assertEquals("node1", values.get("nodequal1").getLabel().toString());
   }
 
   @Test
@@ -400,25 +375,20 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     Node node0 = new Node();
     node0.setLabel("node0");
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, 100L, getCellEncoder()
-        .encode(new KijiCell<Node>(node0.getSchema(), node0), KijiCellFormat.HASH)));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseNodequal0, 100L, n(node0)));
     Node node1 = new Node();
     node1.setLabel("node1");
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, 200L, getCellEncoder()
-        .encode(new KijiCell<Node>(node1.getSchema(), node1), KijiCellFormat.HASH)));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseNodequal0, 200L, n(node1)));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(
-        new KijiDataRequest.Column("family", "qual0").withMaxVersions(Integer.MAX_VALUE));
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
-    assertTrue(input.containsColumn("family", "qual0"));
-    NavigableMap<Long, Node> values = input.getValues("family", "qual0", Node.class);
+        new KijiDataRequest.Column("family", "nodequal0").withMaxVersions(Integer.MAX_VALUE));
+    KijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
+    assertTrue(input.containsColumn("family", "nodequal0"));
+    NavigableMap<Long, Node> values = input.getValues("family", "nodequal0");
     assertNotNull(values);
     assertEquals(2, values.size());
     assertEquals("node0", values.get(100L).getLabel().toString());
@@ -427,8 +397,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     // Make sure they come in reverse chronological order.
     Iterator<NavigableMap.Entry<Long, Node>> iter = values.entrySet().iterator();
     assertTrue(iter.hasNext());
-    assertEquals(200L, iter.next().getKey().longValue());
     assertEquals(100L, iter.next().getKey().longValue());
+    assertEquals(200L, iter.next().getKey().longValue());
     assertFalse(iter.hasNext());
   }
 
@@ -439,28 +409,23 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     Node node0 = new Node();
     node0.setLabel("node0");
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, 100L, getCellEncoder()
-        .encode(new KijiCell<Node>(node0.getSchema(), node0), KijiCellFormat.HASH)));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseNodequal0, 100L, n(node0)));
     Node node1 = new Node();
     node1.setLabel("node1");
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, 200L, getCellEncoder()
-        .encode(new KijiCell<Node>(node1.getSchema(), node1), KijiCellFormat.HASH)));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseNodequal0, 200L, n(node1)));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(
-        new KijiDataRequest.Column("family", "qual0").withMaxVersions(Integer.MAX_VALUE));
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
-    assertTrue(input.containsColumn("family", "qual0"));
+        new KijiDataRequest.Column("family", "nodequal0").withMaxVersions(Integer.MAX_VALUE));
+    KijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
+    assertTrue(input.containsColumn("family", "nodequal0"));
     assertEquals("node0",
-        input.getValue("family", "qual0", 100L, Node.class).getLabel().toString());
+        ((Node) input.getValue("family", "nodequal0", 100L)).getLabel().toString());
     assertEquals("node1",
-        input.getValue("family", "qual0", 200L, Node.class).getLabel().toString());
+        ((Node) input.getValue("family", "nodequal0", 200L)).getLabel().toString());
   }
 
   @Test
@@ -470,20 +435,16 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     byte[] hbaseRowKey = row0.getHBaseRowKey();
     Node node = new Node();
     node.setLabel("foo");
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, getCellEncoder()
-        .encode(new KijiCell<Node>(node.getSchema(), node), KijiCellFormat.HASH)));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseNodequal0, n(node)));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
-    dataRequest.addColumn(new KijiDataRequest.Column("family", "qual0"));
-    KijiRowData input = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
-    assertTrue(input.containsColumn("family", "qual0"));
-    Node actual = input.getValue("family", "qual0", Node.class);
+    dataRequest.addColumn(new KijiDataRequest.Column("family", "nodequal0"));
+    KijiRowData input = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
+    assertTrue(input.containsColumn("family", "nodequal0"));
+    Node actual = input.getMostRecentValue("family", "nodequal0");
     assertEquals("foo", actual.getLabel().toString());
   }
 
@@ -492,30 +453,24 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
     EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0,
-            encode(Schema.Type.STRING, "value0")));
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1,
-            encode(Schema.Type.STRING, "value1")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, e("value0")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, e("value1")));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual0"));
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual1"));
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual2"));
-    HBaseKijiRowData rowData = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
+    HBaseKijiRowData rowData = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
 
     Put put = new Put(hbaseRowKey);
-    put.add(mHBaseFamily, mHBaseQual2, encode(Schema.Type.STRING, "value2"));
+    put.add(mHBaseFamily, mHBaseQual2, e("value2"));
     rowData.merge(put);
 
     assertTrue(rowData.containsColumn("family", "qual2"));
-    NavigableMap<String, CharSequence> strings
-        = rowData.getRecentValues("family", Schema.create(Schema.Type.STRING));
+    NavigableMap<String, CharSequence> strings = rowData.getMostRecentValues("family");
     assertEquals(3, strings.size());
     assertEquals("value0", strings.get("qual0").toString());
     assertEquals("value1", strings.get("qual1").toString());
@@ -527,45 +482,30 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     List<KeyValue> kvs = new ArrayList<KeyValue>();
     EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
     byte[] hbaseRowKey = row0.getHBaseRowKey();
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0,
-            encode(Schema.Type.STRING, "value0")));
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1,
-            encode(Schema.Type.STRING, "value1")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, e("value0")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, e("value1")));
     Result result = new Result(kvs);
 
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("foo");
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequest dataRequest = new KijiDataRequest();
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual0"));
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual1"));
     dataRequest.addColumn(new KijiDataRequest.Column("family", "qual2"));
-    HBaseKijiRowData rowData = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(result)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
+    HBaseKijiRowData rowData = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, result, getKiji().getSchemaTable());
 
     kvs = new ArrayList<KeyValue>();
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual2,
-            encode(Schema.Type.STRING, "value2")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual2, e("value2")));
     Result anotherResult = new Result(kvs);
-    HBaseKijiRowData anotherRowData = new HBaseKijiRowData(new HBaseKijiRowData.Options()
-        .withHBaseResult(anotherResult)
-        .withDataRequest(dataRequest)
-        .withTableLayout(tableLayout)
-        .withCellDecoderFactory(getCellDecoderFactory()));
+    HBaseKijiRowData anotherRowData = new HBaseKijiRowData(dataRequest, getCellDecoderFactory(),
+        tableLayout, anotherResult, getKiji().getSchemaTable());
     rowData.merge(anotherRowData);
 
     assertTrue(rowData.containsColumn("family", "qual2"));
-    NavigableMap<String, CharSequence> strings
-        = rowData.getRecentValues("family", Schema.create(Schema.Type.STRING));
+    NavigableMap<String, CharSequence> strings = rowData.getMostRecentValues("family");
     assertEquals(3, strings.size());
     assertEquals("value0", strings.get("qual0").toString());
     assertEquals("value1", strings.get("qual1").toString());
     assertEquals("value2", strings.get("qual2").toString());
-  }
-
-  private byte[] encode(Schema.Type type, Object value) throws IOException {
-    return getCellEncoder()
-        .encode(new KijiCell<Object>(Schema.create(type), value), KijiCellFormat.HASH);
   }
 }

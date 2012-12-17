@@ -17,45 +17,45 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.impl;
 
 import java.io.IOException;
 
 import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.impl.CounterCellDecoder;
-import org.kiji.schema.impl.GenericCellDecoder;
+import org.kiji.schema.KijiCellEncoder;
+import org.kiji.schema.KijiCellEncoderFactory;
 import org.kiji.schema.layout.impl.CellSpec;
 
-/** Factory for Kiji cell decoders using GenericCellDecoder to handle record-based schemas. */
-@ApiAudience.Framework
-public final class GenericCellDecoderFactory implements KijiCellDecoderFactory {
+/** Factory for cell encoders. */
+@ApiAudience.Private
+public final class DefaultKijiCellEncoderFactory implements KijiCellEncoderFactory {
   /** Singleton instance. */
-  private static final GenericCellDecoderFactory SINGLETON = new GenericCellDecoderFactory();
+  private static final DefaultKijiCellEncoderFactory SINGLETON =
+      new DefaultKijiCellEncoderFactory();
 
-  /** @return an instance of the GenericCellDecoderFactory. */
-  public static KijiCellDecoderFactory get() {
+  /** @return the default factory for cell encoders. */
+  public static DefaultKijiCellEncoderFactory get() {
     return SINGLETON;
   }
 
   /** Singleton constructor. */
-  private GenericCellDecoderFactory() {
+  private DefaultKijiCellEncoderFactory() {
   }
 
   /** {@inheritDoc} */
   @Override
-  public KijiCellDecoder<?> create(CellSpec cellSpec) throws IOException {
+  public KijiCellEncoder create(CellSpec cellSpec) throws IOException {
     Preconditions.checkNotNull(cellSpec);
     switch (cellSpec.getCellSchema().getType()) {
-    case CLASS:
     case INLINE:
-      return new GenericCellDecoder(cellSpec);
+    case CLASS:
+      return new AvroCellEncoder(cellSpec);
     case COUNTER:
-      return CounterCellDecoder.get();
+      return CounterCellEncoder.get();
     default:
-      throw new RuntimeException("Unhandled cell encoding: " + cellSpec.getCellSchema());
+      throw new RuntimeException("Unhandled cell encoding: " + cellSpec.getCellSchema().getType());
     }
   }
-
 }

@@ -61,6 +61,18 @@
           type : "INLINE",
           value : '"int"'
         }
+      }, {
+        name : "nodequal0",
+        column_schema : {
+          type : "CLASS",
+          value : "org.kiji.schema.avro.Node"
+        }
+      }, {
+        name : "nodequal1",
+        column_schema : {
+          type : "CLASS",
+          value : "org.kiji.schema.avro.Node"
+        }
       } ]
     }, {
       name : "map",

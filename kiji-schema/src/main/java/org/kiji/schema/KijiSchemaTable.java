@@ -78,8 +78,8 @@ public abstract class KijiSchemaTable implements Closeable {
   /**
    * Looks up a schema given an ID.
    *
-   * @param schemaId Schema ID
-   * @return Avro schema
+   * @param schemaId Schema ID to look up.
+   * @return Avro schema, or null if the schema ID is unknown.
    * @throws IOException on I/O error.
    */
   public abstract Schema getSchema(long schemaId) throws IOException;
@@ -87,8 +87,8 @@ public abstract class KijiSchemaTable implements Closeable {
   /**
    * Looks up a schema given a hash.
    *
-   * @param schemaHash Schema hash
-   * @return Avro schema
+   * @param schemaHash Schema hash to look up.
+   * @return Avro schema, or null if the schema hash is unknown.
    * @throws IOException on I/O error.
    */
   public abstract Schema getSchema(BytesKey schemaHash) throws IOException;

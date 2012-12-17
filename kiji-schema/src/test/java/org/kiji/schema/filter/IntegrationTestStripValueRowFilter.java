@@ -68,7 +68,7 @@ public class IntegrationTestStripValueRowFilter extends FooTableIntegrationTest 
       rowScanner = mReader.getScanner(dataRequest, null, null, rowFilter,
           new HBaseScanOptions());
       for (KijiRowData rowData : rowScanner) {
-        rowData.getStringValue("info", "name");
+        rowData.getMostRecentValue("info", "name");
       }
     } finally {
       IOUtils.closeQuietly(rowScanner);

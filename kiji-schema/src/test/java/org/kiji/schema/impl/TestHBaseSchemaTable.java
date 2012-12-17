@@ -43,10 +43,10 @@ import org.junit.Test;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiSchemaTable.SchemaEntry;
 import org.kiji.schema.util.BytesKey;
-
+import org.kiji.schema.util.LocalLockFactory;
+import org.kiji.schema.util.Lock;
 
 public class TestHBaseSchemaTable {
-
   private static SchemaEntry makeSchemaEntry(long id, Schema schema) {
     return new SchemaEntry(id, new BytesKey(KijiSchemaTable.hashSchema(schema)), schema);
   }
@@ -56,14 +56,13 @@ public class TestHBaseSchemaTable {
 
   private HTable mHashHTable;
   private HTable mIdHTable;
-  private HBaseSchemaTable.ZooKeeperLock mZKLock;
-
+  private Lock mLock;
 
   @Before
   public void setup() {
     mHashHTable = createMock(HTable.class);
     mIdHTable = createMock(HTable.class);
-    mZKLock = createMock(HBaseSchemaTable.ZooKeeperLock.class);
+    mLock = new LocalLockFactory().create("test");
   }
 
   @Test
@@ -78,21 +77,17 @@ public class TestHBaseSchemaTable {
     mHashHTable.flushCommits();
     mHashHTable.close();
 
-    mZKLock.close();
-
     replay(result);
     replay(mIdHTable);
     replay(mHashHTable);
-    replay(mZKLock);
 
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mZKLock);
+    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mLock);
     assertNull(schemaTable.getSchema(0));
     schemaTable.close();
 
     verify(result);
     verify(mIdHTable);
     verify(mHashHTable);
-    verify(mZKLock);
   }
 
   @Test
@@ -107,21 +102,17 @@ public class TestHBaseSchemaTable {
     mHashHTable.flushCommits();
     mHashHTable.close();
 
-    mZKLock.close();
-
     replay(result);
     replay(mIdHTable);
     replay(mHashHTable);
-    replay(mZKLock);
 
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mZKLock);
+    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mLock);
     assertNull(schemaTable.getSchema(new BytesKey(new byte[] {0})));
     schemaTable.close();
 
     verify(result);
     verify(mIdHTable);
     verify(mHashHTable);
-    verify(mZKLock);
   }
 
   @Test
@@ -138,21 +129,17 @@ public class TestHBaseSchemaTable {
     mHashHTable.flushCommits();
     mHashHTable.close();
 
-    mZKLock.close();
-
     replay(result);
     replay(mIdHTable);
     replay(mHashHTable);
-    replay(mZKLock);
 
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mZKLock);
+    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mLock);
     assertEquals(Schema.Type.INT, schemaTable.getSchema(0).getType());
     schemaTable.close();
 
     verify(result);
     verify(mIdHTable);
     verify(mHashHTable);
-    verify(mZKLock);
   }
 
   @Test
@@ -169,21 +156,17 @@ public class TestHBaseSchemaTable {
     mHashHTable.flushCommits();
     mHashHTable.close();
 
-    mZKLock.close();
-
     replay(result);
     replay(mIdHTable);
     replay(mHashHTable);
-    replay(mZKLock);
 
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mZKLock);
+    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mLock);
     assertEquals(Schema.Type.INT, schemaTable.getSchema(INT_SCHEMA_ENTRY.getHash()).getType());
     schemaTable.close();
 
     verify(result);
     verify(mIdHTable);
     verify(mHashHTable);
-    verify(mZKLock);
   }
 
   @Test
@@ -191,8 +174,6 @@ public class TestHBaseSchemaTable {
     final Result result = createMock(Result.class);
     expect(mHashHTable.get(anyObject(Get.class))).andReturn(result);
     expect(result.isEmpty()).andReturn(true);
-
-    mZKLock.lock();
 
     expect(mHashHTable.get(anyObject(Get.class))).andReturn(result);
     expect(result.isEmpty()).andReturn(true);
@@ -210,29 +191,23 @@ public class TestHBaseSchemaTable {
     mIdHTable.flushCommits();
     mHashHTable.flushCommits();
 
-    mZKLock.unlock();
-
     mIdHTable.flushCommits();
     mIdHTable.close();
 
     mHashHTable.flushCommits();
     mHashHTable.close();
 
-    mZKLock.close();
-
     replay(result);
     replay(mIdHTable);
     replay(mHashHTable);
-    replay(mZKLock);
 
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mZKLock);
+    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mLock);
     assertEquals(9, schemaTable.getOrCreateSchemaId(INT_SCHEMA_ENTRY.getSchema()));
     schemaTable.close();
 
     verify(result);
     verify(mIdHTable);
     verify(mHashHTable);
-    verify(mZKLock);
   }
 
 }

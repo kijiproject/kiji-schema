@@ -25,6 +25,7 @@ import java.io.IOException;
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +37,9 @@ import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
+import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.VersionInfo;
+import org.kiji.schema.util.ZooKeeperLockFactory;
 
 /**
  * <p>Kiji instance class that contains configuration and table
@@ -63,6 +66,9 @@ public class Kiji implements KijiTableFactory, Closeable {
 
   /** Factory for HTable instances. */
   private final HTableInterfaceFactory mHTableFactory;
+
+  /** Factory for locks. */
+  private final LockFactory mLockFactory;
 
   /** The schema table for this kiji instance, or null if it has not been opened yet. */
   private KijiSchemaTable mSchemaTable;
@@ -94,29 +100,32 @@ public class Kiji implements KijiTableFactory, Closeable {
   public Kiji(KijiConfiguration kijiConf) throws IOException {
     this(kijiConf,
         true,
-        DefaultHTableInterfaceFactory.get());
+        DefaultHTableInterfaceFactory.get(),
+        new ZooKeeperLockFactory(kijiConf.getConf()));
   }
 
   /**
    * Creates a new <code>Kiji</code> instance.
-   * This should only be used by Kiji.open();
    *
-   * @see org.kiji.schema.Kiji#open(KijiConfiguration)
+   * Should only be used by Kiji.open().
    *
-   * @param kijiConf The kiji configuration.
+   * @param kijiConf Kiji configuration.
    * @param validateVersion Validate that the installed version of kiji is compatible with
    *     this client.
    * @param tableFactory HTableInterface factory.
-   * @throws IOException If there is an error.
+   * @param lockFactory Factory for locks.
+   * @throws IOException on I/O error.
    */
   public Kiji(
       KijiConfiguration kijiConf,
       boolean validateVersion,
-      HTableInterfaceFactory tableFactory)
+      HTableInterfaceFactory tableFactory,
+      LockFactory lockFactory)
       throws IOException {
     // Keep a deep copy of the kiji configuration.
     mKijiConf = new KijiConfiguration(kijiConf);
     mHTableFactory = Preconditions.checkNotNull(tableFactory);
+    mLockFactory = Preconditions.checkNotNull(lockFactory);
 
     LOG.debug("Opening kiji...");
 
@@ -153,6 +162,36 @@ public class Kiji implements KijiTableFactory, Closeable {
    */
   public static Kiji open(KijiConfiguration kijiConf) throws IOException {
     return new Kiji(kijiConf);
+  }
+
+  /**
+   * Opens a Kiji instance by URI.
+   *
+   * @param uri URI specifying the Kiji instance to open.
+   * @param conf Hadoop configuration.
+   * @return the specified Kiji instance.
+   * @throws IOException on I/O error.
+   */
+  public static Kiji open(KijiURI uri, Configuration conf) throws IOException {
+    final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
+    final Configuration confCopy = new Configuration(conf);
+    final KijiConfiguration kijiConf = new KijiConfiguration(confCopy, uri);
+    return new Kiji(
+        kijiConf,
+        true,
+        hbaseFactory.getHTableInterfaceFactory(uri),
+        hbaseFactory.getLockFactory(uri, confCopy));
+  }
+
+  /**
+   * Opens a Kiji instance by URI.
+   *
+   * @param uri URI specifying the Kiji instance to open.
+   * @return the specified Kiji instance.
+   * @throws IOException on I/O error.
+   */
+  public static Kiji open(KijiURI uri) throws IOException {
+    return open(uri, HBaseConfiguration.create());
   }
 
   /**
@@ -203,7 +242,7 @@ public class Kiji implements KijiTableFactory, Closeable {
    */
   public synchronized KijiSchemaTable getSchemaTable() throws IOException {
     if (null == mSchemaTable) {
-      mSchemaTable = new HBaseSchemaTable(getKijiConf(), mHTableFactory);
+      mSchemaTable = new HBaseSchemaTable(getKijiConf(), mHTableFactory, mLockFactory);
     }
     return mSchemaTable;
   }
@@ -267,6 +306,6 @@ public class Kiji implements KijiTableFactory, Closeable {
   /** {@inheritDoc} */
   @Override
   public KijiTable openTable(String tableName) throws IOException {
-    return new HBaseKijiTable(this, tableName);
+    return new HBaseKijiTable(this, tableName, mHTableFactory);
   }
 }

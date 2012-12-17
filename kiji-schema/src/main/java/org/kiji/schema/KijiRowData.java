@@ -20,12 +20,10 @@
 package org.kiji.schema;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 
 import org.apache.avro.Schema;
-import org.apache.avro.specific.SpecificRecord;
 
 import org.kiji.annotations.ApiAudience;
 
@@ -89,116 +87,6 @@ public interface KijiRowData {
   Schema getReaderSchema(String family, String qualifier) throws IOException;
 
   /**
-   * Gets the most recent cell in a column.
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param readerSchema The reader schema for the cell data, or null if the writer schema
-   *     should be used for decoding.
-   * @return The cell, or null if there is no data.
-   * @throws IOException If there is an error.
-   */
-  <T> KijiCell<T> getCell(String family, String qualifier, Schema readerSchema) throws IOException;
-
-  /**
-   * Gets a decoded avro value from the most recent cell in a column.
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param readerSchema The reader schema for the cell data, or null if the writer schema
-   *     should be used for decoding.
-   * @return The contents of the cell, or null if there is no data.
-   * @throws IOException If there is an error.
-   */
-  <T> T getValue(String family, String qualifier, Schema readerSchema) throws IOException;
-
-  /**
-   * Gets a cell with a given timestamp in a column.
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @param readerSchema The reader schema for the cell data, or null if the writer schema
-   *     should be used for decoding.
-   * @return The cell, or null if there is no data.
-   * @throws IOException If there is an error.
-   */
-  <T> KijiCell<T> getCell(String family, String qualifier, long timestamp, Schema readerSchema)
-      throws IOException;
-
-  /**
-   * Gets a decoded avro value from the cell with a given timestamp in a column.
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @param readerSchema The reader schema for the cell data, or null if the writer schema
-   *     should be used for decoding.
-   * @return The contents of the cell, or null if there is no data.
-   * @throws IOException If there is an error.
-   */
-  <T> T getValue(String family, String qualifier, long timestamp, Schema readerSchema)
-      throws IOException;
-
-  /**
-   * Gets the most recent cell in a column.
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param type The class for the decoded data.
-   * @return The contents of the cell, or null if there is no data.
-   * @throws IOException If there is an error.
-   */
-  <T extends SpecificRecord> KijiCell<T> getCell(String family, String qualifier, Class<T> type)
-      throws IOException;
-
-  /**
-   * Gets a decoded avro value from the most recent cell in a column.
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param type The class for the decoded data.
-   * @return The contents of the cell, of null if there is no data.
-   * @throws IOException If there is an error.
-   */
-  <T extends SpecificRecord> T getValue(String family, String qualifier, Class<T> type)
-      throws IOException;
-
-  /**
-   * Gets a specified version of a cell in a column.
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @param type The class for the decoded data.
-   * @return The cell, or null if there is no data.
-   * @throws IOException If there is an error.
-   */
-  <T extends SpecificRecord> KijiCell<T> getCell(
-      String family, String qualifier, long timestamp, Class<T> type) throws IOException;
-
-  /**
-   * Gets a decoded avro value from the specified version of a cell in a column.
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @param type The class for the decoded data.
-   * @return The contents of the cell, or null if there is no data.
-   * @throws IOException If there is an error.
-   */
-  <T extends SpecificRecord> T getValue(
-      String family, String qualifier, long timestamp, Class<T> type) throws IOException;
-
-  /**
    * Gets the most recent counter from a column.
    *
    * <p>Only columns that have been declared with {@code <schema type="counter"/>} may be
@@ -226,359 +114,120 @@ public interface KijiRowData {
   KijiCounter getCounter(String family, String qualifier, long timestamp) throws IOException;
 
   /**
-   * Reads the current value of a column that is a counter.
-   *
-   * <p>Only columns that have been declared with {@code <schema type="counter"/>} may be
-   * read using this method.</p>
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The current value of the counter.
-   * @throws IOException If there is an error.
-   */
-  long getCounterValue(String family, String qualifier) throws IOException;
-
-  /**
-   * Reads the value of a counter column as it was at a particular timestamp.
-   *
-   * <p>Only columns that have been declared with {@code <schema type="counter"/>} may be
-   * read using this method.</p>
+   * Gets the value stored within the specified cell.
    *
    * @param family A column family name.
    * @param qualifier A column qualifier name.
    * @param timestamp The timestamp of the cell.
-   * @return The current value of the counter.
+   * @param <T> The type of the values stored at the specified coordinates.
+   * @return the value of the specified cell, or null if the cell does not exist.
+   *     Note: this method does not distinguish between Avro encoded nulls and non-existant
+   *     cells. Use {@link #containsColumn()} to distinguish between this scenarios.
    * @throws IOException If there is an error.
    */
-  long getCounterValue(String family, String qualifier, long timestamp) throws IOException;
+  <T> T getValue(String family, String qualifier, long timestamp) throws IOException;
 
   /**
-   * Gets all the typed avro values in the family.
+   * Gets the value with the latest timestamp stored within the specified cell.
    *
-   * <p>If iterating over the keys of the returned inner map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param <T> The type of the decoded avro cell data.
    * @param family A column family name.
-   * @param readerSchema The reader schema for the cell data, or null if the writer schema
-   *     should be used for decoding.
-   * @return A map from qualifier name to a map from timestamps to cell values.
+   * @param qualifier A column qualifier name.
+   * @param <T> The type of the values stored at the specified coordinates.
+   * @return the value of the specified cell, or null if the cell does not exist.
+   *     Note: this method does not distinguish between Avro encoded nulls and non-existant
+   *     cells.
    * @throws IOException If there is an error.
    */
-  <T> NavigableMap<String, NavigableMap<Long, T>> getValues(String family, Schema readerSchema)
+  <T> T getMostRecentValue(String family, String qualifier) throws IOException;
+
+  /**
+   * Gets the value with the latest timestamp stored within the specified cell.
+   *
+   * @param family A column family name.
+   * @param <T> The type of the values stored at the specified coordinates.
+   * @return the value of the specified cell, or null if the cell does not exist.
+   *     Note: this method does not distinguish between Avro encoded nulls and non-existant
+   *     cells.
+   * @throws IOException If there is an error.
+   */
+  <T> NavigableMap<String, T> getMostRecentValues(String family)
       throws IOException;
 
   /**
-   * Gets all the typed versioned values of a column.
+   * Gets all the timestamp-value pairs stored within the specified family.
    *
-   * <p>If iterating over the keys of the map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param <T> The type of the decoded avro cell data.
    * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param readerSchema The reader schema for the cell data, or null if the writer schema
-   *     should be used for decoding.
-   * @return A map from timestamp to the decoded avro cell value.
+   * @param <T> The type of the values stored at the specified coordinates.
+   * @return A sorted map containing the values stored in the specified cell.
    * @throws IOException If there is an error.
    */
-  <T> NavigableMap<Long, T> getValues(String family, String qualifier, Schema readerSchema)
+  <T> NavigableMap<String, NavigableMap<Long, T>> getValues(String family) throws IOException;
+
+  /**
+   * Gets all the timestamp-value pairs stored within the specified cell.
+   *
+   * @param family A column family name.
+   * @param qualifier A column qualifier name.
+   * @param <T> The type of the values stored at the specified coordinates.
+   * @return A sorted map containing the values stored in the specified cell.
+   * @throws IOException If there is an error.
+   */
+  <T> NavigableMap<Long, T> getValues(String family, String qualifier) throws IOException;
+
+  /**
+   * Gets the specified cell.
+   *
+   * @param family A column family name.
+   * @param qualifier A column qualifier name.
+   * @param timestamp The timestamp of the cell.
+   * @param <T> The type of the values stored at the specified coordinates.
+   * @return the specified cell, or null if the cell does not exist.
+   * @throws IOException If there is an error.
+   */
+  <T> KijiCell<T> getCell(String family, String qualifier, long timestamp) throws IOException;
+
+  /**
+   * Gets the latest version of the specified cell.
+   *
+   * @param family A column family name.
+   * @param qualifier A column qualifier name.
+   * @param <T> The type of the values stored at the specified coordinates.
+   * @return the most recent version of the specified cell, or null if the cell does not exist.
+   * @throws IOException If there is an error.
+   */
+  <T> KijiCell<T> getMostRecentCell(String family, String qualifier) throws IOException;
+
+  /**
+   * Gets the latest version of the specified cell.
+   *
+   * @param family A column family name.
+   * @param <T> The type of the values stored at the specified coordinates.
+   * @return a map from qualifier to the most recent versions of the cells.
+   * @throws IOException If there is an error.
+   */
+  <T> NavigableMap<String, KijiCell<T>> getMostRecentCells(String family) throws IOException;
+
+  /**
+   * Gets all the timestamp-cell pairs stored within the specified family.
+   *
+   * @param family A column family name.
+   * @param <T> The type of the values stored at the specified coordinates.
+   * @return A sorted map versions of the specified cell.
+   * @throws IOException If there is an error.
+   */
+  <T> NavigableMap<String, NavigableMap<Long, KijiCell<T>>> getCells(String family)
       throws IOException;
 
   /**
-   * Gets all the specific typed values in a column family.
-   *
-   * <p>If iterating over the keys of the returned inner map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param type The type of the decoded avro data.
-   * @return A map from column qualifier/key to a map from timestamps to cell value.
-   * @throws IOException If there is an error.
-   */
-  <T extends SpecificRecord> NavigableMap<String, NavigableMap<Long, T>> getValues(
-      String family, Class<T> type) throws IOException;
-
-  /**
-   * Gets the most recent values in a column family.
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param readerSchema The reader schema for the cell data, or null if the writer schema
-   *     should be used for decoding.
-   * @return A map from column qualifier/key to the most recently-timestamped cell value.
-   * @throws IOException If there is an error.
-   */
-  <T> NavigableMap<String, T> getRecentValues(String family, Schema readerSchema)
-      throws IOException;
-
-  /**
-   * Gets the most recent specific-typed values in a column family.
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param type The type of the decoded avro data.
-   * @return A map from column qualifier/key to the most recently-timestamped cell value.
-   * @throws IOException If there is an error.
-   */
-  <T extends SpecificRecord> NavigableMap<String, T> getRecentValues(String family, Class<T> type)
-      throws IOException;
-
-  /**
-   * Gets all the typed versioned values in a column.
-   *
-   * <p>If iterating over the keys of the map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param <T> The type of the decoded avro cell data.
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param type The type of the decoded avro cell data.
-   * @return A map from timestamp to the decoded avro cell values.
-   * @throws IOException If there is an error.
-   */
-  <T extends SpecificRecord> NavigableMap<Long, T> getValues(
-      String family, String qualifier, Class<T> type) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a string.
+   * Gets all the timestamp-cell pairs stored within the specified cell.
    *
    * @param family A column family name.
    * @param qualifier A column qualifier name.
-   * @return The cell's value decoded as a CharSequence.
+   * @param <T> The type of the values stored at the specified coordinates.
+   * @return A sorted map versions of the specified cell.
    * @throws IOException If there is an error.
    */
-  CharSequence getStringValue(String family, String qualifier) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a string.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @return The cell's value decoded as a CharSequence.
-   * @throws IOException If there is an error.
-   */
-  CharSequence getStringValue(String family, String qualifier, long timestamp) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as an integer.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The cell's value decoded as an integer.
-   * @throws IOException If there is an error.
-   */
-  Integer getIntValue(String family, String qualifier) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as an integer.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @return The cell's value decoded as an integer.
-   * @throws IOException If there is an error.
-   */
-  Integer getIntValue(String family, String qualifier, long timestamp) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a long.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The cell's value decoded as an integer.
-   * @throws IOException If there is an error.
-   */
-  Long getLongValue(String family, String qualifier) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a long.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @return The cell's value decoded as an integer.
-   * @throws IOException If there is an error.
-   */
-  Long getLongValue(String family, String qualifier, long timestamp) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a float.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The cell's value decoded as a float.
-   * @throws IOException If there is an error.
-   */
-  Float getFloatValue(String family, String qualifier) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a float.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @return The cell's value decoded as a float.
-   * @throws IOException If there is an error.
-   */
-  Float getFloatValue(String family, String qualifier, long timestamp) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a double.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The cell's value decoded as a double.
-   * @throws IOException If there is an error.
-   */
-  Double getDoubleValue(String family, String qualifier) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a double.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @return The cell's value decoded as a double.
-   * @throws IOException If there is an error.
-   */
-  Double getDoubleValue(String family, String qualifier, long timestamp) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a byte array.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The cell's value decoded as a byte array.
-   * @throws IOException If there is an error.
-   */
-  ByteBuffer getByteArrayValue(String family, String qualifier) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a byte array.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @return The cell's value decoded as a byte array.
-   * @throws IOException If there is an error.
-   */
-  ByteBuffer getByteArrayValue(String family, String qualifier, long timestamp) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a boolean.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The cell's value decoded as an integer.
-   * @throws IOException If there is an error.
-   */
-  Boolean getBooleanValue(String family, String qualifier) throws IOException;
-
-  /**
-   * Convenience method for reading the most recent cell as a boolean.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @return The cell's value decoded as an integer.
-   * @throws IOException If there is an error.
-   */
-  Boolean getBooleanValue(String family, String qualifier, long timestamp) throws IOException;
-
-  /**
-   * Gets all the string-typed versioned values in a column.
-   *
-   * <p>If iterating over the keys of the map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return A map from timestamp to the decoded avro cell value as a CharSequence.
-   * @throws IOException If there is an error.
-   */
-  NavigableMap<Long, CharSequence> getStringValues(String family, String qualifier)
-      throws IOException;
-
-  /**
-   * Gets all the integer-typed versioned values in a column.
-   *
-   * <p>If iterating over the keys of the map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return A map from timestamp to the decoded avro cell value as an integer.
-   * @throws IOException If there is an error.
-   */
-  NavigableMap<Long, Integer> getIntValues(String family, String qualifier) throws IOException;
-
-  /**
-   * Gets all the long-typed versioned values in a column.
-   *
-   * <p>If iterating over the keys of the map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return A map from timestamp to the decoded avro cell value as a long.
-   * @throws IOException If there is an error.
-   */
-  NavigableMap<Long, Long> getLongValues(String family, String qualifier) throws IOException;
-
-  /**
-   * Gets all the float-typed versioned values in a column.
-   *
-   * <p>If iterating over the keys of the map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return A map from timestamp to the decoded avro cell value as a float.
-   * @throws IOException If there is an error.
-   */
-  NavigableMap<Long, Float> getFloatValues(String family, String qualifier) throws IOException;
-
-  /**
-   * Gets all the double-typed versioned values in a column.
-   *
-   * <p>If iterating over the keys of the map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return A map from timestamp to the decoded avro cell value as a double.
-   * @throws IOException If there is an error.
-   */
-  NavigableMap<Long, Double> getDoubleValues(String family, String qualifier) throws IOException;
-
-  /**
-   * Gets all the boolean-typed versioned values in a column.
-   *
-   * <p>If iterating over the keys of the map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return A map from timestamp to the decoded avro cell value as a boolean.
-   * @throws IOException If there is an error.
-   */
-  NavigableMap<Long, Boolean> getBooleanValues(String family, String qualifier) throws IOException;
-
-  /**
-   * Gets all the byte array-typed versioned values in a column.
-   *
-   * <p>If iterating over the keys of the map from timestamps to values,
-   * you will get items in order of decreasing timestamp.</p>
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return A map from timestamp to the decoded avro cell value as a byte array.
-   * @throws IOException If there is an error.
-   */
-  NavigableMap<Long, ByteBuffer> getByteArrayValues(String family, String qualifier)
+  <T> NavigableMap<Long, KijiCell<T>> getCells(String family, String qualifier)
       throws IOException;
 
   /**

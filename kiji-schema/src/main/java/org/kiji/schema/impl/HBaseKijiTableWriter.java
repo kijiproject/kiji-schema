@@ -40,40 +40,31 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.HBaseColumnName;
-import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiCounter;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.NoSuchColumnException;
-import org.kiji.schema.PutLocalApiWriter;
-import org.kiji.schema.WrappedDataWriter;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
+import org.kiji.schema.layout.impl.CellSpec;
 
 /**
  * Makes modifications to a Kiji table by sending requests directly to HBase from the local client.
  */
 @ApiAudience.Private
-public class HBaseKijiTableWriter extends KijiTableWriter {
+public final class HBaseKijiTableWriter implements KijiTableWriter {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTableWriter.class);
 
-  /** The kiji instance the table is in. */
-  private final Kiji mKiji;
   /** The kiji table instance. */
   private final HBaseKijiTable mTable;
-  /** A column name translator. */
-  private final ColumnNameTranslator mColumnNameTranslator;
-  /** A kiji cell encoder. */
-  private final KijiCellEncoder mCellEncoder;
-  /** A kiji data writer to perform puts with. */
-  private final WrappedDataWriter<?, ?> mWriter;
+
+  /** The column name translator to use. */
+  private final ColumnNameTranslator mTranslator;
 
   /**
    * Creates a non-buffered kiji table writer that sends modifications directly to Kiji.
@@ -81,48 +72,49 @@ public class HBaseKijiTableWriter extends KijiTableWriter {
    * @param table A kiji table.
    * @throws IOException If there is an error creating the writer.
    */
-  public HBaseKijiTableWriter(KijiTable table) throws IOException {
-    this(table, 0);
-  }
-
-  /**
-   * Creates a buffered kiji table writer that sends modifications directly to Kiji.
-   *
-   * @param table A kiji table.
-   * @param maxBufferedPuts When this number of puts have been stored in the buffer it will
-   *     auto-flush.
-   * @throws IOException If there is an error creating the writer.
-   */
-  public HBaseKijiTableWriter(KijiTable table, int maxBufferedPuts) throws IOException {
-    mKiji = table.getKiji();
+  public HBaseKijiTableWriter(KijiTable table)
+      throws IOException {
     mTable = HBaseKijiTable.downcast(table);
-    mColumnNameTranslator = new ColumnNameTranslator(mTable.getLayout());
-    mCellEncoder = new KijiCellEncoder(mKiji.getSchemaTable());
-    mWriter = new PutLocalApiWriter(new PutLocalApiWriter.Options()
-        .withCellEncoder(mCellEncoder)
-        .withColumnNameTranslator(mColumnNameTranslator)
-        .withEntityIdFactory(EntityIdFactory.create(mTable.getLayout().getDesc().getKeysFormat()))
-        .withMaxBufferedWrites(maxBufferedPuts)
-        .withKijiTable(table));
-    LOG.debug("Finished creating HBaseKijiTableWriter");
+    mTranslator = new ColumnNameTranslator(mTable.getLayout());
   }
 
   /** {@inheritDoc} */
   @Override
-  public void put(EntityId entityId, String family, String qualifier, long timestamp,
-      KijiCell<?> cell) throws IOException, InterruptedException {
-    mWriter.write(entityId, family, qualifier, timestamp, cell);
+  public <T> void put(EntityId entityId, String family, String qualifier, T value)
+      throws IOException {
+    put(entityId, family, qualifier, HConstants.LATEST_TIMESTAMP, value);
   }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> void put(EntityId entityId, String family, String qualifier, long timestamp, T value)
+      throws IOException {
+    final KijiColumnName columnName = new KijiColumnName(family, qualifier);
+    final HBaseColumnName hbaseColumnName = mTranslator.toHBaseColumnName(columnName);
+
+    final CellSpec cellSpec = mTable.getLayout().getCellSpec(columnName)
+        .setSchemaTable(mTable.getKiji().getSchemaTable());
+    final KijiCellEncoder cellEncoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final byte[] encoded = cellEncoder.encode(value);
+
+    final Put put = new Put(entityId.getHBaseRowKey())
+        .add(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp, encoded);
+    mTable.getHTable().put(put);
+  }
+
+  // ----------------------------------------------------------------------------------------------
+  // Counter increment
 
   /** {@inheritDoc} */
   @Override
   public KijiCounter increment(EntityId entityId, String family, String qualifier, long amount)
       throws IOException {
+
     verifyIsCounter(family, qualifier);
 
     // Translate the Kiji column name to an HBase column name.
-    final HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(
-        new KijiColumnName(family, qualifier));
+    final HBaseColumnName hbaseColumnName =
+        mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
 
     // Send the increment to the HBase HTable.
     final Increment increment = new Increment(entityId.getHBaseRowKey());
@@ -142,36 +134,47 @@ public class HBaseKijiTableWriter extends KijiTableWriter {
         Bytes.toLong(counterEntry.getValue()));
   }
 
+  /**
+   * Verifies that a column is a counter.
+   *
+   * @param family A column family.
+   * @param qualifier A column qualifier.
+   * @throws IOException If the column is not a counter, or it does not exist.
+   */
+  private void verifyIsCounter(String family, String qualifier) throws IOException {
+    final KijiColumnName column = new KijiColumnName(family, qualifier);
+    if (mTable.getLayout().getCellSchema(column).getType() != SchemaType.COUNTER) {
+      throw new IOException(String.format("Column '%s' is not a counter", column));
+    }
+  }
+
+  // ----------------------------------------------------------------------------------------------
+  // Deletes
+
   /** {@inheritDoc} */
   @Override
-  public void setCounter(EntityId entityId, String family, String qualifier, long value)
-      throws IOException {
-    verifyIsCounter(family, qualifier);
-
-    // Construct an HBase Put object.
-    HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(
-        new KijiColumnName(family, qualifier));
-    Put put = new Put(entityId.getHBaseRowKey());
-    put.add(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), Bytes.toBytes(value));
-
-    // Send the Put to the HTable.
-    mTable.getHTable().put(put);
+  public void deleteRow(EntityId entityId) throws IOException {
+    deleteRow(entityId, HConstants.LATEST_TIMESTAMP);
   }
 
   /** {@inheritDoc} */
   @Override
   public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {
-    // Construct an HBase Delete object.
-    Delete delete = new Delete(entityId.getHBaseRowKey(), upToTimestamp, null);
-
-    // Send the delete to the HBase HTable.
+    final Delete delete = new Delete(entityId.getHBaseRowKey(), upToTimestamp, null);
     mTable.getHTable().delete(delete);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteFamily(EntityId entityId, String family) throws IOException {
+    deleteFamily(entityId, family, HConstants.LATEST_TIMESTAMP);
   }
 
   /** {@inheritDoc} */
   @Override
   public void deleteFamily(EntityId entityId, String family, long upToTimestamp)
       throws IOException {
+
     final FamilyLayout familyLayout = mTable.getLayout().getFamilyMap().get(family);
     if (null == familyLayout) {
       throw new NoSuchColumnException(String.format("Family '%s' not found.", family));
@@ -191,14 +194,13 @@ public class HBaseKijiTableWriter extends KijiTableWriter {
 
     // The only data in this HBase family is the one Kiji family, so we can delete everything.
     final HBaseColumnName hbaseColumnName =
-        mColumnNameTranslator.toHBaseColumnName(new KijiColumnName(family));
+        mTranslator.toHBaseColumnName(new KijiColumnName(family));
     final Delete delete = new Delete(entityId.getHBaseRowKey());
     delete.deleteFamily(hbaseColumnName.getFamily(), upToTimestamp);
 
     // Send the delete to the HBase HTable.
     mTable.getHTable().delete(delete);
   }
-
   /**
    * Deletes all cells from a group-type family with a timestamp less than or equal to a
    * specified timestamp.
@@ -219,7 +221,7 @@ public class HBaseKijiTableWriter extends KijiTableWriter {
     for (ColumnLayout columnLayout : familyLayout.getColumnMap().values()) {
       final String qualifier = columnLayout.getName();
       final KijiColumnName column = new KijiColumnName(familyName, qualifier);
-      final HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(column);
+      final HBaseColumnName hbaseColumnName = mTranslator.toHBaseColumnName(column);
       delete.deleteColumns(
           hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
     }
@@ -250,7 +252,7 @@ public class HBaseKijiTableWriter extends KijiTableWriter {
 
     final String familyName = familyLayout.getName();
     final HBaseColumnName hbaseColumnName =
-        mColumnNameTranslator.toHBaseColumnName(new KijiColumnName(familyName));
+        mTranslator.toHBaseColumnName(new KijiColumnName(familyName));
     final byte[] hbaseRow = entityId.getHBaseRowKey();
 
     // Lock the row.
@@ -288,51 +290,49 @@ public class HBaseKijiTableWriter extends KijiTableWriter {
 
   /** {@inheritDoc} */
   @Override
+  public void deleteColumn(EntityId entityId, String family, String qualifier) throws IOException {
+    deleteColumn(entityId, family, qualifier, HConstants.LATEST_TIMESTAMP);
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public void deleteColumn(EntityId entityId, String family, String qualifier, long upToTimestamp)
       throws IOException {
-    // Construct an HBase Delete object.
-    HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(
-        new KijiColumnName(family, qualifier));
-    Delete delete = new Delete(entityId.getHBaseRowKey());
-    delete.deleteColumns(
-        hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
-
-    // Send the delete to the HBase HTable.
+    final HBaseColumnName hbaseColumnName =
+        mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
+    final Delete delete = new Delete(entityId.getHBaseRowKey())
+        .deleteColumns(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
     mTable.getHTable().delete(delete);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteCell(EntityId entityId, String family, String qualifier) throws IOException {
+    deleteCell(entityId, family, qualifier, HConstants.LATEST_TIMESTAMP);
   }
 
   /** {@inheritDoc} */
   @Override
   public void deleteCell(EntityId entityId, String family, String qualifier, long timestamp)
       throws IOException {
-    // Construct an HBase Delete object.
-    HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(
-        new KijiColumnName(family, qualifier));
-    Delete delete = new Delete(entityId.getHBaseRowKey());
-    delete.deleteColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
-
-    // Send the delete to the HBase HTable.
+    final HBaseColumnName hbaseColumnName =
+        mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
+    final Delete delete = new Delete(entityId.getHBaseRowKey())
+        .deleteColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
     mTable.getHTable().delete(delete);
   }
 
-  /** {@inheritDoc} */
+  // ----------------------------------------------------------------------------------------------
+
   @Override
-  public void flush() throws IOException, InterruptedException {
-    // Flush any pending Puts.
-    mWriter.flush();
+  public void flush() throws IOException {
+    mTable.getHTable().flushCommits();
   }
 
-  /**
-   * Verifies that a column is a counter.
-   *
-   * @param family A column family.
-   * @param qualifier A column qualifier.
-   * @throws IOException If the column is not a counter, or it does not exist.
-   */
-  private void verifyIsCounter(String family, String qualifier) throws IOException {
-    final KijiColumnName column = new KijiColumnName(family, qualifier);
-    if (mTable.getLayout().getCellSchema(column).getType() != SchemaType.COUNTER) {
-      throw new IOException(String.format("Column '%s' is not a counter", column));
-    }
+  @Override
+  public void close() throws IOException {
+    flush();
+
+    // Make sure you also close your Kiji table.
   }
 }

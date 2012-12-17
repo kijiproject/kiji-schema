@@ -133,7 +133,7 @@ public abstract class AbstractKijiIntegrationTest {
     mCluster.waitForActiveAndReadyMaster();
     LOG.info("Mini HBase cluster is ready");
 
-    LOG.info("Mini Kibi instance is ready");
+    LOG.info("Mini Kiji instance is ready");
 
     LOG.info("Starting mini map/reduce cluster");
     mStandaloneConf.set("hadoop.log.dir", "/tmp/test_hadoop_log_dir");
