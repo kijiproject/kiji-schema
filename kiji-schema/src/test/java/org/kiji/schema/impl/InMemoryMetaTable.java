@@ -21,17 +21,21 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.KijiTableNotFoundException;
+import org.kiji.schema.avro.KeyValueBackupEntry;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.TableBackup;
+import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.InMemoryTableLayoutDatabase;
@@ -46,9 +50,7 @@ import org.kiji.schema.layout.impl.InMemoryTableLayoutDatabase;
  */
 public class InMemoryMetaTable extends KijiMetaTable {
   private static final Logger LOG = LoggerFactory.getLogger(InMemoryMetaTable.class);
-  /**
-   * An in-memory layout table.
-   */
+  /** An in-memory layout table. */
   private final InMemoryTableLayoutDatabase mTableLayoutDatabase;
 
     /** An in-memory Key-Value database, organized by table. */
@@ -132,24 +134,6 @@ public class InMemoryMetaTable extends KijiMetaTable {
     return mTableLayoutDatabase.listTables();
   }
 
-  /** {@inheritDoc} */
-  @Override
-  public void writeToBackup(MetadataBackup.Builder backup) throws IOException {
-    mTableLayoutDatabase.writeToBackup(backup);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public void restoreFromBackup(MetadataBackup backup) throws IOException {
-    mTableLayoutDatabase.restoreFromBackup(backup);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public void restoreTableFromBackup(TableBackup tableBackup) throws IOException {
-    mTableLayoutDatabase.restoreTableFromBackup(tableBackup);
-  }
-
     /** {@inheritDoc} */
   @Override
   public KijiTableKeyValueDatabase putValue(String table, String key, byte[] value)
@@ -185,6 +169,48 @@ public class InMemoryMetaTable extends KijiMetaTable {
   @Override
   public Set<String> tableSet() throws IOException {
     return mTableKeyValueDatabase.tableSet();
+  }
+
+  @Override
+  public List<TableLayoutBackupEntry> getLayoutBackupRecords(String table) throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void restoreLayoutsFromBackup(TableBackup tableBackup) throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public List<byte[]> getValues(String table, String key, int numVersions) throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public NavigableMap<Long, byte[]> getTimedValues(String table, String key, int numVersions) throws
+    IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public List<KeyValueBackupEntry> getKeyValueBackupRecords(String table) throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void restoreKeyValuesFromBackup(TableBackup tableBackup) throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+
+  @Override
+  public void restoreFromBackup(MetadataBackup backup) throws IOException {
+    throw new NotImplementedException("Meta table backups are not implemented in this mock");
+  }
+
+  @Override
+  public Map<String, TableBackup> toBackup() throws IOException {
+    throw new NotImplementedException("Meta table backups are not implemented in this mock");
   }
 
 }

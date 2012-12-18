@@ -35,8 +35,8 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiTableNotFoundException;
-import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.TableBackup;
+import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
@@ -168,21 +168,13 @@ public final class InMemoryTableLayoutDatabase implements KijiTableLayoutDatabas
     return Collections.unmodifiableList(new ArrayList<String>(mLayouts.keySet()));
   }
 
-  /** {@inheritDoc} */
   @Override
-  public void writeToBackup(MetadataBackup.Builder backup) throws IOException {
-    throw new RuntimeException("Not implemented");
+  public List<TableLayoutBackupEntry> getLayoutBackupRecords(String table) throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
-  /** {@inheritDoc} */
   @Override
-  public void restoreFromBackup(MetadataBackup backup) throws IOException {
-    throw new RuntimeException("Not implemented");
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public void restoreTableFromBackup(TableBackup tableBackup) throws IOException {
-    throw new RuntimeException("Not implemented");
+  public void restoreLayoutsFromBackup(TableBackup tableBackup) throws IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 }

@@ -16,16 +16,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.kiji.schema;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.avro.MetadataBackup;
+import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 
 /**
@@ -37,7 +39,8 @@ import org.kiji.schema.layout.KijiTableLayoutDatabase;
  */
 @ApiAudience.Framework
 public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabase,
-    KijiTableKeyValueDatabase {
+  KijiTableKeyValueDatabase {
+
   private static final Logger LOG = LoggerFactory.getLogger(KijiMetaTable.class);
   /**
    * Whether the table is open.
@@ -45,7 +48,8 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
   private boolean mIsOpen;
 
   /**
-   * Creates a new <code>KijiMetaTable</code> instance.
+   * Creates a new
+   * <code>KijiMetaTable</code> instance.
    */
   protected KijiMetaTable() {
     mIsOpen = true;
@@ -59,7 +63,9 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
    */
   public abstract void deleteTable(String table) throws IOException;
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   */
   @Override
   public void close() throws IOException {
     if (!mIsOpen) {
@@ -69,7 +75,9 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
     mIsOpen = false;
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   */
   @Override
   protected void finalize() throws Throwable {
     if (mIsOpen) {
@@ -79,4 +87,22 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
     super.finalize();
   }
 
+  /**
+   * Returns metadata backup information in a form that can be directly written to a MetadataBackup
+   * record. To read more about the avro type that has been specified to store this info, see
+   * Layout.avdl
+   *
+   * @throws IOException If there is an error.
+   * @return A map from table names to TableBackup records.
+   */
+  public abstract Map<String, TableBackup> toBackup() throws IOException;
+
+  /**
+   * Restores metadata from a backup record. This consists of table layouts, schemas, and user
+   * defined key-value pairs.
+   *
+   * @param backup Backup record.
+   * @throws IOException on I/O error.
+   */
+  public abstract void restoreFromBackup(MetadataBackup backup) throws IOException;
 }

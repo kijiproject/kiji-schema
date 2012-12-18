@@ -23,6 +23,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Objects;
@@ -31,6 +32,7 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.MetadataBackup;
+import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.util.BytesKey;
 import org.kiji.schema.util.Hasher;
 
@@ -222,12 +224,14 @@ public abstract class KijiSchemaTable implements Closeable {
   public abstract void close() throws IOException;
 
   /**
-   * Dumps the schema table into the specified backup record.
+   * Returns schema backup information in a form that can be directly written to a MetadataBackup
+   * record. To read more about the avro type that has been specified to store this info, see
+   * Layout.avdl
    *
-   * @param backup Appends the schema entries to this backup record.
    * @throws IOException on I/O error.
+   * @return A list of schema table entries.
    */
-  public abstract void writeToBackup(MetadataBackup backup) throws IOException;
+  public abstract List<SchemaTableEntry> toBackup() throws IOException;
 
   /**
    * Restores the schema entries from the specified backup record.
