@@ -28,7 +28,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +63,21 @@ public final class CreateTableTool extends VersionValidatedTool {
   private String mSplitKeyFilePath = "";
 
   private HBaseAdmin mHBaseAdmin;
+
+  @Override
+  public String getName() {
+    return "create-table";
+  }
+
+  @Override
+  public String getDescription() {
+    return "Create a kiji table in a kiji instance.";
+  }
+
+  @Override
+  public String getCategory() {
+    return "DDL";
+  }
 
   @Override
   protected void validateFlags() throws Exception {
@@ -170,6 +184,6 @@ public final class CreateTableTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new CreateTableTool(), args));
+    System.exit(new KijiToolLauncher().run(new CreateTableTool(), args));
   }
 }

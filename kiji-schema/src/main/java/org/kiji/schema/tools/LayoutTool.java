@@ -32,7 +32,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,6 +75,21 @@ public final class LayoutTool extends VersionValidatedTool {
   private String mWriteTo = "";
 
   private HBaseAdmin mHBaseAdmin;
+
+  @Override
+  public String getName() {
+    return "layout";
+  }
+
+  @Override
+  public String getDescription() {
+    return "View or modify kiji table layouts.";
+  }
+
+  @Override
+  public String getCategory() {
+    return "DDL";
+  }
 
   @Override
   protected void validateFlags() throws Exception {
@@ -219,6 +233,6 @@ public final class LayoutTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new LayoutTool(), args));
+    System.exit(new KijiToolLauncher().run(new LayoutTool(), args));
   }
 }

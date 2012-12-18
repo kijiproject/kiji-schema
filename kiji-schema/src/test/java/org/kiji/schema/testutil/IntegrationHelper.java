@@ -38,7 +38,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,6 +51,7 @@ import org.kiji.schema.tools.BaseTool;
 import org.kiji.schema.tools.CreateTableTool;
 import org.kiji.schema.tools.DeleteTableTool;
 import org.kiji.schema.tools.InstallTool;
+import org.kiji.schema.tools.KijiToolLauncher;
 import org.kiji.schema.tools.UninstallTool;
 import org.kiji.schema.util.ToJson;
 
@@ -172,7 +172,10 @@ public class IntegrationHelper extends Configured {
 
     // Run the tool.
     LOG.debug("Running tool " + tool.getClass().getName() + " with args " + Arrays.toString(args));
-    return new ToolResult(ToolRunner.run(conf, tool, args), output);
+    KijiToolLauncher launcher = new KijiToolLauncher();
+    launcher.setConf(conf);
+    int exitCode = launcher.run(tool, args);
+    return new ToolResult(exitCode, output);
   }
 
   /**

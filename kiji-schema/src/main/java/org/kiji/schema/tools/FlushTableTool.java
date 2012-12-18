@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +46,21 @@ public final class FlushTableTool extends VersionValidatedTool {
   private boolean mFlushMeta = false;
 
   private HBaseAdmin mHBaseAdmin;
+
+  @Override
+  public String getName() {
+    return "flush-table";
+  }
+
+  @Override
+  public String getDescription() {
+    return "Flush kiji user and meta table write-ahead logs.";
+  }
+
+  @Override
+  public String getCategory() {
+    return "Admin";
+  }
 
   @Override
   protected void validateFlags() throws Exception {
@@ -149,6 +163,6 @@ public final class FlushTableTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new FlushTableTool(), args));
+    System.exit(new KijiToolLauncher().run(new FlushTableTool(), args));
   }
 }

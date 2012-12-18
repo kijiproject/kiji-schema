@@ -37,6 +37,7 @@
 
   <properties>
     <annotations.version>1.0.0-rc2-SNAPSHOT</annotations.version>
+    <kiji-delegation.version>1.0.0-rc2-SNAPSHOT</kiji-delegation.version>
   </properties>
 
   <build>
@@ -188,6 +189,11 @@
       <groupId>org.kiji.annotations</groupId>
       <artifactId>annotations</artifactId>
       <version>${annotations.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.kiji.delegation</groupId>
+      <artifactId>kiji-delegation</artifactId>
+      <version>${kiji-delegation.version}</version>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
