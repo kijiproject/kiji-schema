@@ -39,7 +39,6 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,6 +121,21 @@ public final class LsTool extends VersionValidatedTool {
   private boolean mInstances = false;
 
   private HBaseAdmin mHBaseAdmin;
+
+  @Override
+  public String getName() {
+    return "ls";
+  }
+
+  @Override
+  public String getDescription() {
+    return "List kiji instances, tables and rows.";
+  }
+
+  @Override
+  public String getCategory() {
+    return "Data";
+  }
 
   /**
    * Lists all kiji instances.
@@ -621,6 +635,6 @@ public final class LsTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new LsTool(), args));
+    System.exit(new KijiToolLauncher().run(new LsTool(), args));
   }
 }

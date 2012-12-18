@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,6 +57,21 @@ public final class IncrementTool extends VersionValidatedTool {
 
   @Flag(name="value", usage="Integer value to add to the counter.")
   private int mValue = 1;
+
+  @Override
+  public String getName() {
+    return "increment";
+  }
+
+  @Override
+  public String getDescription() {
+    return "Increment a counter column in a kiji table.";
+  }
+
+  @Override
+  public String getCategory() {
+    return "Data";
+  }
 
   @Override
   protected void validateFlags() throws Exception {
@@ -112,6 +126,6 @@ public final class IncrementTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new IncrementTool(), args));
+    System.exit(new KijiToolLauncher().run(new IncrementTool(), args));
   }
 }

@@ -1,0 +1,34 @@
+
+ENVIRONMENT VARIABLES
+
+  Users can set several environment variables to change the behavior of the kiji script and
+  the tools it runs. These include:
+
+  KIJI_HOME           Should give the path to the root of the kiji distribution to use when
+                      executing tools. By default, the parent of the directory containing
+                      this script will be used (as this script is likely in the bin
+                      directory of a kiji distribution).
+
+  HADOOP_HOME         Should give the path to the root of the hadoop distribution to use
+                      when executing tools. By default, /usr/lib/hadoop will be used.
+
+  HBASE_HOME          Should give the path to the root of the hbase distribution to use
+                      when executing tools. By default, /usr/lib/hbase will be used.
+
+  KIJI_CLASSPATH      Should contain a colon-seperated list of paths to client libraries
+                      to place on the classpath of run tools. This is useful for when you
+                      run custom kiji programs that depend on libraries not provided by the
+                      kiji system. The libraries specified in KIJI_CLASSPATH will be
+                      placed first on the classpath so that they will take precedence over
+                      libraries provided by the kiji system. By default KIJI_CLASSPATH is
+                      empty.
+
+  KIJI_JAVA_OPTS      Should contain extra arguments to pass to the JVM used to execute
+                      tools. By default, KIJI_JAVA_OPTS is empty.
+
+  JAVA_LIBRARY_PATH   Should contain a colon-seperated list of paths to additional native
+                      libraries to pass to the JVM (through the java.library.path
+                      property). Note the kiji script will always pass the native libraries
+                      included with your hadoop distribution to the JVM. By default
+                      JAVA_LIBRARY_PATH is empty.
+

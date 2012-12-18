@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.util.ToolRunner;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
@@ -42,6 +41,21 @@ public final class DeleteTableTool extends VersionValidatedTool {
   private boolean mConfirm = false;
 
   private HBaseAdmin mHBaseAdmin;
+
+  @Override
+  public String getName() {
+    return "delete-table";
+  }
+
+  @Override
+  public String getDescription() {
+    return "Delete a kiji table from a kiji instance.";
+  }
+
+  @Override
+  public String getCategory() {
+    return "DDL";
+  }
 
   @Override
   protected void validateFlags() throws Exception {
@@ -90,6 +104,6 @@ public final class DeleteTableTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new DeleteTableTool(), args));
+    System.exit(new KijiToolLauncher().run(new DeleteTableTool(), args));
   }
 }

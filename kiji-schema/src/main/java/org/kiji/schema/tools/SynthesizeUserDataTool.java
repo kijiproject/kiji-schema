@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.avro.Schema;
-import org.apache.hadoop.util.ToolRunner;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
@@ -50,6 +49,21 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
 
   @Flag(name="table", usage="kiji table data should be written to")
   private String mTableName = "";
+
+  @Override
+  public String getName() {
+    return "synthesize-user-data";
+  }
+
+  @Override
+  public String getDescription() {
+    return "Synthesize user data into a kiji table.";
+  }
+
+  @Override
+  public String getCategory() {
+    return "Example";
+  }
 
   /**
    * Load a list of people names from a file.
@@ -118,6 +132,6 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new SynthesizeUserDataTool(), args));
+    System.exit(new KijiToolLauncher().run(new SynthesizeUserDataTool(), args));
   }
 }

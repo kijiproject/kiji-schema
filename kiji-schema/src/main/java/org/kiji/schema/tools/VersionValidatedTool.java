@@ -33,7 +33,7 @@ import org.kiji.schema.KijiConfiguration;
  * will exit early.
  */
 @ApiAudience.Framework
-public abstract class VersionValidatedTool extends KijiTool {
+public abstract class VersionValidatedTool extends OpenedKijiTool {
   /**
    * Constructor.
    */

@@ -19,9 +19,10 @@
 
 package org.kiji.schema.util;
 
-import java.io.Closeable;
-import java.io.IOException;
+import java.io.BufferedReader;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,7 +30,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 
 /**
- * Utility for getting/closing system resources.
+ * Utility for getting access to system resources.
  */
 @ApiAudience.Private
 public final class Resources {
@@ -38,37 +39,23 @@ public final class Resources {
   /** Can not instantiate utility. */
   private Resources() {}
 
-
-  // TODO: Allow client code to specify which class loader to use.  If null, use this Thread's
-  // classloader. If set, use this instead.
-  private static ClassLoader mClassLoader = null;
-
   /**
-   * Sets the class loader to use.  If null, Thread.getContextClassLoader().
-   *
-   * @param loader The ClassLoader to use.
-   */
-  public static void setClassLoader(ClassLoader loader) {
-    mClassLoader = loader;
-  }
-
-  /**
-   * Returns this Thread's ContextClassLoader if none has been specified to
-   * setClassLoader.  Otherwise, uses that one.
+   * Returns the classloader to use. Currently this is this Thread's ContextClassLoader.
    *
    * @return The ClassLoader to use.
    */
-  public static ClassLoader getClassLoader() {
-    return null == mClassLoader ? Thread.currentThread().getContextClassLoader() : mClassLoader;
+  private static ClassLoader getClassLoader() {
+    return Thread.currentThread().getContextClassLoader();
   }
 
   /**
    * Gets the named resource using the classloader, or null if it can not be found.
+   * Clients should close streams returned by this method.
    *
    * @param resourceFileName The resource to load from the classpath.
-   * @return The loaded resource.  If not found, returns null.
+   * @return The loaded resource as an InputStream.  If not found, returns null.
    */
-  public static InputStream getSystemResource(String resourceFileName) {
+  public static InputStream openSystemResource(String resourceFileName) {
     InputStream resource = getClassLoader().getResourceAsStream(resourceFileName);
     if (null == resource) {
       LOG.debug("Could not find resource: " + resourceFileName + ".  Is it on your classpath?");
@@ -77,21 +64,24 @@ public final class Resources {
   }
 
   /**
-   * Does the best it can to close the resource.  Logs a warning on IOException.
+   * Gets the named resource using the classloader, or null if it can not be found.
+   * Clients should close streams returned by this method.
    *
-   * @deprecated Use org.apache.commons.io.IOUtils.closeQuietly(Closeable) instead.
-   *
-   * @param resource The resource to close.
+   * @param resourceFileName The resource to load from the classpath.
+   * @return The loaded resource as a BufferedReader.  If not found, returns null.
    */
-  @Deprecated
-  public static void closeResource(Closeable resource) {
+  public static BufferedReader openSystemTextResource(String resourceFileName) {
+    InputStream resource = getClassLoader().getResourceAsStream(resourceFileName);
+    if (null == resource) {
+      LOG.debug("Could not find resource: " + resourceFileName + ".  Is it on your classpath?");
+      return null;
+    }
     try {
-      if (null != resource) {
-        resource.close();
-      }
-    } catch (IOException ioe) {
-      LOG.warn("Error closing resource: " + resource);
-      LOG.warn(ioe.getMessage());
+      return new BufferedReader(new InputStreamReader(resource, "UTF-8"));
+    } catch (UnsupportedEncodingException uee) {
+      // Shouldn't get here; UTF-8 is a Java universal requirement.
+      LOG.debug("Could not use UTF-8 charset to open this resource?");
+      return null;
     }
   }
 }
