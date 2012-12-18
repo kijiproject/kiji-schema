@@ -219,6 +219,7 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
         keyValueBackups.add(KeyValueBackupEntry.newBuilder()
             .setKey(key)
             .setValue(ByteBuffer.wrap(versionedValues.get(timestamp)))
+            .setTimestamp(timestamp)
             .build());
       }
     }
@@ -232,20 +233,18 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
     tableBackup.getKeyValues().size();
     LOG.debug(String.format("Restoring '%s' key-value(s) from backup for table '%s'.", tableBackup
         .getKeyValues().size(), tableName));
-    // Enforce distinct timestamps by getting the current time now, and increments after every put.
-    long timestamp = System.currentTimeMillis();
     for (KeyValueBackupEntry kvRecord : tableBackup.getKeyValues()) {
       final byte[] key = Bytes.toBytes(kvRecord.getKey());
       final ByteBuffer valueBuffer = kvRecord.getValue(); // Read in ByteBuffer of values
       byte[] value = new byte[valueBuffer.remaining()]; // Instantiate ByteArray
       valueBuffer.get(value); // Write buffer to array
+      final long timestamp = kvRecord.getTimestamp();
       LOG.debug(String.format("For the table '%s' we are writing to family '%s', qualifier '%s'"
           + ", timestamp '%s', and value '%s' to the" + " meta table named '%s'.", tableName,
           Bytes.toString(mFamilyBytes), Bytes.toString(key), "" + timestamp, Bytes.toString(value),
           Bytes.toString(mTable.getTableName())));
       final Put put = new Put(Bytes.toBytes(tableName)).add(mFamilyBytes, key, timestamp, value);
       mTable.put(put);
-      timestamp += 1;
     }
     LOG.debug("Flushing commits to restore key-values from backup.");
     mTable.flushCommits();

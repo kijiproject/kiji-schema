@@ -21,6 +21,7 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.avro.Schema;
@@ -28,6 +29,7 @@ import org.apache.commons.lang.NotImplementedException;
 
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.avro.MetadataBackup;
+import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.util.BytesKey;
 
 
@@ -99,13 +101,12 @@ public class InMemorySchemaTable extends KijiSchemaTable {
 
   /** {@inheritDoc} */
   @Override
-  public void writeToBackup(MetadataBackup backup) throws IOException {
+  public void restoreFromBackup(MetadataBackup backup) throws IOException {
     throw new NotImplementedException("Schema table backups are not implemented in this mock");
   }
 
-  /** {@inheritDoc} */
   @Override
-  public void restoreFromBackup(MetadataBackup backup) throws IOException {
+  public List<SchemaTableEntry> toBackup() throws IOException {
     throw new NotImplementedException("Schema table backups are not implemented in this mock");
   }
 }

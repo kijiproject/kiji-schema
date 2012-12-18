@@ -722,9 +722,10 @@ public class HBaseSchemaTable extends KijiSchemaTable {
 
   /** {@inheritDoc} */
   @Override
-  public void writeToBackup(final MetadataBackup backup) throws IOException {
+  public List<SchemaTableEntry> toBackup() throws IOException {
     Preconditions.checkState(mIsOpen, "Schema tables are closed");
     mZKLock.lock();
+    List<SchemaTableEntry> entries = Lists.newArrayList();
     try {
       /** Entries from the schema hash table. */
       final Set<SchemaEntry> hashTableEntries = loadSchemaHashTable(mSchemaHashTable);
@@ -743,15 +744,13 @@ public class HBaseSchemaTable extends KijiSchemaTable {
       if (!checkConsistency(mergedEntries)) {
         LOG.error("Merged schema hash and ID tables are inconsistent");
       }
-
-      List<SchemaTableEntry> entries = Lists.newArrayList();
       for (SchemaEntry entry : mergedEntries) {
         entries.add(toAvroEntry(entry));
       }
-      backup.setSchemaTable(entries);
     } finally {
       mZKLock.unlock();
     }
+    return entries;
   }
 
   /** {@inheritDoc} */

@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.tools;
+package org.kiji.schema;
 
 /**
  * Exception thrown during a metadata restore operation due to user error.

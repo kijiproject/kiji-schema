@@ -21,9 +21,11 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 
+import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,7 +34,6 @@ import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.avro.KeyValueBackupEntry;
 import org.kiji.schema.avro.MetadataBackup;
-import org.kiji.schema.avro.MetadataBackup.Builder;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -201,14 +202,15 @@ public class InMemoryMetaTable extends KijiMetaTable {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
-  @Override
-  public void writeToBackup(Builder backup) throws IOException {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
 
   @Override
   public void restoreFromBackup(MetadataBackup backup) throws IOException {
-    throw new UnsupportedOperationException("Not supported yet.");
+    throw new NotImplementedException("Meta table backups are not implemented in this mock");
+  }
+
+  @Override
+  public Map<String, TableBackup> toBackup() throws IOException {
+    throw new NotImplementedException("Meta table backups are not implemented in this mock");
   }
 
 }

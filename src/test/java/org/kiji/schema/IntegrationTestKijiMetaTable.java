@@ -24,7 +24,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
@@ -34,8 +36,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.avro.MetadataBackup;
+import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.impl.MetadataRestorer;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
 
@@ -60,7 +64,7 @@ public class IntegrationTestKijiMetaTable extends AbstractKijiIntegrationTest {
   }
 
   @Test
-  public void testRestore() throws InterruptedException, IOException {
+  public void testBackupAndRestore() throws InterruptedException, IOException {
     assertEquals(1, mMetaTable.listTables().size());
     assertEquals(1, mMetaTable.tableSet().size());
     assertEquals(1, mMetaTable.keySet("foo").size());
@@ -68,8 +72,11 @@ public class IntegrationTestKijiMetaTable extends AbstractKijiIntegrationTest {
     // write to backupBuilder
     final MetadataBackup.Builder backupBuilder = MetadataBackup.newBuilder()
         .setLayoutVersion(mKiji.getSystemTable().getDataVersion())
-        .setMetaTable(new HashMap<String, TableBackup>());
-    mMetaTable.writeToBackup(backupBuilder);
+        .setMetaTable(new HashMap<String, TableBackup>())
+        .setSchemaTable(new ArrayList<SchemaTableEntry>());
+    Map<String, TableBackup> metadata = mMetaTable.toBackup();
+    backupBuilder.setMetaTable(metadata);
+    backupBuilder.setSchemaTable(mKiji.getSchemaTable().toBackup());
     final MetadataBackup backup = backupBuilder.build();
 
     // make sure metadata key-value pairs are what we expect.
@@ -82,9 +89,9 @@ public class IntegrationTestKijiMetaTable extends AbstractKijiIntegrationTest {
     assertEquals(0, mMetaTable.listTables().size());
     assertEquals(0, mMetaTable.tableSet().size());
 
+    MetadataRestorer restorer = new MetadataRestorer();
+    restorer.restoreTables(backup, mKiji);
     mMetaTable = mKiji.getMetaTable();
-    mMetaTable.restoreFromBackup(backup);
-
     assertEquals("The number of tables with layouts is incorrect.", 1,
         mMetaTable.listTables().size());
     assertEquals("The number of tables with kv pairs is incorrect.", 1,

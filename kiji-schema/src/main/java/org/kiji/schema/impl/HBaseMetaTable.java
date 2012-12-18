@@ -20,6 +20,7 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -41,7 +42,6 @@ import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.avro.KeyValueBackupEntry;
 import org.kiji.schema.avro.MetadataBackup;
-import org.kiji.schema.avro.MetadataBackup.Builder;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -265,13 +265,11 @@ public class HBaseMetaTable extends KijiMetaTable {
     admin.disableTable(tableName);
     admin.deleteTable(tableName);
   }
-  /**
-   * Writes meta data backup information to the input builder object that is passed in.
-   *
-   * @param backup Builder object passed in to write backup information to.
-   * @throws IOException If there is an error.
-   */
-  public void writeToBackup(Builder backup) throws IOException {
+
+  /** {@inheritDoc} */
+  @Override
+  public Map<String, TableBackup> toBackup() throws IOException {
+    Map<String, TableBackup> metadataBackup = new HashMap<String, TableBackup>();
     List<String> tables = listTables();
     for (String table : tables) {
       List<TableLayoutBackupEntry> layouts = mTableLayoutDatabase.getLayoutBackupRecords(table);
@@ -281,8 +279,9 @@ public class HBaseMetaTable extends KijiMetaTable {
           .setLayouts(layouts)
           .setKeyValues(keyValues)
           .build();
-      Preconditions.checkState(null == backup.getMetaTable().put(table, tableBackup));
+      metadataBackup.put(table, tableBackup);
     }
+    return metadataBackup;
   }
 
   /** {@inheritDoc} */
@@ -300,6 +299,7 @@ public class HBaseMetaTable extends KijiMetaTable {
       restoreKeyValuesFromBackup(tableBackup);
     }
     mTable.flushCommits();
+    LOG.debug("I am a debug level log.");
     LOG.info("Flushing commits to table '{}'", Bytes.toString(mTable.getTableName()));
   }
 

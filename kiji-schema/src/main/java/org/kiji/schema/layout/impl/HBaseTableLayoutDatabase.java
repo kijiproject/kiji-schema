@@ -351,6 +351,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
            history.add(TableLayoutBackupEntry.newBuilder()
                .setLayout(layout)
                .setUpdate(update)
+               .setTimestamp(timestamp)
                .build());
          }
        }
@@ -362,14 +363,14 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   public void restoreLayoutsFromBackup(TableBackup tableBackup) throws IOException {
     final String tableName = tableBackup.getName();
     LOG.info(String.format("Restoring layout history for table '%s'.", tableName));
-
     for (TableLayoutBackupEntry lbe : tableBackup.getLayouts()) {
       final byte[] layoutBytes = encodeTableLayoutDesc(lbe.getLayout());
       final Put put = new Put(Bytes.toBytes(tableName))
           .add(mFamilyBytes, QUALIFIER_LAYOUT_BYTES, layoutBytes);
       if (lbe.getUpdate() != null) {
         final byte[] updateBytes = encodeTableLayoutDesc(lbe.getUpdate());
-        put.add(mFamilyBytes, QUALIFIER_UPDATE_BYTES, updateBytes);
+        final long timestamp = lbe.getTimestamp();
+        put.add(mFamilyBytes, QUALIFIER_UPDATE_BYTES, timestamp, updateBytes);
       }
       mTable.put(put);
     }
