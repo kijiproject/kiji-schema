@@ -34,7 +34,7 @@
     <fileSet>
       <useDefaultExcludes>true</useDefaultExcludes>
       <outputDirectory></outputDirectory>
-      <directory></directory>
+      <directory>${project.basedir}/../</directory>
       <fileMode>0644</fileMode>
       <includes>
         <include>NOTICE.txt</include>

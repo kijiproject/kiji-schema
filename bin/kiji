@@ -23,11 +23,11 @@
 
 bin=`dirname $0`
 
-release_dir=`ls -d -1 ${bin}/../target/kiji-*-release/kiji-*/ | sort -r | head -1`
+release_dir=`ls -d -1 "${bin}"/../kiji-schema/target/kiji-*-release/kiji-*/ | sort -r | head -1`
 if [ ! -d "$release_dir" ]; then
-  echo "No target directory found, so building kiji with 'mvn package' first..."
-  mvn package
-  release_dir=`ls -d -1 ${bin}/../target/kiji-*-release/kiji-*/ | sort -r | head -1`
+  echo "No target directory found, so building KijiSchema with 'mvn install' first..."
+  mvn install -DskipTests -DskipVerify
+  release_dir=`ls -d -1 "${bin}"/../kiji-schema/target/kiji-*-release/kiji-*/ | sort -r | head -1`
 fi
 release=`cd ${release_dir} && pwd`
 
