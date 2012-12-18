@@ -31,7 +31,6 @@ import com.google.common.base.Joiner;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.util.Tool;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
@@ -73,7 +72,7 @@ import org.kiji.schema.KijiURIException;
  * Tools needing to prompt the user for a yes/no answer should use the {@link #yesNoPrompt} method.
  */
 @ApiAudience.Framework
-public abstract class BaseTool extends Configured implements Tool {
+public abstract class BaseTool extends Configured implements KijiTool {
   /** Used when prompting the user for feedback. */
   private static final Pattern YES_PATTERN = Pattern.compile("y|yes", Pattern.CASE_INSENSITIVE);
   private static final Pattern NO_PATTERN = Pattern.compile("n|no", Pattern.CASE_INSENSITIVE);
@@ -126,10 +125,19 @@ public abstract class BaseTool extends Configured implements Tool {
     }
   }
 
+  /**
+   * Invoke the functionality of this tool, as supplied through its
+   * implementation of the abstract methods of this class.
+   *
+   * @param args the command-line arguments to the tool not including the
+   *     tool name itself.
+   * @throws Exception if there's an error inside the tool.
+   * @return 0 on success, non-zero on failure.
+   */
   @Override
-  public int run(String[] args) throws Exception {
+  public int toolMain(List<String> args) throws Exception {
     try {
-      List<String> nonFlagArgs = FlagParser.init(this, args);
+      List<String> nonFlagArgs = FlagParser.init(this, args.toArray(new String[args.size()]));
       if (null == nonFlagArgs) {
         // There was a problem parsing the flags.
         return 1;

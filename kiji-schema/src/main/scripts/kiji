@@ -104,81 +104,10 @@ if [ -z $HADOOP_HOME -o ! -d "$HADOOP_HOME" ]; then
     exit 1
 fi
 
-function print_tool_usage() {
-  echo "The kiji script runs tools for interacting with the kiji system."
-  echo
-  echo "USAGE"
-  echo
-  echo "  kiji TOOL [FLAGS]..."
-  echo
-  echo "TOOLS"
-  echo
-  echo "  help                  - Display this help message. Use --verbose for more information."
-  echo "  install               - Install a kiji instance onto a running hbase cluster."
-  echo "  uninstall             - Remove a kiji instance from a running hbase cluster."
-  echo "  version               - Print the kiji distribution and data versions in use."
-  echo "  classpath             - Print the classpath used to run kiji tools."
-  echo
-  echo "  jar                   - Run a main class contained in a jar file."
-  echo "                          Use: kiji jar <jarFile> <mainClass> [args...]"
-  echo
-  echo "  ls                    - List kiji instances, tables and rows."
-  echo "  create-table          - Create a kiji table in a kiji instance."
-  echo "  delete-table          - Delete a kiji table from a kiji instance."
-  echo "  flush-table           - Flush kiji user and meta table write-ahead logs."
-  echo "  layout                - View or modify kiji table layouts."
-  echo
-  echo "  increment             - Increment a counter column in a kiji table."
-  echo "  put                   - Write a cell to a column in a kiji table."
-  echo "  synthesize-user-data  - Synthesize user data into a kiji table."
-  echo
-  echo "FLAGS"
-  echo
-  echo "  The available flags depend on which tool you use.  To see"
-  echo "  flags for a tool, use --help.  For example:"
-  echo
-  echo "  $ kiji TOOL --help"
-}
-
-function print_env_usage() {
-  echo
-  echo "ENVIRONMENT VARIABLES"
-  echo
-  echo "  Users can set several environment variables to change the behavior of the kiji script and"
-  echo "  the tools it runs. These include:"
-  echo
-  echo "  KIJI_HOME           Should give the path to the root of the kiji distribution to use when"
-  echo "                      executing tools. By default, the parent of the directory containing"
-  echo "                      this script will be used (as this script is likely in the bin"
-  echo "                      directory of a kiji distribution)."
-  echo
-  echo "  HADOOP_HOME         Should give the path to the root of the hadoop distribution to use"
-  echo "                      when executing tools. By default, /usr/lib/hadoop will be used."
-  echo
-  echo "  HBASE_HOME          Should give the path to the root of the hbase distribution to use"
-  echo "                      when executing tools. By default, /usr/lib/hbase will be used."
-  echo
-  echo "  KIJI_CLASSPATH      Should contain a colon-seperated list of paths to client libraries"
-  echo "                      to place on the classpath of run tools. This is useful for when you"
-  echo "                      run custom kiji programs that depend on libraries not provided by the"
-  echo "                      kiji system. The libraries specified in KIJI_CLASSPATH will be"
-  echo "                      placed first on the classpath so that they will take precedence over"
-  echo "                      libraries provided by the kiji system. By default KIJI_CLASSPATH is"
-  echo "                      empty."
-  echo
-  echo "  KIJI_JAVA_OPTS      Should contain extra arguments to pass to the JVM used to execute"
-  echo "                      tools. By default, KIJI_JAVA_OPTS is empty."
-  echo
-  echo "  JAVA_LIBRARY_PATH   Should contain a colon-seperated list of paths to additional native"
-  echo "                      libraries to pass to the JVM (through the java.library.path"
-  echo "                      property). Note the kiji script will always pass the native libraries"
-  echo "                      included with your hadoop distribution to the JVM. By default"
-  echo "                      JAVA_LIBRARY_PATH is empty."
-}
-
 if [ -z $1 ]; then
-    print_tool_usage
-    exit 0
+    echo "kiji: Tool launcher for the Kiji framework"
+    echo "Run 'kiji help' to see a list of available tools."
+    exit 1
 fi
 
 # Removes classpath entries that match the given regexp (partial match, not full
@@ -279,40 +208,15 @@ fi
 
 command=$1
 foreground=true # Run command in the foreground.
-shift  # pop off the command
-
-maybeDebugMode=$1
-debugMode="no"
-if [ "$maybeDebugMode" == "--debug" -o "$maybeDebugMode" == "-d" ]; then
-  # Consume the "--debug" token, and set the logging level for
-  # the underlying command.
-  java_opts="-Dkiji.logger=DEBUG,console"
-  debugMode="yes"
-  shift
-fi
 
 case $command in
-    help)
-        print_tool_usage
-        if [[ $1 == "--verbose" ]]; then
-          print_env_usage
-        fi
-        exit 0
-        ;;
-    install)
-        class=org.kiji.schema.tools.InstallTool
-        ;;
-    uninstall)
-        class=org.kiji.schema.tools.UninstallTool
-        ;;
-    version)
-        class=org.kiji.schema.tools.VersionTool
-        ;;
     classpath)
         echo "$kiji_cp"
         exit 0
         ;;
+
     jar)
+        shift  # pop off the command
         if [[ $# > 0 && $1 == "--help" ]]; then
           echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
           echo
@@ -340,32 +244,9 @@ case $command in
         kiji_cp="${user_jar_file}:${kiji_cp}"
         ;;
 
-    ls)
-        class=org.kiji.schema.tools.LsTool
+    *)
+        class=org.kiji.schema.tools.KijiToolLauncher
         ;;
-    create-table)
-        class=org.kiji.schema.tools.CreateTableTool
-        ;;
-    delete-table)
-        class=org.kiji.schema.tools.DeleteTableTool
-        ;;
-    flush-table)
-        class=org.kiji.schema.tools.FlushTableTool
-        ;;
-    layout)
-        class=org.kiji.schema.tools.LayoutTool
-        ;;
-
-    increment)
-        class=org.kiji.schema.tools.IncrementTool
-        ;;
-    put)
-        class=org.kiji.schema.tools.PutTool
-        ;;
-    synthesize-user-data)
-        class=org.kiji.schema.tools.SynthesizeUserDataTool
-        ;;
-
 esac
 
 if [ -z $class ]; then

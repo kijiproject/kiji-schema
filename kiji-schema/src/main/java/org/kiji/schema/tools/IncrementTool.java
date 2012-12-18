@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +58,25 @@ public final class IncrementTool extends VersionValidatedTool {
   @Flag(name="value", usage="Integer value to add to the counter.")
   private int mValue = 1;
 
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return "increment";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getDescription() {
+    return "Increment a counter column in a kiji table.";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getCategory() {
+    return "Data";
+  }
+
+  /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
     if (mTableName.isEmpty()) {
@@ -66,6 +84,7 @@ public final class IncrementTool extends VersionValidatedTool {
     }
   }
 
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     final KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout(mTableName);
@@ -112,6 +131,6 @@ public final class IncrementTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new IncrementTool(), args));
+    System.exit(new KijiToolLauncher().run(new IncrementTool(), args));
   }
 }

@@ -26,7 +26,6 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.io.DecoderFactory;
 import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,6 +73,25 @@ public final class PutTool extends VersionValidatedTool {
   @Flag(name="value", usage="JSON-encoded Avro value")
   private String mJsonValue;
 
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return "put";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getDescription() {
+    return "Write a cell to a column in a kiji table.";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getCategory() {
+    return "Data";
+  }
+
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     final KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout(mTableName);
@@ -164,6 +182,6 @@ public final class PutTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new PutTool(), args));
+    System.exit(new KijiToolLauncher().run(new PutTool(), args));
   }
 }

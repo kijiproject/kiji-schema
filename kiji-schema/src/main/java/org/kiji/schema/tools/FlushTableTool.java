@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +47,25 @@ public final class FlushTableTool extends VersionValidatedTool {
 
   private HBaseAdmin mHBaseAdmin;
 
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return "flush-table";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getDescription() {
+    return "Flush kiji user and meta table write-ahead logs.";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getCategory() {
+    return "Admin";
+  }
+
+  /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
@@ -111,18 +129,21 @@ public final class FlushTableTool extends VersionValidatedTool {
     hbaseAdmin.flush(hbaseTableName.toString());
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void setup() throws Exception {
     super.setup();
     mHBaseAdmin = new HBaseAdmin(getConf());
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
     IOUtils.closeQuietly(mHBaseAdmin);
     super.cleanup();
   }
 
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     if (mFlushMeta) {
@@ -149,6 +170,6 @@ public final class FlushTableTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new FlushTableTool(), args));
+    System.exit(new KijiToolLauncher().run(new FlushTableTool(), args));
   }
 }

@@ -28,7 +28,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +64,25 @@ public final class CreateTableTool extends VersionValidatedTool {
 
   private HBaseAdmin mHBaseAdmin;
 
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return "create-table";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getDescription() {
+    return "Create a kiji table in a kiji instance.";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getCategory() {
+    return "DDL";
+  }
+
+  /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
@@ -83,18 +101,21 @@ public final class CreateTableTool extends VersionValidatedTool {
     }
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void setup() throws Exception {
     super.setup();
     mHBaseAdmin = new HBaseAdmin(getConf());
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
     IOUtils.closeQuietly(mHBaseAdmin);
     super.cleanup();
   }
 
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     final KijiAdmin admin = new KijiAdmin(mHBaseAdmin, getKiji());
@@ -170,6 +191,6 @@ public final class CreateTableTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new CreateTableTool(), args));
+    System.exit(new KijiToolLauncher().run(new CreateTableTool(), args));
   }
 }

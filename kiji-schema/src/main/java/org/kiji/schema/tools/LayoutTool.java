@@ -32,7 +32,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,6 +76,25 @@ public final class LayoutTool extends VersionValidatedTool {
 
   private HBaseAdmin mHBaseAdmin;
 
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return "layout";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getDescription() {
+    return "View or modify kiji table layouts.";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getCategory() {
+    return "DDL";
+  }
+
+  /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
     if (mTableName.isEmpty()) {
@@ -85,12 +103,14 @@ public final class LayoutTool extends VersionValidatedTool {
     Preconditions.checkArgument(mMaxVersions >= 1, "--max-versions must be >= 1");
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void setup() throws Exception {
     super.setup();
     mHBaseAdmin = new HBaseAdmin(getConf());
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
     IOUtils.closeQuietly(mHBaseAdmin);
@@ -182,6 +202,7 @@ public final class LayoutTool extends VersionValidatedTool {
     }
   }
 
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     final KijiAdmin admin = new KijiAdmin(mHBaseAdmin, getKiji());
@@ -219,6 +240,6 @@ public final class LayoutTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new LayoutTool(), args));
+    System.exit(new KijiToolLauncher().run(new LayoutTool(), args));
   }
 }

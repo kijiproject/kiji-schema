@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.util.ToolRunner;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
@@ -43,6 +42,25 @@ public final class DeleteTableTool extends VersionValidatedTool {
 
   private HBaseAdmin mHBaseAdmin;
 
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return "delete-table";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getDescription() {
+    return "Delete a kiji table from a kiji instance.";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getCategory() {
+    return "DDL";
+  }
+
+  /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
@@ -51,18 +69,21 @@ public final class DeleteTableTool extends VersionValidatedTool {
     }
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void setup() throws Exception {
     super.setup();
     mHBaseAdmin = new HBaseAdmin(getConf());
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
     IOUtils.closeQuietly(mHBaseAdmin);
     super.cleanup();
   }
 
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     setURI(getURI().setTableName(mTableName));
@@ -90,6 +111,6 @@ public final class DeleteTableTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new DeleteTableTool(), args));
+    System.exit(new KijiToolLauncher().run(new DeleteTableTool(), args));
   }
 }

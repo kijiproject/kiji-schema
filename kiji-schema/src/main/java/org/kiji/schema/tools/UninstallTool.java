@@ -21,7 +21,6 @@ package org.kiji.schema.tools;
 
 import java.util.List;
 
-import org.apache.hadoop.util.ToolRunner;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
@@ -37,6 +36,25 @@ public final class UninstallTool extends BaseTool {
   @Flag(name="confirm", usage="If true, uninstall will be performed without prompt.")
   private boolean mConfirm = false;
 
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return "uninstall";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getDescription() {
+    return "Remove a kiji instance from a running HBase cluster.";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getCategory() {
+    return "Admin";
+  }
+
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     getPrintStream().println("Deleting kiji instance: " + getURI().toString());
@@ -66,6 +84,6 @@ public final class UninstallTool extends BaseTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new UninstallTool(), args));
+    System.exit(new KijiToolLauncher().run(new UninstallTool(), args));
   }
 }

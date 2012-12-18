@@ -21,8 +21,6 @@ package org.kiji.schema.tools;
 
 import java.util.List;
 
-import org.apache.hadoop.util.ToolRunner;
-
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.util.VersionInfo;
 
@@ -32,7 +30,26 @@ import org.kiji.schema.util.VersionInfo;
  * in use for a specified kiji instance.
  */
 @ApiAudience.Private
-public final class VersionTool extends KijiTool {
+public final class VersionTool extends OpenedKijiTool {
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return "version";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getDescription() {
+    return "Print the kiji distribution and data versions in use.";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getCategory() {
+    return "Help";
+  }
+
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     String clientSoftwareVersion = VersionInfo.getSoftwareVersion();
@@ -54,6 +71,6 @@ public final class VersionTool extends KijiTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new VersionTool(), args));
+    System.exit(new KijiToolLauncher().run(new VersionTool(), args));
   }
 }

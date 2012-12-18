@@ -21,7 +21,6 @@ package org.kiji.schema.tools;
 
 import java.util.List;
 
-import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +36,25 @@ import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 public final class InstallTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(InstallTool.class);
 
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return "install";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getDescription() {
+    return "Install a kiji instance onto a running HBase cluster.";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getCategory() {
+    return "Admin";
+  }
+
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
 
@@ -58,6 +76,6 @@ public final class InstallTool extends BaseTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new InstallTool(), args));
+    System.exit(new KijiToolLauncher().run(new InstallTool(), args));
   }
 }

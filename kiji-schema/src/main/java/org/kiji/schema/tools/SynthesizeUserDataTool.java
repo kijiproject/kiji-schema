@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Random;
 
 import org.apache.avro.Schema;
-import org.apache.hadoop.util.ToolRunner;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
@@ -51,6 +50,24 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
   @Flag(name="table", usage="kiji table data should be written to")
   private String mTableName = "";
 
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return "synthesize-user-data";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getDescription() {
+    return "Synthesize user data into a kiji table.";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getCategory() {
+    return "Example";
+  }
+
   /**
    * Load a list of people names from a file.
    *
@@ -64,6 +81,7 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
     return loader.load(getClass().getClassLoader().getResourceAsStream(filename));
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
@@ -72,6 +90,7 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
     }
   }
 
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     // Generate a bunch of user rows with names and email addresses.
@@ -118,6 +137,6 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(ToolRunner.run(new SynthesizeUserDataTool(), args));
+    System.exit(new KijiToolLauncher().run(new SynthesizeUserDataTool(), args));
   }
 }
