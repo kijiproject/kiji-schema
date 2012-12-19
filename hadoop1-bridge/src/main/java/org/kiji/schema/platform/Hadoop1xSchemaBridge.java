@@ -19,12 +19,45 @@
 
 package org.kiji.schema.platform;
 
+import java.io.IOException;
+
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.kiji.annotations.ApiAudience;
 
 /**
  * Hadoop 1.x and HBase 0.92.x-backed implementation of the SchemaPlatformBridge API.
  */
-@ApiAudience.Framework
+@ApiAudience.Private
 public final class Hadoop1xSchemaBridge extends SchemaPlatformBridge {
+  private static final Logger LOG = LoggerFactory.getLogger(Hadoop1xSchemaBridge.class);
+
+  /** {@inheritDoc} */
+  @Override
+  public void setAutoFlush(HTableInterface hTable, boolean autoFlush) {
+    // The HTable implementation of HTableInterface can do this; downcast if available.
+    if (hTable instanceof HTable) {
+      ((HTable) hTable).setAutoFlush(autoFlush);
+    } else {
+      LOG.error("Cannot set autoFlush=" + autoFlush + " for HTableInterface impl "
+          + hTable.getClass().getName());
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void setWriteBufferSize(HTableInterface hTable, long bufSize)
+      throws IOException {
+    // The HTable implementation of HTableInterface can do this; downcast if available.
+    if (hTable instanceof HTable) {
+      ((HTable) hTable).setWriteBufferSize(bufSize);
+    } else {
+      LOG.error("Cannot set writeBufSize=" + bufSize + " for HTableInterface impl "
+          + hTable.getClass().getName());
+    }
+  }
 }
 

@@ -26,20 +26,29 @@ import org.kiji.annotations.ApiAudience;
 /**
  * Factory for CDH4-specific SchemaPlatformBridge implementation.
  */
-@ApiAudience.Framework
+@ApiAudience.Private
 public final class CDH4SchemaBridgeFactory extends SchemaPlatformBridgeFactory {
+
+  private static SchemaPlatformBridge SINGLETON_BRIDGE = null;
 
   /** {@inheritDoc} */
   @Override
   @SuppressWarnings("unchecked")
   public SchemaPlatformBridge getBridge() {
-    try {
-      Class<? extends SchemaPlatformBridge> bridgeClass =
-          (Class<? extends SchemaPlatformBridge>) Class.forName(
-              "org.kiji.schema.platform.CDH4SchemaBridge");
-      return bridgeClass.newInstance();
-    } catch (Exception e) {
-      throw new RuntimeException("Could not instantiate platform bridge", e);
+    synchronized(getClass()) {
+      if (null != SINGLETON_BRIDGE) {
+        return SINGLETON_BRIDGE;
+      }
+
+      try {
+        Class<? extends SchemaPlatformBridge> bridgeClass =
+            (Class<? extends SchemaPlatformBridge>) Class.forName(
+                "org.kiji.schema.platform.CDH4SchemaBridge");
+        SINGLETON_BRIDGE = bridgeClass.newInstance();
+        return SINGLETON_BRIDGE;
+      } catch (Exception e) {
+        throw new RuntimeException("Could not instantiate platform bridge", e);
+      }
     }
   }
 
