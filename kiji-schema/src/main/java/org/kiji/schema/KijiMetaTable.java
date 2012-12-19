@@ -41,6 +41,9 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
   KijiTableKeyValueDatabase {
 
   private static final Logger LOG = LoggerFactory.getLogger(KijiMetaTable.class);
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger(KijiMetaTable.class.getName() + ".Cleanup");
+
   /** Whether the table is open. */
   private boolean mIsOpen;
 
@@ -71,7 +74,7 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
   @Override
   protected void finalize() throws Throwable {
     if (mIsOpen) {
-      LOG.warn("Closing KijiMetaTable in finalize(). You should close it explicitly");
+      CLEANUP_LOG.warn("Closing KijiMetaTable in finalize(). You should close it explicitly");
       close();
     }
     super.finalize();

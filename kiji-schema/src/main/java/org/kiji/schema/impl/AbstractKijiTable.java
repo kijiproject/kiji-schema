@@ -40,7 +40,9 @@ import org.kiji.schema.KijiTable;
  */
 @ApiAudience.Private
 public abstract class AbstractKijiTable implements KijiTable {
-  private static final Logger LOG = LoggerFactory.getLogger(KijiTable.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractKijiTable.class);
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger(AbstractKijiTable.class.getName() + ".Cleanup");
 
   /** The kiji instance this table belongs to. */
   private final Kiji mKiji;
@@ -76,7 +78,7 @@ public abstract class AbstractKijiTable implements KijiTable {
     mKiji = kiji;
     mName = name;
     mIsOpen = true;
-    if (LOG.isDebugEnabled()) {
+    if (CLEANUP_LOG.isDebugEnabled()) {
       try {
         throw new Exception();
       } catch (Exception e) {
@@ -153,9 +155,9 @@ public abstract class AbstractKijiTable implements KijiTable {
   protected void finalize() throws Throwable {
     if (mIsOpen) {
       LOG.warn("Closing KijiTable " + mName + " in finalize(). You should close it explicitly");
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Call stack when this Kiji was constructed: ");
-        LOG.debug(mConstructorStack);
+      if (CLEANUP_LOG.isDebugEnabled()) {
+        CLEANUP_LOG.debug("Call stack when this [Abstract]KijiTable was constructed: ");
+        CLEANUP_LOG.debug(mConstructorStack);
       }
       close();
     }

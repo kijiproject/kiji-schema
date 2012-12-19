@@ -23,6 +23,9 @@ import java.util.Iterator;
 
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
@@ -37,6 +40,10 @@ import org.kiji.schema.KijiRowScanner;
  */
 @ApiAudience.Private
 public class HBaseKijiRowScanner implements KijiRowScanner {
+  private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiRowScanner.class);
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger(HBaseKijiRowScanner.class.getName() + ".Cleanup");
+
   /** The HBase result scanner. */
   private final ResultScanner mResultScanner;
 
@@ -48,6 +55,11 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
 
   /** Cell decoder factory. */
   private final KijiCellDecoderFactory mCellDecoderFactory;
+
+  /** Whether the writer is open. */
+  private boolean mIsOpen;
+  /** For debugging finalize(). */
+  private String mConstructorStack = "";
 
   /**
    * A class to encapsulate the various options the HBaseKijiRowScanner constructor requires.
@@ -145,6 +157,15 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
    * @param options The options for this scanner.
    */
   public HBaseKijiRowScanner(Options options) {
+    mIsOpen = true;
+    if (CLEANUP_LOG.isDebugEnabled()) {
+      try {
+        throw new Exception();
+      } catch (Exception e) {
+        mConstructorStack = StringUtils.stringifyException(e);
+      }
+    }
+
     mResultScanner = options.getHBaseResultScanner();
     mKijiDataRequest = options.getDataRequest();
     mTable = options.getTable();
@@ -160,13 +181,25 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   /** {@inheritDoc} */
   @Override
   public void close() {
+    if (!mIsOpen) {
+      LOG.warn("Called close() on [HBase]KijiRowScanner more than once.");
+    }
+
+    mIsOpen = false;
+
     mResultScanner.close();
   }
 
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    close();
+    if (mIsOpen) {
+      CLEANUP_LOG.warn("Closing [HBase]KijiRowScanner in finalize().");
+      CLEANUP_LOG.warn("You should close it explicitly.");
+      CLEANUP_LOG.debug("Call stack when this scanner was constructed:");
+      CLEANUP_LOG.debug(mConstructorStack);
+      close();
+    }
     super.finalize();
   }
 

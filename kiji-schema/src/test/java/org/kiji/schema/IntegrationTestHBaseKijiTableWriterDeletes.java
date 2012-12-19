@@ -36,7 +36,7 @@ public class IntegrationTestHBaseKijiTableWriterDeletes
 
   @Override
   protected KijiTableWriter createWriter(KijiTable table) throws IOException {
-    LOG.debug("Creating LocalWibiTableWriter.");
+    LOG.debug("Creating HBaseKijiTableWriter.");
     return new HBaseKijiTableWriter(table);
   }
 }
