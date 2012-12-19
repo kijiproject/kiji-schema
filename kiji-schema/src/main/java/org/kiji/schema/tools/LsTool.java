@@ -178,7 +178,7 @@ public final class LsTool extends VersionValidatedTool {
    * @return instance name (or null if none found)
    */
   protected static String parseInstanceName(String kijiTableName) {
-    String[] parts = org.apache.hadoop.util.StringUtils.split(kijiTableName, '.');
+    String[] parts = org.apache.hadoop.util.StringUtils.split(kijiTableName, '\u0000', '.');
     if (parts.length < 3 || !KijiURI.KIJI_SCHEME.equals(parts[0])) {
       return null;
     }

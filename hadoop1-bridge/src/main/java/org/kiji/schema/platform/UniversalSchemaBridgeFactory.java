@@ -24,7 +24,8 @@ import java.util.Map;
 import org.kiji.annotations.ApiAudience;
 
 /**
- * Factory for fallback SchemaPlatformBridge implementation.
+ * Factory for fallback SchemaPlatformBridge implementation, if a better provider cannot
+ * be found.
  *
  * <p>Defaults to using Hadoop 1.x / HBase 0.92 behavior.</p>
  */
