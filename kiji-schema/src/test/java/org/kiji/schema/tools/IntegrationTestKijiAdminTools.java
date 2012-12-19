@@ -198,7 +198,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       //     1 line for column data.
       //   1 blank line.
       // + 1 row for the header
-      assertEquals(2 * ((1 * 2) + 1) + 1,
+      assertEquals(4 * ((1 * 2) + 1) + 1,
           StringUtils.countMatches(lsLimitResult.getStdoutUtf8(), "\n"));
     } finally {
       deleteFooTable();

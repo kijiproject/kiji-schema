@@ -265,24 +265,24 @@ public class IntegrationHelper extends Configured {
     final KijiTableWriter fooWriter = table.openTableWriter();
     try {
       long timestamp = System.currentTimeMillis();
-      fooWriter.put(table.getEntityId("gwu@wibidata.com"), "info", "email", timestamp,
-          "gwu@wibidata.com");
-      fooWriter.put(table.getEntityId("gwu@wibidata.com"), "info", "name", timestamp,
+      fooWriter.put(table.getEntityId("gwu@usermail.example.com"), "info", "email", timestamp,
+          "gwu@usermail.example.com");
+      fooWriter.put(table.getEntityId("gwu@usermail.example.com"), "info", "name", timestamp,
           "Garrett Wu");
 
-      fooWriter.put(table.getEntityId("aaron@wibidata.com"), "info", "email", timestamp,
-          "aaron@wibidata.com");
-      fooWriter.put(table.getEntityId("aaron@wibidata.com"), "info", "name", timestamp,
+      fooWriter.put(table.getEntityId("aaron@usermail.example.com"), "info", "email", timestamp,
+          "aaron@usermail.example.com");
+      fooWriter.put(table.getEntityId("aaron@usermail.example.com"), "info", "name", timestamp,
           "Aaron Kimball");
 
-      fooWriter.put(table.getEntityId("christophe@wibidata.com"), "info", "email", timestamp,
-          "christophe@wibidata.com");
-      fooWriter.put(table.getEntityId("christophe@wibidata.com"), "info", "name", timestamp,
+      fooWriter.put(table.getEntityId("christophe@usermail.example.com"), "info", "email",
+          timestamp, "christophe@usermail.example.com");
+      fooWriter.put(table.getEntityId("christophe@usermail.example.com"), "info", "name", timestamp,
           "Christophe Bisciglia");
 
-      fooWriter.put(table.getEntityId("kiyan@wibidata.com"), "info", "email", timestamp,
-          "kiyan@wibidata.com");
-      fooWriter.put(table.getEntityId("kiyan@wibidata.com"), "info", "name", timestamp,
+      fooWriter.put(table.getEntityId("kiyan@usermail.example.com"), "info", "email", timestamp,
+          "kiyan@usermail.example.com");
+      fooWriter.put(table.getEntityId("kiyan@usermail.example.com"), "info", "name", timestamp,
           "Kiyan Ahmadizadeh");
 
       fooWriter.put(table.getEntityId("john.doe@gmail.com"), "info", "email", timestamp,
