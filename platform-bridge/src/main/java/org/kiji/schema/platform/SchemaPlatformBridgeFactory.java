@@ -31,6 +31,15 @@ import org.kiji.delegation.PriorityProvider;
  * <p>Individual SchemaPlatformBridgeFactory implementations should use Class.forName()
  * to load a specific SchemaPlatformBridge implementation dynamically only after it
  * has been chosen by the PriorityLookup library as the best implementation fit.</p>
+ *
+ * <p>It is very important that SchemaPlatformBridgeFactory does not inadvertently
+ * attempt to classload portions of the Hadoop or HBase runtime as this may trigger
+ * typechecking by the JVM that fails. SchemaPlatformBridgeFactory implementations
+ * should be able to determine whether they are compatible by checking nothing more
+ * than <tt>org.apache.hadoop.util.VersionInfo</tt> and
+ * <tt>org.apache.hadoop.hbase.util.VersionInfo</tt>, which should not recursively
+ * load more Hadoop classes into memory.</p>
+ *
  */
 @ApiAudience.Framework
 abstract class SchemaPlatformBridgeFactory implements PriorityProvider {

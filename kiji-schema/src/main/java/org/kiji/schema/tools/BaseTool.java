@@ -47,7 +47,7 @@ import org.kiji.schema.KijiURIException;
  * on the classpath). If the kiji URI for the instance specifies more elements than the zookeeper
  * connection information and instance name they will be ignored.
  *
- * A command line tool, executed via {@link Tool}, will perform these steps when run:
+ * A command line tool, executed via {@link KijiToolLauncher}, will perform these steps when run:
  * <ol>
  *   <li>Parse command-line flags to the tool and set the appropriate fields. Subclasses
  *   wishing to add flags to a tool should use the {@link Flag} annotation.</li>

@@ -222,6 +222,15 @@
       <version>0.0.1-SNAPSHOT</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- All platform bridge implementations that should be bundled with the redistributable. -->
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>kiji-schema-cdh4-bridge</artifactId>
+      <version>${project.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+
   </dependencies>
 
   <profiles>

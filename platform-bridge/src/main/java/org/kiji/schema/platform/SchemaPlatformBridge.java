@@ -45,7 +45,7 @@ public abstract class SchemaPlatformBridge {
    * @return the SchemaPlatformBridge implementation appropriate to the current runtime
    * conditions.
    */
-  public SchemaPlatformBridge get() {
+  public static SchemaPlatformBridge get() {
     return Lookup.getPriority(SchemaPlatformBridgeFactory.class).lookup().getBridge();
   }
 }
