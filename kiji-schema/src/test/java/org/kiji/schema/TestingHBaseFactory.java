@@ -36,13 +36,6 @@ import org.kiji.testing.fakehtable.FakeHBase;
 
 /** Factory for HBase instances based on URIs. */
 public final class TestingHBaseFactory implements HBaseFactory {
-  /** Singleton instance. */
-  private static final TestingHBaseFactory SINGLETON = new TestingHBaseFactory();
-
-  /** @return the default HBase factory. */
-  public static TestingHBaseFactory get() {
-    return SINGLETON;
-  }
 
   /** Map from fake HBase ID to fake HBase instances. */
   private final Map<String, FakeHBase> mFakeHBase = Maps.newHashMap();
@@ -50,8 +43,11 @@ public final class TestingHBaseFactory implements HBaseFactory {
   /** Map from fake HBase ID to fake (local) lock factories. */
   private final Map<String, LockFactory> mLock = Maps.newHashMap();
 
-  /** Singleton constructor. */
-  private TestingHBaseFactory() {
+  /**
+   * Public constructor. This should not be directly invoked by users; you should
+   * use HBaseFactory.get(), which retains a singleton instance.
+   */
+  public TestingHBaseFactory() {
   }
 
   /** URIs for fake HBase instances are "kiji://.fake.[fake-id]/instance/table". */
@@ -132,5 +128,12 @@ public final class TestingHBaseFactory implements HBaseFactory {
   public void reset() {
     mFakeHBase.clear();
     mLock.clear();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int getPriority(Map<String, String> runtimeHints) {
+    // Higher priority than default factory.
+    return 50000;
   }
 }

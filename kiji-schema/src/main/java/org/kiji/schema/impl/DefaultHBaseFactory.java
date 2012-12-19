@@ -20,6 +20,7 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -32,16 +33,12 @@ import org.kiji.schema.util.ZooKeeperLockFactory;
 /** Factory for HBase instances based on URIs. */
 @ApiAudience.Private
 public final class DefaultHBaseFactory implements HBaseFactory {
-  /** Singleton instance. */
-  private static final DefaultHBaseFactory SINGLETON = new DefaultHBaseFactory();
 
-  /** @return an instance of the default HBase factory. */
-  public static HBaseFactory get() {
-    return SINGLETON;
-  }
-
-  /** Singleton constructor. */
-  private DefaultHBaseFactory() {
+  /**
+   * Public constructor for use by the service loader. Clients should use
+   * HBaseFactory.Provider.get(), which maintains a singleton instance.
+   */
+  public DefaultHBaseFactory() {
   }
 
   /** {@inheritDoc} */
@@ -60,5 +57,12 @@ public final class DefaultHBaseFactory implements HBaseFactory {
   @Override
   public LockFactory getLockFactory(KijiURI uri, Configuration conf) throws IOException {
     return new ZooKeeperLockFactory(conf);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int getPriority(Map<String, String> runtimeHints) {
+    // Default priority; should be used unless overridden by tests.
+    return 1000;
   }
 }
