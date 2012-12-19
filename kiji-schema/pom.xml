@@ -210,17 +210,16 @@
       <version>${project.version}</version>
       <scope>runtime</scope>
     </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>kiji-schema-universal-bridge</artifactId>
-      <version>${project.version}</version>
-      <scope>runtime</scope>
-    </dependency>
 
   </dependencies>
 
   <profiles>
     <profile>
+      <!--
+         Active by default: cdh4 build. Override with -Dplatform=hadoop1 to use
+         an Apache Hadoop 1.x-based platform.
+      -->
+
       <id>cdh4</id>
       <activation>
         <property>
@@ -233,10 +232,12 @@
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-core</artifactId>
+          <scope>compile</scope>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-client</artifactId>
+          <scope>compile</scope>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
@@ -252,6 +253,7 @@
         <dependency>
           <groupId>org.apache.hbase</groupId>
           <artifactId>hbase</artifactId>
+          <scope>compile</scope>
         </dependency>
       </dependencies>
     </profile>
@@ -268,7 +270,7 @@
       <properties>
         <hadoop.version>1.0.3</hadoop.version>
         <hbase.version>0.92.1</hbase.version>
-        <hbase-maven-plugin.version>1.0.9-hadoop1-SNAPSHOT</hbase-maven-plugin.version>
+        <hbase-maven-plugin.version>1.0.9-hadoop1</hbase-maven-plugin.version>
       </properties>
 
       <dependencies>
