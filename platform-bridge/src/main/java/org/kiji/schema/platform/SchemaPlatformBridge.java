@@ -19,6 +19,10 @@
 
 package org.kiji.schema.platform;
 
+import java.io.IOException;
+
+import org.apache.hadoop.hbase.client.HTableInterface;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Lookup;
 
@@ -38,8 +42,24 @@ public abstract class SchemaPlatformBridge {
   SchemaPlatformBridge() {
   }
 
-  // NOTE: This is currently a placeholder. We have not yet identified specific differences
-  // in KijiSchema that require this abstraction.
+  /**
+   * Set the autoflush behavior associated with an HTableInterface.
+   *
+   * @param hTable the table connection to configure.
+   * @param autoFlush the auto-flush parameter.
+   */
+  public abstract void setAutoFlush(HTableInterface hTable, boolean autoFlush);
+
+  /**
+   * Set the size of the write buffer associated with an HTableInterface.
+   *
+   * @param hTable the table connection to configure.
+   * @param bufSize the buffer size to set.
+   * @throws IOException if there's an error setting the buffer size.
+   */
+  public abstract void setWriteBufferSize(HTableInterface hTable, long bufSize)
+      throws IOException;
+
 
   /**
    * @return the SchemaPlatformBridge implementation appropriate to the current runtime

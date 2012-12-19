@@ -44,6 +44,7 @@
     <module>platform-bridge</module>
     <module>cdh4-bridge</module>
     <module>hadoop1-bridge</module>
+    <module>universal-bridge</module>
 
     <module>kiji-schema</module>
   </modules>

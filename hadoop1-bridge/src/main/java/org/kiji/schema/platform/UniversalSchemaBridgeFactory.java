@@ -19,30 +19,29 @@
 
 package org.kiji.schema.platform;
 
-import java.io.IOException;
-
-import org.apache.hadoop.hbase.client.HTableInterface;
+import java.util.Map;
 
 import org.kiji.annotations.ApiAudience;
 
 /**
- * CDH4-backed implementation of the SchemaPlatformBridge API.
+ * Factory for fallback SchemaPlatformBridge implementation.
+ *
+ * <p>Defaults to using Hadoop 1.x / HBase 0.92 behavior.</p>
  */
 @ApiAudience.Private
-public final class CDH4SchemaBridge extends SchemaPlatformBridge {
+public final class UniversalSchemaBridgeFactory extends SchemaPlatformBridgeFactory {
+
   /** {@inheritDoc} */
   @Override
-  public void setAutoFlush(HTableInterface hTable, boolean autoFlush) {
-    // We can do this directly in CDH4.
-    hTable.setAutoFlush(autoFlush);
+  public SchemaPlatformBridge getBridge() {
+    return new Hadoop1xSchemaBridgeFactory().getBridge();
   }
 
   /** {@inheritDoc} */
   @Override
-  public void setWriteBufferSize(HTableInterface hTable, long bufSize)
-      throws IOException {
-    // We can do this directly in CDH4.
-    hTable.setWriteBufferSize(bufSize);
+  public int getPriority(Map<String, String> runtimeHints) {
+    // Always volunteer, but have a very low priority.
+    return 20;
   }
 }
 
