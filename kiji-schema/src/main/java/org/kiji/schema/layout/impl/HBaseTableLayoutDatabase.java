@@ -320,7 +320,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
 
   /** {@inheritDoc} */
   @Override
-  public List<TableLayoutBackupEntry>  layoutsToBackup(String table) throws IOException {
+  public List<TableLayoutBackupEntry> layoutsToBackup(String table) throws IOException {
     Get get = new Get(Bytes.toBytes(table));
     get.addColumn(mFamilyBytes, QUALIFIER_UPDATE_BYTES)
         .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES);

@@ -44,7 +44,7 @@ import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**
- * Metadat restorer backups up meta info to MetadataBackup records and can restore metadata to the
+ * Metadata restorer backups up meta info to MetadataBackup records and can restore metadata to the
  * meta and schema tables.
  */
 public class MetadataRestorer {
