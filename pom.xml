@@ -36,9 +36,12 @@
 
   <properties>
     <annotations.version>1.0.0-rc2-SNAPSHOT</annotations.version>
+    <kiji-delegation.version>1.0.0-rc2-SNAPSHOT</kiji-delegation.version>
+    <kiji-platforms.version>1.0.0-rc2-SNAPSHOT</kiji-platforms.version>
   </properties>
 
   <modules>
+    <module>platform-bridge</module>
     <module>kiji-schema</module>
   </modules>
 

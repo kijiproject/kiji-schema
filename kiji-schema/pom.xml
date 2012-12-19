@@ -35,11 +35,6 @@
   <description>A schema management layer for Apache HBase</description>
   <inceptionYear>2012</inceptionYear>
 
-  <properties>
-    <annotations.version>1.0.0-rc2-SNAPSHOT</annotations.version>
-    <kiji-delegation.version>1.0.0-rc2-SNAPSHOT</kiji-delegation.version>
-  </properties>
-
   <build>
     <resources>
       <!-- Generate kiji-schema.properties with the project's version ID. -->
@@ -126,6 +121,12 @@
   </build>
 
   <dependencies>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>kiji-schema-platform-bridge</artifactId>
+      <version>${project.version}</version>
+      <scope>compile</scope>
+    </dependency>
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
