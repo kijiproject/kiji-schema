@@ -60,6 +60,8 @@ import org.kiji.schema.util.ZooKeeperLockFactory;
 @ApiAudience.Public
 public class Kiji implements KijiTableFactory, Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(Kiji.class);
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger(Kiji.class.getName() + ".Cleanup");
 
   /** The kiji configuration. */
   private final KijiConfiguration mKijiConf;
@@ -142,7 +144,7 @@ public class Kiji implements KijiTableFactory, Closeable {
       VersionInfo.validateVersion(this);
     }
 
-    if (LOG.isDebugEnabled()) {
+    if (CLEANUP_LOG.isDebugEnabled()) {
       try {
         throw new Exception();
       } catch (Exception e) {
@@ -293,10 +295,10 @@ public class Kiji implements KijiTableFactory, Closeable {
   @Override
   protected void finalize() throws Throwable {
     if (mIsOpen) {
-      LOG.warn("Closing a Kiji instance in finalize(). You should close it explicitly.");
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Call stack when this Kiji was constructed: ");
-        LOG.debug(mConstructorStack);
+      CLEANUP_LOG.warn("Closing a Kiji instance in finalize(). You should close it explicitly.");
+      if (CLEANUP_LOG.isDebugEnabled()) {
+        CLEANUP_LOG.debug("Call stack when this Kiji was constructed: ");
+        CLEANUP_LOG.debug(mConstructorStack);
       }
       close();
     }
