@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.NavigableMap;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.avro.MetadataBackup;
-import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
 
@@ -91,7 +89,7 @@ public interface KijiTableLayoutDatabase {
    * @return A list of TableLayoutBackupEntries.
    * @throws IOException If there is an error.
    */
-  List<TableLayoutBackupEntry> getLayoutBackupRecords(String table) throws IOException;
+  List<TableLayoutBackupEntry> layoutsToBackup(String table) throws IOException;
 
   /**
    * Removes all layout information for a particular table.
@@ -113,8 +111,10 @@ public interface KijiTableLayoutDatabase {
   /**
    * Restores a table layout history from a backup.
    *
-   * @param tableBackup Table backup to restore.
+   * @param tableName The name of the table to restore layouts for.
+   * @param tableBackup Table layout backup entries to restore.
    * @throws IOException on I/O error.
    */
-  void restoreLayoutsFromBackup(TableBackup tableBackup) throws IOException;
+  void layoutsFromBackup(String tableName, List<TableLayoutBackupEntry> tableBackup) throws
+    IOException;
 }

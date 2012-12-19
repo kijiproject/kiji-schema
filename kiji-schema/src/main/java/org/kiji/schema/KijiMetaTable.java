@@ -26,7 +26,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 
@@ -42,15 +41,10 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
   KijiTableKeyValueDatabase {
 
   private static final Logger LOG = LoggerFactory.getLogger(KijiMetaTable.class);
-  /**
-   * Whether the table is open.
-   */
+  /** Whether the table is open. */
   private boolean mIsOpen;
 
-  /**
-   * Creates a new
-   * <code>KijiMetaTable</code> instance.
-   */
+  /** Creates a new <code>KijiMetaTable</code> instance. */
   protected KijiMetaTable() {
     mIsOpen = true;
   }
@@ -63,9 +57,7 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
    */
   public abstract void deleteTable(String table) throws IOException;
 
-  /**
-   * {@inheritDoc}
-   */
+  /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
     if (!mIsOpen) {
@@ -75,9 +67,7 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
     mIsOpen = false;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
     if (mIsOpen) {
@@ -101,8 +91,8 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
    * Restores metadata from a backup record. This consists of table layouts, schemas, and user
    * defined key-value pairs.
    *
-   * @param backup Backup record.
+   * @param backup A map from table name to table backup record.
    * @throws IOException on I/O error.
    */
-  public abstract void restoreFromBackup(MetadataBackup backup) throws IOException;
+  public abstract void fromBackup(Map<String, TableBackup> backup) throws IOException;
 }

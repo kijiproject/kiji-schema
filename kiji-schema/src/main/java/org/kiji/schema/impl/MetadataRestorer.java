@@ -44,7 +44,8 @@ import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**
- *
+ * Metadat restorer backups up meta info to MetadataBackup records and can restore metadata to the
+ * meta and schema tables.
  */
 public class MetadataRestorer {
   private static final Logger LOG = LoggerFactory.getLogger(MetadataRestorer.class);
@@ -65,8 +66,9 @@ public class MetadataRestorer {
       throw new IOException("Output file '" + outputFile + "' already exists. Won't overwrite.");
     }
 
-    final MetadataBackup.Builder backup = MetadataBackup.newBuilder().setLayoutVersion(kiji
-      .getSystemTable().getDataVersion()).setMetaTable(new HashMap<String, TableBackup>());
+    final MetadataBackup.Builder backup = MetadataBackup.newBuilder()
+        .setLayoutVersion(kiji.getSystemTable().getDataVersion())
+        .setMetaTable(new HashMap<String, TableBackup>());
 
     Map<String, TableBackup> metaBackup = kiji.getMetaTable().toBackup();
     List<SchemaTableEntry> schemaEntries = kiji.getSchemaTable().toBackup();
@@ -119,11 +121,10 @@ public class MetadataRestorer {
       final KijiTableLayout initialLayout = new KijiTableLayout(initialEntry.getLayout(), null);
       admin.createTable(tableName, initialLayout, true);
 
-
     LOG.info("Restoring layout history for table '%s' (%d layouts).", tableName,
         tableBackup.getLayouts().size());
-    metaTable.restoreLayoutsFromBackup(tableBackup);
-    metaTable.restoreKeyValuesFromBackup(tableBackup);
+    metaTable.layoutsFromBackup(tableName, tableBackup.getLayouts());
+    metaTable.keyValuesFromBackup(tableName, tableBackup.getKeyValues());
   }
 
 
@@ -167,7 +168,7 @@ public class MetadataRestorer {
     // Restore all Schema table entries in the file.
     final KijiSchemaTable schemaTable = kiji.getSchemaTable();
     LOG.info("Restoring schema table entries...");
-    schemaTable.restoreFromBackup(backup);
+    schemaTable.fromBackup(backup.getSchemaTable());
     LOG.info("Restored " + backup.getSchemaTable().size() + " entries.");
   }
 

@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.avro.KeyValueBackupEntry;
-import org.kiji.schema.avro.TableBackup;
 
 
  /**
@@ -210,7 +209,7 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
 
   /** {@inheritDoc} */
   @Override
-  public List<KeyValueBackupEntry> getKeyValueBackupRecords(String table) throws IOException {
+  public List<KeyValueBackupEntry> keyValuesToBackup(String table) throws IOException {
     List<KeyValueBackupEntry> keyValueBackups = Lists.newArrayList();
     final Set<String> keys = keySet(table);
     for (String key : keys) {
@@ -228,12 +227,11 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
 
   /** {@inheritDoc} */
   @Override
-  public void restoreKeyValuesFromBackup(TableBackup tableBackup) throws IOException {
-    final String tableName = tableBackup.getName();
-    tableBackup.getKeyValues().size();
-    LOG.debug(String.format("Restoring '%s' key-value(s) from backup for table '%s'.", tableBackup
-        .getKeyValues().size(), tableName));
-    for (KeyValueBackupEntry kvRecord : tableBackup.getKeyValues()) {
+  public void keyValuesFromBackup(final String tableName, final List<KeyValueBackupEntry> keyValues)
+      throws IOException {
+    LOG.debug(String.format("Restoring '%s' key-value(s) from backup for table '%s'.",
+        keyValues.size(), tableName));
+    for (KeyValueBackupEntry kvRecord : keyValues) {
       final byte[] key = Bytes.toBytes(kvRecord.getKey());
       final ByteBuffer valueBuffer = kvRecord.getValue(); // Read in ByteBuffer of values
       byte[] value = new byte[valueBuffer.remaining()]; // Instantiate ByteArray

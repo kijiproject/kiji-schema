@@ -31,7 +31,6 @@ import org.apache.avro.Schema;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.util.BytesKey;
 import org.kiji.schema.util.Hasher;
@@ -236,8 +235,9 @@ public abstract class KijiSchemaTable implements Closeable {
   /**
    * Restores the schema entries from the specified backup record.
    *
-   * @param backup Reads the schema entries from this backup record.
+   * @param backup The schema entries from a MetadataBackup record. This consist of the schema
+   *     definition, schema id, and schema hash.
    * @throws IOException on I/O error.
    */
-  public abstract void restoreFromBackup(MetadataBackup backup) throws IOException;
+  public abstract void fromBackup(List<SchemaTableEntry> backup) throws IOException;
 }

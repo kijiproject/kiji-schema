@@ -391,7 +391,7 @@ public abstract class AbstractKijiIntegrationTest {
    */
   private static final class KijiCreationThread extends Thread {
     /** Maintain a pool of this many fresh Kiji instances ready to go. */
-    private static final int INSTANCE_POOL_SIZE = 1;
+    private static final int INSTANCE_POOL_SIZE = 4;
 
     /** Ensures that this thread is either in running mode or cleanup mode. */
     private static final Object THREAD_CREATION_ACTIVE_LOCK = new Object();

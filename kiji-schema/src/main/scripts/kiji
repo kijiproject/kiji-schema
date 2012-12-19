@@ -117,7 +117,7 @@ function print_tool_usage() {
   echo "  install               - Install a kiji instance onto a running hbase cluster."
   echo "  uninstall             - Remove a kiji instance from a running hbase cluster."
   echo "  version               - Print the kiji distribution and data versions in use."
-  echo "  metadata              - Backup or restore kiji metadata"
+  echo "  metadata              - Backup or restore kiji metadata."
   echo "  classpath             - Print the classpath used to run kiji tools."
   echo
   echo "  jar                   - Run a main class contained in a jar file."

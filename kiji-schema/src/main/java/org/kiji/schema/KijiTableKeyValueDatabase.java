@@ -26,7 +26,6 @@ import java.util.Set;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.KeyValueBackupEntry;
-import org.kiji.schema.avro.TableBackup;
 
 /**
  * A database of per table key-value pairs. This is used to store meta data (in the form of
@@ -129,13 +128,14 @@ public interface KijiTableKeyValueDatabase {
    * @return A list of TableKeyValueBackupEntries.
    * @throws IOException If there is an error.
    */
-  List<KeyValueBackupEntry> getKeyValueBackupRecords(String table) throws IOException;
+  List<KeyValueBackupEntry> keyValuesToBackup(String table) throws IOException;
 
    /**
    * Restores all table's key value history from a backup.
    *
-   * @param tableBackup Table backup to restore.
+   * @param table The name of the kiji table.
+   * @param keyValues The key values associated with the table to restore.
    * @throws IOException on I/O error.
    */
-  void restoreKeyValuesFromBackup(TableBackup tableBackup) throws IOException;
+  void keyValuesFromBackup(String table, List<KeyValueBackupEntry> keyValues) throws IOException;
 }

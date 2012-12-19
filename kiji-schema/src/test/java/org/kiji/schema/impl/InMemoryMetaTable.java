@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 
-import org.apache.commons.lang.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +32,6 @@ import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.avro.KeyValueBackupEntry;
-import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -172,12 +170,7 @@ public class InMemoryMetaTable extends KijiMetaTable {
   }
 
   @Override
-  public List<TableLayoutBackupEntry> getLayoutBackupRecords(String table) throws IOException {
-    throw new UnsupportedOperationException("Not supported yet.");
-  }
-
-  @Override
-  public void restoreLayoutsFromBackup(TableBackup tableBackup) throws IOException {
+  public List<TableLayoutBackupEntry> layoutsToBackup(String table) throws IOException {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
@@ -193,24 +186,31 @@ public class InMemoryMetaTable extends KijiMetaTable {
   }
 
   @Override
-  public List<KeyValueBackupEntry> getKeyValueBackupRecords(String table) throws IOException {
+  public List<KeyValueBackupEntry> keyValuesToBackup(String table) throws IOException {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
   @Override
-  public void restoreKeyValuesFromBackup(TableBackup tableBackup) throws IOException {
-    throw new UnsupportedOperationException("Not supported yet.");
+  public void keyValuesFromBackup(String table, List<KeyValueBackupEntry> keyValues) throws
+      IOException {
+        throw new UnsupportedOperationException("Not supported yet.");
   }
 
 
   @Override
-  public void restoreFromBackup(MetadataBackup backup) throws IOException {
-    throw new NotImplementedException("Meta table backups are not implemented in this mock");
+  public void fromBackup(Map<String, TableBackup> backup) throws IOException {
+        throw new UnsupportedOperationException("Not supported yet.");
   }
 
   @Override
   public Map<String, TableBackup> toBackup() throws IOException {
-    throw new NotImplementedException("Meta table backups are not implemented in this mock");
+        throw new UnsupportedOperationException("Not supported yet.");
+  }
+
+  @Override
+  public void layoutsFromBackup(String tableName, List<TableLayoutBackupEntry> tableBackup) throws
+      IOException {
+    throw new UnsupportedOperationException("Not supported yet.");
   }
 
 }

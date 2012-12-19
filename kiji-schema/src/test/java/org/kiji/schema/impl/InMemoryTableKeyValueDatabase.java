@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.avro.KeyValueBackupEntry;
-import org.kiji.schema.avro.TableBackup;
 
  /**
  * Manages key-value pairs on a per table basis. Storage of these key-value pairs is provided by
@@ -131,12 +130,13 @@ public class InMemoryTableKeyValueDatabase implements KijiTableKeyValueDatabase 
   }
 
   @Override
-  public List<KeyValueBackupEntry> getKeyValueBackupRecords(String table) throws IOException {
+  public List<KeyValueBackupEntry> keyValuesToBackup(String table) throws IOException {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
   @Override
-  public void restoreKeyValuesFromBackup(TableBackup tableBackup) throws IOException {
+  public void keyValuesFromBackup(String table, List<KeyValueBackupEntry> keyValues) throws
+      IOException {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 

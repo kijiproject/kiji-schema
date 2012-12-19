@@ -35,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiTableNotFoundException;
-import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -169,12 +168,13 @@ public final class InMemoryTableLayoutDatabase implements KijiTableLayoutDatabas
   }
 
   @Override
-  public List<TableLayoutBackupEntry> getLayoutBackupRecords(String table) throws IOException {
+  public List<TableLayoutBackupEntry> layoutsToBackup(String table) throws IOException {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 
   @Override
-  public void restoreLayoutsFromBackup(TableBackup tableBackup) throws IOException {
+  public void layoutsFromBackup(String tableName, List<TableLayoutBackupEntry> layoutBackup)
+      throws IOException {
     throw new UnsupportedOperationException("Not supported yet.");
   }
 }
