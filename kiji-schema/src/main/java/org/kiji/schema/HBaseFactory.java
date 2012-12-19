@@ -20,59 +20,37 @@
 package org.kiji.schema;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.delegation.Lookup;
+import org.kiji.delegation.PriorityProvider;
 import org.kiji.schema.impl.HBaseAdminFactory;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.util.LockFactory;
 
 /** Factory for HBase instances based on URIs. */
 @ApiAudience.Framework
-public interface HBaseFactory {
+public interface HBaseFactory extends PriorityProvider {
 
   /** Provider for the default HBaseFactory. */
   public static final class Provider {
     private static final Logger LOG = LoggerFactory.getLogger(Provider.class);
 
     /** HBaseFactory instance. */
-    private static final HBaseFactory INSTANCE = getInternal();
+    private static HBaseFactory mInstance;
 
     /** @return the default HBaseFactory. */
     public static HBaseFactory get() {
-      return INSTANCE;
-    }
-
-    /**
-     * Looks up the default HBaseFactory.
-     *
-     * Use the TestingHBaseFactory if available, falls back on DefaultHBaseFactory otherwise.
-     *
-     * @return the default HBaseFactory.
-     */
-    private static HBaseFactory getInternal() {
-      // TODO: Rewrite using org.kiji.delegation.Lookup.getPriority()
-      try {
-        final Class<?> testingClass = Class.forName("org.kiji.schema.TestingHBaseFactory");
-        try {
-          final Method method = testingClass.getMethod("get");
-          return (HBaseFactory) method.invoke(null);
-        } catch (NoSuchMethodException nsme) {
-          throw new RuntimeException(nsme);
-        } catch (InvocationTargetException ite) {
-          throw new RuntimeException(ite);
-        } catch (IllegalAccessException iae) {
-          throw new RuntimeException(iae);
+      synchronized (HBaseFactory.Provider.class) {
+        if (null == mInstance) {
+          mInstance = Lookup.getPriority(HBaseFactory.class).lookup();
         }
-      } catch (ClassNotFoundException cnfe) {
-        LOG.debug("Testing HBaseFactory not found.");
+        return mInstance;
       }
-      return HBaseFactory.Provider.get();
     }
 
     /** Utility class may not be instantiated. */
