@@ -76,7 +76,8 @@ public class KijiClientTest {
     try {
       mConf = HBaseConfiguration.create();
       final long id = INSTANCE_COUNTER.getAndIncrement();
-      mURI = KijiURI.parse(String.format("kiji://.fake.%d/test_instance", id));
+      String instanceName = getClass().getSimpleName() + "_test_instance";
+      mURI = KijiURI.parse(String.format("kiji://.fake.%d/" + instanceName, id));
       KijiInstaller.install(mURI, mConf);
 
       mKiji = Kiji.open(mURI, mConf);
