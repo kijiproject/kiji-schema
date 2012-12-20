@@ -120,8 +120,10 @@ public abstract class AbstractKijiIntegrationTest {
     mStandaloneConf = mHBaseUtil.getConfiguration();
 
     mZooKeeperCluster = mHBaseUtil.startMiniZKCluster();
+    int zkClientPort = mHBaseUtil.getConfiguration().getInt(
+        "hbase.zookeeper.property.clientPort", 0);
     LOG.info(String.format("Mini ZooKeeper cluster quorum: localhost:%d",
-        mZooKeeperCluster.getClientPort()));
+        zkClientPort));
 
     // Randomize HBase master info port:
     mStandaloneConf.set("hbase.master.info.port", "0");

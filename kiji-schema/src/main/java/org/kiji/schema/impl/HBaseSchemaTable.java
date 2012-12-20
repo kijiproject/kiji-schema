@@ -66,6 +66,7 @@ import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.avro.MD5Hash;
 import org.kiji.schema.avro.SchemaTableEntry;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.ByteStreamArray.EncodingException;
 import org.kiji.schema.util.BytesKey;
@@ -767,8 +768,8 @@ public class HBaseSchemaTable extends KijiSchemaTable {
       final long nextSchemaId = maxSchemaId + 1;
 
       flush();
-      mSchemaIdTable.setWriteBufferSize(backupEntries.size() + 1);
-      mSchemaHashTable.setWriteBufferSize(backupEntries.size());
+      SchemaPlatformBridge.get().setWriteBufferSize(mSchemaIdTable, backupEntries.size() + 1);
+      SchemaPlatformBridge.get().setWriteBufferSize(mSchemaHashTable, backupEntries.size());
 
       // Restored schema entries share the same timestamp:
       final long timestamp = System.currentTimeMillis();
