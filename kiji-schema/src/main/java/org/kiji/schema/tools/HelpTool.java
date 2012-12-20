@@ -31,7 +31,7 @@ import org.apache.hadoop.conf.Configured;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.common.flags.FlagParser;
-import org.kiji.delegation.Lookup;
+import org.kiji.delegation.Lookups;
 import org.kiji.schema.util.Resources;
 
 /**
@@ -96,7 +96,7 @@ public final class HelpTool extends Configured implements KijiTool {
     System.out.println("TOOLS");
     System.out.println("");
 
-    for (KijiTool tool : Lookup.get(KijiTool.class)) {
+    for (KijiTool tool : Lookups.get(KijiTool.class)) {
       String name = tool.getName();
       if (null == name) {
         System.out.println("Error: Got null from getName() in class: "

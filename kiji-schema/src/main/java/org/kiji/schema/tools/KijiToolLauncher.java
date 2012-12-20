@@ -27,7 +27,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.delegation.Lookup;
+import org.kiji.delegation.Lookups;
 
 /**
  * Main entry point to launch Kiji tools.
@@ -87,7 +87,7 @@ public final class KijiToolLauncher extends Configured {
 
     // Iterate over available tools, searching for the one with
     // the same name as the supplied tool name argument.
-    for (KijiTool candidate : Lookup.get(KijiTool.class)) {
+    for (KijiTool candidate : Lookups.get(KijiTool.class)) {
       if (toolName.equals(candidate.getName())) {
         tool = candidate;
         break;

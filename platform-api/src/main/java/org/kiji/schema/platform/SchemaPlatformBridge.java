@@ -24,7 +24,7 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.client.HTableInterface;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.delegation.Lookup;
+import org.kiji.delegation.Lookups;
 
 /**
  * Abstract representation of an underlying platform for KijiSchema. This interface
@@ -33,7 +33,6 @@ import org.kiji.delegation.Lookup;
  */
 @ApiAudience.Framework
 public abstract class SchemaPlatformBridge {
-
   /**
    * This API should only be implemented by other modules within KijiSchema;
    * to discourage external users from extending this class, keep the c'tor
@@ -61,12 +60,18 @@ public abstract class SchemaPlatformBridge {
       throws IOException;
 
 
+  private static SchemaPlatformBridge mBridge;
+
   /**
    * @return the SchemaPlatformBridge implementation appropriate to the current runtime
    * conditions.
    */
-  public static SchemaPlatformBridge get() {
-    return Lookup.getPriority(SchemaPlatformBridgeFactory.class).lookup().getBridge();
+  public static final synchronized SchemaPlatformBridge get() {
+    if (null != mBridge) {
+      return mBridge;
+    }
+    mBridge = Lookups.getPriority(SchemaPlatformBridgeFactory.class).lookup().getBridge();
+    return mBridge;
   }
 }
 
