@@ -29,7 +29,7 @@ import org.kiji.annotations.ApiAudience;
  * CDH4-backed implementation of the SchemaPlatformBridge API.
  */
 @ApiAudience.Private
-public final class CDH4SchemaBridge extends SchemaPlatformBridge {
+public final class CDH4MR1SchemaBridge extends SchemaPlatformBridge {
   /** {@inheritDoc} */
   @Override
   public void setAutoFlush(HTableInterface hTable, boolean autoFlush) {

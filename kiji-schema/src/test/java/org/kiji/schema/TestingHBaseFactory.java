@@ -25,6 +25,7 @@ import java.util.Map;
 import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 
+import org.kiji.delegation.Priority;
 import org.kiji.schema.impl.DefaultHBaseAdminFactory;
 import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 import org.kiji.schema.impl.HBaseAdminFactory;
@@ -134,6 +135,6 @@ public final class TestingHBaseFactory implements HBaseFactory {
   @Override
   public int getPriority(Map<String, String> runtimeHints) {
     // Higher priority than default factory.
-    return 50000;
+    return Priority.HIGH;
   }
 }

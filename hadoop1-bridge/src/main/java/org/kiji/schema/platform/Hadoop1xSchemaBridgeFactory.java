@@ -22,6 +22,7 @@ package org.kiji.schema.platform;
 import java.util.Map;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.delegation.Priority;
 
 /**
  * Factory for Hadoop 1.x-specific SchemaPlatformBridge implementation.
@@ -60,10 +61,10 @@ public final class Hadoop1xSchemaBridgeFactory extends SchemaPlatformBridgeFacto
 
     if (hadoopVer.matches("1\\.0\\.[0-9\\.]+") && hbaseVer.matches("0\\.92\\.[0-9\\.]+")) {
       // Hadoop 1.0.x and HBase 0.92.x match correctly; use this bridge.
-      return 1000;
+      return Priority.NORMAL;
     } else {
       // Can't provide for this implementation.
-      return 0;
+      return Priority.DISABLED;
     }
   }
 }

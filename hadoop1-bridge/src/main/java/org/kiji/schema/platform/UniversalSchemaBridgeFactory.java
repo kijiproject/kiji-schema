@@ -22,6 +22,7 @@ package org.kiji.schema.platform;
 import java.util.Map;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.delegation.Priority;
 
 /**
  * Factory for fallback SchemaPlatformBridge implementation, if a better provider cannot
@@ -42,7 +43,7 @@ public final class UniversalSchemaBridgeFactory extends SchemaPlatformBridgeFact
   @Override
   public int getPriority(Map<String, String> runtimeHints) {
     // Always volunteer, but have a very low priority.
-    return 20;
+    return Priority.MIN;
   }
 }
 

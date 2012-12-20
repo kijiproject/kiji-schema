@@ -25,6 +25,7 @@ import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.delegation.Priority;
 import org.kiji.schema.HBaseFactory;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.util.LockFactory;
@@ -63,6 +64,6 @@ public final class DefaultHBaseFactory implements HBaseFactory {
   @Override
   public int getPriority(Map<String, String> runtimeHints) {
     // Default priority; should be used unless overridden by tests.
-    return 1000;
+    return Priority.NORMAL;
   }
 }

@@ -20,7 +20,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.kiji.schema</groupId>
-  <artifactId>kiji-schema-platform-bridge</artifactId>
+  <artifactId>kiji-schema-platform-api</artifactId>
   <version>1.0.0-rc2-SNAPSHOT</version>
   <packaging>jar</packaging>
 

@@ -123,7 +123,7 @@
   <dependencies>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>kiji-schema-platform-bridge</artifactId>
+      <artifactId>kiji-schema-platform-api</artifactId>
       <version>${project.version}</version>
       <scope>compile</scope>
     </dependency>
@@ -200,7 +200,7 @@
     <!-- All platform bridge implementations that should be bundled with the redistributable. -->
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>kiji-schema-cdh4-bridge</artifactId>
+      <artifactId>kiji-schema-cdh4mr1-bridge</artifactId>
       <version>${project.version}</version>
       <scope>runtime</scope>
     </dependency>
@@ -228,32 +228,38 @@
       </activation>
 
       <dependencies>
-        <!-- Default Hadoop/HBase versions in kiji-root-pom provide these dependencies -->
+        <!-- Default Hadoop/HBase versions in kiji-root-pom provide these dependencies. -->
+        <!-- Marked as 'optional' to prevent propagation to transitive projects. -->
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-core</artifactId>
           <scope>compile</scope>
+          <optional>true</optional>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-client</artifactId>
           <scope>compile</scope>
+          <optional>true</optional>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-minicluster</artifactId>
           <scope>test</scope>
+          <optional>true</optional>
         </dependency>
         <dependency>
           <groupId>org.apache.hbase</groupId>
           <artifactId>hbase</artifactId>
           <type>test-jar</type>
           <scope>test</scope>
+          <optional>true</optional>
         </dependency>
         <dependency>
           <groupId>org.apache.hbase</groupId>
           <artifactId>hbase</artifactId>
           <scope>compile</scope>
+          <optional>true</optional>
         </dependency>
       </dependencies>
     </profile>

@@ -22,12 +22,13 @@ package org.kiji.schema.platform;
 import java.util.Map;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.delegation.Priority;
 
 /**
  * Factory for CDH4-specific SchemaPlatformBridge implementation.
  */
 @ApiAudience.Private
-public final class CDH4SchemaBridgeFactory extends SchemaPlatformBridgeFactory {
+public final class CDH4MR1SchemaBridgeFactory extends SchemaPlatformBridgeFactory {
 
   private static SchemaPlatformBridge mSingletonBridge = null;
 
@@ -43,7 +44,7 @@ public final class CDH4SchemaBridgeFactory extends SchemaPlatformBridgeFactory {
       try {
         Class<? extends SchemaPlatformBridge> bridgeClass =
             (Class<? extends SchemaPlatformBridge>) Class.forName(
-                "org.kiji.schema.platform.CDH4SchemaBridge");
+                "org.kiji.schema.platform.CDH4MR1SchemaBridge");
         mSingletonBridge = bridgeClass.newInstance();
         return mSingletonBridge;
       } catch (Exception e) {
@@ -60,10 +61,10 @@ public final class CDH4SchemaBridgeFactory extends SchemaPlatformBridgeFactory {
 
     if (hadoopVer.matches("2\\..*-cdh4\\..*") && hbaseVer.matches("0.92.1-cdh4\\..*")) {
       // Hadoop 2.x-cdh4.* and HBase 0.92.1-cdh4.* match correctly; use this bridge.
-      return 1000;
+      return Priority.NORMAL;
     } else {
       // Can't provide for this implementation.
-      return 0;
+      return Priority.DISABLED;
     }
   }
 }

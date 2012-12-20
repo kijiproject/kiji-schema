@@ -20,7 +20,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.kiji.schema</groupId>
-  <artifactId>kiji-schema-cdh4-bridge</artifactId>
+  <artifactId>kiji-schema-cdh4mr1-bridge</artifactId>
   <version>1.0.0-rc2-SNAPSHOT</version>
   <packaging>jar</packaging>
 
@@ -31,8 +31,8 @@
     <relativePath>..</relativePath>
   </parent>
 
-  <name>KijiSchema CDH4 Platform Bridge</name>
-  <description>Bridge API provider for CDH4</description>
+  <name>KijiSchema CDH4(MR1) Platform Bridge</name>
+  <description>Bridge API provider for CDH4 with MR1</description>
 
   <properties>
     <hadoop.version>2.0.0-mr1-cdh4.1.2</hadoop.version>
@@ -99,7 +99,7 @@
 
     <dependency>
       <groupId>org.kiji.schema</groupId>
-      <artifactId>kiji-schema-platform-bridge</artifactId>
+      <artifactId>kiji-schema-platform-api</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

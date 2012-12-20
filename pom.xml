@@ -41,8 +41,8 @@
   </properties>
 
   <modules>
-    <module>platform-bridge</module>
-    <module>cdh4-bridge</module>
+    <module>platform-api</module>
+    <module>cdh4mr1-bridge</module>
     <module>hadoop1-bridge</module>
 
     <module>kiji-schema</module>
