@@ -28,7 +28,7 @@ import org.kiji.delegation.Priority;
  * Factory for fallback SchemaPlatformBridge implementation, if a better provider cannot
  * be found.
  *
- * <p>Defaults to using Hadoop 1.x / HBase 0.92 behavior.</p>
+ * <p>Defaults to using Hadoop 1.x / HBase 0.92 behavior and hopes for the best.</p>
  */
 @ApiAudience.Private
 public final class UniversalSchemaBridgeFactory extends SchemaPlatformBridgeFactory {
@@ -42,8 +42,9 @@ public final class UniversalSchemaBridgeFactory extends SchemaPlatformBridgeFact
   /** {@inheritDoc} */
   @Override
   public int getPriority(Map<String, String> runtimeHints) {
-    // Always volunteer, but have a very low priority.
-    return Priority.MIN;
+    // Always volunteer, but have a very low priority. Prefer virtually any other
+    // provider to this one.
+    return Priority.VERY_LOW;
   }
 }
 

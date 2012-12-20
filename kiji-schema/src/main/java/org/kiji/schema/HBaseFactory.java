@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.delegation.Lookup;
+import org.kiji.delegation.Lookups;
 import org.kiji.delegation.PriorityProvider;
 import org.kiji.schema.impl.HBaseAdminFactory;
 import org.kiji.schema.impl.HTableInterfaceFactory;
@@ -47,7 +47,7 @@ public interface HBaseFactory extends PriorityProvider {
     public static HBaseFactory get() {
       synchronized (HBaseFactory.Provider.class) {
         if (null == mInstance) {
-          mInstance = Lookup.getPriority(HBaseFactory.class).lookup();
+          mInstance = Lookups.getPriority(HBaseFactory.class).lookup();
         }
         return mInstance;
       }

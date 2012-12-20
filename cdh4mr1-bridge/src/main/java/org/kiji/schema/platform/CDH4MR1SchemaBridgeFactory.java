@@ -30,26 +30,17 @@ import org.kiji.delegation.Priority;
 @ApiAudience.Private
 public final class CDH4MR1SchemaBridgeFactory extends SchemaPlatformBridgeFactory {
 
-  private static SchemaPlatformBridge mSingletonBridge = null;
-
   /** {@inheritDoc} */
   @Override
   @SuppressWarnings("unchecked")
   public SchemaPlatformBridge getBridge() {
-    synchronized (getClass()) {
-      if (null != mSingletonBridge) {
-        return mSingletonBridge;
-      }
-
-      try {
-        Class<? extends SchemaPlatformBridge> bridgeClass =
-            (Class<? extends SchemaPlatformBridge>) Class.forName(
-                "org.kiji.schema.platform.CDH4MR1SchemaBridge");
-        mSingletonBridge = bridgeClass.newInstance();
-        return mSingletonBridge;
-      } catch (Exception e) {
-        throw new RuntimeException("Could not instantiate platform bridge", e);
-      }
+    try {
+      Class<? extends SchemaPlatformBridge> bridgeClass =
+          (Class<? extends SchemaPlatformBridge>) Class.forName(
+              "org.kiji.schema.platform.CDH4MR1SchemaBridge");
+      return bridgeClass.newInstance();
+    } catch (Exception e) {
+      throw new RuntimeException("Could not instantiate platform bridge", e);
     }
   }
 
