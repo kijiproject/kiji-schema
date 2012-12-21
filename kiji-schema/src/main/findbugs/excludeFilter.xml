@@ -80,4 +80,5 @@
     <Class name="org.kiji.schema.impl.HBaseKijiRowData" />
     <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
   </Match>
+
 </FindBugsFilter>
