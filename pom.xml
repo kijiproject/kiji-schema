@@ -21,13 +21,13 @@
 
   <groupId>org.kiji.schema</groupId>
   <artifactId>kiji-schema-root</artifactId>
-  <version>1.0.0-rc2</version>
+  <version>1.0.0-rc3-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <parent>
     <groupId>org.kiji.pom</groupId>
     <artifactId>root-pom</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2-SNAPSHOT</version>
   </parent>
 
   <name>KijiSchema top-level project</name>
