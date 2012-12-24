@@ -21,22 +21,37 @@ package org.kiji.schema.tools;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+
+import com.google.common.collect.Lists;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
-import org.kiji.schema.testutil.ToolResult;
+import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.util.VersionInfo;
 
-public class IntegrationTestKijiVersion extends AbstractKijiIntegrationTest {
+public class TestVersionTool extends KijiClientTest {
   @Test
   public void testVersionTool() throws Exception {
     final String clientVersion = VersionInfo.getClientDataVersion();
-    final ToolResult toolResult = runTool(new VersionTool(), new String[0]);
-    assertEquals(0, toolResult.getReturnCode());
+    final VersionTool tool = new VersionTool();
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    final PrintStream ps = new PrintStream(baos);
+    tool.setConf(getConfiguration());
+    tool.setPrintStream(ps);
+    final int exitCode = tool.toolMain(Lists.newArrayList("--debug",
+        String.format("--kiji=%s", getKijiURI())));
+
+    ps.close();
+    final String toolOutput = Bytes.toString(baos.toByteArray());
+
     assertEquals(
         "kiji client software version: " + VersionInfo.getSoftwareVersion() + "\n"
         + "kiji client data version: " + clientVersion + "\n"
         + "kiji cluster data version: " + clientVersion + "\n",
-        toolResult.getStdoutUtf8());
+        toolOutput);
+
+    assertEquals(0, exitCode);
   }
 }
