@@ -819,16 +819,43 @@ public class HBaseSchemaTable extends KijiSchemaTable {
   }
 
   /** Primitive types pre-allocated in all schema tables. */
-  private static final Schema.Type[] PRIMITIVE_TYPES = new Schema.Type[] {
-      Schema.Type.STRING,  // schema ID = 0
-      Schema.Type.BYTES,   // schema ID = 1
-      Schema.Type.INT,     // schema ID = 2
-      Schema.Type.LONG,    // schema ID = 3
-      Schema.Type.FLOAT,   // schema ID = 4
-      Schema.Type.DOUBLE,  // schema ID = 5
-      Schema.Type.BOOLEAN, // schema ID = 6
-      Schema.Type.NULL,    // schema ID = 7
-  };
+  enum PreRegisteredSchema {
+    STRING(Schema.Type.STRING),   // ID 0
+    BYTES(Schema.Type.BYTES),     // ID 1
+    INT(Schema.Type.INT),         // ID 2
+    LONG(Schema.Type.LONG),       // ID 3
+    FLOAT(Schema.Type.FLOAT),     // ID 4
+    DOUBLE(Schema.Type.DOUBLE),   // ID 5
+    BOOLEAN(Schema.Type.BOOLEAN), // ID 6
+    NULL(Schema.Type.NULL);       // ID 7
+
+    /**
+     * Initializes a pre-registered schema descriptor.
+     *
+     * @param type Avro schema type.
+     */
+    PreRegisteredSchema(Schema.Type type) {
+      mType = type;
+      mId = ordinal();
+    }
+
+    /** @return the Avro schema type. */
+    public Schema.Type getType() {
+      return mType;
+    }
+
+    /** @return the unique ID of the pre-allocated schema. */
+    public int getSchemaId() {
+      // By default, we use the enum ordinal
+      return mId;
+    }
+
+    private final int mId;
+    private final Schema.Type mType;
+  }
+
+  /** Number of pre-allocated schemas. */
+  public static final int PRE_REGISTERED_SCHEMA_COUNT = PreRegisteredSchema.values().length;  // = 8
 
   /**
    * Pre-registers all the primitive data types.
@@ -838,11 +865,13 @@ public class HBaseSchemaTable extends KijiSchemaTable {
   private synchronized void registerPrimitiveSchemas() throws IOException {
     int expectedSchemaId = 0;
     LOG.debug("Pre-registering primitive schema types.");
-    for (Schema.Type type : PRIMITIVE_TYPES) {
-      final Schema schema = Schema.create(type);
+    for (PreRegisteredSchema desc : PreRegisteredSchema.values()) {
+      final Schema schema = Schema.create(desc.getType());
       Preconditions.checkState(getOrCreateSchemaId(schema) == expectedSchemaId);
+      Preconditions.checkState(desc.getSchemaId() == expectedSchemaId);
       expectedSchemaId += 1;
     }
+    Preconditions.checkState(expectedSchemaId == PRE_REGISTERED_SCHEMA_COUNT);
   }
 
   /**

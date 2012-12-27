@@ -19,195 +19,101 @@
 
 package org.kiji.schema.impl;
 
-import static org.easymock.EasyMock.anyObject;
-import static org.easymock.EasyMock.aryEq;
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.eq;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import java.io.IOException;
-
 import org.apache.avro.Schema;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiSchemaTable;
-import org.kiji.schema.KijiSchemaTable.SchemaEntry;
+import org.kiji.schema.impl.HBaseSchemaTable.PreRegisteredSchema;
 import org.kiji.schema.util.BytesKey;
-import org.kiji.schema.util.LocalLockFactory;
-import org.kiji.schema.util.Lock;
 
-public class TestHBaseSchemaTable {
-  private static SchemaEntry makeSchemaEntry(long id, Schema schema) {
-    return new SchemaEntry(id, new BytesKey(KijiSchemaTable.hashSchema(schema)), schema);
-  }
+/** Tests for HBaseSchemaTable. */
+public class TestHBaseSchemaTable extends KijiClientTest {
+  private static final Schema SCHEMA_STRING = Schema.create(Schema.Type.STRING);
+  private static final Schema SCHEMA_BYTES = Schema.create(Schema.Type.BYTES);
+  private static final Schema SCHEMA_INT = Schema.create(Schema.Type.INT);
+  private static final Schema SCHEMA_LONG = Schema.create(Schema.Type.LONG);
+  private static final Schema SCHEMA_FLOAT = Schema.create(Schema.Type.FLOAT);
+  private static final Schema SCHEMA_DOUBLE = Schema.create(Schema.Type.DOUBLE);
+  private static final Schema SCHEMA_BOOLEAN = Schema.create(Schema.Type.BOOLEAN);
+  private static final Schema SCHEMA_NULL = Schema.create(Schema.Type.NULL);
 
-  private static final SchemaEntry INT_SCHEMA_ENTRY =
-      makeSchemaEntry(0, Schema.create(Schema.Type.INT));
+  private static final Schema TEST_SCHEMA_A = Schema.createMap(SCHEMA_STRING);
+  private static final Schema TEST_SCHEMA_B = Schema.createArray(SCHEMA_STRING);
 
-  private HTable mHashHTable;
-  private HTable mIdHTable;
-  private Lock mLock;
-
-  @Before
-  public void setup() {
-    mHashHTable = createMock(HTable.class);
-    mIdHTable = createMock(HTable.class);
-    mLock = new LocalLockFactory().create("test");
-  }
-
+  /** Tests the basic functionalities and properties of the schema table. */
   @Test
-  public void testGetSchemaByIdReturnsNull() throws IOException {
-    final Result result = createMock(Result.class);
-    expect(mIdHTable.get(anyObject(Get.class))).andReturn(result);
-    expect(result.isEmpty()).andReturn(true);
+  public void testBasicSchemaTableFunctions() throws Exception {
+    final Kiji kiji = getKiji();
+    final KijiSchemaTable schemaTable = kiji.getSchemaTable();
 
-    mIdHTable.flushCommits();
-    mIdHTable.close();
+    // Schema ID 0 must be primitive type STRING.
+    assertEquals(Schema.Type.STRING, schemaTable.getSchema(0L).getType());
 
-    mHashHTable.flushCommits();
-    mHashHTable.close();
+    // Test looking up a schema by ID:
+    assertEquals(SCHEMA_STRING, schemaTable.getSchema(0L));
+    assertEquals(SCHEMA_BYTES, schemaTable.getSchema(1L));
+    assertEquals(SCHEMA_INT, schemaTable.getSchema(2L));
+    assertEquals(SCHEMA_LONG, schemaTable.getSchema(3L));
+    assertEquals(SCHEMA_FLOAT, schemaTable.getSchema(4L));
+    assertEquals(SCHEMA_DOUBLE, schemaTable.getSchema(5L));
+    assertEquals(SCHEMA_BOOLEAN, schemaTable.getSchema(6L));
+    assertEquals(SCHEMA_NULL, schemaTable.getSchema(7L));
+    assertNull(schemaTable.getSchema(8L));
 
-    replay(result);
-    replay(mIdHTable);
-    replay(mHashHTable);
+    // Test looking up a schema by hash:
+    assertEquals(SCHEMA_STRING, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_STRING)));
+    assertEquals(SCHEMA_BYTES, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_BYTES)));
+    assertEquals(SCHEMA_INT, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_INT)));
+    assertEquals(SCHEMA_LONG, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_LONG)));
+    assertEquals(SCHEMA_FLOAT, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_FLOAT)));
+    assertEquals(SCHEMA_DOUBLE, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_DOUBLE)));
+    assertEquals(SCHEMA_BOOLEAN, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_BOOLEAN)));
+    assertEquals(SCHEMA_NULL, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_NULL)));
+    assertNull(schemaTable.getSchema(new BytesKey(new byte[]{})));
 
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mLock);
-    assertNull(schemaTable.getSchema(0));
-    schemaTable.close();
+    // Re-creating existing schemas are no-ops:
+    assertEquals(
+        PreRegisteredSchema.NULL.getSchemaId(),
+        schemaTable.getOrCreateSchemaId(SCHEMA_NULL));
+    assertEquals(
+        PreRegisteredSchema.BOOLEAN.getSchemaId(),
+        schemaTable.getOrCreateSchemaId(SCHEMA_BOOLEAN));
+    assertEquals(
+        PreRegisteredSchema.DOUBLE.getSchemaId(),
+        schemaTable.getOrCreateSchemaId(SCHEMA_DOUBLE));
+    assertEquals(
+        PreRegisteredSchema.FLOAT.getSchemaId(),
+        schemaTable.getOrCreateSchemaId(SCHEMA_FLOAT));
+    assertEquals(
+        PreRegisteredSchema.LONG.getSchemaId(),
+        schemaTable.getOrCreateSchemaId(SCHEMA_LONG));
+    assertEquals(
+        PreRegisteredSchema.INT.getSchemaId(),
+        schemaTable.getOrCreateSchemaId(SCHEMA_INT));
+    assertEquals(
+        PreRegisteredSchema.BYTES.getSchemaId(),
+        schemaTable.getOrCreateSchemaId(SCHEMA_BYTES));
+    assertEquals(
+        PreRegisteredSchema.STRING.getSchemaId(),
+        schemaTable.getOrCreateSchemaId(SCHEMA_STRING));
 
-    verify(result);
-    verify(mIdHTable);
-    verify(mHashHTable);
+    // Check that none of the test schema are registered already:
+    assertEquals(null, schemaTable.getSchema(schemaTable.getSchemaHash(TEST_SCHEMA_A)));
+    assertEquals(null, schemaTable.getSchema(schemaTable.getSchemaHash(TEST_SCHEMA_B)));
+
+    final long testSchemaAId = schemaTable.getOrCreateSchemaId(TEST_SCHEMA_A);
+    assertEquals(HBaseSchemaTable.PRE_REGISTERED_SCHEMA_COUNT, testSchemaAId);
+    assertEquals(testSchemaAId, schemaTable.getOrCreateSchemaId(TEST_SCHEMA_A));
+    assertEquals(TEST_SCHEMA_A, schemaTable.getSchema(testSchemaAId));
+
+    final long testSchemaBId = schemaTable.getOrCreateSchemaId(TEST_SCHEMA_B);
+    assertEquals(testSchemaBId, schemaTable.getOrCreateSchemaId(TEST_SCHEMA_B));
+    assertEquals(TEST_SCHEMA_B, schemaTable.getSchema(testSchemaBId));
+    assertEquals(testSchemaAId + 1, testSchemaBId);
   }
-
-  @Test
-  public void testGetSchemaByHashReturnsNull() throws IOException {
-    final Result result = createMock(Result.class);
-    expect(mHashHTable.get(anyObject(Get.class))).andReturn(result);
-    expect(result.isEmpty()).andReturn(true);
-
-    mIdHTable.flushCommits();
-    mIdHTable.close();
-
-    mHashHTable.flushCommits();
-    mHashHTable.close();
-
-    replay(result);
-    replay(mIdHTable);
-    replay(mHashHTable);
-
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mLock);
-    assertNull(schemaTable.getSchema(new BytesKey(new byte[] {0})));
-    schemaTable.close();
-
-    verify(result);
-    verify(mIdHTable);
-    verify(mHashHTable);
-  }
-
-  @Test
-  public void testGetSchemaByIdReturnsSomething() throws IOException {
-    final Result result = createMock(Result.class);
-    expect(mIdHTable.get(anyObject(Get.class))).andReturn(result);
-    expect(result.isEmpty()).andReturn(false);
-    expect(result.value()).andReturn(
-        HBaseSchemaTable.encodeSchemaEntry(HBaseSchemaTable.toAvroEntry(INT_SCHEMA_ENTRY)));
-
-    mIdHTable.flushCommits();
-    mIdHTable.close();
-
-    mHashHTable.flushCommits();
-    mHashHTable.close();
-
-    replay(result);
-    replay(mIdHTable);
-    replay(mHashHTable);
-
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mLock);
-    assertEquals(Schema.Type.INT, schemaTable.getSchema(0).getType());
-    schemaTable.close();
-
-    verify(result);
-    verify(mIdHTable);
-    verify(mHashHTable);
-  }
-
-  @Test
-  public void testGetSchemaByHashReturnsSomething() throws IOException {
-    final Result result = createMock(Result.class);
-    expect(mHashHTable.get(anyObject(Get.class))).andReturn(result);
-    expect(result.isEmpty()).andReturn(false);
-    expect(result.value()).andReturn(
-        HBaseSchemaTable.encodeSchemaEntry(HBaseSchemaTable.toAvroEntry(INT_SCHEMA_ENTRY)));
-
-    mIdHTable.flushCommits();
-    mIdHTable.close();
-
-    mHashHTable.flushCommits();
-    mHashHTable.close();
-
-    replay(result);
-    replay(mIdHTable);
-    replay(mHashHTable);
-
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mLock);
-    assertEquals(Schema.Type.INT, schemaTable.getSchema(INT_SCHEMA_ENTRY.getHash()).getType());
-    schemaTable.close();
-
-    verify(result);
-    verify(mIdHTable);
-    verify(mHashHTable);
-  }
-
-  @Test
-  public void testGetOrCreateSchemaId() throws IOException {
-    final Result result = createMock(Result.class);
-    expect(mHashHTable.get(anyObject(Get.class))).andReturn(result);
-    expect(result.isEmpty()).andReturn(true);
-
-    expect(mHashHTable.get(anyObject(Get.class))).andReturn(result);
-    expect(result.isEmpty()).andReturn(true);
-
-    expect(mIdHTable.incrementColumnValue(
-        aryEq(Bytes.toBytes(HBaseSchemaTable.SCHEMA_COUNTER_ROW_NAME)),
-        aryEq(Bytes.toBytes(HBaseSchemaTable.SCHEMA_COLUMN_FAMILY)),
-        aryEq(Bytes.toBytes(HBaseSchemaTable.SCHEMA_COLUMN_QUALIFIER)),
-        eq(1L)))
-        .andReturn(10L);
-
-    mIdHTable.put(anyObject(Put.class));
-    mHashHTable.put(anyObject(Put.class));
-
-    mIdHTable.flushCommits();
-    mHashHTable.flushCommits();
-
-    mIdHTable.flushCommits();
-    mIdHTable.close();
-
-    mHashHTable.flushCommits();
-    mHashHTable.close();
-
-    replay(result);
-    replay(mIdHTable);
-    replay(mHashHTable);
-
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(mHashHTable, mIdHTable, mLock);
-    assertEquals(9, schemaTable.getOrCreateSchemaId(INT_SCHEMA_ENTRY.getSchema()));
-    schemaTable.close();
-
-    verify(result);
-    verify(mIdHTable);
-    verify(mHashHTable);
-  }
-
 }
