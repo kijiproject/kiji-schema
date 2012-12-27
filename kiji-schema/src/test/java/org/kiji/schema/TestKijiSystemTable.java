@@ -21,45 +21,41 @@ package org.kiji.schema;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 
-import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
-
-public class IntegrationTestKijiSystemTable extends AbstractKijiIntegrationTest {
-  private Kiji mKiji;
+/** Tests for KijiSystemTable. */
+public class TestKijiSystemTable extends KijiClientTest {
   private static final String KEY = "some.system.property";
-  private static final byte[] VALUE = Bytes.toBytes("property value I want to store.");
-
-  @Before
-  public void setup() throws IOException {
-    mKiji = new Kiji(getKijiConfiguration());
-  }
-
-  @After
-  public void teardown() throws IOException {
-    mKiji.close(); // closes derived system table.
-  }
+  private static final byte[] VALUE1 = Bytes.toBytes("value1");
+  private static final byte[] VALUE2 = Bytes.toBytes("value2");
 
   @Test
   public void testStoreVersion() throws IOException {
-    KijiSystemTable systemTable = mKiji.getSystemTable();
-    String originalDataVersion = systemTable.getDataVersion();
+    final Kiji kiji = getKiji();
+    final KijiSystemTable systemTable = kiji.getSystemTable();
+    final String originalDataVersion = systemTable.getDataVersion();
     systemTable.setDataVersion("99");
+
     assertEquals("99", systemTable.getDataVersion());
     systemTable.setDataVersion(originalDataVersion);
   }
 
   @Test
   public void testPutGet() throws IOException {
-    KijiSystemTable systemTable = mKiji.getSystemTable();
-    systemTable.putValue(KEY, VALUE);
-    byte[] bytesBack = systemTable.getValue(KEY);
-    assertArrayEquals(VALUE, bytesBack);
+    final Kiji kiji = getKiji();
+    final KijiSystemTable systemTable = kiji.getSystemTable();
+
+    assertNull(systemTable.getValue(KEY));
+
+    systemTable.putValue(KEY, VALUE1);
+    assertArrayEquals(VALUE1, systemTable.getValue(KEY));
+
+    systemTable.putValue(KEY, VALUE2);
+    assertArrayEquals(VALUE2, systemTable.getValue(KEY));
   }
 }
