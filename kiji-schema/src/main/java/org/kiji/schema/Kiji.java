@@ -26,6 +26,7 @@ import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +72,9 @@ public class Kiji implements KijiTableFactory, Closeable {
 
   /** Factory for locks. */
   private final LockFactory mLockFactory;
+
+  /** URI for this Kiji instance. */
+  private final KijiURI mURI;
 
   /** The schema table for this kiji instance, or null if it has not been opened yet. */
   private KijiSchemaTable mSchemaTable;
@@ -128,8 +132,13 @@ public class Kiji implements KijiTableFactory, Closeable {
     mKijiConf = new KijiConfiguration(kijiConf);
     mHTableFactory = Preconditions.checkNotNull(tableFactory);
     mLockFactory = Preconditions.checkNotNull(lockFactory);
+    mURI = KijiURI.parse(String.format("kiji://%s:%d/%s",
+        mKijiConf.getConf().get(HConstants.ZOOKEEPER_QUORUM),
+        mKijiConf.getConf().getInt(HConstants.ZOOKEEPER_CLIENT_PORT,
+            HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT),
+        mKijiConf.getName()));
 
-    LOG.debug("Opening kiji...");
+    LOG.debug(String.format("Opening kiji instance '%s'", mURI));
 
     // Load these lazily.
     mSchemaTable = null;
@@ -203,6 +212,11 @@ public class Kiji implements KijiTableFactory, Closeable {
    */
   public String getName() {
     return mKijiConf.getName();
+  }
+
+  /** @return the URI for this Kiji instance. */
+  public KijiURI getURI() {
+    return mURI;
   }
 
   /**
