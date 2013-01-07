@@ -91,7 +91,7 @@ public class TestKijiAdmin extends KijiClientTest {
     getKijiAdmin().setTableLayout("", tableLayoutDesc);
   }
 
-  @Test(expected=RuntimeException.class)
+  @Test(expected=KijiTableNotFoundException.class)
   public void testDeleteTable() throws Exception {
     getKijiAdmin().createTable("table", new KijiTableLayout(mLayoutDesc, null), false);
     assertNotNull(getLayout("table"));

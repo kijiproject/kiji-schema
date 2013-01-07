@@ -95,9 +95,9 @@ public class MetadataTool extends VersionValidatedTool {
     }
 
     final DatumReader<MetadataBackup> datumReader =
-      new SpecificDatumReader<MetadataBackup>(MetadataBackup.class);
+        new SpecificDatumReader<MetadataBackup>(MetadataBackup.class);
     final DataFileReader<MetadataBackup> fileReader =
-      new DataFileReader<MetadataBackup>(file, datumReader);
+        new DataFileReader<MetadataBackup>(file, datumReader);
 
     try {
       if (!fileReader.hasNext()) {

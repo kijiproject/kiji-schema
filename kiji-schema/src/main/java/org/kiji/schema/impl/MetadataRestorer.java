@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.HBaseFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiMetaTable;
@@ -136,11 +137,11 @@ public class MetadataRestorer {
    * @throws IOException if there is an error communicating with HBase.
    */
   public void restoreTables(MetadataBackup backup, Kiji kiji) throws IOException {
-    // Restore all tables in the file.
-    // Create tables that do not exist, and set the layouts for tables that do.
-    final KijiMetaTable metaTable = kiji.getMetaTable();
-    final HBaseAdmin hbaseAdmin = new HBaseAdmin(kiji.getConf());
+    final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
+    final HBaseAdmin hbaseAdmin =
+        hbaseFactory.getHBaseAdminFactory(kiji.getURI()).create(kiji.getConf());
 
+    final KijiMetaTable metaTable = kiji.getMetaTable();
     try {
       final KijiAdmin admin = new KijiAdmin(hbaseAdmin, kiji);
       HBaseMetaTable.uninstall(hbaseAdmin, kiji.getKijiConf());
