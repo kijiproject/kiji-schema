@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Map;
 
+import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 
 import org.kiji.schema.Kiji;
@@ -63,5 +64,9 @@ public class TestEnvironmentBuilder {
     final KijiRowData row2 = reader.get(table.getEntityId("row2"), new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("family", "column")));
     assertEquals("foo3", row2.getValue("family", "column", 100).toString());
+
+    IOUtils.closeQuietly(reader);
+    IOUtils.closeQuietly(table);
+    IOUtils.closeQuietly(environment.get("inst1"));
   }
 }
