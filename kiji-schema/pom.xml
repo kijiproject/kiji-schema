@@ -105,18 +105,6 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-assembly-plugin</artifactId>
       </plugin>
-
-      <plugin>
-        <!-- must supply src/main/checkstyle/checkstyle.xml and suppressions.xml to use this -->
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-checkstyle-plugin</artifactId>
-      </plugin>
-
-      <plugin>
-        <!-- must supply src/main/findbugs/excludeFilter.xml and includeFilter.xml -->
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>findbugs-maven-plugin</artifactId>
-      </plugin>
     </plugins>
   </build>
 
