@@ -1,0 +1,65 @@
+(c) Copyright 2013 WibiData, Inc.
+
+
+                              Kiji Schema Release Notes
+
+Version 1.0.0-rc3
+  * SCHEMA-111. Adds RELEASE_NOTES.txt
+  * SCHEMA-90. KijiURIException subclasses IOException.
+
+Version 1.0.0-rc2
+  * SCHEMA-93. Deprecate the org.kiji.schema.mapreduce package. This marks
+      classes in this package as @Deprecated in preparation for the eventual
+      release of KijiMapReduce.
+  * SCHEMA-52. Initial effort at multiple Hadoop version support. While
+      MapReduce code requires CDH4, non-MR-based operations provided by
+      KijiSchema can be performed with both CDH4 or Apache Hadoop 1.0
+      and HBase 0.92.1.
+  * SCHEMA-60. Multiple platform profiles for KijiSchema. To facilitate
+      multiple Hadoop version support in Kiji, your project must now
+      explicitly declare a reference to the underlying Hadoop distribution.
+      Specifically, put this in your pom.xml file to continue working with
+      CDH4:
+      <dependency>
+        <groupId>org.kiji.platforms</groupId>
+        <artifactId>kiji-cdh4-platform</artifactId>
+        <version>1.0.0-rc2</version>
+        <scope>provided</scope>
+      </dependency>
+      See https://github.com/kijiproject/kiji-platforms/blob/master/README.md
+      for a full list of available platforms.
+  * SCHEMA-7. Add metadata backup and restore tools ('kiji metadata')
+  * SCHEMA-28. Removed KijiDataWrapper and its subclasses. This change
+      refactors large parts of KijiSchema and has several incompatible
+      changes associated with it:
+      ** KijiURIs are now used more pervasively to reference Kiji instance
+         and table names. KijiConfiguration is deprecated; you should open
+         Kiji instances through KijiURIs.
+      ** KijiCellEncoder and KijiCellDecoder were significantly revamped.
+      ** KijiTable is now an interface.
+      ** Interaction between Kiji, KijiTable, and KijiTableReader/Writer
+         reworked. See the javadoc for the Kiji.open() and
+         KijiTable.openTableReader() / openTableWriter() methods.
+      ** KijiTableWriter was significantly simplified. You no longer need to
+         specify the schema when writing to a cell; the schema is induced from
+         the type when you write. The forms of the put() method where schemas
+         are specified have been removed.
+      ** KijiTableReader and KijiRowData have been significantly simplified.
+         You no longer need to explicitly specify the type when you read a cell
+         (e.g., via getStringValue()). Methods like getIntValue(),
+         getStringValues(), etc. have been removed. Instead, a universal
+         getMostRecentValue() method can now use type inference in combination
+         with the default reader schema specified in the table's layout to
+         deserialize the data with the correct type signature.
+  * SCHEMA-40. Add audience annotations to classes. Provisional annotations
+      have been added to indicate whether classes are intended for use by all
+      clients, other framework modules, or only the current module.
+      See github.com/kijiproject/annotations for more documentation.
+      Related to this, several classes have been made 'final', to prevent end
+      users from extending them.
+  * SCHEMA-51. Use Kiji artifacts, not odiago/wibi artifacts.
+  * SCHEMA-43. bugfix: bin-script cannot be directly symlinked.
+  * SCHEMA-36. kiji-schema jar is now always added to the front of the
+      classpath.
+  * SCHEMA-34. Handle general exceptions more gracefully in Kiji tools.
+
