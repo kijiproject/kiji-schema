@@ -41,12 +41,47 @@
   </properties>
 
   <modules>
+    <module>build-resources</module>
     <module>platform-api</module>
     <module>cdh4mr1-bridge</module>
     <module>hadoop1-bridge</module>
 
     <module>kiji-schema</module>
   </modules>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <!-- must supply build-resources module with checkstyle/checkstyle.xml
+               and suppressions.xml to use this -->
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <dependencies>
+            <dependency>
+              <groupId>org.kiji.schema</groupId>
+              <artifactId>build-resources</artifactId>
+              <version>${project.version}</version>
+            </dependency>
+          </dependencies>
+        </plugin>
+
+        <plugin>
+          <!-- must supply build-resources module with findbugs/includeFilter.xml
+               and excludeFilter.xml to use this -->
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>findbugs-maven-plugin</artifactId>
+          <dependencies>
+            <dependency>
+              <groupId>org.kiji.schema</groupId>
+              <artifactId>build-resources</artifactId>
+              <version>${project.version}</version>
+            </dependency>
+          </dependencies>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
 
   <repositories>
     <repository>
