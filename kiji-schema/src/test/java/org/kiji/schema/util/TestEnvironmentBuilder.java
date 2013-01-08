@@ -25,35 +25,28 @@ import java.util.Map;
 
 import org.junit.Test;
 
-import org.kiji.schema.EntityId;
-import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
-import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 public class TestEnvironmentBuilder {
   @Test
   public void testBuilder() throws Exception {
-    final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
-    final KijiTableLayout layout = new KijiTableLayout(layoutDesc, null);
-
-    final EntityIdFactory eidFactory = EntityIdFactory.create(layoutDesc.getKeysFormat());
-    final EntityId id1 = eidFactory.fromKijiRowKey("row1");
-    final EntityId id2 = eidFactory.fromKijiRowKey("row2");
+    final KijiTableLayout layout =
+        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE), null);
 
     final Map<String, Kiji> environment = new EnvironmentBuilder()
         .withInstance("inst1")
             .withTable("table", layout)
-                .withRow(id1)
+                .withRow("row1")
                     .withFamily("family")
-                        .withQualifier("column").withValue(2, "foo1")
-                        .withQualifier("column").withValue(1, "foo2")
-                .withRow(id2)
+                        .withQualifier("column").withValue(1, "foo1")
+                                                .withValue(2, "foo2")
+                .withRow("row2")
                     .withFamily("family")
                         .withQualifier("column").withValue(100, "foo3")
         .build();
@@ -62,12 +55,12 @@ public class TestEnvironmentBuilder {
     final KijiTableReader reader = table.openTableReader();
 
     // Verify the first row.
-    final KijiRowData row1 = reader.get(id1, new KijiDataRequest()
+    final KijiRowData row1 = reader.get(table.getEntityId("row1"), new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("family", "column")));
-    assertEquals("foo2", row1.getValue("family", "column", 1).toString());
+    assertEquals("foo2", row1.getValue("family", "column", 2).toString());
 
     // Verify the second row.
-    final KijiRowData row2 = reader.get(id2, new KijiDataRequest()
+    final KijiRowData row2 = reader.get(table.getEntityId("row2"), new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("family", "column")));
     assertEquals("foo3", row2.getValue("family", "column", 100).toString());
   }

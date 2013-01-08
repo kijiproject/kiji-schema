@@ -22,13 +22,16 @@ package org.kiji.schema.util;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.TreeMap;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.EntityId;
+import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiInstaller;
@@ -51,11 +54,11 @@ import org.kiji.schema.layout.KijiTableLayout;
  *         .withTable("table", layout)
  *             .withRow(id1)
  *                 .withFamily("family")
- *                     .withQualifier("column").withValue(1, "foo2")
- *                                             .withValue(2, "foo1")
+ *                     .withQualifier("column").withValue(1L, "value1")
+ *                                             .withValue(2L, "value2")
  *             .withRow(id2)
  *                 .withFamily("family")
- *                     .withQualifier("column").withValue(100, "foo3")
+ *                     .withQualifier("column").withValue(100L, "value3")
  *     .build();
  * </pre></code>
  */
@@ -99,7 +102,8 @@ public class EnvironmentBuilder {
   }
 
   /**
-   * Builds a test environment.
+   * Builds a test environment. Creates an in-memory HBase cluster, populates and installs
+   * the provided Kiji instances.
    *
    * @return The kiji instances for the test environment.
    */
@@ -148,7 +152,7 @@ public class EnvironmentBuilder {
         final Map<EntityId, Map<String, Map<String, Map<Long, Object>>>> table =
             tableEntry.getValue();
 
-        // Create & open a fake table.
+        // Create & open a Kiji table.
         LOG.info(String.format("    Building table: %s", tableName));
         admin.createTable(tableName, layout, false);
         final KijiTable kijiTable = kiji.openTable(tableName);
@@ -184,6 +188,9 @@ public class EnvironmentBuilder {
             }
           }
         }
+
+        IOUtils.closeQuietly(kijiTable);
+        IOUtils.closeQuietly(writer);
       }
 
       // Add the Kiji instance to the environment.
@@ -258,6 +265,7 @@ public class EnvironmentBuilder {
    */
   public class TableBuilder extends InstanceBuilder {
     protected final String mTableName;
+    private final EntityIdFactory mEntityIdFactory;
 
     /**
      * Constructs a new in-memory Kiji table builder.
@@ -267,7 +275,10 @@ public class EnvironmentBuilder {
      */
     protected TableBuilder(String instance, String table) {
       super(instance);
+      final KijiTableLayout layout = mLayouts.get(instance).get(table);
+
       mTableName = table;
+      mEntityIdFactory = EntityIdFactory.create(layout.getDesc().getKeysFormat());
     }
 
     /**
@@ -284,6 +295,17 @@ public class EnvironmentBuilder {
           .put(entityId, new HashMap<String, Map<String, Map<Long, Object>>>());
 
       return new RowBuilder(mInstanceName, mTableName, entityId);
+    }
+
+    /**
+     * Adds a row to the testing environment. Note: This will replace any existing added rows
+     * with the same entityId.
+     *
+     * @param rowKey The key of the row being added.
+     * @return A builder to continue building with.
+     */
+    public RowBuilder withRow(String rowKey) {
+      return withRow(mEntityIdFactory.fromKijiRowKey(rowKey));
     }
   }
 
@@ -357,7 +379,7 @@ public class EnvironmentBuilder {
           .get(mTableName)
           .get(mEntityId)
           .get(mFamilyName)
-          .put(qualifier, new HashMap<Long, Object>());
+          .put(qualifier, new TreeMap<Long, Object>());
 
       return new QualifierBuilder(mInstanceName, mTableName, mEntityId, mFamilyName, qualifier);
     }
