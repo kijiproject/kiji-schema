@@ -18,11 +18,11 @@
     limitations under the License.
   -->
   <modelVersion>4.0.0</modelVersion>
-  <groupId>org.kiji.mapreduce</groupId>
+  <groupId>org.kiji.schema</groupId>
   <artifactId>build-resources</artifactId>
   <packaging>jar</packaging>
   <version>1.0.0-rc3-SNAPSHOT</version>
-  <name>Kiji Schema build resources</name>
+  <name>KijiSchema build resources</name>
   <description>Provides build resources common to all modules</description>
 
   <build>
