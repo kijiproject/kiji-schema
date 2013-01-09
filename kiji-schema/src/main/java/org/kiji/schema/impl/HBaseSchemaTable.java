@@ -24,6 +24,7 @@ import static org.kiji.schema.util.ByteStreamArray.longToVarInt64;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -947,6 +948,10 @@ public class HBaseSchemaTable extends KijiSchemaTable {
         .addColumn(SCHEMA_COLUMN_FAMILY_BYTES, SCHEMA_COLUMN_QUALIFIER_BYTES)
         .setMaxVersions());  // retrieve all versions
     for (Result result : idTableScanner) {
+      // Skip the schema ID counter row:
+      if (Arrays.equals(result.getRow(), SCHEMA_COUNTER_ROW_NAME_BYTES)) {
+        continue;
+      }
       idTableRowCounter += 1;
       final BytesKey rowKey = new BytesKey(result.getRow());
 
