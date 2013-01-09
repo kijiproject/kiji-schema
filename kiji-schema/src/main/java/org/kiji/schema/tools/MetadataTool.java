@@ -142,12 +142,12 @@ public class MetadataTool extends VersionValidatedTool {
   protected int run(List<String> nonFlagArgs) throws Exception {
     if (mOutFile.isEmpty() && mInFile.isEmpty()) {
       getPrintStream().println(
-        "Must use one of --export or --restore. See --help for details.");
+        "Must use one of --backup or --restore. See --help for details.");
       return 1;
     }
 
     if (!mOutFile.isEmpty() && !mInFile.isEmpty()) {
-      getPrintStream().println("Cannot do both --export and --restore. See --help for details.");
+      getPrintStream().println("Cannot do both --backup and --restore. See --help for details.");
       return 1;
     }
     if (!yesNoPrompt()) {
