@@ -26,11 +26,13 @@ import java.util.NavigableSet;
 import org.apache.avro.Schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 
 /**
  * The input data for a single entity in Kiji.  Implementations should be thread-safe.
  */
 @ApiAudience.Public
+@Inheritance.Sealed
 public interface KijiRowData {
   /**
    * Gets the entity id for this row of kiji data.

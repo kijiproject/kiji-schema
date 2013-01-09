@@ -24,6 +24,7 @@ import java.io.Flushable;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 
 /**
  * Interface for performing puts on a Kiji table.
@@ -31,6 +32,7 @@ import org.kiji.annotations.ApiAudience;
  * Instantiated via {@code KijiTable.openTableWriter()}
  */
 @ApiAudience.Framework
+@Inheritance.Sealed
 public interface KijiPutter extends Closeable, Flushable {
   /**
    * Puts data into a kiji table.

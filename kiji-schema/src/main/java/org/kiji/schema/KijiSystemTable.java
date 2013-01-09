@@ -23,6 +23,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 
 /**
  * The Kiji system table, which stores system information such as the version, ready state, and
@@ -32,6 +33,7 @@ import org.kiji.annotations.ApiAudience;
  * @see KijiSystemTable
  */
 @ApiAudience.Framework
+@Inheritance.Sealed
 public abstract class KijiSystemTable implements Closeable {
   /**
    * Gets the version of kiji installed.  This refers to the version of

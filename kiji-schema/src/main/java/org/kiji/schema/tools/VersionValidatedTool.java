@@ -22,6 +22,7 @@ package org.kiji.schema.tools;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.IncompatibleKijiVersionException;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiConfiguration;
@@ -33,6 +34,7 @@ import org.kiji.schema.KijiConfiguration;
  * will exit early.
  */
 @ApiAudience.Framework
+@Inheritance.Extensible
 public abstract class VersionValidatedTool extends OpenedKijiTool {
   /** Constructor. */
   protected VersionValidatedTool() {

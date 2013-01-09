@@ -31,6 +31,7 @@ import org.apache.avro.util.WeakIdentityHashMap;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.util.BytesKey;
 import org.kiji.schema.util.Hasher;
@@ -43,6 +44,7 @@ import org.kiji.schema.util.Hasher;
  * @see KijiSystemTable
  */
 @ApiAudience.Framework
+@Inheritance.Sealed
 public abstract class KijiSchemaTable implements Closeable {
   /**
    * Looks up a schema ID given an Avro schema object.

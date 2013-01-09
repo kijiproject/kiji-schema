@@ -24,6 +24,7 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.filter.Filter;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;
@@ -34,11 +35,13 @@ import org.kiji.schema.NoSuchColumnException;
  * The abstract base class for filters that exclude data from KijiRows.
  */
 @ApiAudience.Public
+@Inheritance.Extensible
 public abstract class KijiRowFilter {
   /**
    * A helper class for converting between Kiji objects and their HBase counterparts.
    */
   @ApiAudience.Public
+  @Inheritance.Sealed
   public abstract static class Context {
     /**
      * Converts a Kiji row key into an HBase row key.

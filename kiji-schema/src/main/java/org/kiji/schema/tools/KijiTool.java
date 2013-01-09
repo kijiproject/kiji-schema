@@ -24,7 +24,7 @@ import java.util.List;
 import org.apache.hadoop.conf.Configurable;
 
 import org.kiji.annotations.ApiAudience;
-
+import org.kiji.annotations.Inheritance;
 
 /**
  * Base interface to be implemented by command-line tools that are launched through
@@ -39,6 +39,7 @@ import org.kiji.annotations.ApiAudience;
  * incorporated into your jar.</p>
  */
 @ApiAudience.Public
+@Inheritance.Extensible
 public interface KijiTool extends Configurable {
   /**
    * @return the name of the tool. This name is used by users to run the tool.

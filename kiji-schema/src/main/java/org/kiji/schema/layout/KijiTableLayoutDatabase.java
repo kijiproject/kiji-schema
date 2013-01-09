@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.NavigableMap;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
 
@@ -31,6 +32,7 @@ import org.kiji.schema.avro.TableLayoutDesc;
  * A database of Kiji table layouts.
  */
 @ApiAudience.Framework
+@Inheritance.Sealed
 public interface KijiTableLayoutDatabase {
   /**
    * Lists the tables in this Kiji instance.

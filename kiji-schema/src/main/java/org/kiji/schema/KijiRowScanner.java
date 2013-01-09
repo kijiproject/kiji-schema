@@ -23,6 +23,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 
 /**
  * Interface for scanning over rows read from a Kiji table.
@@ -43,6 +44,7 @@ import org.kiji.annotations.ApiAudience;
  * </p>
  */
 @ApiAudience.Public
+@Inheritance.Sealed
 public interface KijiRowScanner extends Closeable, Iterable<KijiRowData> {
   /**
    * Closes this scanner and releases any system resources associated with it.

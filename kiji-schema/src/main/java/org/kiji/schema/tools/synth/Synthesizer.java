@@ -20,6 +20,7 @@
 package org.kiji.schema.tools.synth;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 
 /**
  * Synthesizers create objects from nothing.
@@ -27,6 +28,7 @@ import org.kiji.annotations.ApiAudience;
  * @param <T> The type of data to be synthesized.
  */
 @ApiAudience.Private
+@Inheritance.Sealed
 public interface Synthesizer<T> {
   /**
    * Synthesizes a piece of data.

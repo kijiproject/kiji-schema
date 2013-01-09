@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 
 /**
  * Interface for modifying a Kiji table.
@@ -27,5 +28,6 @@ import org.kiji.annotations.ApiAudience;
  * Instantiated by calling {@link org.kiji.schema.KijiTable#openTableWriter()}
  */
 @ApiAudience.Public
+@Inheritance.Sealed
 public interface KijiTableWriter extends KijiPutter, KijiIncrementer, KijiDeleter {
 }

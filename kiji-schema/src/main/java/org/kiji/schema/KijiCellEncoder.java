@@ -22,6 +22,7 @@ package org.kiji.schema;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 
 /**
  * Interface for Kiji cell encoders.
@@ -34,6 +35,7 @@ import org.kiji.annotations.ApiAudience;
  * Intended for framework developers only.
  */
 @ApiAudience.Framework
+@Inheritance.Sealed
 public interface KijiCellEncoder {
   /**
    * Encodes the specified Kiji cell.
