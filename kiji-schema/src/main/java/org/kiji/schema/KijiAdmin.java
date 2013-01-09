@@ -76,7 +76,8 @@ public final class KijiAdmin {
    * @param tableLayout The initial layout of the table (with unassigned column ids).
    * @param isRestore true if this is part of a metadata restore operation.
    *     This should be set to false by all callers except KijiMetadataTool.
-   * @throws IOException If there is an error.
+   * @throws IOException on I/O error.
+   * @throws KijiAlreadyExistsException if the table already exists.
    */
   public void createTable(String tableName, KijiTableLayout tableLayout, boolean isRestore)
       throws IOException {
@@ -93,7 +94,8 @@ public final class KijiAdmin {
    *
    * @throws IllegalArgumentException If numRegions is non-positive, or if numRegions is
    *     more than 1 and row key hashing on the table layout is disabled.
-   * @throws IOException If there is an error.
+   * @throws IOException on I/O error.
+   * @throws KijiAlreadyExistsException if the table already exists.
    */
   public void createTable(String tableName, KijiTableLayout tableLayout, boolean isRestore,
       int numRegions) throws IOException {
@@ -117,7 +119,8 @@ public final class KijiAdmin {
    * @param isRestore true if this is part of a metadata restore operation.
    * @param splitKeys The initial key boundaries between regions.  There will be splitKeys
    *     + 1 regions created.  Pass null to specify the default single region.
-   * @throws IOException If there is an error.
+   * @throws IOException on I/O error.
+   * @throws KijiAlreadyExistsException if the table already exists.
    */
   public void createTable(String tableName, KijiTableLayout tableLayout, boolean isRestore,
       byte[][] splitKeys) throws IOException {
@@ -150,7 +153,9 @@ public final class KijiAdmin {
       if (isRestore) {
         LOG.info("Table already exists in HBase. Continuing with restore operation.");
       } else {
-        throw tee;
+        final KijiURI tableURI = mKiji.getURI().setTableName(tableName);
+        throw new KijiAlreadyExistsException(String.format(
+            "Kiji table '%s' already exists.", tableURI), tableURI);
       }
     }
   }

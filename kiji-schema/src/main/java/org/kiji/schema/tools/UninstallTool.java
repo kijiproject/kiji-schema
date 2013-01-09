@@ -19,12 +19,14 @@
 
 package org.kiji.schema.tools;
 
+import java.io.IOException;
 import java.util.List;
-
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiInstaller;
+import org.kiji.schema.KijiInvalidNameException;
+import org.kiji.schema.KijiNotInstalledException;
 
 /**
  * A command-line tool for uninstalling kiji instances from an hbase cluster.
@@ -69,8 +71,14 @@ public final class UninstallTool extends BaseTool {
       KijiInstaller.uninstall(getURI(), getConf());
       getPrintStream().println("Deleted kiji instance: " + getURI().toString());
       return 0;
-    } catch (Exception e) {
-      getPrintStream().println("Error during uninstall: " + e.getMessage());
+    } catch (IOException ioe) {
+      getPrintStream().println("Error performing I/O during uninstall: " + ioe.getMessage());
+      return 1;
+    } catch (KijiInvalidNameException kine) {
+      getPrintStream().println("Invalid Kiji instance: " + kine.getMessage());
+      return 1;
+    } catch (KijiNotInstalledException knie) {
+      getPrintStream().printf("Kiji instance '%s' is not installed.%n", getURI());
       return 1;
     }
   }

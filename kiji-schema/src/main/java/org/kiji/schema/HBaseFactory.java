@@ -38,7 +38,11 @@ import org.kiji.schema.util.LockFactory;
 @Inheritance.Sealed
 public interface HBaseFactory extends PriorityProvider {
 
-  /** Provider for the default HBaseFactory. */
+  /**
+   * Provider for the default HBaseFactory.
+   *
+   * Ensures that there is only one HBaseFactory instance.
+   */
   public static final class Provider {
     private static final Logger LOG = LoggerFactory.getLogger(Provider.class);
 

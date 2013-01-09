@@ -71,7 +71,13 @@ public final class TestingHBaseFactory implements HBaseFactory {
     return zkHost.substring(FAKE_HBASE_ID_PREFIX.length());
   }
 
-  private FakeHBase getFakeHBase(KijiURI uri) {
+  /**
+   * Gets the FakeHBase for a given HBase URI.
+   *
+   * @param uri URI of a fake HBase instance.
+   * @return the FakeHBase for the specified URI, or null if the URI does not specify a fake HBase.
+   */
+  public FakeHBase getFakeHBase(KijiURI uri) {
     final String fakeID = getFakeHBaseID(uri);
     if (fakeID == null) {
       return null;

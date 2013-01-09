@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.util.KijiNameValidator;
 
 /**
  * URI that fully qualifies a Kiji instance/table/column.
@@ -144,6 +145,8 @@ public final class KijiURI {
     }
     mColumnNames = builder.build();
     mColumnNamesNormalized = ImmutableSortedSet.copyOf(mColumnNames).asList();
+
+    validateNames();
   }
 
   /**
@@ -157,7 +160,7 @@ public final class KijiURI {
     try {
       return new KijiURI(new URI(uri));
     } catch (URISyntaxException exn) {
-      throw new KijiURIException(uri, exn.toString());
+      throw new KijiURIException(uri, exn.getMessage());
     }
   }
 
@@ -181,10 +184,27 @@ public final class KijiURI {
     mZookeeperQuorumNormalized = ImmutableSortedSet.copyOf(mZookeeperQuorum).asList();
     mZookeeperClientPort = zookeeperClientPort;
     mInstanceName =
-        (null == instanceName || !instanceName.equals(UNSET_URI_STRING)) ? instanceName : null;
-    mTableName = (null == tableName || !tableName.equals(UNSET_URI_STRING)) ? tableName : null;
+        ((null == instanceName) || !instanceName.equals(UNSET_URI_STRING)) ? instanceName : null;
+    mTableName = ((null == tableName) || !tableName.equals(UNSET_URI_STRING)) ? tableName : null;
     mColumnNames = ImmutableList.copyOf(columnNames);
     mColumnNamesNormalized = ImmutableSortedSet.copyOf(mColumnNames).asList();
+    validateNames();
+  }
+
+  /**
+   * Validates the names used in the URI.
+   *
+   * @throws KijiURIException if there is an invalid name in this URI.
+   */
+  private void validateNames() throws KijiURIException {
+    if ((mInstanceName != null) && !KijiNameValidator.isValidKijiName(mInstanceName)) {
+      throw new KijiURIException(String.format(
+          "Invalid Kiji URI: '%s' is not a valid Kiji instance name.", mInstanceName));
+    }
+    if ((mTableName != null) && !KijiNameValidator.isValidLayoutName(mTableName)) {
+      throw new KijiURIException(String.format(
+          "Invalid Kiji URI: '%s' is not a valid Kiji table name.", mTableName));
+    }
   }
 
   /**

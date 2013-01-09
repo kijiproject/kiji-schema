@@ -19,29 +19,27 @@
 
 package org.kiji.schema;
 
-import java.io.IOException;
-
 import org.kiji.annotations.ApiAudience;
 
-/** Thrown when parsing a bogus Kiji URI. */
+/** Thrown when installing an instance or creating a table that already exists. */
 @ApiAudience.Public
-public final class KijiURIException extends IOException {
-  /**
-   * Creates a new <code>KijiURIException</code>.
-   *
-   * @param message Human readable message.
-   */
-  public KijiURIException(String message) {
-    super(message);
-  }
+public final class KijiAlreadyExistsException extends RuntimeException {
+  /** URI of the entity that already exists. */
+  private final KijiURI mURI;
 
   /**
-   * Creates a new <code>KijiURIException</code> for the specified uri and detail message.
+   * Initializes a new exception object.
    *
-   * @param uri Bogus URI.
-   * @param message Human readable explanation.
+   * @param message Human readable message.
+   * @param uri URI of the already existing entity.
    */
-  public KijiURIException(String uri, String message) {
-    super(String.format("Invalid Kiji URI: '%s' : %s.", uri, message));
+  public KijiAlreadyExistsException(String message, KijiURI uri) {
+    super(message);
+    mURI = uri;
+  }
+
+  /** @return the URI of the already existing entity. */
+  public KijiURI getURI() {
+    return mURI;
   }
 }

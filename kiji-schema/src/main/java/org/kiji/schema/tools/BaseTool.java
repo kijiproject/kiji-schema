@@ -153,9 +153,9 @@ public abstract class BaseTool extends Configured implements KijiTool {
         setURI(KijiURI.parse(mInstanceURIStr)
             .setTableName(null)
             .setColumnNames(Collections.<String>emptyList()));
-      } catch (KijiURIException e) {
-        throw new IllegalArgumentException("Invalid kiji URI specified with --kiji."
-            + mInstanceURIStr, e);
+      } catch (KijiURIException kue) {
+        throw new IllegalArgumentException(
+            String.format("Invalid kiji URI '--kiji=%s'.", mInstanceURIStr), kue);
       }
       getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
       getConf().set(HConstants.ZOOKEEPER_QUORUM,
@@ -174,12 +174,16 @@ public abstract class BaseTool extends Configured implements KijiTool {
       getPrintStream().println(knie.getMessage());
       getPrintStream().println("Try: kiji install --kiji=kiji://.env/" + knie.getInstanceName());
       return 2;
-    } catch (Exception e) {
+    } catch (Exception exn) {
       if (mDebugFlag) {
-        throw e; // Debug mode enabled; throw error back to the user.
+        throw exn; // Debug mode enabled; throw error back to the user.
       } else {
         // Just pretty-print the error for the user.
-        getPrintStream().println("Error: " + e.getMessage());
+        Throwable thr = exn;
+        while (thr != null) {
+          getPrintStream().println("Error: " + thr.getMessage());
+          thr = thr.getCause();
+        }
         return 3;
       }
     }

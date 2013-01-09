@@ -32,4 +32,25 @@ public class TestKijiInstaller {
     KijiInstaller.install(uri, conf);
     KijiInstaller.uninstall(uri, conf);
   }
+
+  @Test(expected=KijiInvalidNameException.class)
+  public void testInstallNullInstance() throws Exception {
+    final Configuration conf = HBaseConfiguration.create();
+    final KijiURI uri = KijiURI.parse("kiji://.fake.kiji-installer/");
+    KijiInstaller.install(uri, conf);
+  }
+
+  @Test(expected=KijiInvalidNameException.class)
+  public void testUninstallNullInstance() throws Exception {
+    final Configuration conf = HBaseConfiguration.create();
+    final KijiURI uri = KijiURI.parse("kiji://.fake.kiji-installer/");
+    KijiInstaller.uninstall(uri, conf);
+  }
+
+  @Test(expected=KijiNotInstalledException.class)
+  public void testUninstallMissingInstance() throws Exception {
+    final Configuration conf = HBaseConfiguration.create();
+    final KijiURI uri = KijiURI.parse("kiji://.fake.kiji-installer/anInstanceThatNeverExisted");
+    KijiInstaller.uninstall(uri, conf);
+  }
 }

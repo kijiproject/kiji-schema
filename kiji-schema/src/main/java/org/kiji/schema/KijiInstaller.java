@@ -33,7 +33,6 @@ import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
-import org.kiji.schema.util.KijiNameValidator;
 import org.kiji.schema.util.LockFactory;
 
 /** Installs or uninstalls Kiji instances from an HBase cluster. */
@@ -60,8 +59,10 @@ public final class KijiInstaller {
    * @param uri URI of the Kiji instance to uninstall.
    * @param conf Hadoop configuration.
    * @throws IOException on I/O error.
+   * @throws KijiInvalidNameException if the instance name is invalid or already exists.
    */
-  public static void uninstall(KijiURI uri, Configuration conf) throws IOException {
+  public static void uninstall(KijiURI uri, Configuration conf)
+      throws IOException, KijiInvalidNameException {
     uninstall(uri, HBaseFactory.Provider.get(), conf);
   }
 
@@ -76,20 +77,22 @@ public final class KijiInstaller {
    */
   public static void install(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
       throws IOException, KijiInvalidNameException {
+    if (uri.getInstance() == null) {
+      throw new KijiInvalidNameException(String.format(
+          "Kiji URI '%s' does not specify a Kiji instance name", uri));
+    }
     final KijiConfiguration kijiConf = new KijiConfiguration(conf, uri);
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
     final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
     final LockFactory lockFactory = hbaseFactory.getLockFactory(uri, conf);
 
-    LOG.info(String.format("Installing a kiji instance '%s'.", uri.getInstance()));
     final HBaseAdmin hbaseAdmin = adminFactory.create(kijiConf.getConf());
     try {
       if (kijiConf.exists(hbaseAdmin)) {
-        throw new KijiInvalidNameException("A Kiji instance named " + kijiConf.getName()
-            + " already exists.");
-      } else {
-        KijiNameValidator.validateKijiName(kijiConf.getName());
+        throw new KijiAlreadyExistsException(String.format(
+            "Kiji instance '%s' already exists.", uri), uri);
       }
+      LOG.info(String.format("Installing kiji instance '%s'.", uri));
       HBaseSystemTable.install(hbaseAdmin, kijiConf, tableFactory);
       HBaseMetaTable.install(hbaseAdmin, kijiConf);
       HBaseSchemaTable.install(hbaseAdmin, kijiConf, tableFactory, lockFactory);
@@ -97,7 +100,7 @@ public final class KijiInstaller {
     } finally {
       IOUtils.closeQuietly(hbaseAdmin);
     }
-    LOG.info(String.format("Installed kiji instance '%s'.", uri.getInstance()));
+    LOG.info(String.format("Installed kiji instance '%s'.", uri));
   }
 
   /**
@@ -107,9 +110,15 @@ public final class KijiInstaller {
    * @param hbaseFactory Factory for HBase instances.
    * @param conf Hadoop configuration.
    * @throws IOException on I/O error.
+   * @throws KijiInvalidNameException if the instance name is invalid.
+   * @throws KijiNotInstalledException if the specified instance does not exist.
    */
   public static void uninstall(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
-      throws IOException {
+      throws IOException, KijiInvalidNameException {
+    if (uri.getInstance() == null) {
+      throw new KijiInvalidNameException(String.format(
+          "Kiji URI '%s' does not specify a Kiji instance name", uri));
+    }
     final KijiConfiguration kijiConf = new KijiConfiguration(conf, uri);
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
     final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);

@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.HBaseFactory;
+import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiInstaller;
 
 /**
@@ -58,9 +59,14 @@ public final class InstallTool extends BaseTool {
   protected int run(List<String> nonFlagArgs) throws Exception {
     getPrintStream().println("Creating kiji instance: " + getURI());
     getPrintStream().println("Creating meta tables for kiji instance in hbase...");
-    KijiInstaller.install(getURI(), HBaseFactory.Provider.get(), getConf());
-    getPrintStream().println("Successfully created kiji instance: " + getURI());
-    return 0;
+    try {
+      KijiInstaller.install(getURI(), HBaseFactory.Provider.get(), getConf());
+      getPrintStream().println("Successfully created kiji instance: " + getURI());
+      return 0;
+    } catch (KijiAlreadyExistsException kaee) {
+      getPrintStream().printf("Kiji instance '%s' already exists.%n", getURI());
+      return 1;
+    }
   }
 
   /**
