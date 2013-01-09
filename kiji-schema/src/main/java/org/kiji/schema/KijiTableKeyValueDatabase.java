@@ -25,6 +25,7 @@ import java.util.NavigableMap;
 import java.util.Set;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.KeyValueBackupEntry;
 
 /**
@@ -34,6 +35,7 @@ import org.kiji.schema.avro.KeyValueBackupEntry;
  * @see KijiMetaTable
  */
 @ApiAudience.Framework
+@Inheritance.Sealed
 public interface KijiTableKeyValueDatabase {
 
   /**

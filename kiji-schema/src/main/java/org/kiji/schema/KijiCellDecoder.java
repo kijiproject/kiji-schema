@@ -22,6 +22,7 @@ package org.kiji.schema;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 
 /**
  * Interface for Kiji cell decoders.
@@ -32,6 +33,7 @@ import org.kiji.annotations.ApiAudience;
  * @param <T> Type of the values being decoded.
  */
 @ApiAudience.Framework
+@Inheritance.Sealed
 public interface KijiCellDecoder<T> {
   /**
    * Decodes a Kiji cell from its binary-encoded form.

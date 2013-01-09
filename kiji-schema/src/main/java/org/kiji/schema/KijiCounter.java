@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 
 /**
  * A counter value stored in a column of a Kiji table.
@@ -31,6 +32,7 @@ import org.kiji.annotations.ApiAudience;
  */
 @ApiAudience.Public
 @Deprecated
+@Inheritance.Sealed
 public interface KijiCounter {
   /**
    * Gets the timestamp at which the counter was incremented.

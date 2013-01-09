@@ -23,6 +23,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**
@@ -31,6 +32,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  * Instantiated from {@link KijiTableFactory#openTable(String)}
  */
 @ApiAudience.Public
+@Inheritance.Sealed
 public interface KijiTable extends Closeable {
   /** @return the Kiji instance this table belongs to. */
   Kiji getKiji();

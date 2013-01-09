@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 
@@ -37,6 +38,7 @@ import org.kiji.schema.layout.KijiTableLayoutDatabase;
  * @see KijiSystemTable
  */
 @ApiAudience.Framework
+@Inheritance.Sealed
 public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabase,
   KijiTableKeyValueDatabase {
 

@@ -22,11 +22,13 @@ package org.kiji.schema.util;
 import org.apache.hadoop.mapreduce.Counter;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 
 /**
  * Interface for for objects that hold a collection of MapReduce counters.
  */
 @ApiAudience.Private
+@Inheritance.Sealed
 public interface CounterManager {
   /**
    * Gets a counter by name.

@@ -22,10 +22,12 @@ package org.kiji.schema;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.layout.impl.CellSpec;
 
 /** Interface for factories of KijiCellEncoder instances. */
 @ApiAudience.Framework
+@Inheritance.Sealed
 public interface KijiCellEncoderFactory {
   /**
    * Creates a new Kiji cell encoder.
