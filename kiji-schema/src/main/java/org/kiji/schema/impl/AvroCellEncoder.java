@@ -25,6 +25,7 @@ import java.util.Map;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.Encoder;
@@ -34,6 +35,7 @@ import org.apache.avro.specific.SpecificDatumWriter;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellEncoder;
+import org.kiji.schema.KijiEncodingException;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.util.ByteStreamArray;
@@ -187,7 +189,13 @@ public final class AvroCellEncoder implements KijiCellEncoder {
   public <T> byte[] encode(T cellValue) throws IOException {
     mByteArrayOutputStream.reset();
     mSchemaEncoder.encode(mByteArrayEncoder);
-    getDatumWriter(mSchema).write(cellValue, mByteArrayEncoder);
+    try {
+      getDatumWriter(mSchema).write(cellValue, mByteArrayEncoder);
+    } catch (ClassCastException cce) {
+      throw new KijiEncodingException(cce);
+    } catch (AvroRuntimeException ure) {
+      throw new KijiEncodingException(ure);
+    }
     return mByteArrayOutputStream.toByteArray();
   }
 
