@@ -120,6 +120,10 @@ public final class KijiTableLayouts {
   public static final String FOO_TEST =
       "org/kiji/schema/layout/foo-test.json";
 
+  /** Table named 'table' with a final string column named 'family:column'. */
+  public static final String FINAL_COLUMN =
+      "org/kiji/schema/layout/final-column.json";
+
   /** Test layout with hashing disabled. */
   public static TableLayoutDesc getFooUnhashedTestLayout() throws IOException {
     final TableLayoutDesc desc = getLayout(FOO_TEST);
