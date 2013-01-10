@@ -44,14 +44,16 @@
         name : "visits",
         description : "The number of times the user has visited our site.",
         column_schema : {
-          type : "COUNTER"
+          type : "COUNTER",
+          storage : "FINAL"
         }
       } ]
     }, {
       name : "experiments",
       description : "A map from experiment-id to the number of times the user has been placed in the experiment.",
       map_schema : {
-        type : "COUNTER"
+        type : "COUNTER",
+        storage : "FINAL"
       }
     } ]
   } ],

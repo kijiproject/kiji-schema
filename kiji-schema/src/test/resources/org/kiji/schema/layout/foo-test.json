@@ -80,7 +80,8 @@
         name : "counter",
         description : "A counter",
         column_schema : {
-          type : "COUNTER"
+          type : "COUNTER",
+          storage : "FINAL"
         }
       } ]
     } ]

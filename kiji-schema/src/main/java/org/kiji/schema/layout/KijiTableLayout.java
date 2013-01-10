@@ -52,6 +52,7 @@ import org.kiji.schema.avro.ColumnDesc;
 import org.kiji.schema.avro.FamilyDesc;
 import org.kiji.schema.avro.LocalityGroupDesc;
 import org.kiji.schema.avro.SchemaStorage;
+import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
@@ -285,7 +286,9 @@ public final class KijiTableLayout {
           }
 
           // Force validation of schema:
-          validateAvroSchema(mDesc.getColumnSchema());
+          final CellSchema referenceSchema =
+              (null != reference) ? reference.getDesc().getColumnSchema() : null;
+          validateCellSchema(mDesc.getColumnSchema(), referenceSchema);
         }
 
         /** @return the Avro descriptor for this column. */
@@ -411,7 +414,9 @@ public final class KijiTableLayout {
 
         if (this.isMapType()) {
           // Force validation of schema:
-          validateAvroSchema(mDesc.getMapSchema());
+          final CellSchema referenceSchema =
+              (null != reference) ? reference.getDesc().getMapSchema() : null;
+          validateCellSchema(mDesc.getMapSchema(), referenceSchema);
         }
 
         // Build columns:
@@ -1235,17 +1240,66 @@ public final class KijiTableLayout {
   /**
    * Validates a cell schema descriptor.
    *
-   * Ignores failures due to specific Avro record classes not being present on the claspath.
+   * Ignores failures due to specific Avro record classes not being present on the classpath.
    *
-   * @param avro Cell schema descriptor.
-   * @throws InvalidLayoutException if the cell schema descriptor is invalid.
+   * @param schema New cell schema descriptor.
+   * @param reference Reference cell schema descriptor, or null.
+   * @throws InvalidLayoutException if the cell schema descriptor is invalid
+   *     or incompatible with the reference cell schema.
    */
-  private static void validateAvroSchema(CellSchema avro) throws InvalidLayoutException {
+  private static void validateCellSchema(CellSchema schema, CellSchema reference)
+      throws InvalidLayoutException {
+    // Validate Avro schema through loading and parsing:
     try {
-      readAvroSchema(avro);
+      readAvroSchema(schema);
     } catch (SchemaClassNotFoundException scnfe) {
-      LOG.debug(String.format("Avro schema class '%s' not found.", avro.getValue()));
+      LOG.debug(String.format("Avro schema class '%s' not found.", schema.getValue()));
     }
+
+    // Final schema storage is only valid with counters and inline schema:
+    if (schema.getStorage() == SchemaStorage.FINAL) {
+      switch (schema.getType()) {
+      case INLINE:
+      case COUNTER:
+        break;
+      default:
+        throw new InvalidLayoutException(String.format(
+            "Invalid final column schema: %s.", schema));
+      }
+    }
+
+    // Counters require schema storage final:
+    if (schema.getType() == SchemaType.COUNTER) {
+      if (schema.getStorage() != SchemaStorage.FINAL) {
+        throw new InvalidLayoutException(String.format(
+            "Invalid counter schema, storage must be final: %s.", schema));
+      }
+    }
+
+    if (null != reference) {
+      // Schema storage cannot change:
+      if (schema.getStorage() != reference.getStorage()) {
+        throw new InvalidLayoutException(String.format(
+            "Cell schema storage cannot be modified from %s to %s.",
+            reference, schema));
+      }
+
+      // Final schema cannot change:
+      if ((reference.getStorage() == SchemaStorage.FINAL)
+          && (!schema.getValue().equals(reference.getValue()))) {
+        throw new InvalidLayoutException(String.format(
+            "Final column schema cannot be modified from %s to %s.",
+            reference, schema));
+      }
+
+      // Counter is forever:
+      if ((reference.getType() == SchemaType.COUNTER) ^ (schema.getType() == SchemaType.COUNTER)) {
+        throw new InvalidLayoutException(String.format(
+            "Column schema cannot be modified from %s to %s.",
+            reference, schema));
+      }
+    }
+    // TODO(SCHEMA-2) Validate compatibility between the new Avro schema and the reference one.
   }
 
   /**
