@@ -27,6 +27,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -323,5 +324,15 @@ public class Kiji implements KijiTableFactory, Closeable {
   @Override
   public KijiTable openTable(String tableName) throws IOException {
     return new HBaseKijiTable(this, tableName, mHTableFactory);
+  }
+
+  /**
+   * @return a KijiAdmin for this Kiji instance.
+   * @throws IOException on I/O error.
+   */
+  public KijiAdmin getAdmin() throws IOException {
+    final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
+    final HBaseAdmin hbaseAdmin = hbaseFactory.getHBaseAdminFactory(getURI()).create(getConf());
+    return new KijiAdmin(hbaseAdmin, this);
   }
 }
