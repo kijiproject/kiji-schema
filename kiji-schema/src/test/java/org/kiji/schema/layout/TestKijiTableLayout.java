@@ -457,7 +457,7 @@ public class TestKijiTableLayout {
                     FamilyDesc.newBuilder()
                         .setName("family2_name")
                         .setMapSchema(CellSchema.newBuilder()
-                            .setStorage(SchemaStorage.UID)
+                            .setStorage(SchemaStorage.FINAL)
                             .setType(SchemaType.COUNTER)
                             .build())
                         .build()
@@ -473,7 +473,7 @@ public class TestKijiTableLayout {
                     FamilyDesc.newBuilder()
                         .setName("family3_name")
                         .setMapSchema(CellSchema.newBuilder()
-                            .setStorage(SchemaStorage.UID)
+                            .setStorage(SchemaStorage.FINAL)
                             .setType(SchemaType.COUNTER)
                             .build())
                         .build()
@@ -540,7 +540,7 @@ public class TestKijiTableLayout {
                     FamilyDesc.newBuilder()
                         .setName("family2_name")
                         .setMapSchema(CellSchema.newBuilder()
-                            .setStorage(SchemaStorage.UID)
+                            .setStorage(SchemaStorage.FINAL)
                             .setType(SchemaType.COUNTER)
                             .build())
                         .build()
@@ -556,7 +556,7 @@ public class TestKijiTableLayout {
                     FamilyDesc.newBuilder()
                         .setName("family_name")
                         .setMapSchema(CellSchema.newBuilder()
-                            .setStorage(SchemaStorage.UID)
+                            .setStorage(SchemaStorage.FINAL)
                             .setType(SchemaType.COUNTER)
                             .build())
                         .build()
@@ -570,7 +570,7 @@ public class TestKijiTableLayout {
     } catch (InvalidLayoutException ile) {
       // Expected:
       LOG.info("Expected duplicate family error: " + ile);
-      assertTrue(ile.toString().contains("duplicate family name 'family_name'"));
+      assertTrue(ile.getMessage().contains("duplicate family name 'family_name'"));
     }
   }
 
@@ -713,4 +713,114 @@ public class TestKijiTableLayout {
       assertTrue(ile.getMessage().contains("Invalid max versions for locality group"));
     }
   }
+
+  @Test
+  public void testFinalColumnSchema() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(RowKeyFormat.newBuilder()
+            .setEncoding(RowKeyEncoding.HASH_PREFIX)
+            .build())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .setLocalityGroups(Lists.newArrayList(
+            LocalityGroupDesc.newBuilder()
+            .setName("locality_group_name")
+            .setInMemory(false)
+            .setTtlSeconds(84600)
+            .setMaxVersions(1)
+            .setCompressionType(CompressionType.GZ)
+            .setFamilies(Lists.newArrayList(
+                FamilyDesc.newBuilder()
+                    .setName("family_name")
+                    .setColumns(Lists.newArrayList(
+                        ColumnDesc.newBuilder()
+                            .setName("column_name")
+                            .setColumnSchema(CellSchema.newBuilder()
+                                 .setStorage(SchemaStorage.FINAL)
+                                 .setType(SchemaType.INLINE)
+                                 .setValue("\"int\"")
+                                 .build())
+                            .build()))
+                    .build()))
+            .build()))
+        .build();
+    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    assertEquals(
+        SchemaStorage.FINAL,
+        layout.getCellSchema(new KijiColumnName("family_name", "column_name")).getStorage());
+  }
+
+  @Test
+  public void testFinalColumnSchemaClassInvalid() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(RowKeyFormat.newBuilder()
+            .setEncoding(RowKeyEncoding.HASH_PREFIX)
+            .build())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .setLocalityGroups(Lists.newArrayList(
+            LocalityGroupDesc.newBuilder()
+            .setName("locality_group_name")
+            .setInMemory(false)
+            .setTtlSeconds(84600)
+            .setMaxVersions(1)
+            .setCompressionType(CompressionType.GZ)
+            .setFamilies(Lists.newArrayList(
+                FamilyDesc.newBuilder()
+                    .setName("family_name")
+                    .setColumns(Lists.newArrayList(
+                        ColumnDesc.newBuilder()
+                            .setName("column_name")
+                            .setColumnSchema(CellSchema.newBuilder()
+                                 .setStorage(SchemaStorage.FINAL)
+                                 .setType(SchemaType.CLASS)
+                                 .setValue("dummy.Class")
+                                 .build())
+                            .build()))
+                    .build()))
+            .build()))
+        .build();
+    try {
+      new KijiTableLayout(desc, null);
+      fail("Final column schema must be inline");
+    } catch (InvalidLayoutException ile) {
+      assertTrue(ile.getMessage().contains("Invalid final column schema"));
+    }
+  }
+
+  @Test
+  public void testFinalColumnSchemaCounter() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(RowKeyFormat.newBuilder()
+            .setEncoding(RowKeyEncoding.HASH_PREFIX)
+            .build())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .setLocalityGroups(Lists.newArrayList(
+            LocalityGroupDesc.newBuilder()
+            .setName("locality_group_name")
+            .setInMemory(false)
+            .setTtlSeconds(84600)
+            .setMaxVersions(1)
+            .setCompressionType(CompressionType.GZ)
+            .setFamilies(Lists.newArrayList(
+                FamilyDesc.newBuilder()
+                    .setName("family_name")
+                    .setColumns(Lists.newArrayList(
+                        ColumnDesc.newBuilder()
+                            .setName("column_name")
+                            .setColumnSchema(CellSchema.newBuilder()
+                                 .setStorage(SchemaStorage.FINAL)
+                                 .setType(SchemaType.COUNTER)
+                                 .build())
+                            .build()))
+                    .build()))
+            .build()))
+        .build();
+    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    assertEquals(
+        SchemaStorage.FINAL,
+        layout.getCellSchema(new KijiColumnName("family_name", "column_name")).getStorage());
+  }
+
 }
