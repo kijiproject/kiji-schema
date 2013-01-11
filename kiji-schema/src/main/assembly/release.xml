@@ -40,6 +40,7 @@
         <include>NOTICE.txt</include>
         <include>LICENSE.txt</include>
         <include>README.md</include>
+        <include>RELEASE_NOTES.txt</include>
       </includes>
       <filtered>true</filtered>
     </fileSet>
