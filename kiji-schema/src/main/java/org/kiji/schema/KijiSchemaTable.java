@@ -22,12 +22,12 @@ package org.kiji.schema;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Objects;
 import org.apache.avro.Schema;
+import org.apache.avro.util.WeakIdentityHashMap;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import org.kiji.annotations.ApiAudience;
@@ -181,9 +181,15 @@ public abstract class KijiSchemaTable implements Closeable {
    * into JSON.
    */
   @ApiAudience.Private
-  private static class SchemaHashCache {
+  static class SchemaHashCache {
+    /**
+     * Underlying cache is a weak identity hash map:
+     * <li> We must use object IDs since Schema.hashCode() and Schema.equals() implement a
+     *      comparison that ignores doc fields or default values.
+     * <li> We must use a weak map to ensure the cache gets garbage collected properly.
+     */
     private final Map<Schema, BytesKey> mCache =
-        Collections.synchronizedMap(new HashMap<Schema, BytesKey>());
+        Collections.synchronizedMap(new WeakIdentityHashMap<Schema, BytesKey>());
 
     /**
      * Hashes an Avro schema.
