@@ -172,7 +172,6 @@
     <dependency>
       <groupId>org.kiji.annotations</groupId>
       <artifactId>annotations</artifactId>
-      <version>${annotations.version}</version>
     </dependency>
     <dependency>
       <groupId>org.kiji.delegation</groupId>

@@ -35,7 +35,6 @@
   <inceptionYear>2012</inceptionYear>
 
   <properties>
-    <annotations.version>1.0.0-rc3-SNAPSHOT</annotations.version>
     <kiji-delegation.version>1.0.0-rc3-SNAPSHOT</kiji-delegation.version>
     <kiji-platforms.version>1.0.0-rc3-SNAPSHOT</kiji-platforms.version>
   </properties>
