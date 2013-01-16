@@ -60,8 +60,10 @@ public final class KijiInstaller {
    * @param uri URI of the Kiji instance to uninstall.
    * @param conf Hadoop configuration.
    * @throws IOException on I/O error.
+   * @throws KijiInvalidNameException if the instance name is invalid or already exists.
    */
-  public static void uninstall(KijiURI uri, Configuration conf) throws IOException {
+  public static void uninstall(KijiURI uri, Configuration conf)
+      throws IOException, KijiInvalidNameException {
     uninstall(uri, HBaseFactory.Provider.get(), conf);
   }
 
@@ -76,7 +78,12 @@ public final class KijiInstaller {
    */
   public static void install(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
       throws IOException, KijiInvalidNameException {
-    final KijiConfiguration kijiConf = new KijiConfiguration(conf, uri);
+    KijiConfiguration kijiConf;
+    try {
+      kijiConf = new KijiConfiguration(conf, uri);
+    } catch (NullPointerException npe) {
+      throw new KijiInvalidNameException("No Kiji instance name specified in the URI");
+    }
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
     final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
     final LockFactory lockFactory = hbaseFactory.getLockFactory(uri, conf);
@@ -107,18 +114,26 @@ public final class KijiInstaller {
    * @param hbaseFactory Factory for HBase instances.
    * @param conf Hadoop configuration.
    * @throws IOException on I/O error.
+   * @throws KijiInvalidNameException if the instance name is invalid or doesn't exist.
    */
   public static void uninstall(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
-      throws IOException {
-    final KijiConfiguration kijiConf = new KijiConfiguration(conf, uri);
+      throws IOException, KijiInvalidNameException {
+    KijiConfiguration kijiConf;
+    try {
+      kijiConf = new KijiConfiguration(conf, uri);
+    } catch (NullPointerException npe) {
+      throw new KijiInvalidNameException("No Kiji instance name specified in the URI");
+    }
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
     final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
     final LockFactory lockFactory = hbaseFactory.getLockFactory(uri, conf);
 
     LOG.info(String.format("Removing the kiji instance '%s'.", uri.getInstance()));
 
-    final Kiji kiji = new Kiji(kijiConf, true, tableFactory, lockFactory);
+    Kiji kiji = null;
     try {
+      kiji = new Kiji(kijiConf, true, tableFactory, lockFactory);
+
       // Delete the user tables:
       final HBaseAdmin hbaseAdmin = adminFactory.create(kijiConf.getConf());
       try {
@@ -136,6 +151,9 @@ public final class KijiInstaller {
       } finally {
         IOUtils.closeQuietly(hbaseAdmin);
       }
+    } catch (NullPointerException npe) {
+      // Caused by opening the Kiji instance; it's not found.
+      throw new KijiInvalidNameException("There is no Kiji instance with URI: " + uri);
     } finally {
       IOUtils.closeQuietly(kiji);
     }
