@@ -37,11 +37,13 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
@@ -49,7 +51,6 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.tools.BaseTool;
 import org.kiji.schema.tools.CreateTableTool;
-import org.kiji.schema.tools.DeleteTableTool;
 import org.kiji.schema.tools.InstallTool;
 import org.kiji.schema.tools.KijiToolLauncher;
 import org.kiji.schema.tools.UninstallTool;
@@ -311,11 +312,14 @@ public class IntegrationHelper extends Configured {
    * @throws Exception If there is an error.
    */
   public void deleteFooTable(KijiURI kijiURI) throws Exception {
-    ToolResult result = runTool(getConf(), new DeleteTableTool(), new String[] {
-      "--kiji=" + kijiURI,
-      "--table=foo",
-      "--confirm",
-    });
-    assertEquals(0, result.getReturnCode());
+    KijiConfiguration kijiConf = new KijiConfiguration(getConf(), kijiURI.getInstance());
+    Kiji kiji = Kiji.open(kijiConf);
+    HBaseAdmin hBaseAdmin = new HBaseAdmin(getConf());
+    KijiAdmin admin = new KijiAdmin(hBaseAdmin, kiji);
+
+    admin.deleteTable("foo");
+
+    IOUtils.closeQuietly(hBaseAdmin);
+    IOUtils.closeQuietly(kiji);
   }
 }

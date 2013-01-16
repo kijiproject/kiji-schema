@@ -1,5 +1,5 @@
 org.kiji.schema.tools.CreateTableTool
-org.kiji.schema.tools.DeleteTableTool
+org.kiji.schema.tools.DeleteTool
 org.kiji.schema.tools.FlushTableTool
 org.kiji.schema.tools.HelpTool
 org.kiji.schema.tools.IncrementTool
