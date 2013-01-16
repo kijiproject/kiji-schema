@@ -137,6 +137,23 @@ public class TestKijiTablePool extends KijiClientTest {
   }
 
   @Test
+  public void testMinPoolSize() throws IOException {
+    KijiTablePool.Options options = new KijiTablePool.Options()
+        .withMinSize(3);
+    KijiTablePool pool = new KijiTablePool(mTableFactory, options);
+
+    KijiTable foo = createMock(KijiTable.class);
+    expect(foo.getName()).andReturn("foo").anyTimes();
+    expect(mTableFactory.openTable("foo")).andReturn(foo).anyTimes();
+
+    replay(foo);
+    replay(mTableFactory);
+
+    KijiTable first = pool.get("foo");
+    assertEquals("Incorrect number of connections in the pool.", 3, pool.getPoolSize("foo"));
+  }
+
+  @Test
   public void testIdleTimeout() throws IOException, InterruptedException {
     KijiTablePool.Options options = new KijiTablePool.Options()
         .withIdleTimeout(10)

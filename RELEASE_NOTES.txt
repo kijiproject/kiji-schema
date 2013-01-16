@@ -4,8 +4,8 @@
 
 Version 1.0.0-rc3
   * SCHEMA-111. Adds RELEASE_NOTES.txt
-  * SCHEMA-90. KijiURIException subclasses IOException.
-
+  * SCHEMA-90. KijiURIException subclasses IOException. 
+  * SCHEMA-128. Add minPoolSize option to KijiTablePool.
 Version 1.0.0-rc2
   * SCHEMA-93. Deprecate the org.kiji.schema.mapreduce package. This marks
       classes in this package as @Deprecated in preparation for the eventual
