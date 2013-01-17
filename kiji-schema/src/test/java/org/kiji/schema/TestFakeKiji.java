@@ -51,7 +51,7 @@ public class TestFakeKiji {
 
     KijiInstaller.install(uri, kijiConf.getConf());
 
-    final Kiji kiji = Kiji.open(uri, conf);
+    final Kiji kiji = Kiji.Factory.open(uri, conf);
 
     LOG.info(String.format("Opened fake Kiji '%s'.", kiji.getName()));
 

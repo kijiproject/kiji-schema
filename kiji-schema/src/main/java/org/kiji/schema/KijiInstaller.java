@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.impl.HBaseAdminFactory;
+import org.kiji.schema.impl.HBaseKiji;
 import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
@@ -94,7 +95,7 @@ public final class KijiInstaller {
       }
       LOG.info(String.format("Installing kiji instance '%s'.", uri));
       HBaseSystemTable.install(hbaseAdmin, kijiConf, tableFactory);
-      HBaseMetaTable.install(hbaseAdmin, kijiConf);
+      HBaseMetaTable.install(hbaseAdmin, kijiConf.getName());
       HBaseSchemaTable.install(hbaseAdmin, kijiConf, tableFactory, lockFactory);
 
     } finally {
@@ -126,7 +127,7 @@ public final class KijiInstaller {
 
     LOG.info(String.format("Removing the kiji instance '%s'.", uri.getInstance()));
 
-    final Kiji kiji = new Kiji(kijiConf, true, tableFactory, lockFactory);
+    final Kiji kiji = new HBaseKiji(kijiConf, true, tableFactory, lockFactory);
     try {
       // Delete the user tables:
       final HBaseAdmin hbaseAdmin = adminFactory.create(kijiConf.getConf());
@@ -139,7 +140,7 @@ public final class KijiInstaller {
 
         // Delete the system tables:
         HBaseSystemTable.uninstall(hbaseAdmin, kijiConf);
-        HBaseMetaTable.uninstall(hbaseAdmin, kijiConf);
+        HBaseMetaTable.uninstall(hbaseAdmin, kijiConf.getName());
         HBaseSchemaTable.uninstall(hbaseAdmin, kijiConf);
 
       } finally {

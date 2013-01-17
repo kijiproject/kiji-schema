@@ -80,7 +80,7 @@ public class KijiClientTest {
       mURI = KijiURI.parse(String.format("kiji://.fake.%d/" + instanceName, id));
       KijiInstaller.install(mURI, mConf);
 
-      mKiji = Kiji.open(mURI, mConf);
+      mKiji = Kiji.Factory.open(mURI, mConf);
       final HBaseAdmin hbaseAdmin = HBaseFactory.Provider.get()
           .getHBaseAdminFactory(getKijiURI())
           .create(mConf);

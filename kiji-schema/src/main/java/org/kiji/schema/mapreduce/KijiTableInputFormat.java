@@ -93,7 +93,7 @@ public class KijiTableInputFormat
   public List<InputSplit> getSplits(JobContext context) throws IOException {
     final Configuration conf = context.getConfiguration();
     final KijiURI inputTableURI = getInputTableURI(conf);
-    final Kiji kiji = Kiji.open(inputTableURI, conf);
+    final Kiji kiji = Kiji.Factory.open(inputTableURI, conf);
     final KijiTable table = kiji.openTable(inputTableURI.getTable());
 
     final HBaseAdmin admin =
@@ -131,7 +131,7 @@ public class KijiTableInputFormat
 
     final Configuration conf = job.getConfiguration();
     // As a precaution, be sure the table exists and can be opened.
-    final Kiji kiji = Kiji.open(tableURI, conf);
+    final Kiji kiji = Kiji.Factory.open(tableURI, conf);
     final KijiTable table = kiji.openTable(tableURI.getTable());
     IOUtils.closeQuietly(table);
     IOUtils.closeQuietly(kiji);
@@ -193,7 +193,7 @@ public class KijiTableInputFormat
 
       final Configuration conf = context.getConfiguration();
       final KijiURI inputURI = getInputTableURI(conf);
-      mKiji = Kiji.open(inputURI, conf);
+      mKiji = Kiji.Factory.open(inputURI, conf);
       mTable = mKiji.openTable(inputURI.getTable());
       mReader = mTable.openTableReader();
       mScanner = mReader.getScanner(

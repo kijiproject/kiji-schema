@@ -49,7 +49,7 @@ abstract class OpenedKijiTool extends BaseTool {
    * @throws IOException if there is an error.
    */
   protected Kiji openKiji() throws IOException {
-    return Kiji.open(getURI(), getConf());
+    return Kiji.Factory.open(getURI(), getConf());
   }
 
   /**
