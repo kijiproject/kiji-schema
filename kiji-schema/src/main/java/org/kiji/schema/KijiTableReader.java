@@ -23,10 +23,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.hadoop.util.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.filter.KijiRowFilter;
@@ -38,40 +34,7 @@ import org.kiji.schema.filter.KijiRowFilter;
  */
 @ApiAudience.Public
 @Inheritance.Sealed
-public abstract class KijiTableReader implements Closeable {
-  private static final Logger LOG = LoggerFactory.getLogger(KijiTableReader.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger(KijiTableReader.class.getName() + ".Cleanup");
-
-  /** The kiji table being read from. */
-  private KijiTable mTable;
-
-  /** The cell decoder factory to use. */
-  private KijiCellDecoderFactory mKijiCellDecoderFactory;
-
-  /** Whether the writer is open. */
-  private boolean mIsOpen;
-
-  /** For debugging finalize(). */
-  private String mConstructorStack = "";
-
-  /**
-   * Creates a reader over a kiji table.
-   *
-   * @param table The kiji table to read from.
-   */
-  protected KijiTableReader(KijiTable table) {
-    mTable = table;
-    mIsOpen = true;
-    if (CLEANUP_LOG.isDebugEnabled()) {
-      try {
-        throw new Exception();
-      } catch (Exception e) {
-        mConstructorStack = StringUtils.stringifyException(e);
-      }
-    }
-  }
-
+public interface KijiTableReader extends Closeable {
   /**
    * Retrieves data from a single row in the kiji table.
    *
@@ -82,7 +45,7 @@ public abstract class KijiTableReader implements Closeable {
    *     columns.)
    * @throws IOException If there is an IO error.
    */
-  public abstract KijiRowData get(EntityId entityId, KijiDataRequest dataRequest)
+  KijiRowData get(EntityId entityId, KijiDataRequest dataRequest)
       throws IOException;
 
   /**
@@ -95,17 +58,19 @@ public abstract class KijiTableReader implements Closeable {
    *     If a get fails, then the corresponding KijiRowData will be null (instead of empty).
    * @throws IOException If there is an IO error.
    */
-  public abstract List<KijiRowData> bulkGet(List<EntityId> entityIds, KijiDataRequest dataRequest)
+  List<KijiRowData> bulkGet(List<EntityId> entityIds, KijiDataRequest dataRequest)
       throws IOException;
 
   /**
-   * Gets the table this reads from.
+   * Gets a KijiRowScanner using default options.
    *
-   * @return The kiji table.
+   * @param dataRequest Specifies the columns of data to retrieve.
+   * @return The KijiRowScanner.
+   * @throws IOException If there is an IO error.
+   * @throws KijiDataRequestException If the data request is invalid.
    */
-  public KijiTable getTable() {
-    return mTable;
-  }
+  KijiRowScanner getScanner(KijiDataRequest dataRequest)
+      throws IOException;
 
   /**
    * Gets a KijiRowScanner using default options.
@@ -119,10 +84,8 @@ public abstract class KijiTableReader implements Closeable {
    * @throws IOException If there is an IO error.
    * @throws KijiDataRequestException If the data request is invalid.
    */
-  public KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow,
-      EntityId stopRow) throws IOException {
-    return getScanner(dataRequest, startRow, stopRow, null, new HBaseScanOptions());
-  }
+  KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow, EntityId stopRow)
+      throws IOException;
 
   /**
    * Gets a KijiRowScanner using the specified HBaseScanOptions.
@@ -137,11 +100,8 @@ public abstract class KijiTableReader implements Closeable {
    * @throws IOException If there is an IO error.
    * @throws KijiDataRequestException If the data request is invalid.
    */
-  public KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow,
-      EntityId stopRow, HBaseScanOptions scanOptions)
-      throws IOException {
-    return getScanner(dataRequest, startRow, stopRow, null, scanOptions);
-  }
+  KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow, EntityId stopRow,
+      HBaseScanOptions scanOptions) throws IOException;
 
   /**
    * Gets a KijiRowScanner using a KijiRowFilter and the specified HBaseScanOptions.
@@ -157,54 +117,6 @@ public abstract class KijiTableReader implements Closeable {
    * @throws IOException If there is an IO error.
    * @throws KijiDataRequestException If the data request is invalid.
    */
-  public abstract KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow,
-      EntityId stopRow, KijiRowFilter rowFilter, HBaseScanOptions scanOptions)
-      throws IOException;
-
-  /**
-   * Gets the KijiCellDecoderFactory to use for decoding KijiCells.
-   *
-   * Defaults to SpecificCellDecoderFactory (creating it if necessary).
-   * This behavior can be changed by calling
-   *   {@link #setKijiCellDecoderFactory(KijiCellDecoderFactory)}
-   * or overriding this method in a subclass.
-   *
-   * @return The KijiCellDecoderFactory to be used when retrieving a KijiCell.
-   * @throws IOException if there is an error retrieving the KijiSchemaTable
-   */
-  public KijiCellDecoderFactory getKijiCellDecoderFactory() throws IOException {
-    if (mKijiCellDecoderFactory == null) {
-      mKijiCellDecoderFactory = SpecificCellDecoderFactory.get();
-    }
-    return mKijiCellDecoderFactory;
-  }
-
-  /**
-   * Sets the KijiCellDecoderFactory to be used for retrieving a KijiCell.
-   *
-   * @param kijiCellDecoderFactory the KijiCellDecoderFactory to use for decoding KijiCells.
-   */
-  public void setKijiCellDecoderFactory(KijiCellDecoderFactory kijiCellDecoderFactory) {
-    this.mKijiCellDecoderFactory = kijiCellDecoderFactory;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public void close() throws IOException {
-    if (!mIsOpen) {
-      LOG.warn("Called close() on KijiTableWriter more than once.");
-    }
-    mIsOpen = false;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void finalize() throws Throwable {
-    if (mIsOpen) {
-      CLEANUP_LOG.warn("Closing KijiTableReader in finalize(). You should close it explicitly.");
-      CLEANUP_LOG.debug(mConstructorStack);
-      close();
-    }
-    super.finalize();
-  }
+  KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow, EntityId stopRow,
+      KijiRowFilter rowFilter, HBaseScanOptions scanOptions) throws IOException;
 }
