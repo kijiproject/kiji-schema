@@ -40,6 +40,7 @@ import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiTableKeyValueDatabase;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.KeyValueBackupEntry;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
@@ -237,13 +238,13 @@ public class HBaseMetaTable extends KijiMetaTable {
    * Install the meta table into a Kiji instance.
    *
    * @param admin The HBase Admin interface for the HBase cluster to install into.
-   * @param kijiConfiguration The Kiji configuration.
+   * @param uri The uri of the Kiji instance to install.
    * @throws IOException If there is an error.
    */
-  public static void install(HBaseAdmin admin, KijiConfiguration kijiConfiguration)
+  public static void install(HBaseAdmin admin, KijiURI uri)
     throws IOException {
     HTableDescriptor tableDescriptor = new HTableDescriptor(
-      KijiManagedHBaseTableName.getMetaTableName(kijiConfiguration.getName()).toString());
+      KijiManagedHBaseTableName.getMetaTableName(uri.getInstance()).toString());
     tableDescriptor.addFamily(
       HBaseTableLayoutDatabase.getHColumnDescriptor(LAYOUT_COLUMN_FAMILY));
     tableDescriptor.addFamily(
@@ -255,12 +256,12 @@ public class HBaseMetaTable extends KijiMetaTable {
    * Removes the meta table from HBase.
    *
    * @param admin The HBase admin object.
-   * @param kijiConf The configuration for the Kiji instance to uninstall.
+   * @param uri The uri of the Kiji instance to uninstall.
    * @throws IOException If there is an error.
    */
-  public static void uninstall(HBaseAdmin admin, KijiConfiguration kijiConf)
+  public static void uninstall(HBaseAdmin admin, KijiURI uri)
     throws IOException {
-    String tableName = KijiManagedHBaseTableName.getMetaTableName(kijiConf.getName()).toString();
+    String tableName = KijiManagedHBaseTableName.getMetaTableName(uri.getInstance()).toString();
     admin.disableTable(tableName);
     admin.deleteTable(tableName);
   }

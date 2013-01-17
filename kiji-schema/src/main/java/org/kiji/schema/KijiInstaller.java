@@ -86,7 +86,7 @@ public final class KijiInstaller {
     final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
     final LockFactory lockFactory = hbaseFactory.getLockFactory(uri, conf);
 
-    final HBaseAdmin hbaseAdmin = adminFactory.create(kijiConf.getConf());
+    final HBaseAdmin hbaseAdmin = adminFactory.create(conf);
     try {
       if (kijiConf.exists(hbaseAdmin)) {
         throw new KijiAlreadyExistsException(String.format(
@@ -94,7 +94,7 @@ public final class KijiInstaller {
       }
       LOG.info(String.format("Installing kiji instance '%s'.", uri));
       HBaseSystemTable.install(hbaseAdmin, kijiConf, tableFactory);
-      HBaseMetaTable.install(hbaseAdmin, kijiConf);
+      HBaseMetaTable.install(hbaseAdmin, uri);
       HBaseSchemaTable.install(hbaseAdmin, kijiConf, tableFactory, lockFactory);
 
     } finally {
@@ -121,15 +121,13 @@ public final class KijiInstaller {
     }
     final KijiConfiguration kijiConf = new KijiConfiguration(conf, uri);
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
-    final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
-    final LockFactory lockFactory = hbaseFactory.getLockFactory(uri, conf);
 
     LOG.info(String.format("Removing the kiji instance '%s'.", uri.getInstance()));
 
-    final Kiji kiji = new Kiji(kijiConf, true, tableFactory, lockFactory);
+    final Kiji kiji = Kiji.Factory.open(uri, conf);
     try {
       // Delete the user tables:
-      final HBaseAdmin hbaseAdmin = adminFactory.create(kijiConf.getConf());
+      final HBaseAdmin hbaseAdmin = adminFactory.create(conf);
       try {
         final KijiAdmin kijiAdmin = new KijiAdmin(hbaseAdmin, kiji);
         for (String tableName : kijiAdmin.getTableNames()) {
@@ -139,7 +137,7 @@ public final class KijiInstaller {
 
         // Delete the system tables:
         HBaseSystemTable.uninstall(hbaseAdmin, kijiConf);
-        HBaseMetaTable.uninstall(hbaseAdmin, kijiConf);
+        HBaseMetaTable.uninstall(hbaseAdmin, uri);
         HBaseSchemaTable.uninstall(hbaseAdmin, kijiConf);
 
       } finally {

@@ -261,7 +261,7 @@ public class IntegrationHelper extends Configured {
 
     // Add data to foo table.
     final KijiConfiguration kijiConf = new KijiConfiguration(getConf(), kijiURI.getInstance());
-    final Kiji kiji = Kiji.open(kijiConf);
+    final Kiji kiji = Kiji.Factory.open(kijiConf);
     final KijiTable table = kiji.openTable("foo");
     final KijiTableWriter fooWriter = table.openTableWriter();
     try {
@@ -313,7 +313,7 @@ public class IntegrationHelper extends Configured {
    */
   public void deleteFooTable(KijiURI kijiURI) throws Exception {
     KijiConfiguration kijiConf = new KijiConfiguration(getConf(), kijiURI.getInstance());
-    Kiji kiji = Kiji.open(kijiConf);
+    Kiji kiji = Kiji.Factory.open(kijiConf);
     HBaseAdmin hBaseAdmin = new HBaseAdmin(getConf());
     KijiAdmin admin = new KijiAdmin(hBaseAdmin, kiji);
 

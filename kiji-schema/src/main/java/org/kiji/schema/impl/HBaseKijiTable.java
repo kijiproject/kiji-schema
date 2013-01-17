@@ -21,6 +21,7 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HTableInterface;
 
@@ -59,11 +60,12 @@ public class HBaseKijiTable extends AbstractKijiTable {
    *
    * @param kiji The Kiji instance.
    * @param name The name of the Kiji user-space table to open.
+   * @param conf The Hadoop configuration object.
    *
    * @throws IOException On an HBase error.
    */
-  public HBaseKijiTable(Kiji kiji, String name) throws IOException {
-    this(kiji, name, DefaultHTableInterfaceFactory.get());
+  HBaseKijiTable(Kiji kiji, String name, Configuration conf) throws IOException {
+    this(kiji, name, conf, DefaultHTableInterfaceFactory.get());
   }
 
   /**
@@ -71,16 +73,17 @@ public class HBaseKijiTable extends AbstractKijiTable {
    *
    * @param kiji The Kiji instance.
    * @param name The name of the Kiji user-space table to open.
+   * @param conf The Hadoop configuration object.
    * @param htableFactory A factory that creates HTable objects.
    *
    * @throws IOException On an HBase error.
    */
-  public HBaseKijiTable(Kiji kiji, String name, HTableInterfaceFactory htableFactory)
+  HBaseKijiTable(Kiji kiji, String name, Configuration conf, HTableInterfaceFactory htableFactory)
       throws IOException {
     super(kiji, name);
     try {
-      mHTable = htableFactory.create(kiji.getConf(),
-          KijiManagedHBaseTableName.getKijiTableName(kiji.getName(), name).toString());
+      mHTable = htableFactory.create(conf,
+          KijiManagedHBaseTableName.getKijiTableName(kiji.getURI().getInstance(), name).toString());
     } catch (TableNotFoundException e) {
       super.close();
       throw new KijiTableNotFoundException(name);

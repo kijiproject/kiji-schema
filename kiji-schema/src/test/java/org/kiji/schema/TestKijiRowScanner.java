@@ -19,137 +19,69 @@
 
 package org.kiji.schema;
 
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
-import static org.kiji.schema.util.ScanEquals.eqScan;
-
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Map;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
+import org.apache.commons.io.IOUtils;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
-import org.kiji.schema.impl.HBaseDataRequestAdapter;
-import org.kiji.schema.impl.HBaseKijiTable;
-import org.kiji.schema.impl.HTableInterfaceFactory;
-import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.util.EnvironmentBuilder;
 
-public class TestKijiRowScanner extends KijiClientTest {
+public class TestKijiRowScanner {
+  private Kiji mKiji;
+  private KijiTable mTable;
+  private KijiTableReader mReader;
+
   @Before
-  public void setupLayout() throws Exception {
-    getKiji().getMetaTable()
-        .updateTableLayout("table", KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
+  public void setupEnvironment() throws Exception {
+    // TODO: Put this in a withInstance() method.
+    final String instance = java.util.UUID.randomUUID().toString().replace('-', 'x');
+
+    // Get the test table layouts.
+    final KijiTableLayout layout = new KijiTableLayout(
+        KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST), null);
+
+    // Populate the environment.
+    Map<String, Kiji> environment = new EnvironmentBuilder()
+        .withInstance(instance)
+            .withTable("user", layout)
+                .withRow("foo")
+                    .withFamily("info")
+                        .withQualifier("name").withValue(1L, "foo-val")
+                .withRow("bar")
+                    .withFamily("info")
+                        .withQualifier("name").withValue(1L, "bar-val")
+        .build();
+
+    // Fill local variables.
+    mKiji = environment.get(instance);
+    mTable = mKiji.openTable("user");
+    mReader = mTable.openTableReader();
+  }
+
+  @After
+  public void cleanupEnvironment() {
+    IOUtils.closeQuietly(mReader);
+    IOUtils.closeQuietly(mTable);
+    IOUtils.closeQuietly(mKiji);
   }
 
   @Test
   public void testScanner() throws Exception {
-    // Create a mock htable.
-    final HTableInterface htable = createMock(HTableInterface.class);
+    final KijiDataRequest request = new KijiDataRequest()
+        .addColumn(new KijiDataRequest.Column("info", "name"));
+    final Iterator<KijiRowData> scanner = mReader.getScanner(request).iterator();
 
-    // Create the kiji table.
-    HBaseKijiTable table = new HBaseKijiTable(getKiji(), "table", new HTableInterfaceFactory() {
-      @Override
-      public HTableInterface create(Configuration conf, String hbaseTableName) throws IOException {
-        return htable;
-      }
-    });
+    final String actual1 = scanner.next().getValue("info", "name", 1L).toString();
+    final String actual2 = scanner.next().getValue("info", "name", 1L).toString();
 
-    final KijiDataRequest dataRequest = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("family", "column"));
-
-    // Construct the expected get request.
-    final HBaseDataRequestAdapter dataRequestAdapter = new HBaseDataRequestAdapter(dataRequest);
-    final KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
-    final Scan expectedScan = dataRequestAdapter.toScan(tableLayout);
-
-    expectedScan.setStartRow(table.getEntityId("foo").getHBaseRowKey());
-
-    final ResultScanner cannedResultScanner = createMock(ResultScanner.class);
-    final ArrayList<Result> cannedIterable = new ArrayList<Result>();
-    final ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(tableLayout);
-    final KijiColumnName column = new KijiColumnName("family:column");
-    final HBaseColumnName hcolumn = columnNameTranslator.toHBaseColumnName(column);
-
-    final CellSpec cellSpec = tableLayout.getCellSpec(column)
-        .setSchemaTable(getKiji().getSchemaTable());
-    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
-
-    final Result cannedResult1 = new Result(new KeyValue[] {
-      new KeyValue(table.getEntityId("foo").getHBaseRowKey(),
-          hcolumn.getFamily(),
-          hcolumn.getQualifier(),
-          encoder.encode("a")),
-    });
-
-    final Result cannedResult2 = new Result(new KeyValue[] {
-      new KeyValue(table.getEntityId("foo").getHBaseRowKey(),
-          hcolumn.getFamily(),
-          hcolumn.getQualifier(),
-          encoder.encode("b")),
-    });
-
-    final Result cannedResult3 = new Result(new KeyValue[] {
-      new KeyValue(table.getEntityId("foo").getHBaseRowKey(),
-          hcolumn.getFamily(),
-          hcolumn.getQualifier(),
-          encoder.encode("c")),
-    });
-
-    cannedIterable.add(cannedResult1);
-    cannedIterable.add(cannedResult2);
-    cannedIterable.add(cannedResult3);
-
-    // Set the expectation.
-    expect(htable.getScanner(eqScan(expectedScan))).andReturn(cannedResultScanner);
-    expect(cannedResultScanner.iterator()).andReturn(cannedIterable.listIterator());
-    expect(cannedResultScanner.iterator()).andReturn(cannedIterable.listIterator());
-    cannedResultScanner.close();
-    replay(cannedResultScanner);
-    htable.close();
-    replay(htable);
-
-    KijiTableReader reader = table.openTableReader();
-    KijiRowScanner scanner = reader.getScanner(dataRequest, table.getEntityId("foo"), null);
-    Iterator<KijiRowData> iterator = scanner.iterator();
-
-    assertTrue(iterator.hasNext());
-    assertEquals("a", iterator.next().getMostRecentValue("family", "column").toString());
-    assertTrue(iterator.hasNext());
-    assertEquals("b", iterator.next().getMostRecentValue("family", "column").toString());
-
-    // Open another iterator on the scanner.
-    String sum = "";
-    for (KijiRowData kijiRowData : scanner) {
-      sum += kijiRowData.getMostRecentValue("family", "column").toString();
-    }
-    assertEquals("abc", sum);
-
-    // Test original iterator continues as expected.
-    assertTrue(iterator.hasNext());
-    assertEquals("c", iterator.next().getMostRecentValue("family", "column").toString());
-    assertTrue(!iterator.hasNext());
-
-    scanner.close();
-    reader.close();
-    table.close();
-
-    verify(htable);
-    verify(cannedResultScanner);
+    assertEquals("bar-val", actual1);
+    assertEquals("foo-val", actual2);
   }
 }

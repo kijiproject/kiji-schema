@@ -311,7 +311,7 @@ public final class DeleteTool extends VersionValidatedTool {
   protected void setup() throws Exception {
     super.setup();
     mHBaseAdmin = new HBaseAdmin(getConf());
-    mKiji = Kiji.open(new KijiConfiguration(getConf(), mInstanceName));
+    mKiji = Kiji.Factory.open(new KijiConfiguration(getConf(), mInstanceName));
     mTable = mKiji.openTable(mTableName);
     mWriter = mTable.openTableWriter();
     mAdmin = new KijiAdmin(mHBaseAdmin, getKiji());

@@ -434,7 +434,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
   @Test
   public void testDeleteExact() throws Exception {
     getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
-    Kiji testKiji = Kiji.open(getKijiURI(), getIntegrationHelper()
+    Kiji testKiji = Kiji.Factory.open(getKijiURI(), getIntegrationHelper()
       .getConf());
     KijiTable testTable = testKiji.openTable("foo");
     KijiTableWriter testWriter = testTable.openTableWriter();
@@ -470,7 +470,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
   @Test
   public void testDeleteiUpTo() throws Exception {
     getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
-    Kiji testKiji = Kiji.open(new KijiConfiguration(getIntegrationHelper().getConf(),
+    Kiji testKiji = Kiji.Factory.open(new KijiConfiguration(getIntegrationHelper().getConf(),
       getKijiURI().getInstance()));
     KijiTable testTable = testKiji.openTable("foo");
     KijiTableWriter testWriter = testTable.openTableWriter();

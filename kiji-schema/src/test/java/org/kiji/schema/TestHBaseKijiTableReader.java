@@ -19,245 +19,87 @@
 
 package org.kiji.schema;
 
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
-import static org.kiji.schema.util.GetEquals.eqGet;
-import static org.kiji.schema.util.ListGetEquals.eqListGet;
+import java.util.Map;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.commons.io.IOUtils;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
-import org.kiji.schema.impl.HBaseKijiTable;
-import org.kiji.schema.impl.HTableInterfaceFactory;
-import org.kiji.schema.layout.ColumnNameTranslator;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.util.EnvironmentBuilder;
 
-public class TestHBaseKijiTableReader extends KijiClientTest {
+public class TestHBaseKijiTableReader {
+  private Kiji mKiji;
+  private KijiTable mTable;
+  private KijiTableReader mReader;
+
   @Before
-  public void setupLayouts() throws Exception {
-    getKiji().getMetaTable()
-        .updateTableLayout("table", KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
-    getKiji().getMetaTable()
-        .updateTableLayout("user", KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST));
+  public void setupEnvironment() throws Exception {
+    // TODO: Put this in a withInstance() method.
+    final String instance = java.util.UUID.randomUUID().toString().replace('-', 'x');
+
+    // Get the test table layouts.
+    final KijiTableLayout layout = new KijiTableLayout(
+        KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST), null);
+
+    // Populate the environment.
+    Map<String, Kiji> environment = new EnvironmentBuilder()
+        .withInstance(instance)
+            .withTable("user", layout)
+                .withRow("foo")
+                    .withFamily("info")
+                        .withQualifier("name").withValue(1L, "foo-val")
+                        .withQualifier("visits").withValue(1L, 42L)
+                .withRow("bar")
+                    .withFamily("info")
+                        .withQualifier("name").withValue(1L, "bar-val")
+                        .withQualifier("visits").withValue(1L, 100L)
+        .build();
+
+    // Fill local variables.
+    mKiji = environment.get(instance);
+    mTable = mKiji.openTable("user");
+    mReader = mTable.openTableReader();
+  }
+
+  @After
+  public void cleanupEnvironment() {
+    IOUtils.closeQuietly(mReader);
+    IOUtils.closeQuietly(mTable);
+    IOUtils.closeQuietly(mKiji);
   }
 
   @Test
   public void testGet() throws Exception {
-    // Create a mock htable.
-    final HTableInterface htable = createMock(HTableInterface.class);
-
-    // Create the kiji table.
-    HBaseKijiTable table = new HBaseKijiTable(getKiji(), "table", new HTableInterfaceFactory() {
-      @Override
-      public HTableInterface create(Configuration conf, String hbaseTableName) throws IOException {
-        return htable;
-      }
-    });
-
-    // Construct the expected get request.
-    Get expectedGet = new Get(table.getEntityId("foo").getHBaseRowKey());
-    final ColumnNameTranslator columnNameTranslator =
-        new ColumnNameTranslator(getKiji().getMetaTable().getTableLayout("table"));
-    final KijiColumnName column = new KijiColumnName("family:column");
-    final HBaseColumnName hcolumn = columnNameTranslator.toHBaseColumnName(column);
-    expectedGet.addColumn(hcolumn.getFamily(), hcolumn.getQualifier());
-
-    // And the canned result response.
-    final CellSpec cellSpec = columnNameTranslator.getTableLayout().getCellSpec(column)
-        .setSchemaTable(getKiji().getSchemaTable());
-    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
-
-    Result cannedResult = new Result(new KeyValue[] {
-      new KeyValue(
-          table.getEntityId("foo").getHBaseRowKey(),
-          hcolumn.getFamily(),
-          hcolumn.getQualifier(),
-          encoder.encode("Bob")),
-    });
-
-    // Set the expectation.
-    expect(htable.get(eqGet(expectedGet))).andReturn(cannedResult);
-    htable.close();
-
-    replay(htable);
-
-    KijiTableReader reader = table.openTableReader();
-    KijiDataRequest dataRequest = new KijiDataRequest();
-    dataRequest.addColumn(new KijiDataRequest.Column("family", "column"));
-    KijiRowData rowData = reader.get(table.getEntityId("foo"), dataRequest);
-
-    // Verify that the returned row data is as expected.
-    assertTrue(rowData.containsColumn("family", "column"));
-    assertEquals("Bob", rowData.getMostRecentValue("family", "column").toString());
-
-    reader.close();
-    table.close();
-
-    verify(htable);
+    final EntityId entityId = mTable.getEntityId("foo");
+    final KijiDataRequest request = new KijiDataRequest()
+        .addColumn(new KijiDataRequest.Column("info", "name"));
+    final String actual = mReader.get(entityId, request).getValue("info", "name", 1L).toString();
+    assertEquals("foo-val", actual);
   }
 
   @Test
   public void testGetCounter() throws Exception {
-    // Create a mock htable so we can verify that the reader delegates the correct get() calls.
-    final HTableInterface htable = createMock(HTableInterface.class);
-
-    // Create the kiji table.
-    HBaseKijiTable table = new HBaseKijiTable(getKiji(), "user", new HTableInterfaceFactory() {
-      @Override
-      public HTableInterface create(Configuration conf, String hbaseTableName) throws IOException {
-        return htable;
-      }
-    });
-
-    // Set the expected calls onto the mock htable.
-    Get expectedGet = new Get(table.getEntityId("foo").getHBaseRowKey());
-    ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(
-        getKiji().getMetaTable().getTableLayout("user"));
-    HBaseColumnName hcolumn = columnNameTranslator.toHBaseColumnName(
-        new KijiColumnName("info:visits"));
-    expectedGet.addColumn(hcolumn.getFamily(), hcolumn.getQualifier());
-    Result cannedResult = new Result(new KeyValue[] {
-        new KeyValue(
-            table.getEntityId("foo").getHBaseRowKey(),
-            hcolumn.getFamily(),
-            hcolumn.getQualifier(),
-            Bytes.toBytes(42L)),
-    });
-
-    expect(htable.get(eqGet(expectedGet))).andReturn(cannedResult);
-    htable.close();
-    replay(htable);
-
-    // Read the counter!
-    KijiTableReader reader = table.openTableReader();
-    KijiDataRequest dataRequest = new KijiDataRequest()
+    final EntityId entityId = mTable.getEntityId("foo");
+    final KijiDataRequest request = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("info", "visits"));
-    KijiRowData rowData = reader.get(table.getEntityId("foo"), dataRequest);
-
-    // Verify that the returned row data is as expected.
-    assertTrue(rowData.containsColumn("info", "visits"));
-    assertEquals(42L, rowData.getCounter("info", "visits").getValue());
-
-    reader.close();
-    table.close();
-
-    verify(htable);
+    final long actual = mReader.get(entityId, request).getCounter("info", "visits").getValue();
+    assertEquals(42L, actual);
   }
 
   @Test
   public void testBulkGet() throws Exception {
-    // Note: HBaseKijiTableReader delegates work to get(EntityId, KijiDataRequest) when
-    // only one item is passed in, thus this test must request multiple ids in order
-    // to actually test the bulk get method.
-
-    final HTableInterface htable = createMock(HTableInterface.class);
-    // Create the kiji table.
-    HBaseKijiTable table = new HBaseKijiTable(getKiji(), "table", new HTableInterfaceFactory() {
-      @Override
-      public HTableInterface create(Configuration conf, String hbaseTableName) throws IOException {
-        return htable;
-      }
-    });
-    KijiTableReader reader = table.openTableReader();
-    // 1a- The backing HTable (mocked as 'htable') should expect a single bulk get request:
-    ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(
-        getKiji().getMetaTable().getTableLayout("table"));
-
-    List<Get> expectedGets = new ArrayList<Get>(2);
-    expectedGets.add(makeHBaseGet("FOO", "family:column", table, columnNameTranslator));
-    expectedGets.add(makeHBaseGet("BAR", "family:column", table, columnNameTranslator));
-
-    Result[] cannedResults = new Result[] {
-        makeHBaseResult("FOO", "family:column", "foo-val", table, columnNameTranslator),
-        makeHBaseResult("BAR", "family:column", "bar-val", table, columnNameTranslator),
-    };
-
-    expect(htable.get(eqListGet(expectedGets))).andReturn(cannedResults);
-    htable.close();
-
-    replay(htable);
-
-    // Build the bulk get request.
-    KijiDataRequest dataRequest = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("family", "column"));
-    List<EntityId> entityIds = new ArrayList<EntityId>(2);
-    entityIds.add(table.getEntityId("FOO"));
-    entityIds.add(table.getEntityId("BAR"));
-    List<KijiRowData> listRowData = reader.bulkGet(entityIds, dataRequest);
-
-    assertEquals(2, listRowData.size());
-    assertEquals("foo-val", listRowData.get(0).getMostRecentValue("family", "column").toString());
-    assertEquals("bar-val", listRowData.get(1).getMostRecentValue("family", "column").toString());
-
-    table.close();
-    reader.close();
-
-    verify(htable);
-  }
-
-  /**
-   * Creates an hbase Get for a single entityId, and column.
-   *
-   * @param kijiRowKey Kiji row key to request.
-   * @param columnName The kiji column name to create a Get for.
-   * @param table The table that converts a kiji entity-id into an hbase row-id.
-   * @param translator The ColumnNameTranslator to use when converting a kiji-name to an
-   *     hbase name.
-   * @return A Get for this column.
-   */
-  private static Get makeHBaseGet(String kijiRowKey, String columnName,
-      KijiTable table, ColumnNameTranslator translator) throws IOException {
-
-    final EntityId entityId = table.getEntityIdFactory().fromKijiRowKey(kijiRowKey);
-    Get get = new Get(entityId.getHBaseRowKey());
-    HBaseColumnName hColumn = translator.toHBaseColumnName(new KijiColumnName(columnName));
-    get.addColumn(hColumn.getFamily(), hColumn.getQualifier());
-    return get;
-  }
-
-  /**
-   * Creates an hbase Result for a single entityId, and column, with
-   * CharSequence value specified by <code>cellValue</code>.
-   *
-   * @param kijiRowKey Kiji row key to request.
-   * @param columnName The kiji column name to create a Get for.
-   * @param cellValue The (String) value of the cell to return.
-   * @param table The table that converts a kiji entity-id into an hbase row-id.
-   * @param translator The ColumnNameTranslator to use when converting a kiji-name to an
-   *     hbase name.
-   */
-  private Result makeHBaseResult(String kijiRowKey, String columnName, String cellValue,
-      KijiTable table, ColumnNameTranslator translator) throws IOException {
-    final KijiColumnName column = new KijiColumnName(columnName);
-    final HBaseColumnName hColumn = translator.toHBaseColumnName(column);
-    final CellSpec cellSpec = translator.getTableLayout().getCellSpec(column)
-        .setSchemaTable(getKiji().getSchemaTable());
-    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
-    final byte[] encodedKijiCell = encoder.encode(cellValue);
-
-    final EntityId entityId = table.getEntityIdFactory().fromKijiRowKey(kijiRowKey);
-    return new Result(new KeyValue[] {
-        new KeyValue(entityId.getHBaseRowKey(),
-            hColumn.getFamily(),
-            hColumn.getQualifier(),
-            encodedKijiCell),
-    });
+    final EntityId entityId1 = mTable.getEntityId("foo");
+    final EntityId entityId2 = mTable.getEntityId("bar");
+    final KijiDataRequest request = new KijiDataRequest()
+        .addColumn(new KijiDataRequest.Column("info", "name"));
+    final String actual1 = mReader.get(entityId1, request).getValue("info", "name", 1L).toString();
+    final String actual2 = mReader.get(entityId2, request).getValue("info", "name", 1L).toString();
+    assertEquals("foo-val", actual1);
+    assertEquals("bar-val", actual2);
   }
 }

@@ -46,7 +46,7 @@ public abstract class VersionValidatedTool extends OpenedKijiTool {
   protected Kiji openKiji() throws IOException {
     KijiConfiguration kijiConf = new KijiConfiguration(getConf(), getURI().getInstance());
     try {
-      return Kiji.open(kijiConf);
+      return Kiji.Factory.open(kijiConf);
     } catch (IncompatibleKijiVersionException iwve) {
       System.err.println("Error: " + iwve.getMessage());
       System.err.println("If this is a new client package, try to update your table layout.");

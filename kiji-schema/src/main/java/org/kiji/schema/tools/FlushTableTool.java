@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiManagedHBaseTableName;
 
 /**
@@ -82,28 +81,28 @@ public final class FlushTableTool extends VersionValidatedTool {
    * Flushes all metadata tables.
    *
    * @param hbaseAdmin An hbase admin utility.
-   * @param kijiConfiguration The kiji configuration.
+   * @param instanceName The name of the Kiji instance.
    * @throws IOException If there is an error.
    * @throws InterruptedException If the thread is interrupted.
    */
-  private void flushMetaTables(HBaseAdmin hbaseAdmin, KijiConfiguration kijiConfiguration)
+  private void flushMetaTables(HBaseAdmin hbaseAdmin, String instanceName)
       throws IOException, InterruptedException {
     LOG.debug("Flushing schema hash table");
     KijiManagedHBaseTableName hbaseTableName = KijiManagedHBaseTableName.getSchemaHashTableName(
-        kijiConfiguration.getName());
+        instanceName);
     hbaseAdmin.flush(hbaseTableName.toString());
 
     LOG.debug("Flushing schema id table");
-    hbaseTableName = KijiManagedHBaseTableName.getSchemaIdTableName(kijiConfiguration.getName());
+    hbaseTableName = KijiManagedHBaseTableName.getSchemaIdTableName(instanceName);
     hbaseAdmin.flush(hbaseTableName.toString());
 
     LOG.debug("Flushing meta table");
     hbaseTableName = KijiManagedHBaseTableName.getMetaTableName(
-        kijiConfiguration.getName());
+        instanceName);
     hbaseAdmin.flush(hbaseTableName.toString());
 
     LOG.debug("Flushing system table");
-    hbaseTableName = KijiManagedHBaseTableName.getSystemTableName(kijiConfiguration.getName());
+    hbaseTableName = KijiManagedHBaseTableName.getSystemTableName(instanceName);
     hbaseAdmin.flush(hbaseTableName.toString());
 
     LOG.debug("Flushing -ROOT-");
@@ -117,15 +116,15 @@ public final class FlushTableTool extends VersionValidatedTool {
    * Flushes a kiji table with the name 'tableName'.
    *
    * @param hbaseAdmin An hbase admin utility.
-   * @param kijiConfiguration The kiji configuration.
+   * @param instanceName The name of the kiji instance to flush.
    * @param tableName The name of the kiji table to flush.
    * @throws IOException If there is an error.
    * @throws InterruptedException If the thread is interrupted.
    */
-  private void flushTable(HBaseAdmin hbaseAdmin, KijiConfiguration kijiConfiguration,
-      String tableName) throws IOException, InterruptedException {
+  private void flushTable(HBaseAdmin hbaseAdmin, String instanceName, String tableName)
+      throws IOException, InterruptedException {
     KijiManagedHBaseTableName hbaseTableName = KijiManagedHBaseTableName.getKijiTableName(
-        kijiConfiguration.getName(), tableName);
+        instanceName, tableName);
     hbaseAdmin.flush(hbaseTableName.toString());
   }
 
@@ -149,13 +148,13 @@ public final class FlushTableTool extends VersionValidatedTool {
     if (mFlushMeta) {
       getPrintStream().println("Flushing metadata tables for kiji instance: "
           + getURI().toString());
-      flushMetaTables(mHBaseAdmin, getKiji().getKijiConf());
+      flushMetaTables(mHBaseAdmin, getKiji().getURI().getInstance());
     }
 
     if (null != mTableName) {
       setURI(getURI().setTableName(mTableName));
       getPrintStream().println("Flushing table: " + getURI().toString());
-      flushTable(mHBaseAdmin, getKiji().getKijiConf(), mTableName);
+      flushTable(mHBaseAdmin, getKiji().getURI().getInstance(), mTableName);
     }
 
     getPrintStream().println("Flush operations successfully enqueued.");
