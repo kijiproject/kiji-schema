@@ -27,11 +27,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiConfiguration;
+import org.kiji.schema.KijiTable;
+import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -144,14 +149,12 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
         StringUtils.countMatches(ls3NameResult.getStdoutUtf8(), "\n"));
 
     // Delete the foo table.
-    ToolResult deleteResult = runTool(new DeleteTableTool(), new String[] {
+    ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
+      "--instance=" + getKijiURI().getInstance(),
       "--table=foo",
       "--confirm",
     });
     assertEquals(0, deleteResult.getReturnCode());
-    assertEquals("Deleting kiji table: " + getKijiURI().toString() + "foo/\n"
-        + "Deleted kiji table: " + getKijiURI().toString() + "foo/\n",
-        deleteResult.getStdoutUtf8());
 
 
     // Make sure there are only the standard tables left.
@@ -234,14 +237,12 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       assertTrue(e.getMessage().contains("Invalid layout update from reference row keys format"));
     } finally {
       // Delete the table.
-      ToolResult deleteResult = runTool(new DeleteTableTool(), new String[] {
+      ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
+            "--instance=" + getKijiURI().getInstance(),
             "--table=foo",
             "--confirm",
           });
       assertEquals(0, deleteResult.getReturnCode());
-      assertEquals("Deleting kiji table: " + getKijiURI().toString() + "foo/\n"
-          + "Deleted kiji table: " + getKijiURI().toString() + "foo/\n",
-          deleteResult.getStdoutUtf8());
     }
 
   }
@@ -262,14 +263,12 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
         createFooTableResult.getStdoutUtf8());
 
     // Delete the table.
-    ToolResult deleteResult = runTool(new DeleteTableTool(), new String[] {
+    ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
+          "--instance=" + getKijiURI().getInstance(),
           "--table=foo",
           "--confirm",
         });
     assertEquals(0, deleteResult.getReturnCode());
-    assertEquals("Deleting kiji table: " + getKijiURI().toString() + "foo/\n"
-        + "Deleted kiji table: " + getKijiURI().toString() + "foo/\n",
-        deleteResult.getStdoutUtf8());
   }
 
   @Test(expected=RuntimeException.class)
@@ -316,14 +315,12 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
         createFooTableResult.getStdoutUtf8());
 
     // Delete the table.
-    ToolResult deleteResult = runTool(new DeleteTableTool(), new String[] {
+    ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
+          "--instance=" + getKijiURI().getInstance(),
           "--table=" + tableName,
           "--confirm",
         });
     assertEquals(0, deleteResult.getReturnCode());
-    assertEquals("Deleting kiji table: " + getKijiURI().toString() + desc.getName() + "/\n"
-        + "Deleted kiji table: " + getKijiURI().toString() + desc.getName() + "/\n",
-        deleteResult.getStdoutUtf8());
   }
 
   @Test(expected=InvalidLayoutException.class)
@@ -335,4 +332,173 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
         "--layout=" + layoutFile,
     });
   }
+
+  @Test
+  public void testDeleteRow() throws Exception {
+    getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
+
+    ToolResult deleteRowResult = runTool(new DeleteTool(), new String[] {
+      "--instance=" + getKijiURI().getInstance(),
+      "--table=foo",
+      "--row=gwu@usermail.example.com",
+      "--confirm",
+    });
+    assertEquals(0, deleteRowResult.getReturnCode());
+
+    ToolResult lsCheckDeletion = runTool(new LsTool(), new String[] {
+      "--table=foo",
+      "--columns=info:email",
+      "--entity-id=gwu@usermail.example.com",
+    });
+    assertEquals(0, lsCheckDeletion.getReturnCode());
+    assertEquals(0, StringUtils.countMatches(lsCheckDeletion.getStdoutUtf8(), "@"));
+
+    getIntegrationHelper().deleteFooTable(getKijiURI());
+  }
+
+  @Test
+  public void testDeleteFamily() throws Exception {
+    getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
+
+    ToolResult deleteFamilyResult = runTool(new DeleteTool(), new String[] {
+      "--instance=" + getKijiURI().getInstance(),
+      "--table=foo",
+      "--row=gwu@usermail.example.com",
+      "--family=info",
+      "--confirm",
+    });
+    assertEquals(0, deleteFamilyResult.getReturnCode());
+
+    ToolResult lsCheckDeletion = runTool(new LsTool(), new String[] {
+      "--table=foo",
+      "--columns=info:email",
+      "--entity-id=gwu@usermail.example.com",
+    });
+    assertEquals(0, lsCheckDeletion.getReturnCode());
+    assertEquals(0, StringUtils.countMatches(lsCheckDeletion.getStdoutUtf8(), "@"));
+
+    getIntegrationHelper().deleteFooTable(getKijiURI());
+  }
+
+  @Test
+  public void testDeleteColumn() throws Exception {
+    getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
+
+    ToolResult deleteColumnResult = runTool(new DeleteTool(), new String[] {
+      "--instance=" + getKijiURI().getInstance(),
+      "--table=foo",
+      "--row=gwu@usermail.example.com",
+      "--family=info",
+      "--qualifier=email",
+      "--confirm",
+    });
+    assertEquals(0, deleteColumnResult.getReturnCode());
+
+    ToolResult lsCheckDeletion = runTool(new LsTool(), new String[] {
+      "--table=foo",
+      "--columns=info:email",
+      "--entity-id=gwu@usermail.example.com",
+    });
+    assertEquals(0, lsCheckDeletion.getReturnCode());
+    assertEquals(0, StringUtils.countMatches(lsCheckDeletion.getStdoutUtf8(), "@"));
+
+    getIntegrationHelper().deleteFooTable(getKijiURI());
+  }
+
+  @Test
+  public void testDeleteMostRecent() throws Exception {
+    getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
+
+    ToolResult deleteMostRecentResult = runTool(new DeleteTool(), new String[] {
+      "--instance=" + getKijiURI().getInstance(),
+      "--table=foo",
+      "--row=gwu@usermail.example.com",
+      "--family=info",
+      "--qualifier=email",
+      "--most-recent",
+      "--confirm",
+    });
+    assertEquals(0, deleteMostRecentResult.getReturnCode());
+
+    ToolResult lsCheckDeletion = runTool(new LsTool(), new String[] {
+      "--table=foo",
+      "--columns=info:email",
+      "--entity-id=gwu@usermail.example.com",
+    });
+    assertEquals(0, lsCheckDeletion.getReturnCode());
+    assertEquals(0, StringUtils.countMatches(lsCheckDeletion.getStdoutUtf8(), "@"));
+
+    getIntegrationHelper().deleteFooTable(getKijiURI());
+  }
+
+  @Test
+  public void testDeleteExact() throws Exception {
+    getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
+    Kiji testKiji = Kiji.open(getKijiURI(), getIntegrationHelper()
+      .getConf());
+    KijiTable testTable = testKiji.openTable("foo");
+    KijiTableWriter testWriter = testTable.openTableWriter();
+    testWriter.put(testTable.getEntityId("gwu@usermail.example.com"), "info", "email",
+      Long.MAX_VALUE - 1, "gwu@usermail.example.com");
+    IOUtils.closeQuietly(testWriter);
+    IOUtils.closeQuietly(testTable);
+    IOUtils.closeQuietly(testKiji);
+
+    ToolResult deleteExactResult = runTool(new DeleteTool(), new String[] {
+      "--instance=" + getKijiURI().getInstance(),
+      "--table=foo",
+      "--row=gwu@usermail.example.com",
+      "--family=info",
+      "--qualifier=email",
+      "--exact-timestamp=" + (Long.MAX_VALUE - 1),
+      "--confirm",
+    });
+    assertEquals(0, deleteExactResult.getReturnCode());
+
+    ToolResult lsCheckDeletion = runTool(new LsTool(), new String[] {
+      "--table=foo",
+      "--columns=info:email",
+      "--entity-id=gwu@usermail.example.com",
+    });
+    assertEquals(0, lsCheckDeletion.getReturnCode());
+    assertEquals(0, StringUtils.countMatches(lsCheckDeletion.getStdoutUtf8(),
+      "9223372036854775806"));
+
+    getIntegrationHelper().deleteFooTable(getKijiURI());
+ }
+
+  @Test
+  public void testDeleteiUpTo() throws Exception {
+    getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
+    Kiji testKiji = Kiji.open(new KijiConfiguration(getIntegrationHelper().getConf(),
+      getKijiURI().getInstance()));
+    KijiTable testTable = testKiji.openTable("foo");
+    KijiTableWriter testWriter = testTable.openTableWriter();
+    testWriter.put(testTable.getEntityId("gwu@usermail.example.com"), "info", "email",
+      Long.MAX_VALUE - 1, "gwu@usermail.example.com");
+    IOUtils.closeQuietly(testWriter);
+    IOUtils.closeQuietly(testTable);
+    IOUtils.closeQuietly(testKiji);
+
+    ToolResult deleteUpToResult = runTool(new DeleteTool(), new String[] {
+      "--instance=" + getKijiURI().getInstance(),
+      "--table=foo",
+      "--row=gwu@usermail.example.com",
+      "--family=info",
+      "--qualifier=email",
+      "--upto-timestamp=" + (Long.MAX_VALUE - 1),
+      "--confirm",
+    });
+    assertEquals(0, deleteUpToResult.getReturnCode());
+
+    ToolResult lsCheckDeletion = runTool(new LsTool(), new String[] {
+      "--table=foo",
+      "--columns=info:email",
+      "--entity-id=gwu@usermail.example.com",
+    });
+    assertEquals(0, lsCheckDeletion.getReturnCode());
+    assertEquals(0, StringUtils.countMatches(lsCheckDeletion.getStdoutUtf8(), "@"));
+
+    getIntegrationHelper().deleteFooTable(getKijiURI());
+ }
 }

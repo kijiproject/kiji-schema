@@ -76,7 +76,7 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
  *   kiji ls --table=foo --columns=info:email,derived:domain
  *
  * List all data in the info:email and derived:domain columns of a table foo in row bar:
- *   kiji ls --table=foo --columns=info:email,derived:domain --entity=bar
+ *   kiji ls --table=foo --columns=info:email,derived:domain --entity-id=bar
  */
 @ApiAudience.Private
 public final class LsTool extends VersionValidatedTool {
