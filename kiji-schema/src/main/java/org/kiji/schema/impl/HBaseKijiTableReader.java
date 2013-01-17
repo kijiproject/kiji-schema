@@ -34,13 +34,13 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.HBaseScanOptions;
 import org.kiji.schema.InternalKijiError;
-import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestValidator;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.filter.KijiRowFilter;
 import org.kiji.schema.filter.KijiRowFilterApplicator;
 import org.kiji.schema.layout.InvalidLayoutException;
@@ -50,11 +50,9 @@ import org.kiji.schema.layout.KijiTableLayout;
  * Reads from a kiji table by sending the requests directly to the HBase tables.
  */
 @ApiAudience.Private
-public class HBaseKijiTableReader extends KijiTableReader {
+public class HBaseKijiTableReader implements KijiTableReader {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTableReader.class);
 
-  /** The kiji instance the table is in. */
-  private final Kiji mKiji;
   /** The kiji table instance. */
   private final HBaseKijiTable mTable;
 
@@ -65,21 +63,11 @@ public class HBaseKijiTableReader extends KijiTableReader {
    * @param table The kiji table to read from.
    */
   public HBaseKijiTableReader(KijiTable table) {
-    super(table);
-    mKiji = table.getKiji();
     mTable = HBaseKijiTable.downcast(table);
   }
 
-  /**
-   * Retrieve data from a single row in the Kiji table, with no post-processing.
-   *
-   * @param entityId The entity id for the row to get data from.
-   * @param dataRequest Specifies the columns of data to retrieve.
-   * @return The requested data. If there is no row for the specified entityId, this
-   *     will return an empty KijiRowData. (containsColumn() will return false for all
-   *     columns.)
-   * @throws IOException If there is an IO error.
-   */
+  /** {@inheritDoc} */
+  @Override
   public KijiRowData get(EntityId entityId, KijiDataRequest dataRequest)
       throws IOException {
 
@@ -103,7 +91,6 @@ public class HBaseKijiTableReader extends KijiTableReader {
     // Parse the result.
     return new HBaseKijiRowData(entityId, dataRequest, mTable, result);
   }
-
 
   /** {@inheritDoc} */
   @Override
@@ -130,6 +117,60 @@ public class HBaseKijiTableReader extends KijiTableReader {
     List<KijiRowData> rowDataList = parseResults(results, entityIds, dataRequest, tableLayout);
 
     return rowDataList;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiRowScanner getScanner(KijiDataRequest dataRequest) throws IOException {
+    return getScanner(dataRequest, null, null, null, new HBaseScanOptions());
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow,
+      EntityId stopRow) throws IOException {
+    return getScanner(dataRequest, startRow, stopRow, null, new HBaseScanOptions());
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow,
+      EntityId stopRow, HBaseScanOptions scanOptions) throws IOException {
+    return getScanner(dataRequest, startRow, stopRow, null, scanOptions);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow,
+      EntityId stopRow, KijiRowFilter rowFilter, HBaseScanOptions scanOptions) throws IOException {
+    try {
+      HBaseDataRequestAdapter dataRequestAdapter = new HBaseDataRequestAdapter(dataRequest);
+      KijiTableLayout tableLayout = getTableLayout(dataRequest);
+      Scan scan = dataRequestAdapter.toScan(tableLayout, scanOptions);
+
+      if (null != startRow) {
+        scan.setStartRow(startRow.getHBaseRowKey());
+      }
+      if (null != stopRow) {
+        scan.setStopRow(stopRow.getHBaseRowKey());
+      }
+
+      if (null != rowFilter) {
+        final KijiRowFilterApplicator applicator =
+            new KijiRowFilterApplicator(rowFilter, tableLayout, mTable.getKiji().getSchemaTable());
+        applicator.applyTo(scan);
+      }
+
+      return new HBaseKijiRowScanner(new HBaseKijiRowScanner.Options()
+          .withHBaseResultScanner(mTable.getHTable().getScanner(scan))
+          .withDataRequest(dataRequest)
+          .withTable(mTable)
+          .withCellDecoderFactory(SpecificCellDecoderFactory.get()));
+    } catch (InvalidLayoutException e) {
+      // The table layout should never be invalid at this point, since we got it from a valid
+      // opened table.  If it is, there's something seriously wrong.
+      throw new InternalKijiError(e);
+    }
   }
 
   /**
@@ -184,42 +225,6 @@ public class HBaseKijiTableReader extends KijiTableReader {
     }
   }
 
-  /** {@inheritDoc} */
-  @Override
-  public KijiRowScanner getScanner(
-      KijiDataRequest dataRequest, EntityId startRow, EntityId stopRow,
-      KijiRowFilter rowFilter, HBaseScanOptions scanOptions)
-      throws IOException {
-    try {
-      HBaseDataRequestAdapter dataRequestAdapter = new HBaseDataRequestAdapter(dataRequest);
-      KijiTableLayout tableLayout = getTableLayout(dataRequest);
-      Scan scan = dataRequestAdapter.toScan(tableLayout, scanOptions);
-
-      if (null != startRow) {
-        scan.setStartRow(startRow.getHBaseRowKey());
-      }
-      if (null != stopRow) {
-        scan.setStopRow(stopRow.getHBaseRowKey());
-      }
-
-      if (null != rowFilter) {
-        final KijiRowFilterApplicator applicator =
-            new KijiRowFilterApplicator(rowFilter, tableLayout, mKiji.getSchemaTable());
-        applicator.applyTo(scan);
-      }
-
-      return new HBaseKijiRowScanner(new HBaseKijiRowScanner.Options()
-          .withHBaseResultScanner(mTable.getHTable().getScanner(scan))
-          .withDataRequest(dataRequest)
-          .withTable(mTable)
-          .withCellDecoderFactory(getKijiCellDecoderFactory()));
-    } catch (InvalidLayoutException e) {
-      // The table layout should never be invalid at this point, since we got it from a valid
-      // opened table.  If it is, there's something seriously wrong.
-      throw new InternalKijiError(e);
-    }
-  }
-
   /**
    * Helper method to retrieve the KijiTableLayout.
    *
@@ -239,4 +244,9 @@ public class HBaseKijiTableReader extends KijiTableReader {
     return tableLayout;
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public void close() {
+    // No-op for now.
+  }
 }
