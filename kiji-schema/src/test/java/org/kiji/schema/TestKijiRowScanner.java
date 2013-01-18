@@ -29,6 +29,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.EnvironmentBuilder;
@@ -76,7 +77,8 @@ public class TestKijiRowScanner {
   public void testScanner() throws Exception {
     final KijiDataRequest request = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("info", "name"));
-    final Iterator<KijiRowData> scanner = mReader.getScanner(request).iterator();
+    KijiScannerOptions scannerOptions = new KijiScannerOptions().setKijiDataRequest(request);
+    final Iterator<KijiRowData> scanner = mReader.getScanner(scannerOptions).iterator();
 
     final String actual1 = scanner.next().getValue("info", "name", 1L).toString();
     final String actual2 = scanner.next().getValue("info", "name", 1L).toString();
