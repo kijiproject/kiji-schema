@@ -29,6 +29,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
@@ -79,6 +80,23 @@ public class TestKijiRowScanner {
 
     assertEquals("bar-val", actual1);
     assertEquals("foo-val", actual2);
+
+    scanner.close();
+  }
+
+  @Test
+  public void testScannerOptionsStart() throws Exception {
+    final KijiDataRequest request = new KijiDataRequest()
+    .addColumn(new KijiDataRequest.Column("info", "name"));
+
+    final EntityId startRow = mTable.getEntityId("bar-val");
+    final KijiRowScanner scanner = mReader.getScanner(
+        request, new KijiScannerOptions().setStartRow(startRow));
+    final Iterator<KijiRowData> iterator = scanner.iterator();
+
+    final String first = iterator.next().getValue("info", "name", 1L).toString();
+
+    assertEquals("foo-val", first);
 
     scanner.close();
   }

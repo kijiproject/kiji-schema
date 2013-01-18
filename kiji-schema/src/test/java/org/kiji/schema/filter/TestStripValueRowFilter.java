@@ -28,7 +28,6 @@ import java.util.NavigableSet;
 
 import org.junit.Test;
 
-import org.kiji.schema.HBaseScanOptions;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiClientTest;
@@ -37,6 +36,7 @@ import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -66,8 +66,11 @@ public class TestStripValueRowFilter extends KijiClientTest {
     final KijiDataRequest dataRequest = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("info", "name").withMaxVersions(2));
     final KijiRowFilter rowFilter = new StripValueRowFilter();
+    final KijiScannerOptions scannerOptions =
+        new KijiScannerOptions()
+        .setKijiRowFilter(rowFilter);
     final KijiRowScanner scanner =
-        reader.getScanner(dataRequest, null, null, rowFilter, new HBaseScanOptions());
+        reader.getScanner(dataRequest, scannerOptions);
 
     for (KijiRowData row : scanner) {
       final NavigableSet<String> qualifiers = row.getQualifiers("info");

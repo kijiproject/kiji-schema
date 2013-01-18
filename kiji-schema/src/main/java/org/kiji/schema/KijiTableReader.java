@@ -35,6 +35,7 @@ import org.kiji.schema.filter.KijiRowFilter;
 @ApiAudience.Public
 @Inheritance.Sealed
 public interface KijiTableReader extends Closeable {
+
   /**
    * Retrieves data from a single row in the kiji table.
    *
@@ -62,9 +63,9 @@ public interface KijiTableReader extends Closeable {
       throws IOException;
 
   /**
-   * Gets a KijiRowScanner using default options.
+   * Gets a KijiRowScanner with the specified data request.
    *
-   * @param dataRequest Specifies the columns of data to retrieve.
+   * @param dataRequest The data request to scan for.
    * @return The KijiRowScanner.
    * @throws IOException If there is an IO error.
    * @throws KijiDataRequestException If the data request is invalid.
@@ -73,50 +74,124 @@ public interface KijiTableReader extends Closeable {
       throws IOException;
 
   /**
-   * Gets a KijiRowScanner using default options.
+   * Gets a KijiRowScanner using the specified data request and options.
    *
-   * @param dataRequest Specifies the columns of data to retrieve.
-   * @param startRow The entity id for the row to start the scan from.  If null, the scanner
-   *     will read all rows up to the stopRow.
-   * @param stopRow The entity id for the row to end the scan at.  If null, the scanner will
-   *     read all rows after the startRow.
+   * @param dataRequest The data request to scan for.
+   * @param scannerOptions Other options for the scanner.
    * @return The KijiRowScanner.
    * @throws IOException If there is an IO error.
    * @throws KijiDataRequestException If the data request is invalid.
    */
-  KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow, EntityId stopRow)
+  KijiRowScanner getScanner(KijiDataRequest dataRequest, KijiScannerOptions scannerOptions)
       throws IOException;
 
   /**
-   * Gets a KijiRowScanner using the specified HBaseScanOptions.
-   *
-   * @param dataRequest Specifies the columns of data to retrieve.
-   * @param startRow The entity id for the row to start the scan from.  If null, the scanner
-   *     will read all rows up to the stopRow.
-   * @param stopRow The entity id for the row to end the scan at.  If null, the scanner will
-   *     read all rows after the startRow.
-   * @param scanOptions The custom scanner configuration to use.
-   * @return The KijiRowScanner.
-   * @throws IOException If there is an IO error.
-   * @throws KijiDataRequestException If the data request is invalid.
+   * Options for KijiRowScanners.
    */
-  KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow, EntityId stopRow,
-      HBaseScanOptions scanOptions) throws IOException;
+  @ApiAudience.Public
+  public static final class KijiScannerOptions {
+    /** The start row for the scan. */
+    private EntityId mStartRow = null;
+    /** The stop row for the scan. */
+    private EntityId mStopRow = null;
+    /** The row filter for the scan. */
+    private KijiRowFilter mRowFilter = null;
+    /**
+     * The HBaseScanOptions to scan with for KijiRowScanners
+     * backed by an HBase scan.
+     *
+     * Defaults to the default HBaseScanOptions if not set.
+     */
+    private HBaseScanOptions mHBaseScanOptions = new HBaseScanOptions();
 
-  /**
-   * Gets a KijiRowScanner using a KijiRowFilter and the specified HBaseScanOptions.
-   *
-   * @param dataRequest Specifies the columns of data to retrieve.
-   * @param startRow The entity id for the row to start the scan from.  If null, the scanner
-   *     will read all rows up to the stopRow.
-   * @param stopRow The entity id for the row to end the scan at.  If null, the scanner will
-   *     read all rows after the startRow.
-   * @param rowFilter The KijiRowFilter to filter these results on
-   * @param scanOptions The custom scanner configuration to use.
-   * @return The KijiRowScanner.
-   * @throws IOException If there is an IO error.
-   * @throws KijiDataRequestException If the data request is invalid.
-   */
-  KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow, EntityId stopRow,
-      KijiRowFilter rowFilter, HBaseScanOptions scanOptions) throws IOException;
+    /**
+     * Creates KijiScannerOptions with uninitialized options
+     * and default HBaseScanOptions.
+     */
+    public KijiScannerOptions() {}
+
+    /**
+     * Sets the start row used by the scanner,
+     * and returns this KijiScannerOptions to allow chaining.
+     *
+     * @param startRow The row to start scanning from.
+     * @return This KijiScannerOptions with the start row set.
+     */
+    public KijiScannerOptions setStartRow(EntityId startRow) {
+      mStartRow = startRow;
+      return this;
+    }
+
+    /**
+     * Gets the start row set in these options.
+     *
+     * @return The start row to use, null if unset.
+     */
+    public EntityId getStartRow() {
+      return mStartRow;
+    }
+
+    /**
+     * Sets the stop row used by the scanner,
+     * and returns this KijiScannerOptions to allow chaining.
+     *
+     * @param stopRow The last row to scan.
+     * @return This KijiScannerOptions with the stop row set.
+     */
+    public KijiScannerOptions setStopRow(EntityId stopRow) {
+      mStopRow = stopRow;
+      return this;
+    }
+
+    /**
+     * Gets the stop row set in these options.
+     *
+     * @return The stop row to use, null if unset.
+     */
+    public EntityId getStopRow() {
+      return mStopRow;
+    }
+
+    /**
+     * Sets the row filter used by the scanner,
+     * and returns this KijiScannerOptions to allow chaining.
+     *
+     * @param rowFilter The row filter to use.
+     * @return This KijiScannerOptions with the row filter set.
+     */
+    public KijiScannerOptions setKijiRowFilter(KijiRowFilter rowFilter) {
+      mRowFilter = rowFilter;
+      return this;
+    }
+
+    /**
+     * Gets the row filter set in these options.
+     *
+     * @return The row filter to use, null if unset.
+     */
+    public KijiRowFilter getKijiRowFilter() {
+      return mRowFilter;
+    }
+
+    /**
+     * Sets the HBaseScanOptions used by a HBase backed scanner.
+     * The default is the default HBaseScanOptions.
+     *
+     * @param hBaseScanOptions The HBaseScanOptions to use.
+     * @return This KijiScannerOptions with the HBaseScanOptions set.
+     */
+    public KijiScannerOptions setHBaseScanOptions(HBaseScanOptions hBaseScanOptions) {
+      mHBaseScanOptions = hBaseScanOptions;
+      return this;
+    }
+
+    /**
+     * Gets the HBaseScanOptions set in these options.
+     *
+     * @return The HBaseScanOptions to use; if unset, the default HbaseScanOptions.
+     */
+    public HBaseScanOptions getHBaseScanOptions() {
+      return mHBaseScanOptions;
+    }
+  }
 }

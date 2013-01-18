@@ -54,6 +54,7 @@ import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -219,7 +220,11 @@ public final class LsTool extends VersionValidatedTool {
       Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns)
       throws IOException {
     getPrintStream().println("Scanning kiji table: " + getURI().toString());
-    KijiRowScanner scanner = reader.getScanner(request, startRow, limitRow);
+    KijiScannerOptions scannerOptions =
+        new KijiScannerOptions()
+        .setStartRow(startRow)
+        .setStopRow(limitRow);
+    KijiRowScanner scanner = reader.getScanner(request, scannerOptions);
     try {
       int rowsOutput = 0;
       for (KijiRowData row : scanner) {
