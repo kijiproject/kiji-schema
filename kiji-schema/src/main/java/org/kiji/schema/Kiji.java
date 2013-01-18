@@ -104,9 +104,6 @@ public interface Kiji extends KijiTableFactory, Closeable {
   /** @return The name of the kiji instance. */
   String getName();
 
-  /** @return The kiji configuration. */
-  // KijiConfiguration getKijiConf();
-
   /** @return The hadoop configuration. */
   Configuration getConf();
 
