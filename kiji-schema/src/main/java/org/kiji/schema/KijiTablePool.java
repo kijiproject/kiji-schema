@@ -62,7 +62,6 @@ public final class KijiTablePool implements Closeable {
   /** The minimum number of connections to keep per table. */
   private final int mMinSize;
 
-
   /** The maximum number of connections to keep per table. */
   private final int mMaxSize;
 
@@ -84,7 +83,7 @@ public final class KijiTablePool implements Closeable {
   /**
    * Describes the options that can be configured on the KijiTablePool.
    */
-  public static class Options {
+  public static final class Options {
     private int mMinSize;
     private int mMaxSize;
     private long mIdleTimeout;
@@ -410,11 +409,9 @@ public final class KijiTablePool implements Closeable {
             mPoolSize++;
           }
         }
-
         return tableConnection;
       }
       LOG.debug("Cache hit for table " + tableName);
-      mPoolSize++;
       return availableConnection.getTable();
     }
 
