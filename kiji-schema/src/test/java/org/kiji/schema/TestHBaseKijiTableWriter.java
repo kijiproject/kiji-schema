@@ -19,139 +19,100 @@
 
 package org.kiji.schema;
 
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 
-import static org.kiji.schema.util.IncrementEquals.eqIncrement;
-import static org.kiji.schema.util.PutEquals.eqPut;
-
 import java.io.IOException;
+import java.util.Map;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Increment;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
-import org.kiji.schema.impl.HBaseKijiTable;
-import org.kiji.schema.impl.HTableInterfaceFactory;
-import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.util.EnvironmentBuilder;
 
-public class TestHBaseKijiTableWriter extends KijiClientTest {
-  private boolean mShouldVerifyMocks;
-  private ColumnNameTranslator mColumnNameTranslator;
-  private HTableInterface mHTable;
-  private KijiTable mKijiTable;
+public class TestHBaseKijiTableWriter {
+  private Kiji mKiji;
+  private KijiTable mTable;
   private KijiTableWriter mWriter;
+  private KijiTableReader mReader;
 
   @Before
-  public void setup() throws Exception {
-    getKiji().getMetaTable()
-        .updateTableLayout("user", KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST));
+  public void setupEnvironment() throws Exception {
+    // TODO: Put this in a withInstance() method.
+    final String instance = java.util.UUID.randomUUID().toString().replace('-', 'x');
 
-    mColumnNameTranslator = new ColumnNameTranslator(
-        getKiji().getMetaTable().getTableLayout("user"));
-    mHTable = createMock(HTableInterface.class);
-    mKijiTable = new HBaseKijiTable(getKiji(), "user", new HTableInterfaceFactory() {
-      @Override
-      public HTableInterface create(Configuration conf, String htabeTableName) throws IOException {
-        return mHTable;
-      }
-    });
-    mWriter = mKijiTable.openTableWriter();
+    // Get the test table layouts.
+    final KijiTableLayout layout = new KijiTableLayout(
+        KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST), null);
+
+    // Populate the environment.
+    Map<String, Kiji> environment = new EnvironmentBuilder()
+        .withInstance(instance)
+            .withTable("user", layout)
+                .withRow("foo")
+                    .withFamily("info")
+                        .withQualifier("name").withValue(1L, "foo-val")
+                        .withQualifier("visits").withValue(1L, 42L)
+                .withRow("bar")
+                    .withFamily("info")
+                        .withQualifier("visits").withValue(1L, 100L)
+        .build();
+
+    // Fill local variables.
+    mKiji = environment.get(instance);
+    mTable = mKiji.openTable("user");
+    mWriter = mTable.openTableWriter();
+    mReader = mTable.openTableReader();
   }
 
   @After
-  public void cleanup() throws IOException {
-    mWriter.close();
-    mKijiTable.close();
-
-    if (mShouldVerifyMocks) {
-      verify(mHTable);
-    }
+  public void cleanupEnvironment() {
+    IOUtils.closeQuietly(mWriter);
+    IOUtils.closeQuietly(mReader);
+    IOUtils.closeQuietly(mTable);
+    IOUtils.closeQuietly(mKiji);
   }
 
   @Test
   public void testPutWithTimestamp() throws Exception {
-    // Set the expectations that the writer will execute on the HTable.
-    Put expectedPut = new Put(mKijiTable.getEntityId("foo").getHBaseRowKey());
-    final KijiColumnName column = new KijiColumnName("info", "name");
-    final HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(column);
-    final KijiTableLayout layout = getKiji().getMetaTable().getTableLayout("user");
-    final CellSpec cellSpec = layout.getCellSpec(column)
-        .setSchemaTable(getKiji().getSchemaTable());
-    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final EntityId entityId = mTable.getEntityId("foo");
+    final KijiDataRequest request = new KijiDataRequest()
+        .addColumn(new KijiDataRequest.Column("info", "name"));
+    mWriter.put(entityId, "info", "name", 123L, "baz");
 
-    expectedPut.add(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), 123L,
-        encoder.encode("baz"));
-    mHTable.put(eqPut(expectedPut));
-    mHTable.flushCommits();
-    mHTable.close();
-    replay(mHTable);
-    mShouldVerifyMocks = true;
-
-    mWriter.put(mKijiTable.getEntityId("foo"), "info", "name", 123L, "baz");
+    final String actual = mReader.get(entityId, request).getValue("info", "name", 123L).toString();
+    assertEquals("baz", actual);
   }
 
   @Test
   public void testIncrement() throws Exception {
-    // Set the expectations that the writer will execute on the HTable.
-    final HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(
-        new KijiColumnName("info", "visits"));
-    final Increment expectedIncrement =
-        new Increment(mKijiTable.getEntityId("foo").getHBaseRowKey());
-    expectedIncrement.addColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), 5L);
-    final Result cannedResult = new Result(new KeyValue[] {
-        new KeyValue(mKijiTable.getEntityId("foo").getHBaseRowKey(),
-            hbaseColumnName.getFamily(),
-            hbaseColumnName.getQualifier(),
-            123L,
-            Bytes.toBytes(12L)),
-    });
-    expect(mHTable.increment(eqIncrement(expectedIncrement)))
-        .andReturn(cannedResult);
-    mHTable.flushCommits();
-    mHTable.close();
-    replay(mHTable);
+    final EntityId entityId = mTable.getEntityId("foo");
+    final KijiDataRequest request = new KijiDataRequest()
+        .addColumn(new KijiDataRequest.Column("info", "visits"));
+    mWriter.increment(entityId, "info", "visits", 5L);
 
-    final KijiCounter kijiCounter =
-        mWriter.increment(mKijiTable.getEntityId("foo"), "info", "visits", 5L);
-    assertEquals(123L, kijiCounter.getTimestamp());
-    assertEquals(12L, kijiCounter.getValue());
+    final long actual = mReader.get(entityId, request).getCounter("info", "visits").getValue();
+    assertEquals(47L, actual);
   }
 
   @Test(expected=IOException.class)
   public void testIncrementAColumnThatIsNotACounter() throws Exception {
     // This should throw an exception because we are attempting to increment a column that
     // isn't a counter.
-    mWriter.increment(mKijiTable.getEntityId("foo"), "info", "name", 5L);
+    mWriter.increment(mTable.getEntityId("foo"), "info", "name", 5L);
   }
 
   @Test
   public void testSetCounter() throws Exception {
-    // Set the expectations that the writer will execute on the HTable.
-    final HBaseColumnName hbaseColumnName = mColumnNameTranslator.toHBaseColumnName(
-        new KijiColumnName("info", "visits"));
-    final Put expectedPut = new Put(mKijiTable.getEntityId("foo").getHBaseRowKey());
-    expectedPut.add(
-        hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), Bytes.toBytes(5L));
-    mHTable.put(eqPut(expectedPut));
-    mHTable.flushCommits();
-    mHTable.close();
-    replay(mHTable);
+    final EntityId entityId = mTable.getEntityId("bar");
+    final KijiDataRequest request = new KijiDataRequest()
+        .addColumn(new KijiDataRequest.Column("info", "visits"));
+    mWriter.put(entityId, "info", "visits", 5L);
 
-    mWriter.put(mKijiTable.getEntityId("foo"), "info", "visits", 5L);
+    final long actual = mReader.get(entityId, request).getCounter("info", "visits").getValue();
+    assertEquals(5L, actual);
   }
 }

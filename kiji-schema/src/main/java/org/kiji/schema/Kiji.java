@@ -25,6 +25,7 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.Lookups;
 
 /**
@@ -42,6 +43,7 @@ import org.kiji.delegation.Lookups;
  * <p>The default Kiji instance name is <em>default</em>.</p>
  */
 @ApiAudience.Public
+@Inheritance.Sealed
 public interface Kiji extends KijiTableFactory, Closeable {
   /**
    * Provider for the default Kiji factory.
@@ -86,12 +88,14 @@ public interface Kiji extends KijiTableFactory, Closeable {
     }
 
     /**
-     * Opens a Kiji instance.
+     * Opens a Kiji instance. This method of opening a Kiji instance has been deprecated
+     * in favor of a method that doesn't use KijiConfiguration.
      *
      * @param kijiConf The configuration.
      * @return An opened kiji instance.
      * @throws IOException If there is an error.
      */
+    @Deprecated
     public static Kiji open(KijiConfiguration kijiConf) throws IOException {
       return get().open(kijiConf);
     }
@@ -101,10 +105,8 @@ public interface Kiji extends KijiTableFactory, Closeable {
     }
   }
 
-  /** @return The name of the kiji instance. */
-  String getName();
-
   /** @return The hadoop configuration. */
+  @Deprecated
   Configuration getConf();
 
   /** @return The address of this kiji instance. */
@@ -139,7 +141,4 @@ public interface Kiji extends KijiTableFactory, Closeable {
    * @throws IOException on I/O error.
    */
   KijiAdmin getAdmin() throws IOException;
-
-  // This method is also included from KijiTableFactory:
-  // KijiTable openTable(String tableName) throws IOException;
 }

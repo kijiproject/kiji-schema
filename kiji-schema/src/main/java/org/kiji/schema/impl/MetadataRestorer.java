@@ -144,8 +144,8 @@ public class MetadataRestorer {
     final KijiMetaTable metaTable = kiji.getMetaTable();
     try {
       final KijiAdmin admin = new KijiAdmin(hbaseAdmin, kiji);
-      HBaseMetaTable.uninstall(hbaseAdmin, kiji.getName());
-      HBaseMetaTable.install(hbaseAdmin, kiji.getName());
+      HBaseMetaTable.uninstall(hbaseAdmin, kiji.getURI());
+      HBaseMetaTable.install(hbaseAdmin, kiji.getURI());
 
       for (Map.Entry<String, TableBackup> layoutEntry : backup.getMetaTable().entrySet()) {
         final String tableName = layoutEntry.getKey();

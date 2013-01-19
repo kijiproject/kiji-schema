@@ -51,7 +51,7 @@ import org.kiji.schema.util.ZooKeeperLockFactory;
  * instances.
  */
 @ApiAudience.Public
-public class HBaseKiji implements Kiji {
+public final class HBaseKiji implements Kiji {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKiji.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger(HBaseKiji.class.getName() + ".Cleanup");
@@ -95,7 +95,7 @@ public class HBaseKiji implements Kiji {
    * @param kijiConf The kiji configuration.
    * @throws IOException If there is an error.
    */
-  public HBaseKiji(KijiConfiguration kijiConf) throws IOException {
+  HBaseKiji(KijiConfiguration kijiConf) throws IOException {
     this(kijiConf,
         true,
         DefaultHTableInterfaceFactory.get(),
@@ -114,7 +114,7 @@ public class HBaseKiji implements Kiji {
    * @param lockFactory Factory for locks.
    * @throws IOException on I/O error.
    */
-  public HBaseKiji(
+  HBaseKiji(
       KijiConfiguration kijiConf,
       boolean validateVersion,
       HTableInterfaceFactory tableFactory,
@@ -154,12 +154,6 @@ public class HBaseKiji implements Kiji {
     }
     mIsOpen = true;
     LOG.debug("Opened.");
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public String getName() {
-    return mKijiConf.getName();
   }
 
   /** {@inheritDoc} */
@@ -212,7 +206,7 @@ public class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public KijiTable openTable(String tableName) throws IOException {
-    return new HBaseKijiTable(this, tableName, mHTableFactory);
+    return new HBaseKijiTable(this, tableName, mKijiConf.getConf(), mHTableFactory);
   }
 
   /** {@inheritDoc} */

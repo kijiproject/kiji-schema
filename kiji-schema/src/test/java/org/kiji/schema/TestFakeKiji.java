@@ -53,7 +53,7 @@ public class TestFakeKiji {
 
     final Kiji kiji = Kiji.Factory.open(uri, conf);
 
-    LOG.info(String.format("Opened fake Kiji '%s'.", kiji.getName()));
+    LOG.info(String.format("Opened fake Kiji '%s'.", kiji.getURI()));
 
     final KijiSystemTable systemTable = kiji.getSystemTable();
     assertEquals("Client version should match installed version",

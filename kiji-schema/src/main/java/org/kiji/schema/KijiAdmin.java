@@ -19,11 +19,13 @@
 
 package org.kiji.schema;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableExistsException;
@@ -46,7 +48,7 @@ import org.kiji.schema.layout.impl.HTableSchemaTranslator;
  * Administration API for managing a Kiji instance.
  */
 @ApiAudience.Public
-public final class KijiAdmin {
+public final class KijiAdmin implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiAdmin.class);
 
   /** HBase admin. */
@@ -143,7 +145,8 @@ public final class KijiAdmin {
     LOG.debug("Creating table in HBase");
     try {
       final HTableSchemaTranslator translator = new HTableSchemaTranslator();
-      final HTableDescriptor desc = translator.toHTableDescriptor(mKiji.getName(), tableLayout);
+      final HTableDescriptor desc =
+          translator.toHTableDescriptor(mKiji.getURI().getInstance(), tableLayout);
       if (null != splitKeys) {
         mHbaseAdmin.createTable(desc, splitKeys);
       } else {
@@ -231,11 +234,11 @@ public final class KijiAdmin {
     LOG.debug("Computing new HBase schema");
     final HTableSchemaTranslator translator = new HTableSchemaTranslator();
     final HTableDescriptor newTableDescriptor =
-        translator.toHTableDescriptor(mKiji.getName(), newLayout);
+        translator.toHTableDescriptor(mKiji.getURI().getInstance(), newLayout);
 
     LOG.debug("Reading existing HBase schema");
     final KijiManagedHBaseTableName hbaseTableName =
-        KijiManagedHBaseTableName.getKijiTableName(mKiji.getName(), tableName);
+        KijiManagedHBaseTableName.getKijiTableName(mKiji.getURI().getInstance(), tableName);
     HTableDescriptor currentTableDescriptor = null;
     try {
       currentTableDescriptor = mHbaseAdmin.getTableDescriptor(hbaseTableName.toBytes());
@@ -316,7 +319,7 @@ public final class KijiAdmin {
    */
   public void deleteTable(String tableName) throws IOException {
     // Delete from HBase.
-    String hbaseTable = KijiManagedHBaseTableName.getKijiTableName(mKiji.getName(),
+    String hbaseTable = KijiManagedHBaseTableName.getKijiTableName(mKiji.getURI().getInstance(),
         tableName).toString();
     mHbaseAdmin.disableTable(hbaseTable);
     mHbaseAdmin.deleteTable(hbaseTable);
@@ -344,5 +347,11 @@ public final class KijiAdmin {
    */
   public List<String> getTableNames() throws IOException {
     return mKiji.getMetaTable().listTables();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void close() throws IOException {
+    IOUtils.closeQuietly(mHbaseAdmin);
   }
 }

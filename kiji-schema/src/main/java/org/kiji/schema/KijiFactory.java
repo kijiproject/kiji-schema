@@ -24,10 +24,12 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.PriorityProvider;
 
 /** Factory for Kiji instances. */
 @ApiAudience.Public
+@Inheritance.Sealed
 public interface KijiFactory extends PriorityProvider {
   /**
    * Opens a Kiji instance by URI.
@@ -49,11 +51,13 @@ public interface KijiFactory extends PriorityProvider {
   Kiji open(KijiURI uri, Configuration conf) throws IOException;
 
   /**
-   * Opens a Kiji instance.
+   * Opens a Kiji instance. This method of opening a Kiji instance has been deprecated
+   * in favor of a method that doesn't use KijiConfiguration.
    *
    * @param kijiConf The configuration.
    * @return An opened kiji instance.
    * @throws IOException If there is an error.
    */
+  @Deprecated
   Kiji open(KijiConfiguration kijiConf) throws IOException;
 }

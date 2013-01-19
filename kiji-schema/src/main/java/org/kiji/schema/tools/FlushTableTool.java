@@ -148,13 +148,13 @@ public final class FlushTableTool extends VersionValidatedTool {
     if (mFlushMeta) {
       getPrintStream().println("Flushing metadata tables for kiji instance: "
           + getURI().toString());
-      flushMetaTables(mHBaseAdmin, getKiji().getName());
+      flushMetaTables(mHBaseAdmin, getKiji().getURI().getInstance());
     }
 
     if (null != mTableName) {
       setURI(getURI().setTableName(mTableName));
       getPrintStream().println("Flushing table: " + getURI().toString());
-      flushTable(mHBaseAdmin, getKiji().getName(), mTableName);
+      flushTable(mHBaseAdmin, getKiji().getURI().getInstance(), mTableName);
     }
 
     getPrintStream().println("Flush operations successfully enqueued.");

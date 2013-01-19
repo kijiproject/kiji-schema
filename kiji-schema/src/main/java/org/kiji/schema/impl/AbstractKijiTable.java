@@ -57,18 +57,6 @@ public abstract class AbstractKijiTable implements KijiTable {
   private String mConstructorStack;
 
   /**
-   * Opens a kiji table with the default implementation.
-   *
-   * @param kiji The kiji instance.
-   * @param name The name of the table to open.
-   * @return An opened KijiTable.
-   * @throws IOException If there is an error.
-   */
-  public static KijiTable open(Kiji kiji, String name) throws IOException {
-    return new HBaseKijiTable(kiji, name);
-  }
-
-  /**
    * Creates a new <code>KijiTable</code> instance.
    *
    * @param kiji The kiji instance.
@@ -130,14 +118,14 @@ public abstract class AbstractKijiTable implements KijiTable {
 
     // TODO Check that those are referring to the same HBase instance.
     // Equal if the kiji instance name and the table name are the same.
-    return getKiji().getName().equals(other.getKiji().getName())
+    return getKiji().getURI().equals(other.getKiji().getURI())
         && getName().equals(other.getName());
   }
 
   @Override
   public int hashCode() {
     return new HashCodeBuilder()
-        .append(getKiji().getName())
+        .append(getKiji().getURI())
         .append(getName())
         .toHashCode();
   }
