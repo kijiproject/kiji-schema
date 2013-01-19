@@ -50,7 +50,7 @@ public final class KijiAdmin {
   private static final Logger LOG = LoggerFactory.getLogger(KijiAdmin.class);
 
   /** HBase admin. */
-  private final HBaseAdmin mHbaseAdmin;
+  private final HBaseAdmin mHBaseAdmin;
 
   /** Meta table. */
   private final Kiji mKiji;
@@ -65,7 +65,7 @@ public final class KijiAdmin {
    * @param kiji The Kiji instance to administer.
    */
   public KijiAdmin(HBaseAdmin hbaseAdmin, Kiji kiji) {
-    mHbaseAdmin = hbaseAdmin;
+    mHBaseAdmin = hbaseAdmin;
     mKiji = kiji;
   }
 
@@ -145,9 +145,9 @@ public final class KijiAdmin {
       final HTableSchemaTranslator translator = new HTableSchemaTranslator();
       final HTableDescriptor desc = translator.toHTableDescriptor(mKiji.getName(), tableLayout);
       if (null != splitKeys) {
-        mHbaseAdmin.createTable(desc, splitKeys);
+        mHBaseAdmin.createTable(desc, splitKeys);
       } else {
-        mHbaseAdmin.createTable(desc);
+        mHBaseAdmin.createTable(desc);
       }
     } catch (TableExistsException tee) {
       if (isRestore) {
@@ -238,7 +238,7 @@ public final class KijiAdmin {
         KijiManagedHBaseTableName.getKijiTableName(mKiji.getName(), tableName);
     HTableDescriptor currentTableDescriptor = null;
     try {
-      currentTableDescriptor = mHbaseAdmin.getTableDescriptor(hbaseTableName.toBytes());
+      currentTableDescriptor = mHBaseAdmin.getTableDescriptor(hbaseTableName.toBytes());
     } catch (TableNotFoundException tnfe) {
       if (!dryRun) {
         throw tnfe; // Not in dry-run mode; table needs to exist. Rethrow exception.
@@ -271,7 +271,7 @@ public final class KijiAdmin {
         printStream.println("Changes caused by this table layout:");
       } else {
         LOG.debug("Disabling HBase table");
-        mHbaseAdmin.disableTable(hbaseTableName.toString());
+        mHBaseAdmin.disableTable(hbaseTableName.toString());
       }
 
       for (HColumnDescriptor newColumnDescriptor : newTableDescriptor.getFamilies()) {
@@ -285,14 +285,14 @@ public final class KijiAdmin {
             printStream.println("  Creating new locality group: " + lgName);
           } else {
             LOG.debug("Creating new column " + columnName);
-            mHbaseAdmin.addColumn(hbaseTableName.toString(), newColumnDescriptor);
+            mHBaseAdmin.addColumn(hbaseTableName.toString(), newColumnDescriptor);
           }
         } else if (!newColumnDescriptor.equals(currentColumnDescriptor)) {
           if (dryRun) {
             printStream.println("  Modifying locality group: " + lgName);
           } else {
             LOG.debug("Modifying column " + columnName);
-            mHbaseAdmin.modifyColumn(hbaseTableName.toString(), newColumnDescriptor);
+            mHBaseAdmin.modifyColumn(hbaseTableName.toString(), newColumnDescriptor);
           }
         } else {
           LOG.debug("No changes needed for column " + columnName);
@@ -301,7 +301,7 @@ public final class KijiAdmin {
 
       if (!dryRun) {
         LOG.debug("Re-enabling HBase table");
-        mHbaseAdmin.enableTable(hbaseTableName.toString());
+        mHBaseAdmin.enableTable(hbaseTableName.toString());
       }
     }
 
@@ -318,15 +318,15 @@ public final class KijiAdmin {
     // Delete from HBase.
     String hbaseTable = KijiManagedHBaseTableName.getKijiTableName(mKiji.getName(),
         tableName).toString();
-    mHbaseAdmin.disableTable(hbaseTable);
-    mHbaseAdmin.deleteTable(hbaseTable);
+    mHBaseAdmin.disableTable(hbaseTable);
+    mHBaseAdmin.deleteTable(hbaseTable);
 
     // Delete from the meta table.
     mKiji.getMetaTable().deleteTable(tableName);
 
     // HBaseAdmin lies about deleteTable being a synchronous operation.  Let's wait until
     // the table is actually gone.
-    while (mHbaseAdmin.tableExists(hbaseTable)) {
+    while (mHBaseAdmin.tableExists(hbaseTable)) {
       LOG.debug("Waiting for HBase table " + hbaseTable + " to be deleted...");
       try {
         Thread.sleep(500);
@@ -344,5 +344,10 @@ public final class KijiAdmin {
    */
   public List<String> getTableNames() throws IOException {
     return mKiji.getMetaTable().listTables();
+  }
+
+  /** @return the underlying HBase admin client. */
+  public HBaseAdmin getHBaseAdmin() {
+    return mHBaseAdmin;
   }
 }

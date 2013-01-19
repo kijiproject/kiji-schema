@@ -34,7 +34,6 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,6 +42,7 @@ import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.TableKeyNotFoundException;
+import org.kiji.schema.util.Debug;
 
 /**
  * <p>The Kiji system table that is stored in HBase.</p>
@@ -122,11 +122,7 @@ public class HBaseSystemTable extends KijiSystemTable {
     mIsOpen = true;
 
     if (CLEANUP_LOG.isDebugEnabled()) {
-      try {
-        throw new Exception();
-      } catch (Exception e) {
-        mConstructorStack = StringUtils.stringifyException(e);
-      }
+      mConstructorStack = Debug.getStackTrace();
     }
   }
 

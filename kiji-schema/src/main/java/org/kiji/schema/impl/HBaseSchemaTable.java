@@ -57,7 +57,6 @@ import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +70,7 @@ import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.ByteStreamArray.EncodingException;
 import org.kiji.schema.util.BytesKey;
+import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.Hasher;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.LockFactory;
@@ -268,11 +268,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
     mIsOpen = true;
 
     if (CLEANUP_LOG.isDebugEnabled()) {
-      try {
-        throw new Exception();
-      } catch (Exception e) {
-        mConstructorStack = StringUtils.stringifyException(e);
-      }
+      mConstructorStack = Debug.getStackTrace();
     }
   }
 

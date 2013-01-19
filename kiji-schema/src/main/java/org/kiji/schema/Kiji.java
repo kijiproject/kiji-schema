@@ -28,7 +28,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +38,7 @@ import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
+import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.VersionInfo;
 import org.kiji.schema.util.ZooKeeperLockFactory;
@@ -155,11 +155,7 @@ public class Kiji implements KijiTableFactory, Closeable {
     }
 
     if (CLEANUP_LOG.isDebugEnabled()) {
-      try {
-        throw new Exception();
-      } catch (Exception e) {
-        mConstructorStack = StringUtils.stringifyException(e);
-      }
+      mConstructorStack = Debug.getStackTrace();
     }
     mIsOpen = true;
     LOG.debug("Opened.");

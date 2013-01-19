@@ -21,8 +21,6 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 
-import org.apache.commons.lang.builder.HashCodeBuilder;
-import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +28,8 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
+import org.kiji.schema.KijiURI;
+import org.kiji.schema.util.Debug;
 
 /**
  * Main handle for a Kiji table with basic functionality.
@@ -50,6 +50,9 @@ public abstract class AbstractKijiTable implements KijiTable {
   /** The name of this table (the Kiji name, not the HBase name). */
   private final String mName;
 
+  /** URI of this table. */
+  private final KijiURI mTableURI;
+
   /** Whether the table is open. */
   private boolean mIsOpen;
 
@@ -57,64 +60,47 @@ public abstract class AbstractKijiTable implements KijiTable {
   private String mConstructorStack;
 
   /**
-   * Opens a kiji table with the default implementation.
-   *
-   * @param kiji The kiji instance.
-   * @param name The name of the table to open.
-   * @return An opened KijiTable.
-   * @throws IOException If there is an error.
-   */
-  public static KijiTable open(Kiji kiji, String name) throws IOException {
-    return new HBaseKijiTable(kiji, name);
-  }
-
-  /**
    * Creates a new <code>KijiTable</code> instance.
    *
    * @param kiji The kiji instance.
    * @param name The name of the kiji table.
+   * @throws IOException on I/O error.
    */
-  protected AbstractKijiTable(Kiji kiji, String name) {
+  protected AbstractKijiTable(Kiji kiji, String name) throws IOException {
     mKiji = kiji;
     mName = name;
+    mTableURI = mKiji.getURI().setTableName(mName);
     mIsOpen = true;
     if (CLEANUP_LOG.isDebugEnabled()) {
-      try {
-        throw new Exception();
-      } catch (Exception e) {
-        mConstructorStack = StringUtils.stringifyException(e);
-      }
+      mConstructorStack = Debug.getStackTrace();
     }
   }
 
-  /**
-   * Gets the kiji instance this table lives in.
-   *
-   * @return The Kiji instance this table belongs to.
-   */
+  /** {@inheritDoc} */
+  @Override
   public Kiji getKiji() {
     return mKiji;
   }
 
-  /**
-   * Gets the name of this kiji table.
-   *
-   * @return The name of the table.
-   */
+  /** {@inheritDoc} */
+  @Override
   public String getName() {
     return mName;
   }
 
-  /**
-   * Creates an entity ID out of a UTF8 encoded Kiji row key.
-   *
-   * @param kijiRowKey UTF8 encoded Kiji row key.
-   * @return an entity ID with the specified Kiji row key.
-   */
+  /** {@inheritDoc} */
+  @Override
+  public KijiURI getURI() {
+    return mTableURI;
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public EntityId getEntityId(String kijiRowKey) {
     return getEntityIdFactory().fromKijiRowKey(kijiRowKey);
   }
 
+  /** {@inheritDoc} */
   @Override
   public boolean equals(Object obj) {
     if (null == obj) {
@@ -128,20 +114,17 @@ public abstract class AbstractKijiTable implements KijiTable {
     }
     final KijiTable other = (KijiTable) obj;
 
-    // TODO Check that those are referring to the same HBase instance.
-    // Equal if the kiji instance name and the table name are the same.
-    return getKiji().getName().equals(other.getKiji().getName())
-        && getName().equals(other.getName());
+    // Equal if the two tables have the same URI:
+    return mTableURI.equals(other.getURI());
   }
 
+  /** {@inheritDoc} */
   @Override
   public int hashCode() {
-    return new HashCodeBuilder()
-        .append(getKiji().getName())
-        .append(getName())
-        .toHashCode();
+    return mTableURI.hashCode();
   }
 
+  /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
     if (!mIsOpen) {
@@ -151,6 +134,7 @@ public abstract class AbstractKijiTable implements KijiTable {
     mIsOpen = false;
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
     if (mIsOpen) {

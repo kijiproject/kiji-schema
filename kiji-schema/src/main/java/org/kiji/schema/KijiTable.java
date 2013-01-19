@@ -40,6 +40,9 @@ public interface KijiTable extends Closeable {
   /** @return the name of this table. */
   String getName();
 
+  /** @return the URI for this table, trimmed at the table path component. */
+  KijiURI getURI();
+
   /** @return the layout of this table. */
   KijiTableLayout getLayout();
 
