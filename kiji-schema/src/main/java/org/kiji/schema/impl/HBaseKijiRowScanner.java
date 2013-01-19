@@ -23,7 +23,6 @@ import java.util.Iterator;
 
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,6 +32,7 @@ import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
+import org.kiji.schema.util.Debug;
 
 
 /**
@@ -159,11 +159,7 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   public HBaseKijiRowScanner(Options options) {
     mIsOpen = true;
     if (CLEANUP_LOG.isDebugEnabled()) {
-      try {
-        throw new Exception();
-      } catch (Exception e) {
-        mConstructorStack = StringUtils.stringifyException(e);
-      }
+      mConstructorStack = Debug.getStackTrace();
     }
 
     mResultScanner = options.getHBaseResultScanner();
