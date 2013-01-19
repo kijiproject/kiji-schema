@@ -4,7 +4,11 @@
 
 Version 1.0.0-rc3
   * SCHEMA-111. Adds RELEASE_NOTES.txt
-  * SCHEMA-90. KijiURIException subclasses IOException.
+  * SCHEMA-90. KijiURIException subclasses IOException. 
+  * SCHEMA-128. Add minPoolSize option to KijiTablePool. Kiji will
+      aggressively open the min number of connections the first time a
+      table connection is requested and will maintain at least that
+      size of a pool indefinitely.
 
 Version 1.0.0-rc2
   * SCHEMA-93. Deprecate the org.kiji.schema.mapreduce package. This marks
