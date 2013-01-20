@@ -397,8 +397,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     // Make sure they come in reverse chronological order.
     Iterator<NavigableMap.Entry<Long, Node>> iter = values.entrySet().iterator();
     assertTrue(iter.hasNext());
-    assertEquals(100L, iter.next().getKey().longValue());
     assertEquals(200L, iter.next().getKey().longValue());
+    assertEquals(100L, iter.next().getKey().longValue());
     assertFalse(iter.hasNext());
   }
 

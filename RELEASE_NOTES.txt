@@ -9,6 +9,8 @@ Version 1.0.0-rc3
       aggressively open the min number of connections the first time a
       table connection is requested and will maintain at least that
       size of a pool indefinitely.
+  * SCHEMA-159. Fixes a bug where KijiRowData.getValues() would return
+      values in the wrong order.
 
 Version 1.0.0-rc2
   * SCHEMA-93. Deprecate the org.kiji.schema.mapreduce package. This marks

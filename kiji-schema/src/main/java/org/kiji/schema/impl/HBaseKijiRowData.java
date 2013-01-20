@@ -515,7 +515,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> T getValue(String family, String qualifier, long timestamp) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+    final KijiCellDecoder<T> decoder = getDecoder(family, qualifier);
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     return decoder.decodeValue(bytes);
   }
@@ -524,7 +524,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> KijiCell<T> getCell(String family, String qualifier, long timestamp)
       throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+    final KijiCellDecoder<T> decoder = getDecoder(family, qualifier);
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     return decoder.decodeCell(bytes);
   }
@@ -532,7 +532,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> T getMostRecentValue(String family, String qualifier) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+    final KijiCellDecoder<T> decoder = getDecoder(family, qualifier);
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
     if (null == tmap) {
       return null;
@@ -556,7 +556,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> NavigableMap<Long, T> getValues(String family, String qualifier)
       throws IOException {
-    final NavigableMap<Long, T> result = Maps.newTreeMap();
+    final NavigableMap<Long, T> result = Maps.newTreeMap(TimestampComparator.INSTANCE);
     for (Map.Entry<Long, KijiCell<T>> entry : this.<T>getCells(family, qualifier).entrySet()) {
       result.put(entry.getKey(), entry.getValue().getData());
     }
