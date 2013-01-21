@@ -126,11 +126,15 @@ public final class HelpTool extends Configured implements KijiTool {
     System.out.println("  flags for a tool, use --help.  For example:");
     System.out.println("");
     System.out.println("  $ kiji <tool> --help");
-
-    if (mVerbose) {
+   if (mVerbose) {
       printVerboseHelp();
+    } else {
+      System.out.println("");
+      System.out.println("  To add additional jars to the classpath when running a tool,");
+      System.out.println("  specify them in the KIJI_CLASSPATH environmental variable.");
+      System.out.println("  For more about Kiji environmental variables, "
+          + "type 'kiji help --verbose'.");
     }
-
     return 0;
   }
 
