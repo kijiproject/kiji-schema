@@ -138,7 +138,7 @@ public class EnvironmentBuilder {
       } catch (KijiInvalidNameException kine) {
         throw new IOException(kine);
       }
-      final Kiji kiji = Kiji.open(uri, conf);
+      final Kiji kiji = Kiji.Factory.open(uri, conf);
 
       // Build tables.
       final KijiAdmin admin =
