@@ -122,28 +122,19 @@ public class HBaseKijiTableReader implements KijiTableReader {
   /** {@inheritDoc} */
   @Override
   public KijiRowScanner getScanner(KijiDataRequest dataRequest) throws IOException {
-    return getScanner(dataRequest, null, null, null, new HBaseScanOptions());
+    return getScanner(dataRequest, new KijiScannerOptions());
   }
 
   /** {@inheritDoc} */
   @Override
-  public KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow,
-      EntityId stopRow) throws IOException {
-    return getScanner(dataRequest, startRow, stopRow, null, new HBaseScanOptions());
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow,
-      EntityId stopRow, HBaseScanOptions scanOptions) throws IOException {
-    return getScanner(dataRequest, startRow, stopRow, null, scanOptions);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public KijiRowScanner getScanner(KijiDataRequest dataRequest, EntityId startRow,
-      EntityId stopRow, KijiRowFilter rowFilter, HBaseScanOptions scanOptions) throws IOException {
+  public KijiRowScanner getScanner(KijiDataRequest dataRequest,
+      KijiScannerOptions kijiScannerOptions) throws IOException {
     try {
+      EntityId startRow = kijiScannerOptions.getStartRow();
+      EntityId stopRow = kijiScannerOptions.getStopRow();
+      KijiRowFilter rowFilter = kijiScannerOptions.getKijiRowFilter();
+      HBaseScanOptions scanOptions = kijiScannerOptions.getHBaseScanOptions();
+
       HBaseDataRequestAdapter dataRequestAdapter = new HBaseDataRequestAdapter(dataRequest);
       KijiTableLayout tableLayout = getTableLayout(dataRequest);
       Scan scan = dataRequestAdapter.toScan(tableLayout, scanOptions);

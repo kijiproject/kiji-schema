@@ -52,6 +52,7 @@ import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiURIException;
 import org.kiji.schema.impl.DefaultHBaseFactory;
@@ -196,10 +197,11 @@ public class KijiTableInputFormat
       mKiji = Kiji.Factory.open(inputURI, conf);
       mTable = mKiji.openTable(inputURI.getTable());
       mReader = mTable.openTableReader();
-      mScanner = mReader.getScanner(
-          mDataRequest,
-          new HBaseEntityId(mSplit.getStartRow()),
-          new HBaseEntityId(mSplit.getEndRow()));
+      final KijiScannerOptions scannerOptions =
+          new KijiScannerOptions()
+          .setStartRow(new HBaseEntityId(mSplit.getStartRow()))
+          .setStopRow(new HBaseEntityId(mSplit.getEndRow()));
+      mScanner = mReader.getScanner(mDataRequest, scannerOptions);
       mIterator = mScanner.iterator();
       mCurrentRow = null;
     }

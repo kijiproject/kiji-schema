@@ -30,11 +30,11 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.HBaseScanOptions;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.testutil.FooTableIntegrationTest;
 
 
@@ -52,8 +52,10 @@ public class IntegrationTestStripValueRowFilter extends FooTableIntegrationTest 
       .addColumn(new KijiDataRequest.Column("info", "name"));
     KijiRowFilter rowFilter = new StripValueRowFilter();
 
-    mScanner = mReader.getScanner(dataRequest, null, null, rowFilter,
-      new HBaseScanOptions());
+    KijiScannerOptions scannerOptions =
+        new KijiScannerOptions()
+        .setKijiRowFilter(rowFilter);
+    mScanner = mReader.getScanner(dataRequest, scannerOptions);
   }
 
   @After
@@ -73,8 +75,10 @@ public class IntegrationTestStripValueRowFilter extends FooTableIntegrationTest 
           .addColumn(new KijiDataRequest.Column("info", "name"));
       KijiRowFilter rowFilter = new StripValueRowFilter();
 
-      rowScanner = mReader.getScanner(dataRequest, null, null, rowFilter,
-          new HBaseScanOptions());
+      KijiScannerOptions scannerOptions =
+          new KijiScannerOptions()
+          .setKijiRowFilter(rowFilter);
+      rowScanner = mReader.getScanner(dataRequest, scannerOptions);
       for (KijiRowData rowData : rowScanner) {
         rowData.getMostRecentValue("info", "name");
       }
