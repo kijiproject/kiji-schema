@@ -121,9 +121,9 @@ public class HBaseKijiTableReader implements KijiTableReader {
 
   /** {@inheritDoc} */
   @Override
-  public KijiRowScanner getScanner(KijiScannerOptions kijiScannerOptions) throws IOException {
+  public KijiRowScanner getScanner(KijiDataRequest dataRequest,
+      KijiScannerOptions kijiScannerOptions) throws IOException {
     try {
-      KijiDataRequest dataRequest = kijiScannerOptions.getKijiDataRequest();
       EntityId startRow = kijiScannerOptions.getStartRow();
       EntityId stopRow = kijiScannerOptions.getStopRow();
       KijiRowFilter rowFilter = kijiScannerOptions.getKijiRowFilter();

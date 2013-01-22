@@ -224,10 +224,9 @@ public final class LsTool extends VersionValidatedTool {
     getPrintStream().println("Scanning kiji table: " + getURI().toString());
     KijiScannerOptions scannerOptions =
         new KijiScannerOptions()
-        .setKijiDataRequest(request)
         .setStartRow(startRow)
         .setStopRow(limitRow);
-    KijiRowScanner scanner = reader.getScanner(scannerOptions);
+    KijiRowScanner scanner = reader.getScanner(request, scannerOptions);
     try {
       int rowsOutput = 0;
       for (KijiRowData row : scanner) {

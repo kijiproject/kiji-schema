@@ -54,9 +54,8 @@ public class IntegrationTestStripValueRowFilter extends FooTableIntegrationTest 
 
     KijiScannerOptions scannerOptions =
         new KijiScannerOptions()
-        .setKijiDataRequest(dataRequest)
         .setKijiRowFilter(rowFilter);
-    mScanner = mReader.getScanner(scannerOptions);
+    mScanner = mReader.getScanner(dataRequest, scannerOptions);
   }
 
   @After
@@ -78,9 +77,8 @@ public class IntegrationTestStripValueRowFilter extends FooTableIntegrationTest 
 
       KijiScannerOptions scannerOptions =
           new KijiScannerOptions()
-          .setKijiDataRequest(dataRequest)
           .setKijiRowFilter(rowFilter);
-      rowScanner = mReader.getScanner(scannerOptions);
+      rowScanner = mReader.getScanner(dataRequest, scannerOptions);
       for (KijiRowData rowData : rowScanner) {
         rowData.getMostRecentValue("info", "name");
       }

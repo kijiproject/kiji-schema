@@ -77,13 +77,27 @@ public class TestKijiRowScanner {
   public void testScanner() throws Exception {
     final KijiDataRequest request = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("info", "name"));
-    KijiScannerOptions scannerOptions = new KijiScannerOptions().setKijiDataRequest(request);
-    final Iterator<KijiRowData> scanner = mReader.getScanner(scannerOptions).iterator();
+    final Iterator<KijiRowData> scanner =
+        mReader.getScanner(request, new KijiScannerOptions()).iterator();
 
     final String actual1 = scanner.next().getValue("info", "name", 1L).toString();
     final String actual2 = scanner.next().getValue("info", "name", 1L).toString();
 
     assertEquals("bar-val", actual1);
     assertEquals("foo-val", actual2);
+  }
+
+  @Test
+  public void testScannerOptionsStart() throws Exception {
+    final KijiDataRequest request = new KijiDataRequest()
+    .addColumn(new KijiDataRequest.Column("info", "name"));
+
+    final EntityId startRow = mTable.getEntityId("bar-val");
+    final Iterator<KijiRowData> scanner = mReader.getScanner(
+        request, new KijiScannerOptions().setStartRow(startRow)).iterator();
+
+    final String first = scanner.next().getValue("info", "name", 1L).toString();
+
+    assertEquals("foo-val", first);
   }
 }

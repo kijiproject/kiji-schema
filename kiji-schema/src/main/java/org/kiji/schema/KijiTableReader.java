@@ -65,21 +65,20 @@ public interface KijiTableReader extends Closeable {
   /**
    * Gets a KijiRowScanner using the specified options.
    *
-   * @param scannerOptions The options for the scanner.
+   * @param dataRequest The data request to scan for.
+   * @param scannerOptions Other options for the scanner.
    * @return The KijiRowScanner.
    * @throws IOException If there is an IO error.
    * @throws KijiDataRequestException If the data request is invalid.
    */
-  KijiRowScanner getScanner(KijiScannerOptions scannerOptions)
+  KijiRowScanner getScanner(KijiDataRequest dataRequest, KijiScannerOptions scannerOptions)
       throws IOException;
 
   /**
    * Options for KijiRowScanners.
    */
   @ApiAudience.Public
-  public final class KijiScannerOptions {
-    /** The KijiDataRequest to scan. */
-    private KijiDataRequest mDataRequest = null;
+  public static final class KijiScannerOptions {
     /** The start row for the scan. */
     private EntityId mStartRow = null;
     /** The stop row for the scan. */
@@ -99,27 +98,6 @@ public interface KijiTableReader extends Closeable {
      * and default HBaseScanOptions.
      */
     public KijiScannerOptions() {}
-
-    /**
-     * Sets the data request used by the scanner,
-     * and returns this KijiScannerOptions to allow chaining.
-     *
-     * @param dataRequest The data request to use.
-     * @return This KijiScannerOptions with the data request set.
-     */
-    public KijiScannerOptions setKijiDataRequest(KijiDataRequest dataRequest) {
-      mDataRequest = dataRequest;
-      return this;
-    }
-
-    /**
-     * Gets the data request set in these options.
-     *
-     * @return The data request to use, null if unset.
-     */
-    public KijiDataRequest getKijiDataRequest() {
-      return mDataRequest;
-    }
 
     /**
      * Sets the start row used by the scanner,

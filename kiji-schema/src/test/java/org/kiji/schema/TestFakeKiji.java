@@ -74,11 +74,9 @@ public class TestFakeKiji {
 
     final KijiTable table = kiji.openTable("table");
     {
-      KijiScannerOptions kijiScannerOpts =
-          new KijiScannerOptions()
-          .setKijiDataRequest(new KijiDataRequest()
-          .addColumn(new Column("family")));
-      final KijiRowScanner scanner = table.openTableReader().getScanner(kijiScannerOpts);
+      final KijiDataRequest dataRequest = new KijiDataRequest().addColumn(new Column("family"));
+      final KijiRowScanner scanner =
+          table.openTableReader().getScanner(dataRequest, new KijiScannerOptions());
       assertFalse(scanner.iterator().hasNext());
       scanner.close();
     }
@@ -90,10 +88,9 @@ public class TestFakeKiji {
     }
 
     {
-      KijiScannerOptions kijiScannerOpts =
-          new KijiScannerOptions()
-          .setKijiDataRequest(new KijiDataRequest().addColumn(new Column("family")));
-      final KijiRowScanner scanner = table.openTableReader().getScanner(kijiScannerOpts);
+      final KijiDataRequest dataRequest = new KijiDataRequest().addColumn(new Column("family"));
+      final KijiRowScanner scanner =
+          table.openTableReader().getScanner(dataRequest, new KijiScannerOptions());
       final Iterator<KijiRowData> it = scanner.iterator();
       assertTrue(it.hasNext());
       KijiRowData row = it.next();
