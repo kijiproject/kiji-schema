@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
@@ -86,6 +87,10 @@ public abstract class BaseTool extends Configured implements KijiTool {
   @Flag(name="debug", usage="Print stacktraces if the command terminates with an error.")
   private boolean mDebugFlag = false;
 
+  @Flag(name="interactive", usage="Whether the command is run in an interactive session or script."
+      + "The default value is true.")
+  private boolean mInteractiveFlag = true;
+
   /**
    * A URI used to track what element in kiji a tool is operating on.
    */
@@ -98,12 +103,15 @@ public abstract class BaseTool extends Configured implements KijiTool {
 
   /**
    * Prompts the user for a yes or no answer until they provide a valid response
-   * (y/n/yes/no case insensitive) and reports the result.
+   * (y/n/yes/no case insensitive) and reports the result. If yesNoPrompt is called in
+   * non-interactive mode, an IllegalstateException is thrown.
+   *
    *
    * @return <code>true</code> if the user answer yes, <code>false</code> if  the user answered no.
    * @throws IOException if there is a problem reading from the terminal.
    */
-  protected boolean yesNoPrompt() throws IOException {
+  protected final boolean yesNoPrompt() throws IOException {
+    Preconditions.checkState(mInteractiveFlag);
     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
     Boolean yesOrNo = null;
     try {
@@ -254,5 +262,14 @@ public abstract class BaseTool extends Configured implements KijiTool {
    */
   public PrintStream getPrintStream() {
     return mPrintStream;
+  }
+
+  /**
+   * Whether or not this tool is being run interactively.
+   *
+   * @return Whether or not this tool is being run interactively.
+   */
+  protected final boolean isInteractive() {
+    return mInteractiveFlag;
   }
 }

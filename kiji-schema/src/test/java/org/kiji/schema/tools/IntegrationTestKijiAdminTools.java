@@ -152,7 +152,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
       "--instance=" + getKijiURI().getInstance(),
       "--table=foo",
-      "--confirm",
+      "--interactive=false",
     });
     assertEquals(0, deleteResult.getReturnCode());
 
@@ -240,7 +240,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
             "--instance=" + getKijiURI().getInstance(),
             "--table=foo",
-            "--confirm",
+            "--interactive=false",
           });
       assertEquals(0, deleteResult.getReturnCode());
     }
@@ -266,7 +266,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
           "--instance=" + getKijiURI().getInstance(),
           "--table=foo",
-          "--confirm",
+          "--interactive=false",
         });
     assertEquals(0, deleteResult.getReturnCode());
   }
@@ -318,7 +318,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
           "--instance=" + getKijiURI().getInstance(),
           "--table=" + tableName,
-          "--confirm",
+          "--interactive=false",
         });
     assertEquals(0, deleteResult.getReturnCode());
   }
@@ -341,7 +341,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       "--instance=" + getKijiURI().getInstance(),
       "--table=foo",
       "--row=gwu@usermail.example.com",
-      "--confirm",
+      "--interactive=false",
     });
     assertEquals(0, deleteRowResult.getReturnCode());
 
@@ -365,7 +365,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       "--table=foo",
       "--row=gwu@usermail.example.com",
       "--family=info",
-      "--confirm",
+      "--interactive=false",
     });
     assertEquals(0, deleteFamilyResult.getReturnCode());
 
@@ -390,7 +390,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       "--row=gwu@usermail.example.com",
       "--family=info",
       "--qualifier=email",
-      "--confirm",
+      "--interactive=false",
     });
     assertEquals(0, deleteColumnResult.getReturnCode());
 
@@ -416,7 +416,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       "--family=info",
       "--qualifier=email",
       "--most-recent",
-      "--confirm",
+      "--interactive=false",
     });
     assertEquals(0, deleteMostRecentResult.getReturnCode());
 
@@ -451,7 +451,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       "--family=info",
       "--qualifier=email",
       "--exact-timestamp=" + (Long.MAX_VALUE - 1),
-      "--confirm",
+      "--interactive=false",
     });
     assertEquals(0, deleteExactResult.getReturnCode());
 
@@ -487,7 +487,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       "--family=info",
       "--qualifier=email",
       "--upto-timestamp=" + (Long.MAX_VALUE - 1),
-      "--confirm",
+      "--interactive=false",
     });
     assertEquals(0, deleteUpToResult.getReturnCode());
 
