@@ -47,9 +47,7 @@ public class TestFakeKiji {
     LOG.info("Opening an in-memory kiji instance");
     final KijiURI uri = KijiURI.parse("kiji://.fake.kiji/instance");
     final Configuration conf = HBaseConfiguration.create();
-    final KijiConfiguration kijiConf = new KijiConfiguration(conf, uri);
-
-    KijiInstaller.install(uri, kijiConf.getConf());
+    KijiInstaller.install(uri, conf);
 
     final Kiji kiji = Kiji.Factory.open(uri, conf);
 
@@ -62,14 +60,12 @@ public class TestFakeKiji {
     assertNotNull(kiji.getSchemaTable());
     assertNotNull(kiji.getMetaTable());
 
-    final KijiAdmin admin = new KijiAdmin(
-        HBaseFactory.Provider.get().getHBaseAdminFactory(uri).create(kijiConf.getConf()),
-        kiji);
-
-    final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
-    final KijiTableLayout tableLayout = new KijiTableLayout(layoutDesc, null);
-    admin.createTable("table", tableLayout, false);
-
+    {
+      final KijiAdmin admin = kiji.getAdmin();
+      final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
+      final KijiTableLayout tableLayout = new KijiTableLayout(layoutDesc, null);
+      admin.createTable("table", tableLayout, false);
+    }
 
     final KijiTable table = kiji.openTable("table");
     {
@@ -87,7 +83,8 @@ public class TestFakeKiji {
     }
 
     {
-      final KijiRowScanner scanner = table.openTableReader().getScanner(
+      final KijiTableReader reader = table.openTableReader();
+      final KijiRowScanner scanner = reader.getScanner(
           new KijiDataRequest().addColumn(new Column("family")),
           null, null);
       final Iterator<KijiRowData> it = scanner.iterator();
@@ -96,8 +93,10 @@ public class TestFakeKiji {
       assertEquals("the string value", row.getMostRecentValue("family", "column").toString());
       assertFalse(it.hasNext());
       scanner.close();
+      reader.close();
     }
 
-    kiji.close();
+    table.close();
+    kiji.release();
   }
 }

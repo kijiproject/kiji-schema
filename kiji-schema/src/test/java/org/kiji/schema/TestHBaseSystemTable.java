@@ -56,10 +56,12 @@ public class TestHBaseSystemTable {
         new byte[0],
         Bytes.toBytes("100"));
     mHtable.put(eqPut(expected));
+    mHtable.close();
 
     replay(mHtable);
     HBaseSystemTable systemTable = new HBaseSystemTable(mHtable);
     systemTable.setDataVersion("100");
+    systemTable.close();
     verify(mHtable);
   }
 
@@ -72,10 +74,12 @@ public class TestHBaseSystemTable {
         Bytes.toBytes(HBaseSystemTable.VALUE_COLUMN_FAMILY), new byte[0], Bytes.toBytes("100")),
     });
     expect(mHtable.get(eqGet(expected))).andReturn(result);
+    mHtable.close();
 
     replay(mHtable);
     HBaseSystemTable systemTable = new HBaseSystemTable(mHtable);
     assertEquals("100", systemTable.getDataVersion());
+    systemTable.close();
     verify(mHtable);
   }
 

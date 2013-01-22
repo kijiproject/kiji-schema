@@ -64,6 +64,6 @@ public class TestInstanceBuilder {
 
     IOUtils.closeQuietly(reader);
     IOUtils.closeQuietly(table);
-    IOUtils.closeQuietly(kiji);
+    kiji.release();
   }
 }

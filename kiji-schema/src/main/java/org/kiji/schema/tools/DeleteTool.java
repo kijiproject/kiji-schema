@@ -23,10 +23,7 @@ import java.io.IOException;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
-
 import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +69,6 @@ public final class DeleteTool extends VersionValidatedTool {
 
   private static final long UNSPECIFIED_TIMESTAMP = Long.MIN_VALUE;
 
-  private HBaseAdmin mHBaseAdmin;
   private Kiji mKiji;
   private KijiTable mTable;
   private KijiTableWriter mWriter;
@@ -310,21 +306,18 @@ public final class DeleteTool extends VersionValidatedTool {
   @Override
   protected void setup() throws Exception {
     super.setup();
-    mHBaseAdmin = new HBaseAdmin(getConf());
     mKiji = Kiji.Factory.open(new KijiConfiguration(getConf(), mInstanceName));
     mTable = mKiji.openTable(mTableName);
     mWriter = mTable.openTableWriter();
-    mAdmin = new KijiAdmin(mHBaseAdmin, getKiji());
+    mAdmin = mKiji.getAdmin();
   }
 
   /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
-    IOUtils.closeQuietly(mHBaseAdmin);
     IOUtils.closeQuietly(mWriter);
     IOUtils.closeQuietly(mTable);
-    IOUtils.closeQuietly(mKiji);
-
+    mKiji.release();
     super.cleanup();
   }
 

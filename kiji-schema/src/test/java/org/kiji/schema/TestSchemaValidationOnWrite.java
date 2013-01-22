@@ -100,6 +100,5 @@ public class TestSchemaValidationOnWrite extends KijiClientTest {
 
     writer.close();
     table.close();
-    kiji.close();
   }
 }

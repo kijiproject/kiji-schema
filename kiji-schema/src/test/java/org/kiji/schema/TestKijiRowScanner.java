@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.IOException;
 import java.util.Iterator;
 
 import org.apache.commons.io.IOUtils;
@@ -60,22 +61,25 @@ public class TestKijiRowScanner {
   }
 
   @After
-  public void cleanupEnvironment() {
+  public void cleanupEnvironment() throws IOException {
     IOUtils.closeQuietly(mReader);
     IOUtils.closeQuietly(mTable);
-    IOUtils.closeQuietly(mKiji);
+    mKiji.release();
   }
 
   @Test
   public void testScanner() throws Exception {
     final KijiDataRequest request = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("info", "name"));
-    final Iterator<KijiRowData> scanner = mReader.getScanner(request).iterator();
+    final KijiRowScanner scanner = mReader.getScanner(request);
+    final Iterator<KijiRowData> iterator = scanner.iterator();
 
-    final String actual1 = scanner.next().getValue("info", "name", 1L).toString();
-    final String actual2 = scanner.next().getValue("info", "name", 1L).toString();
+    final String actual1 = iterator.next().getValue("info", "name", 1L).toString();
+    final String actual2 = iterator.next().getValue("info", "name", 1L).toString();
 
     assertEquals("bar-val", actual1);
     assertEquals("foo-val", actual2);
+
+    scanner.close();
   }
 }

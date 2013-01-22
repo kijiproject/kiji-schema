@@ -87,8 +87,6 @@ public class TestKijiMetaTable extends KijiClientTest {
     assertEquals("The number of keys for the foo table is incorrect.", 1,
         newMetaTable.keySet("foo").size());
     assertArrayEquals(BYTES_VALUE, newMetaTable.getValue("foo", "key"));
-
-    kiji.close();
   }
 
 }

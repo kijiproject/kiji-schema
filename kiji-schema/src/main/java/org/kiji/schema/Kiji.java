@@ -19,7 +19,6 @@
 
 package org.kiji.schema;
 
-import java.io.Closeable;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
@@ -27,6 +26,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.Lookups;
+import org.kiji.schema.util.ReferenceCountable;
 
 /**
  * <p>Provides a handle to a Kiji instance that contains configuration and
@@ -44,7 +44,7 @@ import org.kiji.delegation.Lookups;
  */
 @ApiAudience.Public
 @Inheritance.Sealed
-public interface Kiji extends KijiTableFactory, Closeable {
+public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
   /**
    * Provider for the default Kiji factory.
    *
@@ -67,6 +67,9 @@ public interface Kiji extends KijiTableFactory, Closeable {
     /**
      * Opens a Kiji instance by URI.
      *
+     * <p> Caller does not need to call Kiji.retain(),
+     *     but must call Kiji.release() when done with it.
+     *
      * @param uri URI specifying the Kiji instance to open.
      * @return the specified Kiji instance.
      * @throws IOException on I/O error.
@@ -77,6 +80,9 @@ public interface Kiji extends KijiTableFactory, Closeable {
 
     /**
      * Opens a Kiji instance by URI.
+     *
+     * <p> Caller does not need to call Kiji.retain(),
+     *     but must call Kiji.release() when done with it.
      *
      * @param uri URI specifying the Kiji instance to open.
      * @param conf Hadoop configuration.
@@ -90,6 +96,9 @@ public interface Kiji extends KijiTableFactory, Closeable {
     /**
      * Opens a Kiji instance. This method of opening a Kiji instance has been deprecated
      * in favor of a method that doesn't use KijiConfiguration.
+     *
+     * <p> Caller does not need to call Kiji.retain(),
+     *     but must call Kiji.release() when done with it.
      *
      * @param kijiConf The configuration.
      * @return An opened kiji instance.
@@ -109,7 +118,7 @@ public interface Kiji extends KijiTableFactory, Closeable {
   @Deprecated
   Configuration getConf();
 
-  /** @return The address of this kiji instance. */
+  /** @return The address of this kiji instance, trimmed to the Kiji instance path component. */
   KijiURI getURI();
 
   /**
@@ -137,7 +146,7 @@ public interface Kiji extends KijiTableFactory, Closeable {
   KijiMetaTable getMetaTable() throws IOException;
 
   /**
-   * @return a KijiAdmin for this Kiji instance.
+   * @return the KijiAdmin for this Kiji instance.
    * @throws IOException on I/O error.
    */
   KijiAdmin getAdmin() throws IOException;

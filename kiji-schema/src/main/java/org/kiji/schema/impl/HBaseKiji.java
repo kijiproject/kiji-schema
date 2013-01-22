@@ -20,6 +20,7 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
@@ -69,16 +70,23 @@ public final class HBaseKiji implements Kiji {
   private final KijiURI mURI;
 
   /** The schema table for this kiji instance, or null if it has not been opened yet. */
-  private KijiSchemaTable mSchemaTable;
+  private HBaseSchemaTable mSchemaTable;
 
   /** The system table for this kiji instance, or null if it has not been opened yet. */
-  private KijiSystemTable mSystemTable;
+  private HBaseSystemTable mSystemTable;
 
   /** The meta table for this kiji instance, or null if it has not been opened yet. */
-  private KijiMetaTable mMetaTable;
+  private HBaseMetaTable mMetaTable;
+
+  /** Admin interface. */
+  // TODO(SCHEMA-154): KijiAdmin should really be HBaseKijiAdmin
+  private KijiAdmin mAdmin;
 
   /** Whether the kiji instance is open. */
   private boolean mIsOpen;
+
+  /** Retain counter. When decreased to 0, the HBase Kiji may be closed and disposed of. */
+  private AtomicInteger mRetainCount = new AtomicInteger(1);
 
   /**
    * String representation of the call stack at the time this object is constructed.
@@ -88,13 +96,15 @@ public final class HBaseKiji implements Kiji {
 
   /**
    * Creates a new <code>HBaseKiji</code> instance.
-   * This should only be used by Kiji.open();
+   * This should only be used by Kiji.Factory.open();
    *
    * @see org.kiji.schema.Kiji#open(KijiConfiguration)
    *
    * @param kijiConf The kiji configuration.
    * @throws IOException If there is an error.
+   * @deprecated KijiConfiguration is going away. Use open(KijiURI, …).
    */
+  @Deprecated
   HBaseKiji(KijiConfiguration kijiConf) throws IOException {
     this(kijiConf,
         true,
@@ -105,7 +115,8 @@ public final class HBaseKiji implements Kiji {
   /**
    * Creates a new <code>HBaseKiji</code> instance.
    *
-   * Should only be used by Kiji.open().
+   * <p> Should only be used by Kiji.Factory.open().
+   * <p> Caller does not need to use retain(), but must call release() when done with it.
    *
    * @param kijiConf Kiji configuration.
    * @param validateVersion Validate that the installed version of kiji is compatible with
@@ -136,8 +147,18 @@ public final class HBaseKiji implements Kiji {
     mSchemaTable = null;
     mSystemTable = null;
     mMetaTable = null;
+    mAdmin = null;
+
+    mIsOpen = true;
 
     checkHBaseConf();
+    Preconditions.checkArgument(
+        getConf().get("hbase.zookeeper.property.clientPort") != null,
+        String.format(
+            "Configuration for Kiji instance '%s' "
+            + "lacks HBase resources (hbase-default.xml, hbase-site.xml), "
+            + "use HBaseConfiguration.create().",
+            mURI));
 
     if (validateVersion) {
       // Make sure the data version for the client matches the cluster.
@@ -152,7 +173,6 @@ public final class HBaseKiji implements Kiji {
         mConstructorStack = StringUtils.stringifyException(e);
       }
     }
-    mIsOpen = true;
     LOG.debug("Opened.");
   }
 
@@ -171,6 +191,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public synchronized KijiSchemaTable getSchemaTable() throws IOException {
+    Preconditions.checkState(mIsOpen);
     if (null == mSchemaTable) {
       mSchemaTable = new HBaseSchemaTable(mKijiConf, mHTableFactory, mLockFactory);
     }
@@ -180,6 +201,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public synchronized KijiSystemTable getSystemTable() throws IOException {
+    Preconditions.checkState(mIsOpen);
     if (null == mSystemTable) {
       mSystemTable = new HBaseSystemTable(mKijiConf, mHTableFactory);
     }
@@ -189,6 +211,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public synchronized KijiMetaTable getMetaTable() throws IOException {
+    Preconditions.checkState(mIsOpen);
     if (null == mMetaTable) {
       mMetaTable = new HBaseMetaTable(mKijiConf, getSchemaTable(), mHTableFactory);
     }
@@ -197,10 +220,14 @@ public final class HBaseKiji implements Kiji {
 
   /** {@inheritDoc} */
   @Override
-  public KijiAdmin getAdmin() throws IOException {
-    final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
-    final HBaseAdmin hbaseAdmin = hbaseFactory.getHBaseAdminFactory(getURI()).create(getConf());
-    return new KijiAdmin(hbaseAdmin, this);
+  public synchronized KijiAdmin getAdmin() throws IOException {
+    Preconditions.checkState(mIsOpen);
+    if (null == mAdmin) {
+      final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
+      final HBaseAdmin hbaseAdmin = hbaseFactory.getHBaseAdminFactory(getURI()).create(getConf());
+      mAdmin = new KijiAdmin(hbaseAdmin, this);
+    }
+    return mAdmin;
   }
 
   /** {@inheritDoc} */
@@ -209,31 +236,43 @@ public final class HBaseKiji implements Kiji {
     return new HBaseKijiTable(this, tableName, mKijiConf.getConf(), mHTableFactory);
   }
 
-  /** {@inheritDoc} */
-  @Override
-  public void close() throws IOException {
-    if (!mIsOpen) {
-      LOG.warn("Called close() on a HBaseKiji instance that was already closed.");
-      return;
+  /**
+   * Releases all the resources used by this Kiji instance.
+   *
+   * @throws IOException on I/O error.
+   */
+  private void close() throws IOException {
+    synchronized (this) {
+      if (!mIsOpen) {
+        LOG.warn("Called close() on a HBaseKiji instance that was already closed.");
+        return;
+      }
+      mIsOpen = false;
     }
-    mIsOpen = false;
 
-    LOG.debug("Closing kiji...");
+    LOG.debug(String.format("Closing Kiji instance '%s'.", mURI));
     IOUtils.closeQuietly(mMetaTable);
     IOUtils.closeQuietly(mSystemTable);
     IOUtils.closeQuietly(mSchemaTable);
-
-    LOG.debug("HBaseKiji closed.");
+    if (mAdmin != null) {
+      mAdmin.close();
+    }
+    mSchemaTable = null;
+    mMetaTable = null;
+    mSystemTable = null;
+    mAdmin = null;
+    LOG.debug(String.format("Kiji instance '%s' closed.", mURI));
   }
 
+  /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
     if (mIsOpen) {
-      CLEANUP_LOG.warn("Closing a HBaseKiji instance in finalize()."
-          + " You should close it explicitly.");
+      CLEANUP_LOG.warn(String.format("Finalizing opened HBaseKiji '%s'.", mURI));
       if (CLEANUP_LOG.isDebugEnabled()) {
-        CLEANUP_LOG.debug("Call stack when this HBaseKiji was constructed: ");
-        CLEANUP_LOG.debug(mConstructorStack);
+        CLEANUP_LOG.debug(String.format(
+            "HBaseKiji '%s' was constructed through:%n%s",
+            mURI, mConstructorStack));
       }
       close();
     }
@@ -245,11 +284,22 @@ public final class HBaseKiji implements Kiji {
    * Failure to do so will cause version validation to fail with an obscure error message.
    */
   private void checkHBaseConf() {
-    if (null == getConf().get("hbase.zookeeper.property.clientPort")) {
-      // Doesn't appear so.
-      throw new RuntimeException("Configuration passed to Kiji.open() does not appear "
-          + "to contain HBase resources (hbase-default.xml, hbase-site.xml).\n"
-          + "Try using HBaseConfiguration.create().");
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public synchronized Kiji retain() {
+    mRetainCount.incrementAndGet();
+    return this;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public synchronized void release() throws IOException {
+    final int counter = mRetainCount.decrementAndGet();
+    Preconditions.checkState(counter >= 0, "Cannot release resource: retain counter is 0.");
+    if (counter == 0) {
+      close();
     }
   }
 }

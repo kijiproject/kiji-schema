@@ -21,8 +21,6 @@ package org.kiji.schema.tools;
 
 import java.io.IOException;
 
-import org.apache.commons.io.IOUtils;
-
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.Kiji;
 
@@ -59,7 +57,7 @@ abstract class OpenedKijiTool extends BaseTool {
    * @return The kiji instance.
    * @throws IOException if there is an error loading the kiji.
    */
-  protected Kiji getKiji() throws IOException {
+  protected synchronized Kiji getKiji() throws IOException {
     if (null == mKiji) {
       mKiji = openKiji();
     }
@@ -69,8 +67,10 @@ abstract class OpenedKijiTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
-    IOUtils.closeQuietly(mKiji);
-    mKiji = null;
+    if (mKiji != null) {
+      mKiji.release();
+      mKiji = null;
+    }
     super.cleanup();
   }
 }

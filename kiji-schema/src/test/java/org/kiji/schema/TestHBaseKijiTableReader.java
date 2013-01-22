@@ -60,10 +60,10 @@ public class TestHBaseKijiTableReader {
   }
 
   @After
-  public void cleanupEnvironment() {
+  public void cleanupEnvironment() throws Exception {
     IOUtils.closeQuietly(mReader);
     IOUtils.closeQuietly(mTable);
-    IOUtils.closeQuietly(mKiji);
+    mKiji.release();
   }
 
   @Test

@@ -37,14 +37,12 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
@@ -260,8 +258,7 @@ public class IntegrationHelper extends Configured {
     assertEquals(0, createResult.getReturnCode());
 
     // Add data to foo table.
-    final KijiConfiguration kijiConf = new KijiConfiguration(getConf(), kijiURI.getInstance());
-    final Kiji kiji = Kiji.Factory.open(kijiConf);
+    final Kiji kiji = Kiji.Factory.open(kijiURI, getConf());
     final KijiTable table = kiji.openTable("foo");
     final KijiTableWriter fooWriter = table.openTableWriter();
     try {
@@ -298,7 +295,7 @@ public class IntegrationHelper extends Configured {
     } finally {
       IOUtils.closeQuietly(fooWriter);
       IOUtils.closeQuietly(table);
-      IOUtils.closeQuietly(kiji);
+      kiji.release();
       layoutFile.delete();
       dataFile.delete();
       dataFormatFile.delete();
@@ -312,14 +309,9 @@ public class IntegrationHelper extends Configured {
    * @throws Exception If there is an error.
    */
   public void deleteFooTable(KijiURI kijiURI) throws Exception {
-    KijiConfiguration kijiConf = new KijiConfiguration(getConf(), kijiURI.getInstance());
-    Kiji kiji = Kiji.Factory.open(kijiConf);
-    HBaseAdmin hBaseAdmin = new HBaseAdmin(getConf());
-    KijiAdmin admin = new KijiAdmin(hBaseAdmin, kiji);
-
+    final Kiji kiji = Kiji.Factory.open(kijiURI, getConf());
+    final KijiAdmin admin = kiji.getAdmin();
     admin.deleteTable("foo");
-
-    IOUtils.closeQuietly(hBaseAdmin);
-    IOUtils.closeQuietly(kiji);
+    kiji.release();
   }
 }

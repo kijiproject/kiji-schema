@@ -126,14 +126,15 @@ public final class KijiInstaller {
 
     final Kiji kiji = Kiji.Factory.open(uri, conf);
     try {
+      final KijiAdmin kijiAdmin = kiji.getAdmin();
+      for (String tableName : kijiAdmin.getTableNames()) {
+        LOG.debug("Deleting kiji table " + tableName + "...");
+        kijiAdmin.deleteTable(tableName);
+      }
+
       // Delete the user tables:
       final HBaseAdmin hbaseAdmin = adminFactory.create(conf);
       try {
-        final KijiAdmin kijiAdmin = new KijiAdmin(hbaseAdmin, kiji);
-        for (String tableName : kijiAdmin.getTableNames()) {
-          LOG.debug("Deleting kiji table " + tableName + "...");
-          kijiAdmin.deleteTable(tableName);
-        }
 
         // Delete the system tables:
         HBaseSystemTable.uninstall(hbaseAdmin, kijiConf);
@@ -144,7 +145,7 @@ public final class KijiInstaller {
         IOUtils.closeQuietly(hbaseAdmin);
       }
     } finally {
-      IOUtils.closeQuietly(kiji);
+      kiji.release();
     }
     LOG.info(String.format("Removed kiji instance '%s'.", uri.getInstance()));
   }

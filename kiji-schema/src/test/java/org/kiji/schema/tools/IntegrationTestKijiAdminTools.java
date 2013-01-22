@@ -442,7 +442,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       Long.MAX_VALUE - 1, "gwu@usermail.example.com");
     IOUtils.closeQuietly(testWriter);
     IOUtils.closeQuietly(testTable);
-    IOUtils.closeQuietly(testKiji);
+    testKiji.release();
 
     ToolResult deleteExactResult = runTool(new DeleteTool(), new String[] {
       "--instance=" + getKijiURI().getInstance(),
@@ -478,7 +478,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       Long.MAX_VALUE - 1, "gwu@usermail.example.com");
     IOUtils.closeQuietly(testWriter);
     IOUtils.closeQuietly(testTable);
-    IOUtils.closeQuietly(testKiji);
+    testKiji.release();
 
     ToolResult deleteUpToResult = runTool(new DeleteTool(), new String[] {
       "--instance=" + getKijiURI().getInstance(),
