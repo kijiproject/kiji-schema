@@ -78,7 +78,7 @@ public class TestKijiRowScanner {
     final KijiDataRequest request = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("info", "name"));
     final Iterator<KijiRowData> scanner =
-        mReader.getScanner(request, new KijiScannerOptions()).iterator();
+        mReader.getScanner(request).iterator();
 
     final String actual1 = scanner.next().getValue("info", "name", 1L).toString();
     final String actual2 = scanner.next().getValue("info", "name", 1L).toString();

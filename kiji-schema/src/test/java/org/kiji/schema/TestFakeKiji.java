@@ -33,7 +33,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiDataRequest.Column;
-import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -76,7 +75,7 @@ public class TestFakeKiji {
     {
       final KijiDataRequest dataRequest = new KijiDataRequest().addColumn(new Column("family"));
       final KijiRowScanner scanner =
-          table.openTableReader().getScanner(dataRequest, new KijiScannerOptions());
+          table.openTableReader().getScanner(dataRequest);
       assertFalse(scanner.iterator().hasNext());
       scanner.close();
     }
@@ -90,7 +89,7 @@ public class TestFakeKiji {
     {
       final KijiDataRequest dataRequest = new KijiDataRequest().addColumn(new Column("family"));
       final KijiRowScanner scanner =
-          table.openTableReader().getScanner(dataRequest, new KijiScannerOptions());
+          table.openTableReader().getScanner(dataRequest);
       final Iterator<KijiRowData> it = scanner.iterator();
       assertTrue(it.hasNext());
       KijiRowData row = it.next();

@@ -121,6 +121,12 @@ public class HBaseKijiTableReader implements KijiTableReader {
 
   /** {@inheritDoc} */
   @Override
+  public KijiRowScanner getScanner(KijiDataRequest dataRequest) throws IOException {
+    return getScanner(dataRequest, new KijiScannerOptions());
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public KijiRowScanner getScanner(KijiDataRequest dataRequest,
       KijiScannerOptions kijiScannerOptions) throws IOException {
     try {

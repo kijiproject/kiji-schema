@@ -63,7 +63,18 @@ public interface KijiTableReader extends Closeable {
       throws IOException;
 
   /**
-   * Gets a KijiRowScanner using the specified options.
+   * Gets a KijiRowScanner with the specified data request.
+   *
+   * @param dataRequest The data request to scan for.
+   * @return The KijiRowScanner.
+   * @throws IOException If there is an IO error.
+   * @throws KijiDataRequestException If the data request is invalid.
+   */
+  KijiRowScanner getScanner(KijiDataRequest dataRequest)
+      throws IOException;
+
+  /**
+   * Gets a KijiRowScanner using the specified data request and options.
    *
    * @param dataRequest The data request to scan for.
    * @param scannerOptions Other options for the scanner.
