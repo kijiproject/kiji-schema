@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.avro.Schema;
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -121,13 +120,17 @@ public class KijiClientTest {
   @After
   public void teardownMockKiji() throws IOException {
     LOG.debug("Closing mock kiji instance");
-    IOUtils.closeQuietly(mKiji);
+    mKiji.release();
+    mKiji = null;
+    mKijiAdmin = null;
+    mURI = null;
+    mConf = null;
   }
 
   /**
    * Gets the kiji instance for testing.
    *
-   * @return The test kiji instance.
+   * @return the test kiji instance. No need to release.
    */
   protected Kiji getKiji() {
     return mKiji;

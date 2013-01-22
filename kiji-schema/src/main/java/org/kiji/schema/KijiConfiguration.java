@@ -52,6 +52,7 @@ import org.kiji.annotations.ApiAudience;
  * <p>The default Kiji instance name is <em>default</em>.</p>
  */
 @ApiAudience.Public
+@Deprecated
 public final class KijiConfiguration extends Configured {
   private static final Logger LOG = LoggerFactory.getLogger(KijiConfiguration.class);
 

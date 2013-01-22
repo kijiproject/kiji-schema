@@ -77,7 +77,7 @@ public class FooTableIntegrationTest extends AbstractKijiIntegrationTest {
       mKijiTable.close();
     }
     if (null != mKiji) {
-      mKiji.close();
+      mKiji.release();
     }
   }
 }

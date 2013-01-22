@@ -134,7 +134,7 @@ public class KijiTableInputFormat
     final Kiji kiji = Kiji.Factory.open(tableURI, conf);
     final KijiTable table = kiji.openTable(tableURI.getTable());
     IOUtils.closeQuietly(table);
-    IOUtils.closeQuietly(kiji);
+    kiji.release();
 
     // TODO: Check for jars config:
     // GenericTableMapReduceUtil.initTableInput(hbaseTableName, scan, job);
@@ -241,7 +241,7 @@ public class KijiTableInputFormat
       IOUtils.closeQuietly(mScanner);
       IOUtils.closeQuietly(mReader);
       IOUtils.closeQuietly(mTable);
-      IOUtils.closeQuietly(mKiji);
+      mKiji.release();
       mIterator = null;
       mScanner = null;
       mReader = null;

@@ -47,6 +47,8 @@ import org.kiji.schema.layout.impl.HTableSchemaTranslator;
 /**
  * Administration API for managing a Kiji instance.
  */
+// TODO: KijiAdmin should not implement Closeable for end-users.
+//     HBaseKijiAdmin should implement Closeable, for HBaseKiji's internal use only!
 @ApiAudience.Public
 public final class KijiAdmin implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiAdmin.class);
@@ -54,7 +56,7 @@ public final class KijiAdmin implements Closeable {
   /** HBase admin. */
   private final HBaseAdmin mHBaseAdmin;
 
-  /** Meta table. */
+  /** Manages this Kiji instance. */
   private final Kiji mKiji;
 
   /**

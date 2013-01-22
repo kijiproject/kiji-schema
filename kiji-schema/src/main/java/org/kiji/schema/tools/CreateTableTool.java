@@ -19,14 +19,11 @@
 
 package org.kiji.schema.tools;
 
-import java.io.IOException;
 import java.util.List;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +58,6 @@ public final class CreateTableTool extends VersionValidatedTool {
   @Flag(name="split-key-file",
       usage="Path to a file of row keys to use as boundaries between regions")
   private String mSplitKeyFilePath = "";
-
-  private HBaseAdmin mHBaseAdmin;
 
   /** {@inheritDoc} */
   @Override
@@ -103,23 +98,8 @@ public final class CreateTableTool extends VersionValidatedTool {
 
   /** {@inheritDoc} */
   @Override
-  protected void setup() throws Exception {
-    super.setup();
-    mHBaseAdmin = new HBaseAdmin(getConf());
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void cleanup() throws IOException {
-    IOUtils.closeQuietly(mHBaseAdmin);
-    super.cleanup();
-  }
-
-  /** {@inheritDoc} */
-  @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final KijiAdmin admin = new KijiAdmin(mHBaseAdmin, getKiji());
-
+    final KijiAdmin admin = getKiji().getAdmin();
     getPrintStream().println("Parsing table layout: " + mLayout);
     final Path path = new Path(mLayout);
     final FileSystem fs =

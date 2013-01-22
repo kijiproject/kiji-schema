@@ -114,7 +114,7 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
     IOUtils.closeQuietly(mReader);
     IOUtils.closeQuietly(mWriter);
     IOUtils.closeQuietly(mTable);
-    IOUtils.closeQuietly(mKiji);
+    mKiji.release();
   }
 
   @Test

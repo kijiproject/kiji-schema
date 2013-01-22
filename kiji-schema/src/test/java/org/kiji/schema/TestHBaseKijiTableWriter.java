@@ -63,11 +63,11 @@ public class TestHBaseKijiTableWriter {
   }
 
   @After
-  public void cleanupEnvironment() {
+  public void cleanupEnvironment() throws IOException {
     IOUtils.closeQuietly(mWriter);
     IOUtils.closeQuietly(mReader);
     IOUtils.closeQuietly(mTable);
-    IOUtils.closeQuietly(mKiji);
+    mKiji.release();
   }
 
   @Test

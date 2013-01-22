@@ -119,8 +119,6 @@ public final class LsTool extends VersionValidatedTool {
   @Flag(name="instances", usage="List all kiji instances installed on the cluster")
   private boolean mInstances = false;
 
-  private HBaseAdmin mHBaseAdmin;
-
   /** {@inheritDoc} */
   @Override
   public String getName() {
@@ -188,11 +186,11 @@ public final class LsTool extends VersionValidatedTool {
   /**
    * Lists all the tables in a kiji instance.
    *
-   * @param admin The kiji admin utility.
    * @return A program exit code (zero on success).
    * @throws IOException If there is an error.
    */
-  private int listTables(KijiAdmin admin) throws IOException {
+  private int listTables() throws IOException {
+    final KijiAdmin admin = getKiji().getAdmin();
     getPrintStream().println("Listing tables in kiji instance: " + getURI().toString());
     for (String name : admin.getTableNames()) {
       getPrintStream().println(name);
@@ -408,9 +406,7 @@ public final class LsTool extends VersionValidatedTool {
 
     if (mTableName.isEmpty()) {
       // List tables in this kiji instance.
-      mHBaseAdmin = new HBaseAdmin(getConf());
-      final KijiAdmin admin = new KijiAdmin(mHBaseAdmin, getKiji());
-      return listTables(admin);
+      return listTables();
     }
 
     setURI(getURI().setTableName(mTableName));
@@ -623,13 +619,6 @@ public final class LsTool extends VersionValidatedTool {
       }
     }
     return request;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void cleanup() throws IOException {
-    IOUtils.closeQuietly(mHBaseAdmin);
-    super.cleanup();
   }
 
   /**

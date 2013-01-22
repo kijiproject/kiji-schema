@@ -20,7 +20,6 @@
 package org.kiji.schema.tools;
 
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +29,6 @@ import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,8 +72,6 @@ public final class LayoutTool extends VersionValidatedTool {
           + "A '.json' extension is appended to this parameter.")
   private String mWriteTo = "";
 
-  private HBaseAdmin mHBaseAdmin;
-
   /** {@inheritDoc} */
   @Override
   public String getName() {
@@ -101,20 +97,6 @@ public final class LayoutTool extends VersionValidatedTool {
       throw new RequiredFlagException("table");
     }
     Preconditions.checkArgument(mMaxVersions >= 1, "--max-versions must be >= 1");
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void setup() throws Exception {
-    super.setup();
-    mHBaseAdmin = new HBaseAdmin(getConf());
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void cleanup() throws IOException {
-    IOUtils.closeQuietly(mHBaseAdmin);
-    super.cleanup();
   }
 
   /**
@@ -205,7 +187,7 @@ public final class LayoutTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final KijiAdmin admin = new KijiAdmin(mHBaseAdmin, getKiji());
+    final KijiAdmin admin = getKiji().getAdmin();
     if (mDo.equals("dump")) {
       dumpLayout(admin);
     } else if (mDo.equals("set")) {
