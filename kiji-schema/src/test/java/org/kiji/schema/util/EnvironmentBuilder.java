@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -39,7 +40,6 @@ import org.kiji.schema.KijiInvalidNameException;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.KijiURIException;
 import org.kiji.schema.impl.DefaultHBaseFactory;
 import org.kiji.schema.layout.KijiTableLayout;
 
@@ -64,6 +64,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  */
 public class EnvironmentBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(InstanceBuilder.class);
+  private static final AtomicLong FAKE_COUNT = new AtomicLong();
 
   /** Used to store cells to be built. */
   private final Map<String,
@@ -116,17 +117,11 @@ public class EnvironmentBuilder {
       final String instanceName = instanceEntry.getKey();
       final Map<String, Map<EntityId, Map<String, Map<String, Map<Long, Object>>>>> instance =
           instanceEntry.getValue();
-      final int id = environment.size();
       final Configuration conf = HBaseConfiguration.create();
 
       // Build fake Kiji URI.
-      KijiURI uri;
-      try {
-        uri = KijiURI.parse(
-            String.format("kiji://.fake.%d/%s", id, instanceName));
-      } catch (KijiURIException kue) {
-        throw new IOException(kue);
-      }
+      final KijiURI uri = KijiURI.parse(
+          String.format("kiji://.fake.%d/%s", FAKE_COUNT.getAndIncrement(), instanceName));
       LOG.info(String.format("  Building instance: %s", uri.toString()));
 
       // In-process Map/Reduce execution:

@@ -41,9 +41,6 @@ public class TestHBaseKijiTableWriter {
 
   @Before
   public void setupEnvironment() throws Exception {
-    // TODO: Put this in a withInstance() method.
-    final String instance = java.util.UUID.randomUUID().toString().replace('-', 'x');
-
     // Get the test table layouts.
     final KijiTableLayout layout = new KijiTableLayout(
         KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST), null);
@@ -62,7 +59,7 @@ public class TestHBaseKijiTableWriter {
         .build();
 
     // Fill local variables.
-    mKiji = environment.get(instance);
+    mKiji = environment.get("default");
     mTable = mKiji.openTable("user");
     mWriter = mTable.openTableWriter();
     mReader = mTable.openTableReader();

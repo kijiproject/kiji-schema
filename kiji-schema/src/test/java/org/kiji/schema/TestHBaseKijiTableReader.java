@@ -39,16 +39,13 @@ public class TestHBaseKijiTableReader {
 
   @Before
   public void setupEnvironment() throws Exception {
-    // TODO: Put this in a withInstance() method.
-    final String instance = java.util.UUID.randomUUID().toString().replace('-', 'x');
-
     // Get the test table layouts.
     final KijiTableLayout layout = new KijiTableLayout(
         KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST), null);
 
     // Populate the environment.
     Map<String, Kiji> environment = new EnvironmentBuilder()
-        .withInstance(instance)
+        .withInstance("default")
             .withTable("user", layout)
                 .withRow("foo")
                     .withFamily("info")
@@ -61,7 +58,7 @@ public class TestHBaseKijiTableReader {
         .build();
 
     // Fill local variables.
-    mKiji = environment.get(instance);
+    mKiji = environment.get("default");
     mTable = mKiji.openTable("user");
     mReader = mTable.openTableReader();
   }
