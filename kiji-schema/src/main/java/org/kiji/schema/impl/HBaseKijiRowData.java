@@ -47,7 +47,6 @@ import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.KijiColumnPager;
 import org.kiji.schema.KijiCounter;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;

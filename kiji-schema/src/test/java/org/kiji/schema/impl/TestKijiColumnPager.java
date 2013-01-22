@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.impl;
 
 
 import static org.easymock.EasyMock.createMock;
@@ -41,7 +41,12 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.kiji.schema.impl.HashedEntityId;
+import org.kiji.schema.EntityId;
+import org.kiji.schema.HBaseColumnName;
+import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;

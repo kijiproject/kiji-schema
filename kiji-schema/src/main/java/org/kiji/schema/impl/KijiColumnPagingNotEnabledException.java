@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.impl;
 
 import java.io.IOException;
 
