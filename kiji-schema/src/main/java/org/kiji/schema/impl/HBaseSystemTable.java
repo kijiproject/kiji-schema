@@ -161,13 +161,8 @@ public class HBaseSystemTable extends KijiSystemTable {
     super.finalize();
   }
 
-  /**
-   * Gets the value associated with a property key.
-   *
-   * @param key The property key to look up.
-   * @return The value in the HBase table with the given key, or null if the key doesn't exist.
-   * @throws IOException If there is an error.
-   */
+  /** {@inheritDoc} */
+  @Override
   public byte[] getValue(String key) throws IOException {
     Get get = new Get(Bytes.toBytes(key));
     get.addColumn(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0]);
@@ -179,13 +174,8 @@ public class HBaseSystemTable extends KijiSystemTable {
     return result.getValue(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0]);
   }
 
-  /**
-   * Sets a value for a property key, which creates it if it doesn't exist.
-   *
-   * @param key The property key to set.
-   * @param value The value of the property.
-   * @throws IOException If there is an error.
-   */
+  /** {@inheritDoc} */
+  @Override
   public void putValue(String key, byte[] value) throws IOException {
     Put put = new Put(Bytes.toBytes(key));
     put.add(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0], value);

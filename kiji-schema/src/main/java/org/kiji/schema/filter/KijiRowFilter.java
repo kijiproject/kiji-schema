@@ -25,8 +25,8 @@ import org.apache.hadoop.hbase.filter.Filter;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
+import org.kiji.schema.DecodedCell;
 import org.kiji.schema.HBaseColumnName;
-import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.NoSuchColumnException;
@@ -72,7 +72,7 @@ public abstract class KijiRowFilter {
      * @return The Kiji cell encoded as an HBase value.
      * @throws IOException If there is an error encoding the cell value.
      */
-    public abstract byte[] getHBaseCellValue(KijiColumnName column, KijiCell<?> kijiCell)
+    public abstract byte[] getHBaseCellValue(KijiColumnName column, DecodedCell<?> kijiCell)
         throws IOException;
   }
 

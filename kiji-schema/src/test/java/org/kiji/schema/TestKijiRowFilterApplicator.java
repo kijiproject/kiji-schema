@@ -98,8 +98,8 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
           expected.getFamily(), hbaseColumn.getFamily());
       assertArrayEquals("Qualifier name not translated correctly by KijiRowFilter.Context",
           expected.getQualifier(), hbaseColumn.getQualifier());
-      final KijiCell<Integer> kijiCell
-          = new KijiCell<Integer>(Schema.create(Schema.Type.INT), Integer.valueOf(42));
+      final DecodedCell<Integer> kijiCell =
+          new DecodedCell<Integer>(Schema.create(Schema.Type.INT), Integer.valueOf(42));
       assertArrayEquals("Cell value not translated correctly by KijiRowFilter.Context",
           mCellEncoder.encode(kijiCell),
           context.getHBaseCellValue(column, kijiCell));

@@ -28,7 +28,7 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DecoderFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiCell;
+import org.kiji.schema.DecodedCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.layout.impl.CellSpec;
@@ -188,7 +188,7 @@ public abstract class AvroCellDecoder<T> implements KijiCellDecoder<T> {
 
   /** {@inheritDoc} */
   @Override
-  public KijiCell<T> decodeCell(byte[] encodedBytes) throws IOException {
+  public DecodedCell<T> decodeCell(byte[] encodedBytes) throws IOException {
     return decode(encodedBytes, null);
   }
 
@@ -208,13 +208,13 @@ public abstract class AvroCellDecoder<T> implements KijiCellDecoder<T> {
    * @return The decoded KijiCell.
    * @throws IOException If there is an error.
    */
-  private KijiCell<T> decode(byte[] bytes, T reuse) throws IOException {
+  private DecodedCell<T> decode(byte[] bytes, T reuse) throws IOException {
     final ByteStreamArray byteStream = new ByteStreamArray(bytes);
     final Schema writerSchema = mSchemaDecoder.decode(byteStream);
     final ByteBuffer binaryData =
         ByteBuffer.wrap(bytes, byteStream.getOffset(), bytes.length - byteStream.getOffset());
     final T data = decodeAvro(binaryData, writerSchema, mReaderSchema, reuse);
-    return new KijiCell<T>(writerSchema, data);
+    return new DecodedCell<T>(writerSchema, data);
   }
 
   /**

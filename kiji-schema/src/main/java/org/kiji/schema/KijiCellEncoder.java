@@ -44,7 +44,7 @@ public interface KijiCellEncoder {
    * @return the binary encoding of the cell.
    * @throws IOException on I/O error.
    */
-  byte[] encode(KijiCell<?> cell) throws IOException;
+  byte[] encode(DecodedCell<?> cell) throws IOException;
 
   /**
    * Encodes the specified value.

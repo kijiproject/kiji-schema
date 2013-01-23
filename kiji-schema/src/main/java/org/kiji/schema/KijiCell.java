@@ -19,113 +19,105 @@
 
 package org.kiji.schema;
 
+import com.google.common.base.Objects;
+import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
-import org.apache.avro.util.Utf8;
 
 import org.kiji.annotations.ApiAudience;
 
 /**
- * <p>The data held in one cell of a kiji table.  A KijiCell is a single
- * unit of data in Kiji, addressed by a tuple of (table, row, family,
- * qualifier, timestamp).</p>
+ * KijiCell represents a cell in a Kiji table.
  *
- * <p>Use a {@link org.kiji.schema.impl.AvroCellDecoder} or a
- * {@link org.kiji.schema.impl.AvroCellEncoder} to serialize/deserialize this cell in and out of a
- * Kiji table.</p>
+ * It contains the family, qualifier, timestamp
+ * that uniquely locates the cell within a table as well as the data in the cell.
  *
  * <p>This class has a Java type parameter <code>T</code>, which should be the Java type
  * determined by the Avro Schema.  The mapping between Avro Schemas and Java types are
  * documented in the Avro Java API documentation:
  *
- *   <ul>
- *     <li><a
- * href="http://avro.apache.org/docs/current/api/java/org/apache/avro/specific/package-summary.html"
- * >Specific types</a></li>
- *     <li><a
- * href="http://avro.apache.org/docs/current/api/java/org/apache/avro/generic/package-summary.html"
- * >Generic types</a></li>
- *   </ul>
- * </p>
- *
- * @param <T> The type of the data in the cell.
+ * @param <T> Type of data stored in the cell.
  */
 @ApiAudience.Framework
 public final class KijiCell<T> {
-  /**
-   * The schema used to write the cell data.
-   *
-   * Null for a counter.
-   */
-  // TODO: Should there be KijiCellCounter and KijiCellAvro?
-  private Schema mWriterSchema;
+  /** Decoded cell content. */
+  private final DecodedCell<T> mDecodedCell;
 
-  /** The data in the Kiji cell. */
-  private T mData;
+  /** Kiji column family name. */
+  private final String mFamily;
 
-  /**
-   * Constructs a single cell of kiji data.
-   *
-   * @param writerSchema The schema used to the encode the data in the cell.
-   * @param data The data in the cell (the payload).
-   */
-  public KijiCell(Schema writerSchema, T data) {
-    mWriterSchema = writerSchema;
-    mData = data;
+  /** Kiji column qualifier name. */
+  private final String mQualifier;
+
+  /** Timestamp of the cell, in ms since the Epoch. */
+  private final long mTimestamp;
+
+  /** Type of a Kiji cell. */
+  public enum CellType {
+    /** Cell encoded with Avro. */
+    AVRO,
+
+    /** Cell encoded as a counter. */
+    COUNTER
   }
 
   /**
-   * Gets the schema used to write data in the cell.
+   * Initializes a KijiCell.
    *
-   * @return The avro schema used by the writer to encode the data payload.
+   * @param family Kiji column family name of the cell.
+   * @param qualifier Kiji column qualifier name of the cell.
+   * @param timestamp Timestamp the cell was written at, in ms since the Epoch.
+   * @param decodedCell Decoded cell content.
    */
-  public Schema getWriterSchema() {
-    return mWriterSchema;
+  public KijiCell(String family, String qualifier, long timestamp, DecodedCell<T> decodedCell) {
+    mDecodedCell = Preconditions.checkNotNull(decodedCell);
+    mFamily = Preconditions.checkNotNull(family);
+    mQualifier = Preconditions.checkNotNull(qualifier);
+    mTimestamp = timestamp;
   }
 
-  /**
-   * Gets the data in the cell.
-   *
-   * @return The decoded original data payload.
-   */
+  /** @return the Kiji column family name of this cell. */
+  public String getFamily() {
+    return mFamily;
+  }
+
+  /** @return the Kiji column qualifier name of this cell. */
+  public String getQualifier() {
+    return mQualifier;
+  }
+
+  /** @return the timestamp this cell was written with, in ms since the Epoch. */
+  public long getTimestamp() {
+    return mTimestamp;
+  }
+
+  /** @return the cell content. */
   public T getData() {
-    return mData;
+    return mDecodedCell.getData();
   }
 
-  /**
-   * Determines whether this KijiCell is equivalent to another.  They are equivalent if
-   * they are both KijiCell objects, they have the same writer schema, and they have the
-   * same data.
-   *
-   * @param obj The other object to compare to.
-   * @return Whether they are equivalent.
-   */
-  @Override
-  public boolean equals(Object obj) {
-    // Check if they are both KijiCells.
-    if (!(obj instanceof KijiCell<?>)) {
-      return false;
-    }
-    KijiCell<?> other = (KijiCell<?>) obj;
-
-    // Check that the schemas are the same.
-    if (!getWriterSchema().equals(other.getWriterSchema())) {
-      return false;
-    }
-
-    // Special case check for strings to work around the weirdness of avro.
-    if (getData() instanceof Utf8 || other.getData() instanceof Utf8) {
-      return getData().toString().equals(other.getData().toString());
-    }
-    return getData().equals(other.getData());
+  /** @return the Avro schema used to encode this cell, or null. */
+  public Schema getWriterSchema() {
+    return mDecodedCell.getWriterSchema();
   }
 
-  /**
-   * This operation is not supported.
-   *
-   * @return Nothing, since this operation is not supported.
-   */
+  /** @return this cell's encoding type. */
+  public CellType getType() {
+    if (mDecodedCell.getWriterSchema() == null) {
+      return CellType.COUNTER;
+    } else {
+      return CellType.AVRO;
+    }
+  }
+
+  /** {@inheritDoc} */
   @Override
-  public int hashCode() {
-    throw new UnsupportedOperationException();
+  public String toString() {
+    return Objects.toStringHelper(KijiCell.class)
+        .add("family", mFamily)
+        .add("qualifier", mQualifier)
+        .add("timestamp", mTimestamp)
+        .add("encoding", getType())
+        .add("content", getData())
+        .toString();
   }
 }

@@ -29,22 +29,25 @@ import org.apache.avro.Schema;
 import org.apache.avro.util.Utf8;
 import org.junit.Test;
 
-public class TestKijiCell {
+public class TestDecodedCell {
+  private static final Schema SCHEMA_INT = Schema.create(Schema.Type.INT);
+  private static final Schema SCHEMA_LONG = Schema.create(Schema.Type.LONG);
+  private static final Schema SCHEMA_STRING = Schema.create(Schema.Type.STRING);
+
   @Test
   public void testEquals() {
-    KijiCell<Integer> a = new KijiCell<Integer>(Schema.create(Schema.Type.INT), new Integer(5));
-    KijiCell<Integer> b = new KijiCell<Integer>(Schema.create(Schema.Type.INT), new Integer(5));
-    KijiCell<Integer> c = new KijiCell<Integer>(Schema.create(Schema.Type.INT), new Integer(6));
-    KijiCell<Long> d = new KijiCell<Long>(Schema.create(Schema.Type.LONG), new Long(5));
+    final DecodedCell<Integer> int1 = new DecodedCell<Integer>(SCHEMA_INT, 5);
+    final DecodedCell<Integer> int2 = new DecodedCell<Integer>(SCHEMA_INT, 5);
+    final DecodedCell<Integer> int3 = new DecodedCell<Integer>(SCHEMA_INT, 6);
+    final DecodedCell<Long> long1 = new DecodedCell<Long>(SCHEMA_LONG, 5L);
 
-    assertEquals(a, b);
-    assertThat(a, is(not(c)));
-    assertFalse(a.equals(d));
+    assertEquals(int1, int2);
+    assertThat(int1, is(not(int3)));
+    assertFalse(int1.equals(long1));
 
-    KijiCell<CharSequence> e = new KijiCell<CharSequence>(Schema.create(Schema.Type.STRING),
-        new String("foo"));
-    KijiCell<CharSequence> f = new KijiCell<CharSequence>(Schema.create(Schema.Type.STRING),
-        new Utf8("foo"));
-    assertEquals(e, f);
+    final DecodedCell<CharSequence> cs1 = new DecodedCell<CharSequence>(SCHEMA_STRING, "foo");
+    final DecodedCell<CharSequence> cs2 =
+        new DecodedCell<CharSequence>(SCHEMA_STRING, new Utf8("foo"));
+    assertEquals(cs1, cs2);
   }
 }
