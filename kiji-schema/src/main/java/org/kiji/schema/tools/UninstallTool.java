@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiInvalidNameException;
 import org.kiji.schema.KijiNotInstalledException;
@@ -33,9 +32,6 @@ import org.kiji.schema.KijiNotInstalledException;
  */
 @ApiAudience.Private
 public final class UninstallTool extends BaseTool {
-
-  @Flag(name="confirm", usage="If true, uninstall will be performed without prompt.")
-  private boolean mConfirm = false;
 
   /** {@inheritDoc} */
   @Override
@@ -59,7 +55,7 @@ public final class UninstallTool extends BaseTool {
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     getPrintStream().println("Deleting kiji instance: " + getURI().toString());
-    if (!mConfirm)  {
+    if (isInteractive())  {
       getPrintStream().println("Are you sure? This action will delete all meta and user data "
           + "from hbase and cannot be undone!");
       if (!yesNoPrompt()) {

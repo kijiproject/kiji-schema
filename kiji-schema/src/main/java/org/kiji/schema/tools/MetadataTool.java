@@ -150,11 +150,13 @@ public class MetadataTool extends VersionValidatedTool {
       getPrintStream().println("Cannot do both --backup and --restore. See --help for details.");
       return 1;
     }
-    if (!yesNoPrompt()) {
-      getPrintStream().println("No metadata restore operation performed.");
-      return 1;
-    }
 
+    if (isInteractive()) {
+      if (!yesNoPrompt()) {
+        getPrintStream().println("No metadata restore operation performed.");
+        return 1;
+      }
+    }
     Kiji kiji = getKiji();
     if (!mOutFile.isEmpty()) {
       try {

@@ -147,7 +147,7 @@ public class IntegrationHelper extends Configured {
   public void uninstallKiji(KijiURI kijiURI) throws Exception {
     ToolResult result = runTool(getConf(), new UninstallTool(), new String[] {
       "--kiji=" + kijiURI.toString(),
-      "--confirm",
+      "--interactive=false",
     });
     if (0 != result.getReturnCode()) {
       throw new Exception("Non-zero return from uninstaller: " + result.getReturnCode()
