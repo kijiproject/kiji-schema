@@ -111,7 +111,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
    * @throws IOException if there is a problem reading from the terminal.
    */
   protected final boolean yesNoPrompt() throws IOException {
-    Preconditions.checkState(mDebugFlag);
+    Preconditions.checkState(mInteractiveFlag);
     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
     Boolean yesOrNo = null;
     try {
