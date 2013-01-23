@@ -99,33 +99,6 @@ public interface KijiRowData {
   Schema getReaderSchema(String family, String qualifier) throws IOException;
 
   /**
-   * Gets the most recent counter from a column.
-   *
-   * <p>Only columns that have been declared with {@code <schema type="counter"/>} may be
-   * read using this method, otherwise an exception is thrown.</p>
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The most recent counter.
-   * @throws IOException If there is an error.
-   */
-  KijiCounter getCounter(String family, String qualifier) throws IOException;
-
-  /**
-   * Reads a counter as it was at a particular timestamp.
-   *
-   * <p>Only columns that have been declared with {@code <schema type="counter"/>} may be
-   * read using this method, otherwise an exception is thrown.</p>
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @return The counter.
-   * @throws IOException If there is an error.
-   */
-  KijiCounter getCounter(String family, String qualifier, long timestamp) throws IOException;
-
-  /**
    * Gets the value stored within the specified cell.
    *
    * @param family A column family name.

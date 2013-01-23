@@ -39,11 +39,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.DecodedCell;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.HBaseColumnName;
+import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.KijiCounter;
+import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.SchemaType;
@@ -71,9 +73,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
    * @param table A kiji table.
    * @throws IOException If there is an error creating the writer.
    */
-  public HBaseKijiTableWriter(HBaseKijiTable table)
+  public HBaseKijiTableWriter(KijiTable table)
       throws IOException {
-    mTable = table;
+    mTable = HBaseKijiTable.downcast(table);
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
   }
 
@@ -106,7 +108,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
 
   /** {@inheritDoc} */
   @Override
-  public KijiCounter increment(EntityId entityId, String family, String qualifier, long amount)
+  public KijiCell<Long> increment(EntityId entityId, String family, String qualifier, long amount)
       throws IOException {
 
     verifyIsCounter(family, qualifier);
@@ -128,9 +130,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     assert 1 == counterEntries.size();
 
     final Map.Entry<Long, byte[]> counterEntry = counterEntries.firstEntry();
-    return new DefaultKijiCounter(
-        counterEntry.getKey(),
-        Bytes.toLong(counterEntry.getValue()));
+    final DecodedCell<Long> counter =
+        new DecodedCell<Long>(null, Bytes.toLong(counterEntry.getValue()));
+    return new KijiCell<Long>(family, qualifier, counterEntry.getKey(), counter);
   }
 
   /**

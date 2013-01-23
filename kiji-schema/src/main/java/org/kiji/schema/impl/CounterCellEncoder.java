@@ -24,7 +24,7 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiCell;
+import org.kiji.schema.DecodedCell;
 import org.kiji.schema.KijiCellEncoder;
 
 /** Encoder for Kiji counters. */
@@ -44,7 +44,7 @@ public final class CounterCellEncoder implements KijiCellEncoder {
 
   /** {@inheritDoc} */
   @Override
-  public byte[] encode(KijiCell<?> cell) throws IOException {
+  public byte[] encode(DecodedCell<?> cell) throws IOException {
     return encode(cell.getData());
   }
 

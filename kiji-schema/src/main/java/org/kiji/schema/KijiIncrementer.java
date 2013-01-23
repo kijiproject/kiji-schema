@@ -46,6 +46,6 @@ public interface KijiIncrementer extends Closeable, Flushable {
    * @return the new counter value, post increment.
    * @throws IOException on I/O error.
    */
-  KijiCounter increment(EntityId entityId, String family, String qualifier, long amount)
+  KijiCell<Long> increment(EntityId entityId, String family, String qualifier, long amount)
       throws IOException;
 }

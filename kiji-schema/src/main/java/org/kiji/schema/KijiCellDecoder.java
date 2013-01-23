@@ -42,7 +42,7 @@ public interface KijiCellDecoder<T> {
    * @return the decoded KijiCell.
    * @throws IOException on I/O error.
    */
-  KijiCell<T> decodeCell(byte[] bytes) throws IOException;
+  DecodedCell<T> decodeCell(byte[] bytes) throws IOException;
 
   /**
    * Decodes a Kiji cell from its binary-encoded form.

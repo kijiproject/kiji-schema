@@ -25,9 +25,9 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.DecodedCell;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.InternalKijiError;
-import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiSchemaTable;
@@ -88,7 +88,7 @@ public final class KijiRowFilterApplicator {
 
     /** {@inheritDoc} */
     @Override
-    public byte[] getHBaseCellValue(KijiColumnName column, KijiCell<?> kijiCell)
+    public byte[] getHBaseCellValue(KijiColumnName column, DecodedCell<?> kijiCell)
         throws IOException {
       final CellSpec cellSpec = mColumnNameTranslator.getTableLayout().getCellSpec(column)
           .setSchemaTable(mSchemaTable);

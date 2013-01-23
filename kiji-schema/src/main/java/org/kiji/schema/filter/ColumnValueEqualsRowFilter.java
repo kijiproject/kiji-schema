@@ -27,8 +27,8 @@ import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.SkipFilter;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.DecodedCell;
 import org.kiji.schema.HBaseColumnName;
-import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 
@@ -48,7 +48,7 @@ public final class ColumnValueEqualsRowFilter extends KijiRowFilter {
   private final String mQualifier;
 
   /** The value the most recent column value must equal to pass the filter. */
-  private final KijiCell<?> mValue;
+  private final DecodedCell<?> mValue;
 
   /**
    * Creates a new <code>ColumnValueEqualsRowFilter</code> instance.
@@ -57,7 +57,7 @@ public final class ColumnValueEqualsRowFilter extends KijiRowFilter {
    * @param qualifier The column qualifier of interest.
    * @param value The value the most recent cell in the column must equal to pass the filter.
    */
-  public ColumnValueEqualsRowFilter(String family, String qualifier, KijiCell<?> value) {
+  public ColumnValueEqualsRowFilter(String family, String qualifier, DecodedCell<?> value) {
     if (null == family || family.isEmpty()) {
       throw new IllegalArgumentException("family is required");
     }

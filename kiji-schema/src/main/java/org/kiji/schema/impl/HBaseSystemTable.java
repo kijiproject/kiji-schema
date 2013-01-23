@@ -168,6 +168,7 @@ public class HBaseSystemTable extends KijiSystemTable {
    * @return The value in the HBase table with the given key, or null if the key doesn't exist.
    * @throws IOException If there is an error.
    */
+  @Override
   public byte[] getValue(String key) throws IOException {
     Get get = new Get(Bytes.toBytes(key));
     get.addColumn(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0]);
@@ -186,6 +187,7 @@ public class HBaseSystemTable extends KijiSystemTable {
    * @param value The value of the property.
    * @throws IOException If there is an error.
    */
+  @Override
   public void putValue(String key, byte[] value) throws IOException {
     Put put = new Put(Bytes.toBytes(key));
     put.add(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0], value);
