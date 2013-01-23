@@ -151,7 +151,7 @@ public class MetadataTool extends VersionValidatedTool {
       return 1;
     }
 
-    if(isInteractive()) {
+    if (isInteractive()) {
       if (!yesNoPrompt()) {
         getPrintStream().println("No metadata restore operation performed.");
         return 1;

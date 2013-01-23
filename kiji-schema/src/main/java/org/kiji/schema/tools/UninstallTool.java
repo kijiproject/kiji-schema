@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiInvalidNameException;
 import org.kiji.schema.KijiNotInstalledException;
