@@ -22,7 +22,6 @@ package org.kiji.schema;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.After;
@@ -31,7 +30,7 @@ import org.junit.Test;
 
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.util.EnvironmentBuilder;
+import org.kiji.schema.util.InstanceBuilder;
 
 public class TestHBaseKijiTableWriter {
   private Kiji mKiji;
@@ -41,28 +40,23 @@ public class TestHBaseKijiTableWriter {
 
   @Before
   public void setupEnvironment() throws Exception {
-    // TODO: Put this in a withInstance() method.
-    final String instance = java.util.UUID.randomUUID().toString().replace('-', 'x');
-
     // Get the test table layouts.
     final KijiTableLayout layout = new KijiTableLayout(
         KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST), null);
 
     // Populate the environment.
-    Map<String, Kiji> environment = new EnvironmentBuilder()
-        .withInstance(instance)
-            .withTable("user", layout)
-                .withRow("foo")
-                    .withFamily("info")
-                        .withQualifier("name").withValue(1L, "foo-val")
-                        .withQualifier("visits").withValue(1L, 42L)
-                .withRow("bar")
-                    .withFamily("info")
-                        .withQualifier("visits").withValue(1L, 100L)
+    mKiji = new InstanceBuilder()
+        .withTable("user", layout)
+            .withRow("foo")
+                .withFamily("info")
+                    .withQualifier("name").withValue(1L, "foo-val")
+                    .withQualifier("visits").withValue(1L, 42L)
+            .withRow("bar")
+                .withFamily("info")
+                    .withQualifier("visits").withValue(1L, 100L)
         .build();
 
     // Fill local variables.
-    mKiji = environment.get(instance);
     mTable = mKiji.openTable("user");
     mWriter = mTable.openTableWriter();
     mReader = mTable.openTableReader();

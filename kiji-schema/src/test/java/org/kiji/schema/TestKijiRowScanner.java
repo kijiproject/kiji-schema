@@ -22,7 +22,6 @@ package org.kiji.schema;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Iterator;
-import java.util.Map;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.After;
@@ -31,7 +30,7 @@ import org.junit.Test;
 
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.util.EnvironmentBuilder;
+import org.kiji.schema.util.InstanceBuilder;
 
 public class TestKijiRowScanner {
   private Kiji mKiji;
@@ -40,27 +39,22 @@ public class TestKijiRowScanner {
 
   @Before
   public void setupEnvironment() throws Exception {
-    // TODO: Put this in a withInstance() method.
-    final String instance = java.util.UUID.randomUUID().toString().replace('-', 'x');
-
     // Get the test table layouts.
     final KijiTableLayout layout = new KijiTableLayout(
         KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST), null);
 
     // Populate the environment.
-    Map<String, Kiji> environment = new EnvironmentBuilder()
-        .withInstance(instance)
-            .withTable("user", layout)
-                .withRow("foo")
-                    .withFamily("info")
-                        .withQualifier("name").withValue(1L, "foo-val")
-                .withRow("bar")
-                    .withFamily("info")
-                        .withQualifier("name").withValue(1L, "bar-val")
+    mKiji = new InstanceBuilder()
+        .withTable("user", layout)
+            .withRow("foo")
+                .withFamily("info")
+                    .withQualifier("name").withValue(1L, "foo-val")
+            .withRow("bar")
+                .withFamily("info")
+                    .withQualifier("name").withValue(1L, "bar-val")
         .build();
 
     // Fill local variables.
-    mKiji = environment.get(instance);
     mTable = mKiji.openTable("user");
     mReader = mTable.openTableReader();
   }

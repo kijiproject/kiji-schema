@@ -21,8 +21,6 @@ package org.kiji.schema.util;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.Map;
-
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 
@@ -34,25 +32,24 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 
-public class TestEnvironmentBuilder {
+public class TestInstanceBuilder {
   @Test
   public void testBuilder() throws Exception {
     final KijiTableLayout layout =
         new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE), null);
 
-    final Map<String, Kiji> environment = new EnvironmentBuilder()
-        .withInstance("inst1")
-            .withTable("table", layout)
-                .withRow("row1")
-                    .withFamily("family")
-                        .withQualifier("column").withValue(1, "foo1")
-                                                .withValue(2, "foo2")
-                .withRow("row2")
-                    .withFamily("family")
-                        .withQualifier("column").withValue(100, "foo3")
+    final Kiji kiji = new InstanceBuilder()
+        .withTable("table", layout)
+            .withRow("row1")
+                .withFamily("family")
+                    .withQualifier("column").withValue(1, "foo1")
+                                            .withValue(2, "foo2")
+            .withRow("row2")
+                .withFamily("family")
+                    .withQualifier("column").withValue(100, "foo3")
         .build();
 
-    final KijiTable table = environment.get("inst1").openTable("table");
+    final KijiTable table = kiji.openTable("table");
     final KijiTableReader reader = table.openTableReader();
 
     // Verify the first row.
@@ -67,6 +64,6 @@ public class TestEnvironmentBuilder {
 
     IOUtils.closeQuietly(reader);
     IOUtils.closeQuietly(table);
-    IOUtils.closeQuietly(environment.get("inst1"));
+    IOUtils.closeQuietly(kiji);
   }
 }
