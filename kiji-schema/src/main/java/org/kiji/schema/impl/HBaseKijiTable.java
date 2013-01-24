@@ -36,7 +36,6 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.layout.KijiTableLayout;
 
-
 /**
  * <p>A KijiTable that exposes the underlying HBase implementation.</p>
  *

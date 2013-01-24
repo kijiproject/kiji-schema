@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -353,6 +354,17 @@ public class InstanceBuilder {
     protected QualifierBuilder(String table, EntityId entityId, String family, String qualifier) {
       super(table, entityId, family);
       mQualifierName = qualifier;
+    }
+
+    /**
+     * Adds a timestamped value to the testing environment. Note: This will write a value with
+     * the current time as its timestamp.
+     *
+     * @param value The value.
+     * @return A builder to continue building with.
+     */
+    public QualifierBuilder withValue(Object value) {
+      return withValue(HConstants.LATEST_TIMESTAMP, value);
     }
 
     /**

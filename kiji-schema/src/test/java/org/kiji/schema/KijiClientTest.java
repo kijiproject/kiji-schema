@@ -83,7 +83,7 @@ public class KijiClientTest {
       final HBaseAdmin hbaseAdmin = HBaseFactory.Provider.get()
           .getHBaseAdminFactory(getKijiURI())
           .create(mConf);
-      mKijiAdmin = new KijiAdmin(hbaseAdmin, getKiji());
+      mKijiAdmin = getKiji().getAdmin();
     } catch (KijiURIException kue) {
       throw new IOException(kue);
     } catch (KijiInvalidNameException kine) {

@@ -44,7 +44,6 @@ import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiCounter;
-import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.SchemaType;
@@ -72,9 +71,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
    * @param table A kiji table.
    * @throws IOException If there is an error creating the writer.
    */
-  public HBaseKijiTableWriter(KijiTable table)
+  public HBaseKijiTableWriter(HBaseKijiTable table)
       throws IOException {
-    mTable = HBaseKijiTable.downcast(table);
+    mTable = table;
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
   }
 
