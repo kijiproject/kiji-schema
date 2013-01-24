@@ -24,8 +24,6 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.impl.HBaseKijiTableWriter;
-
 /**
  * Tests delete functionality on HBaseKijiTableWriter.
  */
@@ -37,6 +35,6 @@ public class IntegrationTestHBaseKijiTableWriterDeletes
   @Override
   protected KijiTableWriter createWriter(KijiTable table) throws IOException {
     LOG.debug("Creating HBaseKijiTableWriter.");
-    return new HBaseKijiTableWriter(table);
+    return table.openTableWriter();
   }
 }

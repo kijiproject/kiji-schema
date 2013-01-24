@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc3
+  * SCHEMA-154. KijiAdmin is now an interface backed by HBaseKijiAdmin.
   * SCHEMA-127. Command-line tools --confirm is replaced with --interactive.
   * SCHEMA-50. Kiji.close() is replaced by Kiji.retain() and Kiji.release().
   * SCHEMA-111. Adds RELEASE_NOTES.txt

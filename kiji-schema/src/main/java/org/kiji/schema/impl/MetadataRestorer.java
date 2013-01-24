@@ -143,7 +143,7 @@ public class MetadataRestorer {
 
     final KijiMetaTable metaTable = kiji.getMetaTable();
     try {
-      final KijiAdmin admin = new KijiAdmin(hbaseAdmin, kiji);
+      final KijiAdmin admin = kiji.getAdmin();
       HBaseMetaTable.uninstall(hbaseAdmin, kiji.getURI());
       HBaseMetaTable.install(hbaseAdmin, kiji.getURI());
 
@@ -172,5 +172,4 @@ public class MetadataRestorer {
     schemaTable.fromBackup(backup.getSchemaTable());
     LOG.info("Restored " + backup.getSchemaTable().size() + " entries.");
   }
-
 }

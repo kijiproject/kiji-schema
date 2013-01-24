@@ -38,7 +38,6 @@ import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestValidator;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
-import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.filter.KijiRowFilter;
@@ -62,8 +61,8 @@ public class HBaseKijiTableReader implements KijiTableReader {
    *
    * @param table The kiji table to read from.
    */
-  public HBaseKijiTableReader(KijiTable table) {
-    mTable = HBaseKijiTable.downcast(table);
+  public HBaseKijiTableReader(HBaseKijiTable table) {
+    mTable = table;
   }
 
   /** {@inheritDoc} */

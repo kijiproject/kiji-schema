@@ -79,8 +79,7 @@ public final class HBaseKiji implements Kiji {
   private HBaseMetaTable mMetaTable;
 
   /** Admin interface. */
-  // TODO(SCHEMA-154): KijiAdmin should really be HBaseKijiAdmin
-  private KijiAdmin mAdmin;
+  private HBaseKijiAdmin mAdmin;
 
   /** Whether the kiji instance is open. */
   private boolean mIsOpen;
@@ -225,7 +224,7 @@ public final class HBaseKiji implements Kiji {
     if (null == mAdmin) {
       final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
       final HBaseAdmin hbaseAdmin = hbaseFactory.getHBaseAdminFactory(getURI()).create(getConf());
-      mAdmin = new KijiAdmin(hbaseAdmin, this);
+      mAdmin = new HBaseKijiAdmin(hbaseAdmin, this);
     }
     return mAdmin;
   }
@@ -254,9 +253,7 @@ public final class HBaseKiji implements Kiji {
     IOUtils.closeQuietly(mMetaTable);
     IOUtils.closeQuietly(mSystemTable);
     IOUtils.closeQuietly(mSchemaTable);
-    if (mAdmin != null) {
-      mAdmin.close();
-    }
+    IOUtils.closeQuietly(mAdmin);
     mSchemaTable = null;
     mMetaTable = null;
     mSystemTable = null;
