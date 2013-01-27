@@ -19,24 +19,14 @@
 
 package org.kiji.schema;
 
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.kiji.schema.avro.CellSchema;
-import org.kiji.schema.avro.SchemaStorage;
-import org.kiji.schema.avro.SchemaType;
-import org.kiji.schema.impl.AvroCellEncoder;
-import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
-import org.kiji.schema.layout.impl.CellSpec;
 
 /**
  * Base class for tests that interact with kiji as a client.
@@ -58,67 +48,39 @@ public class KijiClientTest {
   /** The configuration object for this kiji instance. */
   private Configuration mConf;
 
-  /** A kiji cell decoder factory. */
-  private KijiCellDecoderFactory mCellDecoderFactory;
-
-  /** Cell encoders. */
-  private KijiCellEncoder mStringCellEncoder;
-  private KijiCellEncoder mIntCellEncoder;
-
   /**
    * Initializes the in-memory kiji for testing.
    *
-   * @throws IOException If there is an error.
+   * @throws Exception on error.
    */
   @Before
-  public void setupMockKiji() throws IOException {
+  public void setUp() throws Exception {
     try {
-      mConf = HBaseConfiguration.create();
-      final long id = INSTANCE_COUNTER.getAndIncrement();
-      String instanceName = getClass().getSimpleName() + "_test_instance";
-      mURI = KijiURI.parse(String.format("kiji://.fake.%d/" + instanceName, id));
-      KijiInstaller.install(mURI, mConf);
-
-      mKiji = Kiji.Factory.open(mURI, mConf);
-      final HBaseAdmin hbaseAdmin = HBaseFactory.Provider.get()
-          .getHBaseAdminFactory(getKijiURI())
-          .create(mConf);
-      mKijiAdmin = getKiji().getAdmin();
-    } catch (KijiURIException kue) {
-      throw new IOException(kue);
-    } catch (KijiInvalidNameException kine) {
-      throw new IOException(kine);
+      doSetUp();
+    } catch (Exception exn) {
+      // Make exceptions in setUp() visible:
+      exn.printStackTrace();
+      throw exn;
     }
-    mCellDecoderFactory = SpecificCellDecoderFactory.get();
+  }
 
-    final CellSchema stringCellSchema = CellSchema.newBuilder()
-        .setStorage(SchemaStorage.HASH)
-        .setType(SchemaType.INLINE)
-        .setValue("\"string\"")
-        .build();
-    final CellSpec stringCellSpec = new CellSpec()
-        .setCellSchema(stringCellSchema)
-        .setSchemaTable(mKiji.getSchemaTable());
-    mStringCellEncoder = new AvroCellEncoder(stringCellSpec);
+  private void doSetUp() throws Exception {
+    mConf = HBaseConfiguration.create();
+    final long id = INSTANCE_COUNTER.getAndIncrement();
+    String instanceName = getClass().getSimpleName() + "_test_instance";
+    mURI = KijiURI.parse(String.format("kiji://.fake.%d/" + instanceName, id));
+    KijiInstaller.install(mURI, mConf);
 
-    final CellSchema intCellSchema = CellSchema.newBuilder()
-        .setStorage(SchemaStorage.HASH)
-        .setType(SchemaType.INLINE)
-        .setValue("\"int\"")
-        .build();
-    final CellSpec intCellSpec = new CellSpec()
-        .setCellSchema(intCellSchema)
-        .setSchemaTable(mKiji.getSchemaTable());
-    mIntCellEncoder = new AvroCellEncoder(intCellSpec);
+    mKiji = Kiji.Factory.open(mURI, mConf);
+    mKijiAdmin = getKiji().getAdmin();
   }
 
   /**
    * Closes the in-memory kiji instance.
-   *
-   * @throws IOException If there is an error.
+   * @throws Exception If there is an error.
    */
   @After
-  public void teardownMockKiji() throws IOException {
+  public void tearDown() throws Exception {
     LOG.debug("Closing mock kiji instance");
     mKiji.release();
     mKiji = null;
@@ -156,52 +118,5 @@ public class KijiClientTest {
 
   protected Configuration getConfiguration() {
     return mConf;
-  }
-
-  /**
-   * Gets a kiji cell decoder factory.
-   *
-   * @return A decoder.
-   */
-  protected KijiCellDecoderFactory getCellDecoderFactory() {
-    return mCellDecoderFactory;
-  }
-
-  /**
-   * Gets a cell encoder.
-   *
-   * @return An encoder.
-   */
-  @Deprecated
-  protected KijiCellEncoder getCellEncoder() {
-    return mStringCellEncoder;
-  }
-
-  /**
-   * Encodes a string into a kiji cell for test input.
-   *
-   * @param str The string to encode into a kiji cell.
-   * @return An encoded byte array that could be put directly into an HBase cell.
-   * @throws IOException If there is an error.
-   */
-  protected byte[] e(String str) throws IOException {
-    return mStringCellEncoder.encode(str);
-  }
-
-  protected byte[] i(int integer) throws IOException {
-    return mIntCellEncoder.encode(integer);
-  }
-
-  protected KijiCellEncoder getEncoder(Schema schema)
-      throws IOException {
-    final CellSchema cellSchema = CellSchema.newBuilder()
-        .setStorage(SchemaStorage.HASH)
-        .setType(SchemaType.INLINE)
-        .setValue(schema.toString())
-        .build();
-    final CellSpec cellSpec = new CellSpec()
-        .setCellSchema(cellSchema)
-        .setSchemaTable(mKiji.getSchemaTable());
-    return DefaultKijiCellEncoderFactory.get().create(cellSpec);
   }
 }

@@ -43,13 +43,18 @@ import org.junit.Test;
 
 import org.kiji.schema.EntityId;
 import org.kiji.schema.HBaseColumnName;
+import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.avro.CellSchema;
+import org.kiji.schema.avro.SchemaStorage;
+import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.layout.impl.CellSpec;
 
 public class TestKijiColumnPager extends KijiClientTest {
   private ColumnNameTranslator mColumnNameTranslator;
@@ -57,6 +62,25 @@ public class TestKijiColumnPager extends KijiClientTest {
   private KijiDataRequest mDataRequest;
   private HTableInterface mHTable;
   private KijiColumnPager mPager;
+
+  /** Cell encoders. */
+  private KijiCellEncoder mStringCellEncoder;
+
+  private void initEncoder() throws Exception {
+    final CellSchema stringCellSchema = CellSchema.newBuilder()
+        .setStorage(SchemaStorage.HASH)
+        .setType(SchemaType.INLINE)
+        .setValue("\"string\"")
+        .build();
+    final CellSpec stringCellSpec = new CellSpec()
+        .setCellSchema(stringCellSchema)
+        .setSchemaTable(getKiji().getSchemaTable());
+    mStringCellEncoder = new AvroCellEncoder(stringCellSpec);
+  }
+
+  protected byte[] encode(String str) throws IOException {
+    return mStringCellEncoder.encode(str);
+  }
 
   @Before
   public void setup() throws Exception {
@@ -80,6 +104,8 @@ public class TestKijiColumnPager extends KijiClientTest {
     mHTable = createMock(HTableInterface.class);
 
     mPager = new KijiColumnPager(mEntityId, mDataRequest, tableLayout, mHTable);
+
+    initEncoder();
   }
 
   @Test(expected=NoSuchColumnException.class)
@@ -111,11 +137,11 @@ public class TestKijiColumnPager extends KijiClientTest {
     // integration test to make sure the filters were set correctly.
 
     Result cannedResult1 = new Result(new KeyValue[] {
-      new KeyValue(row, hColumn.getFamily(), hColumn.getQualifier(), 4L, e("San Jose, CA")),
-      new KeyValue(row, hColumn.getFamily(), hColumn.getQualifier(), 3L, e("Los Altos, CA")),
+      new KeyValue(row, hColumn.getFamily(), hColumn.getQualifier(), 4L, encode("San Jose, CA")),
+      new KeyValue(row, hColumn.getFamily(), hColumn.getQualifier(), 3L, encode("Los Altos, CA")),
     });
     Result cannedResult2 = new Result(new KeyValue[] {
-      new KeyValue(row, hColumn.getFamily(), hColumn.getQualifier(), 2L, e("Seattle, WA")),
+      new KeyValue(row, hColumn.getFamily(), hColumn.getQualifier(), 2L, encode("Seattle, WA")),
     });
     expect(mHTable.get(eqGet(expectedGet)))
         .andReturn(cannedResult1)
@@ -161,8 +187,8 @@ public class TestKijiColumnPager extends KijiClientTest {
     expectedGet.addFamily(hColumn.getFamily());
     expectedGet.setMaxVersions(4);
     Result cannedResult1 = new Result(new KeyValue[] {
-      new KeyValue(row, wibidata.getFamily(), wibidata.getQualifier(), 4L, e("Engineer")),
-      new KeyValue(row, google.getFamily(), google.getQualifier(), 3L, e("Engineer")),
+      new KeyValue(row, wibidata.getFamily(), wibidata.getQualifier(), 4L, encode("Engineer")),
+      new KeyValue(row, google.getFamily(), google.getQualifier(), 3L, encode("Engineer")),
     });
     Result cannedResult2 = new Result(new KeyValue[] {}); // no more results!
     expect(mHTable.get(eqGet(expectedGet)))
