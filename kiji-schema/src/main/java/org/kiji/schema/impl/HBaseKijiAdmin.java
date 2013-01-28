@@ -308,4 +308,9 @@ public final class HBaseKijiAdmin implements KijiAdmin, Closeable {
   public void close() throws IOException {
     mHBaseAdmin.close();
   }
+
+  /** @return the underlying HBaseAdmin. */
+  public HBaseAdmin getHBaseAdmin() {
+    return mHBaseAdmin;
+  }
 }
