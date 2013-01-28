@@ -3,17 +3,46 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc3
-  * SCHEMA-154. KijiAdmin is now an interface backed by HBaseKijiAdmin.
-  * SCHEMA-127. Command-line tools --confirm is replaced with --interactive.
+  * SCHEMA-154. KijiAdmin is now an interface. Use Kiji.getAdmin() to
+      get an instance.
+  * SCHEMA-105. Hide KijiColumnPager from public API.
+  * SCHEMA-127. Command-line tools --confirm is replaced with --interactive,
+      which suppresses yes/no prompts if false.
+  * SCHEMA-142. KijiTableReader.getScanner() now takes a KijiScannerOptions
+      argument as configuration.
   * SCHEMA-50. Kiji.close() is replaced by Kiji.retain() and Kiji.release().
+      Kiji instances are created with a reference count of 1. Use the retain()
+      method to increase this reference count, if another consumer holds a
+      reference to this object.
+
+      You should call release(), or ReferenceCountableUtils.releaseQuietly()
+      before discarding the reference. Instances are closed when the reference
+      count hits zero.
+  * SCHEMA-97. org.kiji.schema.Kiji is now an interface, not a class.
+      Use Kiji.Factory.open() to get a Kiji instance.
+  * SCHEMA-157. Add KijiTable.getURI().
+  * SCHEMA-159. Fixes a bug where KijiRowData.getValues() would return values
+      in the wrong order.
+  * SCHEMA-128. Add minPoolSize option to KijiTablePool. Kiji will aggressively
+      open the min number of connections the first time a table connection is
+      requested and will maintain at least that size of a pool indefinitely.
+  * SCHEMA-17. DeleteTool replaces and improves DeleteTableTool.
+      `kiji delete-table` has been removed. See `kiji delete --help` for
+      instructions on using this tool, which can delete rows / cells in addition
+      to tables.
+  * SCHEMA-129. KijiTableReader converted to an interface. Use
+      KijiTable.openTableReader() to get an instance of KijiTableReader for a
+      given table.
+  * SCHEMA-114. Fix NullPointerException in `kiji install`.
+  * SCHEMA-20. Improve validation of cell schema changes.    
+      - Counters must specify schema storage 'final'.
+      - Final columns require inline schema specifications and cannot change.
+      - Schema storage cannot be modified.
+  * SCHEMA-113. Bugfix: `kiji metadata` command reports an incorrect usage message.
+  * SCHEMA-1. Writes through KijiTableWriter are validated against common reader schema.
   * SCHEMA-111. Adds RELEASE_NOTES.txt
   * SCHEMA-90. KijiURIException subclasses IOException.
-  * SCHEMA-128. Add minPoolSize option to KijiTablePool. Kiji will
-      aggressively open the min number of connections the first time a
-      table connection is requested and will maintain at least that
-      size of a pool indefinitely.
-  * SCHEMA-159. Fixes a bug where KijiRowData.getValues() would return
-      values in the wrong order.
+  * SCHEMA-13. Removed HBaseTableRecordReader from public API.
 
 Version 1.0.0-rc2
   * SCHEMA-93. Deprecate the org.kiji.schema.mapreduce package. This marks
