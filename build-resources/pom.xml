@@ -21,13 +21,13 @@
 
   <groupId>org.kiji.schema</groupId>
   <artifactId>build-resources</artifactId>
-  <version>1.0.0-rc3-SNAPSHOT</version>
+  <version>1.0.0-rc3</version>
   <packaging>jar</packaging>
 
   <parent>
     <groupId>org.kiji.schema</groupId>
     <artifactId>kiji-schema-root</artifactId>
-    <version>1.0.0-rc3-SNAPSHOT</version>
+    <version>1.0.0-rc3</version>
     <relativePath>..</relativePath>
   </parent>
 
