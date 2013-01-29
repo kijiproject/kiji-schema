@@ -102,20 +102,21 @@ public abstract class BaseTool extends Configured implements KijiTool {
   private PrintStream mPrintStream = System.out;
 
   /**
-   * Prompts the user for a yes or no answer until they provide a valid response
-   * (y/n/yes/no case insensitive) and reports the result. If yesNoPrompt is called in
-   * non-interactive mode, an IllegalstateException is thrown.
+   * Prompts the user for a yes or no answer to the specified question until they provide a valid
+   * response (y/n/yes/no case insensitive) and reports the result. If yesNoPrompt is called in
+   * non-interactive mode, an IllegalStateException is thrown.
    *
-   *
+   * @param question The question to which a yes or no is expected in response.
    * @return <code>true</code> if the user answer yes, <code>false</code> if  the user answered no.
    * @throws IOException if there is a problem reading from the terminal.
    */
-  protected final boolean yesNoPrompt() throws IOException {
+  protected final boolean yesNoPrompt(String question) throws IOException {
     Preconditions.checkState(mInteractiveFlag);
     BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
     Boolean yesOrNo = null;
     try {
       while (yesOrNo == null) {
+        getPrintStream().println(question);
         getPrintStream().println("Please answer yes or no.");
         String response = reader.readLine();
         if (null == response) {

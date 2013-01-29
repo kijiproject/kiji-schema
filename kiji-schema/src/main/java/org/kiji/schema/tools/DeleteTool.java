@@ -157,9 +157,8 @@ public final class DeleteTool extends VersionValidatedTool {
         getPrintStream().println("--most-recent overrides timestamp arguments.");
       }
       if (isInteractive()) {
-        getPrintStream().println("Are you sure you want to delete the most recent value at:\n"
-          + mRowName + " - " + mFamilyName + ":" + mQualifier + " ?");
-        if (!yesNoPrompt()) {
+        if (!yesNoPrompt("Are you sure you want to delete the most recent value at:\n"
+          + mRowName + " - " + mFamilyName + ":" + mQualifier + " ?")) {
           getPrintStream().println("Delete aborted.");
           return 0;
         }
@@ -172,9 +171,8 @@ public final class DeleteTool extends VersionValidatedTool {
     // Delete a value from a cell specified by timestamp
     if (mExactTimestamp != UNSPECIFIED_TIMESTAMP) {
       if (isInteractive()) {
-        getPrintStream().println("Are you sure you want to delete the value at:\n"
-          + mRowName + " [" + mExactTimestamp + "] " + mFamilyName + ":" + mQualifier + " ?");
-        if (!yesNoPrompt()) {
+        if (!yesNoPrompt("Are you sure you want to delete the value at:\n"
+          + mRowName + " [" + mExactTimestamp + "] " + mFamilyName + ":" + mQualifier + " ?")) {
           getPrintStream().println("Delete aborted.");
           return 0;
         }
@@ -187,9 +185,8 @@ public final class DeleteTool extends VersionValidatedTool {
     // Delete all cells in a row
     if (!mRowName.equals("") && mFamilyName.equals("") && mUpToTimestamp == UNSPECIFIED_TIMESTAMP) {
       if (isInteractive()) {
-        getPrintStream().println("Are you sure you want to delete all cells in row:\n"
-          + mRowName + " ?");
-        if (!yesNoPrompt()) {
+        if (!yesNoPrompt("Are you sure you want to delete all cells in row:\n"
+          + mRowName + " ?")) {
           getPrintStream().println("Delete aborted.");
           return 0;
         }
@@ -202,9 +199,8 @@ public final class DeleteTool extends VersionValidatedTool {
     // Delete all values in a row older than or equal to a given timestamp
     if (!mRowName.equals("") && mFamilyName.equals("") && mUpToTimestamp != UNSPECIFIED_TIMESTAMP) {
       if (isInteractive()) {
-        getPrintStream().println("Are you sure you want to delete all values in row:\n"
-          + mRowName + " older than or equal to: " + mUpToTimestamp + " ?");
-        if (!yesNoPrompt()) {
+        if (!yesNoPrompt("Are you sure you want to delete all values in row:\n"
+          + mRowName + " older than or equal to: " + mUpToTimestamp + " ?")) {
           getPrintStream().println("Delete aborted.");
           return 0;
         }
@@ -218,9 +214,8 @@ public final class DeleteTool extends VersionValidatedTool {
     if (!mFamilyName.equals("") && mQualifier.equals("")
         && mUpToTimestamp == UNSPECIFIED_TIMESTAMP) {
       if (isInteractive()) {
-        getPrintStream().println("Are you sure you want to delete all cells on row:\n"
-          + mRowName + " in family: " + mFamilyName + " ?");
-        if (!yesNoPrompt()) {
+        if (!yesNoPrompt("Are you sure you want to delete all cells on row:\n"
+          + mRowName + " in family: " + mFamilyName + " ?")) {
           getPrintStream().println("Delete aborted.");
           return 0;
         }
@@ -234,10 +229,9 @@ public final class DeleteTool extends VersionValidatedTool {
     if (!mFamilyName.equals("") && mQualifier.equals("")
         && mUpToTimestamp != UNSPECIFIED_TIMESTAMP) {
       if (isInteractive()) {
-        getPrintStream().println("Are you sure you want to delete all cells on row:\n"
+        if (!yesNoPrompt("Are you sure you want to delete all cells on row:\n"
           + mRowName + " in family: " + mFamilyName + " older than or equal to: " + mUpToTimestamp
-          + " ?");
-        if (!yesNoPrompt()) {
+          + " ?")) {
           getPrintStream().println("Delete aborted.");
           return 0;
         }
@@ -250,9 +244,8 @@ public final class DeleteTool extends VersionValidatedTool {
     // Delete a cell
     if (!mQualifier.equals("") && mUpToTimestamp == UNSPECIFIED_TIMESTAMP) {
       if (isInteractive()) {
-        getPrintStream().println("Are you sure you want to delete the cell on row:\n"
-          + mRowName + " in column: " + mFamilyName + ":" + mQualifier + " ?");
-        if (!yesNoPrompt()) {
+        if (!yesNoPrompt("Are you sure you want to delete the cell on row:\n"
+          + mRowName + " in column: " + mFamilyName + ":" + mQualifier + " ?")) {
           getPrintStream().println("Delete aborted.");
           return 0;
         }
@@ -265,10 +258,9 @@ public final class DeleteTool extends VersionValidatedTool {
     // Delete values from a cell older than or equal to a given timestamp
     if (!mQualifier.equals("") && mUpToTimestamp != UNSPECIFIED_TIMESTAMP) {
       if (isInteractive()) {
-        getPrintStream().println("Are you sure you want to delete all values on row:\n"
+        if (!yesNoPrompt("Are you sure you want to delete all values on row:\n"
           + mRowName + " in column: " + mFamilyName + ":" + mQualifier + " older than or equal to: "
-          + mUpToTimestamp + " ?");
-        if (!yesNoPrompt()) {
+          + mUpToTimestamp + " ?")) {
           getPrintStream().println("Delete aborted.");
           return 0;
         }
@@ -281,9 +273,8 @@ public final class DeleteTool extends VersionValidatedTool {
     // Delete a kiji table
     if (mRowName.equals("")) {
       if (isInteractive()) {
-        getPrintStream().println("Are you sure you want to delete kiji table: " + mTableName
-          + " ?");
-        if (!yesNoPrompt()) {
+        if (!yesNoPrompt("Are you sure you want to delete kiji table: " + mTableName
+          + " ?")) {
           getPrintStream().println("Delete aborted.");
           return 0;
         }
