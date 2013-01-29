@@ -6,6 +6,8 @@ Version 1.0.0-rc4
   * SCHEMA-82. KijiCell is now the uniquely located cell in a table with
       family, qualifier, and timestamp.  KijiCounters no longer exist and
       are represented as KijiCell<Long> with no writer schema instead.
+  * SCHEMA-143. KijiURI constructors are now hidden.  KijiURIs should be built
+      with KijiURIBuilders.
 
 Version 1.0.0-rc3
   * SCHEMA-83. Added containsCell method to KijiRowData.

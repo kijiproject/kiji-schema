@@ -20,6 +20,7 @@
 package org.kiji.schema.tools;
 
 import java.io.IOException;
+
 import java.util.List;
 
 import org.apache.commons.io.IOUtils;
@@ -152,7 +153,7 @@ public final class FlushTableTool extends VersionValidatedTool {
     }
 
     if (null != mTableName) {
-      setURI(getURI().setTableName(mTableName));
+      setURI(getURI().getBuilder().withTableName(mTableName).build());
       getPrintStream().println("Flushing table: " + getURI().toString());
       flushTable(mHBaseAdmin, getKiji().getURI().getInstance(), mTableName);
     }

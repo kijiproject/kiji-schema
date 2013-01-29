@@ -113,7 +113,7 @@ public final class CreateTableTool extends VersionValidatedTool {
     hbaseTimeout = hbaseTimeout * 10;
     getConf().setInt("hbase.rpc.timeout", hbaseTimeout);
 
-    setURI(getURI().setTableName(mTableName));
+    setURI(getURI().getBuilder().withTableName(mTableName).build());
     getPrintStream().println("Creating kiji table: " + getURI().toString() + "...");
     if (mNumRegions > 1) {
       // Create a table with an initial number of evenly split regions.

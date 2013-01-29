@@ -134,7 +134,8 @@ public final class HBaseKijiAdmin implements KijiAdmin, Closeable {
       if (isRestore) {
         LOG.info("Table already exists in HBase. Continuing with restore operation.");
       } else {
-        final KijiURI tableURI = mKiji.getURI().setTableName(tableName);
+        final KijiURI tableURI =
+            mKiji.getURI().getBuilder().withTableName(tableName).build();
         throw new KijiAlreadyExistsException(String.format(
             "Kiji table '%s' already exists.", tableURI), tableURI);
       }
