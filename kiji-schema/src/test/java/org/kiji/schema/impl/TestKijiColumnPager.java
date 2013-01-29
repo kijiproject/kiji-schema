@@ -47,6 +47,7 @@ import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaStorage;
@@ -93,14 +94,11 @@ public class TestKijiColumnPager extends KijiClientTest {
     mEntityId = HashedEntityId.fromKijiRowKey(
         Bytes.toBytes("Garrett"), tableLayout.getDesc().getKeysFormat());
 
-    mDataRequest = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("info", "name"))
-        .addColumn(new KijiDataRequest.Column("info", "location")
-            .withMaxVersions(5)
-            .withPageSize(2))
-        .addColumn(new KijiDataRequest.Column("jobs")
-            .withMaxVersions(4)
-            .withPageSize(2));
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.column().add("info", "name");
+    builder.column().withMaxVersions(5).withPageSize(2).add("info", "location");
+    builder.column().withMaxVersions(4).withPageSize(2).add("jobs");
+    mDataRequest = builder.build();
 
     mHTable = createMock(HTableInterface.class);
 

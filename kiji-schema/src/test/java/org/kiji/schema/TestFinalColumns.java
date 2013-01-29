@@ -26,7 +26,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.KijiDataRequest.Column;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -58,8 +57,7 @@ public class TestFinalColumns extends KijiClientTest {
     }
 
     final KijiTableReader reader = table.openTableReader();
-    final KijiRowData row = reader.get(eid, new KijiDataRequest()
-        .addColumn(new Column("family", "column")));
+    final KijiRowData row = reader.get(eid, KijiDataRequest.create("family", "column"));
     assertEquals("string value", row.getMostRecentValue("family", "column").toString());
 
     writer.close();

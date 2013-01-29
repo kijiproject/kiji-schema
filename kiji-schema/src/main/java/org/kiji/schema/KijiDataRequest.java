@@ -20,11 +20,14 @@
 package org.kiji.schema;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.filter.KijiColumnFilter;
@@ -32,134 +35,84 @@ import org.kiji.schema.filter.KijiColumnFilter;
 /**
  * <p>Describes a request for columns of data to read from a Kiji table.</p>
  *
- * <p>To request the 3 most recent versions of cell data from a column <code>bar</code> from
- * the family <code>foo</code> within the time range (123, 456]:
+ * <p>KijiDataRequest objects are immutable. To create a KijiDataRequest, use
+ * the {@link #builder()} method to get a new {@link KijiDataRequestBuilder} object.
+ * Populate the object's fields, then call {@link KijiDataRequestBuilder#build()}.</p>
+ *
+ * <p>For example, to request the 3 most recent versions of cell data from a column
+ * <code>bar</code> from
+ * the family <code>foo</code> within the time range [123, 456):
  *
  * <pre>
- * KijiDataRequest dataRequest = new KijiDataRequest()
- *     .withTimeRange(123L, 456L)
- *     .addColumn(new KijiDataRequest.Column("foo", "bar").withMaxVersions(3));
+ * KijiDataRequestBuilder builder = KijiDataRequest.builder();
+ * builder.withTimeRange(123L, 456L)
+ *     .column().withMaxVersions(3).add("foo", "bar");
+ * KijiDataRequest dataRequest = builder.build();
  * </pre>
- *
  * </p>
+ *
+ * <p>For convenience, you can build KijiDataRequests for a single cell
+ * using the <code>KijiDataRequest.create()</code> method:
+ *
+ * <pre>
+ * KijiDataRequest dataRequest = KijiDataRequest.create("info", "foo");
+ * </pre>
+ * </p>
+ *
+ * <p>You cannot set any properties of the requested column using this
+ * syntax; for further customization, see {@link KijiDataRequestBuilder}.</p>
  */
 @ApiAudience.Public
 public final class KijiDataRequest implements Serializable {
-  private static final long serialVersionUID = 1L;
+  /** Serialization version. */
+  public static final long serialVersionUID = 1L;
 
   /**
-   * Map from full column name to Column describing the request. This is not a java.util.Map
-   * because java.util.map isn't serializable.
+   * Map from full column name to Column describing the request.
    */
-  private HashMap<String, Column> mColumns;
+  private final HashMap<String, Column> mColumns;
 
   /** The minimum timestamp of cells to be read (inclusive). */
-  private long mMinTimestamp;
+  private final long mMinTimestamp;
 
   /** The maximum timestamp of cells to be read (exclusive). */
-  private long mMaxTimestamp;
+  private final long mMaxTimestamp;
 
   /**
    * Describes a request for a Kiji Table column.
    */
   @ApiAudience.Public
   public static final class Column implements Serializable {
-    private static final long serialVersionUID = 1L;
+    /** Serialization version. */
+    public static final long serialVersionUID = 1L;
 
     /** The column family requested. */
-    private String mFamily;
+    private final String mFamily;
     /** The column qualifier requested (may be null, which means any qualifier). */
-    private String mKey;
+    private final String mQualifier;
     /** The maximum number of versions from the column to read (of the most recent). */
-    private int mMaxVersions;
+    private final int mMaxVersions;
     /** A column filter (may be null). */
-    private KijiColumnFilter mFilter;
+    private final KijiColumnFilter mFilter;
     /** The number of cells per page (zero means no paging). */
-    private int mPageSize;
+    private final int mPageSize;
 
     /**
-     * Creates a new requested <code>Column</code>.
-     *
-     * @param name The name of the column to request.
-     */
-    public Column(KijiColumnName name) {
-      this(name.getFamily(), name.getQualifier());
-    }
-
-    /**
-     * Creates a new request for the latest version of the cells in <code>family</code>.
+     * Creates a new request for the latest version of the cell in <code>family:qualifier</code>.
      *
      * @param family The name of the column family to request.
+     * @param qualifier The name of the column qualifier to request.
+     * @param maxVersions the max versions of the column to request.
+     * @param filter a column filter to attach to the results of this column request.
+     * @param pageSize the number of cells per page to retrieve at a time.
      */
-    public Column(String family) {
-      this(family, (String) null);
-      // This is an invalid use of this class.
-      if (family.contains(":")) {
-        KijiColumnName maybeColName = new KijiColumnName(family);
-
-        throw new IllegalArgumentException("Cannot name column '" + family + "'. Did you mean "
-            + "new KijiDataRequest.Column(\"" + maybeColName.getFamily() + "\", \""
-            + maybeColName.getQualifier() + "\")?");
-      }
-    }
-
-    /**
-     * Creates a new request for the latest version of the cell in <code>family:key</code>.
-     *
-     * @param family The name of the column family to request.
-     * @param key The name of the column qualifier to request.
-     */
-    public Column(String family, String key) {
+    Column(String family, String qualifier, int maxVersions, KijiColumnFilter filter,
+        int pageSize) {
       mFamily = family;
-      mKey = key;
-      mMaxVersions = 1;
-    }
-
-    /**
-     * Creates a new request for the latest version of the cell in <code>family:key</code>.
-     *
-     * @param family The name of the column family to request.
-     * @param key The name of the column qualifier to request.
-     */
-    public Column(String family, byte[] key) {
-      this(family, Bytes.toString(key));
-    }
-
-    /**
-     * Sets the maximum number of the most recent versions to return.
-     *
-     * @param num The maximum number of versions of the cell to read.
-     * @return This column request instance.
-     */
-    public Column withMaxVersions(int num) {
-      if (num <= 0) {
-        throw new IllegalArgumentException("Number of versions must be positive.");
-      }
-      mMaxVersions = num;
-      return this;
-    }
-
-    /**
-     * Sets a filter to use on the column.
-     *
-     * @param filter The column filter;
-     * @return This column request instance.
-     */
-    public Column withFilter(KijiColumnFilter filter) {
+      mQualifier = qualifier;
+      mMaxVersions = maxVersions;
       mFilter = filter;
-      return this;
-    }
-
-    /**
-     * Sets the number of cells per page (defaults to zero, which means paging is disabled).
-     *
-     * @param cellsPerPage The number of cells to return in each page of results. Use 0 to
-     *     disable paging and return all results at once.
-     * @return This column request instance.
-     */
-    public Column withPageSize(int cellsPerPage) {
-      mPageSize = cellsPerPage;
-      return this;
+      mPageSize = pageSize;
     }
 
     /**
@@ -175,7 +128,7 @@ public final class KijiDataRequest implements Serializable {
      *
      * @return A column qualifier name (may be null or empty).
      */
-    public String getKey() { return mKey; }
+    public String getQualifier() { return mQualifier; }
 
     /**
      * <p>Gets the full name of the requested column.</p>
@@ -187,10 +140,10 @@ public final class KijiDataRequest implements Serializable {
      * @return A column name.
      */
     public String getName() {
-      if (mKey == null) {
+      if (mQualifier == null) {
         return mFamily;
       }
-      return mFamily + ":" + mKey;
+      return mFamily + ":" + mQualifier;
     }
 
     /**
@@ -199,7 +152,7 @@ public final class KijiDataRequest implements Serializable {
      * @return The column name.
      */
     public KijiColumnName getColumnName() {
-      return new KijiColumnName(getFamily(), getKey());
+      return new KijiColumnName(getFamily(), getQualifier());
     }
 
     /**
@@ -266,89 +219,212 @@ public final class KijiDataRequest implements Serializable {
     }
   }
 
-  /** Constructor. */
-  public KijiDataRequest() {
+  /**
+   * Constructor. Package-private; invoked by {@link KijiDataRequestBuilder#build()}
+   * and create().
+   *
+   * @param columns the columns to include in this data request.
+   * @param minTs the inclusive lower-bound on timestamps to request.
+   * @param maxTs the exclusive upper-bound on timestamps to request.
+   */
+  KijiDataRequest(Collection<Column> columns, long minTs, long maxTs) {
     mColumns = new HashMap<String, Column>();
-    mMinTimestamp = 0;
-    mMaxTimestamp = Long.MAX_VALUE;
-  }
+    mMinTimestamp = minTs;
+    mMaxTimestamp = maxTs;
 
-  /**
-   * Creates a new KijiDataRequest from a copy.
-   *
-   * @param copy The KijiDataRequest to copy.
-   */
-  public KijiDataRequest(KijiDataRequest copy) {
-    mColumns = new HashMap<String, Column>(copy.mColumns);
-    mMinTimestamp = copy.mMinTimestamp;
-    mMaxTimestamp = copy.mMaxTimestamp;
-  }
-
-  /**
-   * Add a request for a column to this data request.  Only the most recent request for a
-   * particular column is kept if multiple requests for the same column name are added.
-   *
-   * @param column The column request.
-   * @return This KijiDataRequest instance.
-   */
-  public KijiDataRequest addColumn(Column column) {
-    mColumns.put(column.getName(), column);
-    return this;
-  }
-
-  /**
-   * Sets the time range of cells to return: [<code>minTimestamp</code>,
-   * <code>maxTimestamp</code>).
-   *
-   * @param minTimestamp Request cells with a timestamp at least minTimestamp.
-   * @param maxTimestamp Request cells with a timestamp less than maxTimestamp.
-   * @return This data request instance.
-   */
-  public KijiDataRequest withTimeRange(long minTimestamp, long maxTimestamp) {
-    if (minTimestamp < 0) {
-      throw new IllegalArgumentException("minTimestamp may not be negative: " + minTimestamp);
+    for (Column col : columns) {
+      mColumns.put(col.getName(), col);
     }
-    if (maxTimestamp <= minTimestamp) {
-      throw new IllegalArgumentException(
-          "Invalid time range [" + minTimestamp + "," + maxTimestamp + ")");
-    }
-    mMinTimestamp = minTimestamp;
-    mMaxTimestamp = maxTimestamp;
-    return this;
   }
 
   /**
-   * Merges the requested columns in <code>other</code> into this data request.
+   * Factory method for a simple KijiDataRequest for the most recent version
+   * of each qualifier in one column family.
    *
-   * @param other Another data request to include as a part of this one.
-   * @return This KijiDataRequest instance, mutated to include the other requested columns.
+   * <p>This method does not facilitate additional customization of the
+   * data request, such as requesting multiple column families, or setting
+   * the timestamp range. For that, get a {@link KijiDataRequestBuilder} by
+   * calling {@link #builder()}.</p>
+   *
+   * @param family the column family to request
+   * @return a new KijiDataRequest that retrieves the selected column family.
+   */
+  public static KijiDataRequest create(String family) {
+    KijiDataRequestBuilder builder = builder();
+    builder.column().add(family);
+    return builder.build();
+  }
+
+
+  /**
+   * Factory method for a simple KijiDataRequest for the most recent
+   * version of a specific family:qualifier.
+   *
+   * <p>This method does not facilitate additional customization of the
+   * data request, such as requesting multiple columns, or setting
+   * the timestamp range. For that, get a {@link KijiDataRequestBuilder} by
+   * calling {@link #builder()}.</p>
+   *
+   * @param family the column family to request
+   * @param qualifier the column qualifier to request
+   * @return a new KijiDataRequest that retrieves the selected column.
+   */
+  public static KijiDataRequest create(String family, String qualifier) {
+    KijiDataRequestBuilder builder = builder();
+    builder.column().add(family, qualifier);
+    return builder.build();
+  }
+
+  /**
+   * Merges the properties of the two column requests and returns a new column request
+   * with the specified family and qualifier, and the merged properties.
+   *
+   * <p>This merges the specified columns according to the logic of
+   * {@link #merge(KijiDataRequest)}. The output family and qualifier are specified
+   * explicitly.</p>
+   *
+   * @param family the output column request's column family.
+   * @param qualifier the output column request's qualifier. May be null.
+   * @param col1 one of two column definitions to merge properties from.
+   * @param col2 the other column definition to use as input.
+   * @return a new Column request for family:qualifier, with properties merged from
+   *     col1 and col2.
+   */
+  private Column mergeColumn(String family, String qualifier, Column col1, Column col2) {
+    assert null != col1;
+    assert null != col2;
+
+    int pageSize = Math.min(col1.getPageSize(), col2.getPageSize());
+    if (0 == pageSize && Math.max(col1.getPageSize(), col2.getPageSize()) > 0) {
+      // One column had a page size of zero (i.e., infinity / paging disabled)
+      // and one had a non-zero page size. Go with that one.
+      pageSize = Math.max(col1.getPageSize(), col2.getPageSize());
+    }
+
+    int maxVersions = Math.max(col1.getMaxVersions(), col2.getMaxVersions());
+
+    return new Column(family, qualifier, maxVersions, null, pageSize);
+  }
+
+  /**
+   * Creates a new data request representing the union of this data request and the
+   * data request specified as an argument.
+   *
+   * <p>This method merges data requests using the widest-possible treatment of
+   * parameters. This may result in cells being included in the result set that
+   * were not specified by either data set. For example, if request A includes <tt>info:foo</tt>
+   * from time range [400, 700), and request B includes <tt>info:bar</tt> from time range
+   * [500, 900), then A.merge(B) will yield a data request for both columns, with time
+   * range [400, 900).</p>
+   *
+   * <p>More precisely, merges are handled in the following way:</p>
+   * <ul>
+   *   <li>The output time interval encompasses both data requests' time intervals.</li>
+   *   <li>All columns associated with both data requests will be included.</li>
+   *   <li>When maxVersions differs for the same column in both requests, the greater
+   *       value is chosen.</li>
+   *   <li>When pageSize differs for the same column in both requests, the lesser value
+   *       is chosen.</li>
+   *   <li>If either request contains KijiColumnFilter definitions attached to a column,
+   *      this is considered an error, and a RuntimeException is thrown. Data requests with
+   *      filters cannot be merged.</li>
+   *   <li>If one data request includes an entire column family (<tt>foo:*</tt>) and
+   *       the other data request includes a column within that family (<tt>foo:bar</tt>),
+   *       the entire family will be requested, and properties such as max versions, etc.
+   *       for the family-wide request will be merged with the column to ensure the request
+   *       is as wide as possible.</li>
+   * </ul>
+   *
+   * @param other another data request to include as a part of this one.
+   * @return A new KijiDataRequest instance, including the union of this data request
+   *     and the argument request.
    */
   public KijiDataRequest merge(KijiDataRequest other) {
-    for (Column otherColumn : other.getColumns()) {
-      Column myColumn = getColumn(otherColumn.getFamily(), otherColumn.getKey());
-      if (null == myColumn) {
-        // We don't have a request for otherColumn, so add it.
-        addColumn(otherColumn);
-        continue;
-      }
-
-      // Increase the max versions if the other column request requires more.
-      if (otherColumn.getMaxVersions() > myColumn.getMaxVersions()) {
-        myColumn.withMaxVersions(otherColumn.getMaxVersions());
-      }
+    if (null == other) {
+      throw new IllegalArgumentException("Input data request cannot be null.");
     }
 
-    // Expand the time range if the other data request requires more.
-    long myMinTimestamp = getMinTimestamp();
-    long myMaxTimestamp = getMaxTimestamp();
-    if (other.getMinTimestamp() < myMinTimestamp) {
-      myMinTimestamp = other.getMinTimestamp();
+    List<Column> outCols = new ArrayList<Column>();
+    Set<String> families = new HashSet<String>(); // map-type families requested.
+
+    // First, include any requests for column families.
+    for (Column otherCol : other.getColumns()) {
+      if (otherCol.getFilter() != null) {
+        // And while we're at it, check for filters. We don't know how to merge these.
+        throw new IllegalStateException("Invalid merge request: "
+            + otherCol.getName() + " has a filter.");
+      }
+
+      if (otherCol.getQualifier() == null) {
+        Column outFamily = otherCol;
+        // Loop through any requests on our end that have the same family.
+        for (Column myCol : getColumns()) {
+          if (myCol.getFamily().equals(otherCol.getFamily())) {
+            outFamily = mergeColumn(myCol.getFamily(), null, myCol, outFamily);
+          }
+        }
+
+        outCols.add(outFamily);
+        families.add(outFamily.getFamily());
+      }
     }
-    if (other.getMaxTimestamp() > myMaxTimestamp) {
-      myMaxTimestamp = other.getMaxTimestamp();
+
+    // Include requests for column families on our side that aren't present on their's.
+    for (Column myCol : getColumns()) {
+      if (myCol.getFilter() != null) {
+        // And while we're at it, check for filters. We don't know how to merge these.
+        throw new IllegalStateException("Invalid merge request: "
+            + myCol.getName() + " has a filter.");
+      }
+
+      if (myCol.getQualifier() == null && !families.contains(myCol.getFamily())) {
+        Column outFamily = myCol;
+        // Loop through requests on their end that have the same family.
+        for (Column otherCol : other.getColumns()) {
+          if (otherCol.getFamily().equals(myCol.getFamily())) {
+            outFamily = mergeColumn(myCol.getFamily(), null, outFamily, otherCol);
+          }
+        }
+
+        outCols.add(outFamily);
+        families.add(outFamily.getFamily());
+      }
     }
-    withTimeRange(myMinTimestamp, myMaxTimestamp);
-    return this;
+
+
+    // Now include individual columns from their side. If we have corresponding definitions
+    // for the same columns, merge them. If the column is already covered by a request
+    // for a family, ignore the individual column (it's already been merged).
+    for (Column otherCol : other.getColumns()) {
+      if (otherCol.getQualifier() != null && !families.contains(otherCol.getFamily())) {
+        Column myCol = getColumn(otherCol.getFamily(), otherCol.getQualifier());
+        if (null == myCol) {
+          // We don't have a request for otherColumn, so add it.
+          outCols.add(otherCol);
+          continue;
+        } else {
+          outCols.add(mergeColumn(myCol.getFamily(), myCol.getQualifier(),
+              myCol, otherCol));
+        }
+      }
+    }
+
+    // Now grab any columns that were present in our data request, but missed entirely
+    // in the other side's data request.
+    for (Column myCol : getColumns()) {
+      if (myCol.getQualifier() != null && !families.contains(myCol.getFamily())) {
+        Column otherCol = other.getColumn(myCol.getFamily(), myCol.getQualifier());
+        if (null == otherCol) {
+          // Column in our list but not the other side's list.
+          outCols.add(myCol);
+        }
+      }
+    }
+
+    long outMinTs = Math.min(getMinTimestamp(), other.getMinTimestamp());
+    long outMaxTs = Math.max(getMaxTimestamp(), other.getMaxTimestamp());
+
+    return new KijiDataRequest(outCols, outMinTs, outMaxTs);
   }
 
   /**
@@ -463,5 +539,15 @@ public final class KijiDataRequest implements Serializable {
     }
     sb.append("timeRange=").append(getMinTimestamp()).append(",").append(getMaxTimestamp());
     return sb.toString();
+  }
+
+  /**
+   * Creates a new {@link KijiDataRequestBuilder}. Use this to configure a KijiDataRequest,
+   * then create one with the {@link KijiDataRequestBuilder#build()} method.
+   *
+   * @return a new KijiDataRequestBuilder.
+   */
+  public static KijiDataRequestBuilder builder() {
+    return new KijiDataRequestBuilder();
   }
 }

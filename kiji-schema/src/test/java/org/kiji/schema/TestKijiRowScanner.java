@@ -70,8 +70,7 @@ public class TestKijiRowScanner {
 
   @Test
   public void testScanner() throws Exception {
-    final KijiDataRequest request = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("info", "name"));
+    final KijiDataRequest request = KijiDataRequest.create("info", "name");
     final KijiRowScanner scanner = mReader.getScanner(request);
     final Iterator<KijiRowData> iterator = scanner.iterator();
 
@@ -86,8 +85,7 @@ public class TestKijiRowScanner {
 
   @Test
   public void testScannerOptionsStart() throws Exception {
-    final KijiDataRequest request = new KijiDataRequest()
-    .addColumn(new KijiDataRequest.Column("info", "name"));
+    final KijiDataRequest request = KijiDataRequest.create("info", "name");
 
     final EntityId startRow = mTable.getEntityId("bar-val");
     final KijiRowScanner scanner = mReader.getScanner(

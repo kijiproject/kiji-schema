@@ -59,10 +59,11 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
 
   @Test
   public void testDataRequestToScan() throws IOException {
-    KijiDataRequest request = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("info", "name").withMaxVersions(1))
-        .addColumn(new KijiDataRequest.Column("purchases").withMaxVersions(2))
-        .withTimeRange(1L, 3L);
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.column().withMaxVersions(1).add("info", "name");
+    builder.column().withMaxVersions(2).add("purchases");
+    builder.withTimeRange(1L, 3L);
+    KijiDataRequest request = builder.build();
 
     Scan expectedScan = new Scan();
     HBaseColumnName hbaseColumn = mColumnNameTranslator.toHBaseColumnName(
@@ -89,17 +90,18 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
 
   @Test
   public void testDataRequestToScanEmpty() throws IOException {
-    KijiDataRequest request = new KijiDataRequest();
+    KijiDataRequest request = KijiDataRequest.builder().build();
     HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(request);
     assertNull(hbaseDataRequest.toScan(mTableLayout));
   }
 
   @Test
   public void testDataRequestToGet() throws IOException {
-    KijiDataRequest request = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("info", "name").withMaxVersions(1))
-        .addColumn(new KijiDataRequest.Column("purchases").withMaxVersions(2))
-        .withTimeRange(1L, 3L);
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.column().withMaxVersions(1).add("info", "name");
+    builder.column().withMaxVersions(2).add("purchases");
+    builder.withTimeRange(1L, 3L);
+    KijiDataRequest request = builder.build();
 
     EntityId entityId = mEntityIdFactory.fromKijiRowKey("entity");
     Get expectedGet = new Get(entityId.getHBaseRowKey());
@@ -121,7 +123,7 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
 
   @Test
   public void testDataRequestToGetEmpty() throws IOException {
-    KijiDataRequest request = new KijiDataRequest();
+    KijiDataRequest request = KijiDataRequest.builder().build();
     HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(request);
     assertNull(
         hbaseDataRequest.toGet(mEntityIdFactory.fromKijiRowKey("entity"), mTableLayout));

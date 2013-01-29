@@ -38,6 +38,7 @@ import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.KijiDataRequestException;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.layout.ColumnNameTranslator;
@@ -196,9 +197,10 @@ public final class KijiColumnPager {
     }
 
     // Construct a KijiDataRequest for just the single column.
-    KijiDataRequest nextPageRequest = new KijiDataRequest()
-        .addColumn(requestedColumn)
+    KijiDataRequestBuilder builder = KijiDataRequest.builder()
         .withTimeRange(mDataRequest.getMinTimestamp(), mDataRequest.getMaxTimestamp());
+    builder.column(requestedColumn);
+    KijiDataRequest nextPageRequest = builder.build();
 
     // Turn it into an HBase Get.
     HBaseDataRequestAdapter hbaseDataRequestAdapter = new HBaseDataRequestAdapter(nextPageRequest);

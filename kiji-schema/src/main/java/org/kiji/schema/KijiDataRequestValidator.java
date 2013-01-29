@@ -50,7 +50,7 @@ public final class KijiDataRequestValidator {
    */
   public void validate(KijiTableLayout tableLayout) throws InvalidLayoutException {
     for (KijiDataRequest.Column wdrColumn : mDataRequest.getColumns()) {
-      final String qualifier = wdrColumn.getKey();
+      final String qualifier = wdrColumn.getQualifier();
       final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
           tableLayout.getFamilyMap().get(wdrColumn.getFamily());
 
@@ -59,7 +59,7 @@ public final class KijiDataRequestValidator {
             tableLayout.getName(), wdrColumn.getFamily()));
       }
 
-      if (fLayout.isGroupType() && (null != wdrColumn.getKey())) {
+      if (fLayout.isGroupType() && (null != wdrColumn.getQualifier())) {
         if (!fLayout.getColumnMap().containsKey(qualifier)) {
           throw new KijiDataRequestException(String.format("Table '%s' has no column '%s'.",
               tableLayout.getName(), wdrColumn.getName()));
