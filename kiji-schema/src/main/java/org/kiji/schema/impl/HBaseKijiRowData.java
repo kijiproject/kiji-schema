@@ -35,7 +35,6 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +46,6 @@ import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.KijiCounter;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiSchemaTable;
@@ -532,7 +530,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       throws IOException {
     final KijiCellDecoder<T> decoder = getDecoder(family, qualifier);
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
-    return decoder.decodeCell(bytes);
+    return new KijiCell<T>(family, qualifier, timestamp, decoder.decodeCell(bytes));
   }
 
   /** {@inheritDoc} */
@@ -590,7 +588,8 @@ public final class HBaseKijiRowData implements KijiRowData {
       return null;
     }
     final byte[] bytes = tmap.values().iterator().next();
-    return decoder.decodeCell(bytes);
+    final long timestamp = tmap.firstKey();
+    return new KijiCell<T>(family, qualifier, timestamp, decoder.decodeCell(bytes));
   }
 
   /** {@inheritDoc} */
@@ -617,7 +616,9 @@ public final class HBaseKijiRowData implements KijiRowData {
       for (Map.Entry<Long, byte[]> entry : tmap.entrySet()) {
         final Long timestamp = entry.getKey();
         final byte[] bytes = entry.getValue();
-        result.put(timestamp, decoder.decodeCell(bytes));
+        final KijiCell<T> cell =
+            new KijiCell<T>(family, qualifier, timestamp, decoder.decodeCell(bytes));
+        result.put(timestamp, cell);
       }
     }
     return result;
@@ -633,36 +634,6 @@ public final class HBaseKijiRowData implements KijiRowData {
       result.put(qualifier, cells);
     }
     return result;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  @Deprecated
-  // TODO(SCHEMA-82): merge KijiCounter into KijiCell (ie. add timestamp to KijiCell).
-  public synchronized KijiCounter getCounter(String family, String qualifier) throws IOException {
-      final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
-      if ((null == tmap) || tmap.isEmpty()) {
-        return null;
-      }
-      final Map.Entry<Long, byte[]> mostRecent = tmap.firstEntry();
-      return new DefaultKijiCounter(mostRecent.getKey(), Bytes.toLong(mostRecent.getValue()));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  @Deprecated
-  // TODO(SCHEMA-82): merge KijiCounter into KijiCell (ie. add timestamp to KijiCell).
-  public synchronized KijiCounter getCounter(String family, String qualifier, long timestamp)
-      throws IOException {
-    final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
-    if (null == tmap) {
-      return null;
-    }
-    final Map.Entry<Long, byte[]> counterEntry = tmap.floorEntry(timestamp);
-    if (null == counterEntry) {
-      return null;
-    }
-    return new DefaultKijiCounter(counterEntry.getKey(), Bytes.toLong(counterEntry.getValue()));
   }
 
   /**

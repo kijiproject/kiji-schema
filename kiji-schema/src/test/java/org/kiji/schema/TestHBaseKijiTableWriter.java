@@ -88,7 +88,8 @@ public class TestHBaseKijiTableWriter {
         .addColumn(new KijiDataRequest.Column("info", "visits"));
     mWriter.increment(entityId, "info", "visits", 5L);
 
-    final long actual = mReader.get(entityId, request).getCounter("info", "visits").getValue();
+    KijiCell<Long> counter = mReader.get(entityId, request).getMostRecentCell("info", "visits");
+    final long actual = counter.getData();
     assertEquals(47L, actual);
   }
 
@@ -106,7 +107,8 @@ public class TestHBaseKijiTableWriter {
         .addColumn(new KijiDataRequest.Column("info", "visits"));
     mWriter.put(entityId, "info", "visits", 5L);
 
-    final long actual = mReader.get(entityId, request).getCounter("info", "visits").getValue();
+    KijiCell<Long> counter = mReader.get(entityId, request).getMostRecentCell("info", "visits");
+    final long actual = counter.getData();
     assertEquals(5L, actual);
   }
 }

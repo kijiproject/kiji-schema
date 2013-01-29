@@ -33,7 +33,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiCell;
+import org.kiji.schema.DecodedCell;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiEncodingException;
 import org.kiji.schema.KijiSchemaTable;
@@ -65,9 +65,6 @@ public final class AvroCellEncoder implements KijiCellEncoder {
   /** An encoder that writes to the above byte stream. */
   private final Encoder mByteArrayEncoder =
       EncoderFactory.get().directBinaryEncoder(mByteArrayOutputStream, null);
-
-  /** A reusable encoder for when encoding to an arbitrary output stream. */
-  // private BinaryEncoder mReusableEncoder = null;
 
   private final Schema mSchema;
 
@@ -180,7 +177,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
 
   /** {@inheritDoc} */
   @Override
-  public byte[] encode(KijiCell<?> cell) throws IOException {
+  public byte[] encode(DecodedCell<?> cell) throws IOException {
     return encode(cell.getData());
   }
 

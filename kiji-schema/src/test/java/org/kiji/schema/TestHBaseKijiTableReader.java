@@ -80,7 +80,8 @@ public class TestHBaseKijiTableReader {
     final EntityId entityId = mTable.getEntityId("foo");
     final KijiDataRequest request = new KijiDataRequest()
         .addColumn(new KijiDataRequest.Column("info", "visits"));
-    final long actual = mReader.get(entityId, request).getCounter("info", "visits").getValue();
+    KijiCell<Long> counter = mReader.get(entityId, request).getMostRecentCell("info", "visits");
+    final long actual = counter.getData();
     assertEquals(42L, actual);
   }
 

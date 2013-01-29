@@ -46,8 +46,8 @@ import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.KijiAdmin;
+import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.KijiCounter;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiRowData;
@@ -161,6 +161,7 @@ public final class LsTool extends VersionValidatedTool {
     Set<String> instanceNames = new HashSet<String>();
     HBaseAdmin hbaseAdmin = new HBaseAdmin(getConf());
     HTableDescriptor[] hTableDescriptors = hbaseAdmin.listTables();
+    IOUtils.closeQuietly(hbaseAdmin);
     for (HTableDescriptor hTableDescriptor : hTableDescriptors) {
       String instanceName = parseInstanceName(hTableDescriptor.getNameAsString());
       if (null != instanceName) {
@@ -290,19 +291,17 @@ public final class LsTool extends VersionValidatedTool {
         // If this map family of counters has no qualifiers, print entire family.
         if (entry.getValue().isEmpty()) {
           for (String key : row.getQualifiers(family.getName())) {
-            KijiCounter counter = row.getCounter(family.getName(), key);
+            KijiCell<Long> counter = row.getMostRecentCell(family.getName(), key);
             if (null != counter) {
-              printCell(row.getEntityId(), counter.getTimestamp(), family.getName(), key,
-                  Long.valueOf(counter.getValue()));
+              printCell(row.getEntityId(), counter);
             }
           }
         // If this map family of counters has been qualified, print only the given columns.
         } else {
           for (String key : entry.getValue()) {
-            KijiCounter counter = row.getCounter(family.getName(), key);
+            KijiCell<Long> counter = row.getMostRecentCell(family.getName(), key);
             if (null != counter) {
-              printCell(row.getEntityId(), counter.getTimestamp(), family.getName(), key,
-                  Long.valueOf(counter.getValue()));
+              printCell(row.getEntityId(), counter);
             }
           }
         }
@@ -325,8 +324,8 @@ public final class LsTool extends VersionValidatedTool {
                 row.getValues(family.getName(), key);
             for (Entry<Long, Object> timestampedCell : timeseriesMap.entrySet()) {
               long timestamp = timestampedCell.getKey();
-              printCell(row.getEntityId(), timestamp, family.getName(), key,
-                  timestampedCell.getValue());
+              printCell(
+                  row.getEntityId(), timestamp, family.getName(), key, timestampedCell.getValue());
             }
           }
         }
@@ -339,10 +338,10 @@ public final class LsTool extends VersionValidatedTool {
       for (ColumnLayout column : entry.getValue()) {
         final KijiColumnName colName = new KijiColumnName(familyName, column.getName());
         if (column.getDesc().getColumnSchema().getType() == SchemaType.COUNTER) {
-          final KijiCounter counter = row.getCounter(colName.getFamily(), colName.getQualifier());
+          final KijiCell<Long> counter =
+              row.getMostRecentCell(colName.getFamily(), colName.getQualifier());
           if (null != counter) {
-            printCell(row.getEntityId(), counter.getTimestamp(), colName.getFamily(),
-                colName.getQualifier(), Long.valueOf(counter.getValue()));
+            printCell(row.getEntityId(), counter);
           }
         } else {
           for (Entry<Long, Object> timestampedCell
@@ -374,6 +373,20 @@ public final class LsTool extends VersionValidatedTool {
         timestamp,
         family, qualifier,
         "" + cellData);
+  }
+
+  /**
+   * Prints the contents of a single kiji cell to the printstream.
+   *
+   * @param entityId The entity id.
+   * @param cell The KijiCell.
+   */
+  private void printCell(EntityId entityId, KijiCell<?> cell) {
+    getPrintStream().printf("%s [%d] %s:%s%n                                 %s%n",
+        Bytes.toStringBinary(entityId.getHBaseRowKey()),
+        cell.getTimestamp(),
+        cell.getFamily(), cell.getQualifier(),
+        "" + cell.getData());
   }
 
   @Override
