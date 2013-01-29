@@ -19,33 +19,53 @@
 
 package org.kiji.schema.util;
 
+import java.io.Closeable;
 import java.io.IOException;
 
-import com.sun.istack.logging.Logger;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Utilities to work with ReferenceCountable resources. */
-public final class ReferenceCountableUtils {
-  private static final Logger LOG = Logger.getLogger(ReferenceCountableUtils.class);
+public final class ResourceUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(ResourceUtils.class);
 
   /**
-   * Releases a given resource, logging and swallowing I/O errors if needed.
+   * Closes the specified resource, logging and swallowing I/O errors if needed.
    *
-   * @param resource Release this resource quietly.
+   * @param resource Close this resource.
+   */
+  public static void closeOrLog(Closeable resource) {
+    if (resource == null) {
+      return;
+    }
+    try {
+      resource.close();
+    } catch (IOException ioe) {
+      LOG.warn("I/O error while closing resource '{}':\n{}",
+          resource, StringUtils.stringifyException(ioe));
+    }
+  }
+
+  /**
+   * Releases the specified resource, logging and swallowing I/O errors if needed.
+   *
+   * @param resource Release this resource.
    * @param <T> Type of the resource to release.
    */
-  public static <T> void releaseQuietly(ReferenceCountable<T> resource) {
+  public static <T> void releaseOrLog(ReferenceCountable<T> resource) {
     if (resource == null) {
       return;
     }
     try {
       resource.release();
     } catch (IOException ioe) {
-      LOG.info(String.format(
-          "I/O error while releasing resource '%s' : %s", resource, ioe.getMessage()));
+      LOG.warn("I/O error while releasing resource '{}':\n{}",
+          resource, StringUtils.stringifyException(ioe));
     }
   }
 
   /** Utility class cannot be instantiated. */
-  private ReferenceCountableUtils() {
+  private ResourceUtils() {
   }
 }
