@@ -66,7 +66,7 @@ public class KijiClientTest {
    * @throws Exception on error.
    */
   @Before
-  public void setUp() throws Exception {
+  public final void setUpKijiTest() throws Exception {
     try {
       doSetUp();
     } catch (Exception exn) {
@@ -95,7 +95,8 @@ public class KijiClientTest {
     final long fakeHBaseCounter = mFakeHBaseInstanceCounter.getAndIncrement();
     final String hbaseAddress =
         String.format(".fake.%s-%d", mTestName.getMethodName(), fakeHBaseCounter);
-    final String instanceName = getClass().getSimpleName() + "_test_instance";
+    final String instanceName =
+        String.format("%s_%s", getClass().getSimpleName(), mTestName.getMethodName());
     final KijiURI uri = KijiURI.parse(String.format("kiji://%s/%s", hbaseAddress, instanceName));
     KijiInstaller.install(uri, mConf);
     final Kiji kiji = Kiji.Factory.open(uri, mConf);
@@ -108,7 +109,7 @@ public class KijiClientTest {
    * @throws Exception If there is an error.
    */
   @After
-  public void tearDown() throws Exception {
+  public final void tearDownKijiTest() throws Exception {
     LOG.debug("Closing mock kiji instance");
     for (Kiji kiji : mKijis) {
       mKiji.release();
