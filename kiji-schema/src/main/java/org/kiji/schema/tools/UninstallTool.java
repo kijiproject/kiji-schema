@@ -56,9 +56,9 @@ public final class UninstallTool extends BaseTool {
   protected int run(List<String> nonFlagArgs) throws Exception {
     getPrintStream().println("Deleting kiji instance: " + getURI().toString());
     if (isInteractive())  {
-      getPrintStream().println("Are you sure? This action will delete all meta and user data "
-          + "from hbase and cannot be undone!");
-      if (!yesNoPrompt()) {
+      getPrintStream().println();
+      if (!yesNoPrompt("Are you sure? This action will delete all meta and user data "
+          + "from hbase and cannot be undone!")) {
         getPrintStream().println("Delete aborted.");
         return 0;
       }

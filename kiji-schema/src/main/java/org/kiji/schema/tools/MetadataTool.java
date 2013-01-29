@@ -151,12 +151,6 @@ public class MetadataTool extends VersionValidatedTool {
       return 1;
     }
 
-    if (isInteractive()) {
-      if (!yesNoPrompt()) {
-        getPrintStream().println("No metadata restore operation performed.");
-        return 1;
-      }
-    }
     Kiji kiji = getKiji();
     if (!mOutFile.isEmpty()) {
       try {
@@ -168,7 +162,15 @@ public class MetadataTool extends VersionValidatedTool {
       }
     } else {
       assert !mInFile.isEmpty();
+        if (isInteractive()) {
+          if (!yesNoPrompt("Are you sure you want to restore metadata from backup? \n"
+            + "This will delete your current metatable. ")) {
+            getPrintStream().println("No metadata restore operation performed.");
+            return 1;
+          }
+        }
       try {
+        getPrintStream().println("Restoring Metadata from backup.");
         initRestoreOps();
         restoreMetadata(mInFile, kiji);
       } catch (IOException ioe) {
