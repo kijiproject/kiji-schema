@@ -23,7 +23,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -159,9 +158,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
       // Then use the URI to retrieve connection settings for the zookeeper quorum, which should be
       // enough to talk to an HBase instance.
       try {
-        setURI(KijiURI.parse(mInstanceURIStr)
-            .setTableName(null)
-            .setColumnNames(Collections.<String>emptyList()));
+        setURI(KijiURI.newBuilder(mInstanceURIStr).build());
       } catch (KijiURIException kue) {
         throw new IllegalArgumentException(
             String.format("Invalid kiji URI '--kiji=%s'.", mInstanceURIStr), kue);

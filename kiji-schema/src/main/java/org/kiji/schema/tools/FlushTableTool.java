@@ -20,6 +20,7 @@
 package org.kiji.schema.tools;
 
 import java.io.IOException;
+
 import java.util.List;
 
 import org.apache.commons.io.IOUtils;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiManagedHBaseTableName;
+import org.kiji.schema.KijiURI;
 
 /**
  * Command-line tool for flushing kiji meta and user tables in hbase.
@@ -152,7 +154,7 @@ public final class FlushTableTool extends VersionValidatedTool {
     }
 
     if (null != mTableName) {
-      setURI(getURI().setTableName(mTableName));
+      setURI(KijiURI.newBuilder(getURI()).withTableName(mTableName).build());
       getPrintStream().println("Flushing table: " + getURI().toString());
       flushTable(mHBaseAdmin, getKiji().getURI().getInstance(), mTableName);
     }

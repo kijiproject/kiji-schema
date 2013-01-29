@@ -192,12 +192,12 @@ public abstract class AbstractKijiIntegrationTest {
       final String quorum = conf.get(HConstants.ZOOKEEPER_QUORUM);
       final int clientPort =
           conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT);
-      return KijiURI.parse(String.format("kiji://%s:%d", quorum, clientPort));
+      return KijiURI.newBuilder(String.format("kiji://%s:%d", quorum, clientPort)).build();
     }
     if (System.getProperty(BASE_TEST_URI_PROPERTY) != null) {
-      return KijiURI.parse(System.getProperty(BASE_TEST_URI_PROPERTY));
+      return KijiURI.newBuilder(System.getProperty(BASE_TEST_URI_PROPERTY)).build();
     } else {
-      return KijiURI.parse(HBASE_MAVEN_PLUGIN_URI);
+      return KijiURI.newBuilder(HBASE_MAVEN_PLUGIN_URI).build();
     }
   }
 
@@ -464,7 +464,8 @@ public abstract class AbstractKijiIntegrationTest {
           final String instanceName = UUID.randomUUID().toString().replaceAll("-", "_");
           final IntegrationHelper intHelper = new IntegrationHelper(HBaseConfiguration.create());
           try {
-            final KijiURI kijiURI = mHBaseURI.setInstanceName(instanceName);
+            final KijiURI kijiURI =
+                KijiURI.newBuilder(mHBaseURI).withInstanceName(instanceName).build();
             intHelper.installKiji(kijiURI);
 
             // This blocks if the queue is full:

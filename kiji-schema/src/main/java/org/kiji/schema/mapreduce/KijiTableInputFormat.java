@@ -264,7 +264,7 @@ public class KijiTableInputFormat
    */
   private static KijiURI getInputTableURI(Configuration conf) throws IOException {
     try {
-      return KijiURI.parse(conf.get(KijiConfKeys.INPUT_TABLE_URI));
+      return KijiURI.newBuilder(conf.get(KijiConfKeys.INPUT_TABLE_URI)).build();
     } catch (KijiURIException kue) {
       throw new IOException(kue);
     }

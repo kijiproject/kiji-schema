@@ -28,6 +28,7 @@ import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.tools.synth.DictionaryLoader;
 import org.kiji.schema.tools.synth.EmailSynthesizer;
 import org.kiji.schema.tools.synth.NGramSynthesizer;
@@ -97,7 +98,7 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
     NGramSynthesizer fullNameSynth = new NGramSynthesizer(nameSynth, 2);
     EmailSynthesizer emailSynth = new EmailSynthesizer(random, nameDictionary);
 
-    setURI(getURI().setTableName(mTableName));
+    setURI(KijiURI.newBuilder(getURI()).withTableName(mTableName).build());
     getPrintStream().printf("Generating %d users on kiji table '%s'...%n",
         mNumUsers, getURI().toString());
     KijiTable kijiTable = getKiji().openTable(mTableName);

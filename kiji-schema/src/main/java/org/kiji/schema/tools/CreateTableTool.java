@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiAdmin;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.SplitKeyFile;
 
@@ -113,7 +114,7 @@ public final class CreateTableTool extends VersionValidatedTool {
     hbaseTimeout = hbaseTimeout * 10;
     getConf().setInt("hbase.rpc.timeout", hbaseTimeout);
 
-    setURI(getURI().setTableName(mTableName));
+    setURI(KijiURI.newBuilder(getURI()).withTableName(mTableName).build());
     getPrintStream().println("Creating kiji table: " + getURI().toString() + "...");
     if (mNumRegions > 1) {
       // Create a table with an initial number of evenly split regions.
