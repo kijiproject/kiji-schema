@@ -84,8 +84,9 @@ public class TestKijiColumnPager extends KijiClientTest {
 
   @Before
   public void setup() throws Exception {
-    final KijiTableLayout tableLayout = getKiji().getMetaTable()
-        .updateTableLayout("user", KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST));
+    final KijiTableLayout tableLayout =
+        KijiTableLayouts.getTableLayout(KijiTableLayouts.PAGING_TEST);
+    getKiji().getAdmin().createTable(tableLayout.getName(), tableLayout, false);
 
     mColumnNameTranslator = new ColumnNameTranslator(tableLayout);
 

@@ -54,6 +54,17 @@ public final class KijiTableLayouts {
     }
   }
 
+  /**
+   * Creates an initial table layout from the specified JSON resource.
+   *
+   * @param resourcePath Path of the resource to load the JSON descriptor from.
+   * @return an initial table layout constructed from the specified JSON resource.
+   * @throws IOException on I/O error.
+   */
+  public static KijiTableLayout getTableLayout(String resourcePath) throws IOException {
+    return new KijiTableLayout(getLayout(resourcePath), null);
+  }
+
   /** A fully-featured layout example. */
   public static final String FULL_FEATURED = "org/kiji/schema/layout/full-featured-layout.json";
 

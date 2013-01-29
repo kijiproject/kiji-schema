@@ -38,10 +38,10 @@ public class TestVersionTool extends KijiClientTest {
     final VersionTool tool = new VersionTool();
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final PrintStream ps = new PrintStream(baos);
-    tool.setConf(getConfiguration());
+    tool.setConf(getConf());
     tool.setPrintStream(ps);
     final int exitCode = tool.toolMain(Lists.newArrayList("--debug",
-        String.format("--kiji=%s", getKijiURI())));
+        String.format("--kiji=%s", getKiji().getURI())));
 
     ps.close();
     final String toolOutput = Bytes.toString(baos.toByteArray());
