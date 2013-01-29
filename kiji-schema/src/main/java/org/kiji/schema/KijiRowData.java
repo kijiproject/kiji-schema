@@ -59,6 +59,16 @@ public interface KijiRowData {
   boolean containsColumn(String family);
 
   /**
+   * Determines if a particular column has data in this row at a specific time.
+   *
+   * @param family A column fmaily.
+   * @param qualifier A column qualifier.
+   * @param timestamp A cell timestamp.
+   * @return Whether the column has data in this row at the specified time.
+   */
+  boolean containsCell(String family, String qualifier, Long timestamp);
+
+  /**
    * Gets the set of column qualifiers that exist in a family.
    *
    * @param family A column family name.

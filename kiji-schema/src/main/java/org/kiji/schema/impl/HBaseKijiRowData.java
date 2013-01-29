@@ -386,6 +386,13 @@ public final class HBaseKijiRowData implements KijiRowData {
 
   /** {@inheritDoc} */
   @Override
+  public synchronized boolean containsCell(String family, String qualifier, Long timestamp) {
+    return containsColumn(family, qualifier)
+        && getTimestamps(family, qualifier).contains(timestamp);
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public synchronized NavigableSet<String> getQualifiers(String family) {
     final NavigableMap<String, NavigableMap<Long, byte[]>> qmap = getRawQualifierMap(family);
     if (null == qmap) {

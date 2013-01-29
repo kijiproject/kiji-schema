@@ -51,6 +51,7 @@ import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.util.InstanceBuilder;
 
 public class TestHBaseKijiRowData extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestHBaseKijiRowData.class);
@@ -546,5 +547,28 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     assertEquals("value0", strings.get("qual0").toString());
     assertEquals("value1", strings.get("qual1").toString());
     assertEquals("value2", strings.get("qual2").toString());
+  }
+
+  @Test
+  public void testContainsColumn() throws Exception {
+    final KijiTableLayout layout =
+        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE), null);
+
+    final Kiji kiji = new InstanceBuilder()
+        .withTable("table", layout)
+            .withRow("row1")
+               .withFamily("family")
+                  .withQualifier("column").withValue(1, "foo1")
+        .build();
+
+    final KijiTable table = kiji.openTable("table");
+    final KijiTableReader reader = table.openTableReader();
+
+    final KijiRowData row1 = reader.get(table.getEntityId("row1"), new KijiDataRequest()
+        .addColumn(new KijiDataRequest.Column("family", "column")));
+    assertTrue(row1.containsCell("family", "column", 1L));
+    assertFalse(row1.containsCell("family", "column", 2L));
+    assertFalse(row1.containsCell("blope", "column", 1L));
+    assertFalse(row1.containsCell("family", "blope", 1L));
   }
 }
