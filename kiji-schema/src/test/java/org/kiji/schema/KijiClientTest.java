@@ -19,12 +19,18 @@
 
 package org.kiji.schema;
 
+import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,16 +40,22 @@ import org.slf4j.LoggerFactory;
  */
 public class KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(KijiClientTest.class);
-  private static final AtomicLong INSTANCE_COUNTER = new AtomicLong();
 
-  /** An in-memory kiji instance. */
+  /** Test method name (eg. "testFeatureX"). */
+  // JUnit requires public, checkstyle disagrees, I'm staying out of this:
+  // CSOFF: VisibilityModifierCheck
+  @Rule
+  public final TestName mTestName = new TestName();
+  // CSON: VisibilityModifierCheck
+
+  /** Counter for fake HBase instances. */
+  private final AtomicLong mFakeHBaseInstanceCounter = new AtomicLong();
+
+  /** Kiji instances opened during test, and that must be released and cleaned up after. */
+  private List<Kiji> mKijis = Lists.newArrayList();
+
+  /** Default test Kiji instance. */
   private Kiji mKiji;
-
-  /** An in-memory kiji admin instance. */
-  private KijiAdmin mKijiAdmin;
-
-  /** The URI of the in-memory kiji instance. */
-  private KijiURI mURI;
 
   /** The configuration object for this kiji instance. */
   private Configuration mConf;
@@ -66,13 +78,29 @@ public class KijiClientTest {
 
   private void doSetUp() throws Exception {
     mConf = HBaseConfiguration.create();
-    final long id = INSTANCE_COUNTER.getAndIncrement();
-    String instanceName = getClass().getSimpleName() + "_test_instance";
-    mURI = KijiURI.parse(String.format("kiji://.fake.%d/" + instanceName, id));
-    KijiInstaller.install(mURI, mConf);
+    mKiji = null;  // lazily initialized
+  }
 
-    mKiji = Kiji.Factory.open(mURI, mConf);
-    mKijiAdmin = getKiji().getAdmin();
+  /**
+   * Opens a new unique test Kiji instance, creating it if necessary.
+   *
+   * Each call to this method returns a fresh new Kiji instance.
+   * All generated Kiji instances are automatically cleaned up by KijiClientTest.
+   *
+   * @return a fresh new Kiji instance.
+   * @throws Exception on error.
+   */
+  public Kiji createTestKiji() throws Exception {
+    Preconditions.checkNotNull(mConf);
+    final long fakeHBaseCounter = mFakeHBaseInstanceCounter.getAndIncrement();
+    final String hbaseAddress =
+        String.format(".fake.%s-%d", mTestName.getMethodName(), fakeHBaseCounter);
+    final String instanceName = getClass().getSimpleName() + "_test_instance";
+    final KijiURI uri = KijiURI.parse(String.format("kiji://%s/%s", hbaseAddress, instanceName));
+    KijiInstaller.install(uri, mConf);
+    final Kiji kiji = Kiji.Factory.open(uri, mConf);
+    mKijis.add(kiji);
+    return kiji;
   }
 
   /**
@@ -82,41 +110,37 @@ public class KijiClientTest {
   @After
   public void tearDown() throws Exception {
     LOG.debug("Closing mock kiji instance");
-    mKiji.release();
+    for (Kiji kiji : mKijis) {
+      mKiji.release();
+      KijiInstaller.uninstall(kiji.getURI(), kiji.getConf());
+    }
+    mKijis = null;
     mKiji = null;
-    mKijiAdmin = null;
-    mURI = null;
     mConf = null;
   }
 
   /**
-   * Gets the kiji instance for testing.
+   * Gets the default Kiji instance to use for testing.
    *
-   * @return the test kiji instance. No need to release.
+   * @return the default Kiji instance to use for testing.
+   *     Automatically released by KijiClientTest.
+   * @throws IOException on I/O error.  Should be Exception, but breaks too many tests for now.
    */
-  protected Kiji getKiji() {
+  public synchronized Kiji getKiji() throws IOException {
+    if (null == mKiji) {
+      try {
+        mKiji = createTestKiji();
+      } catch (IOException ioe) {
+        throw ioe;
+      } catch (Exception exn) {
+        // TODO: Remove wrapping:
+        throw new IOException(exn);
+      }
+    }
     return mKiji;
   }
 
-  /**
-   * Gets the kiji admin instance for testing.
-   *
-   * @return The test kiji admin instance.
-   */
-  protected KijiAdmin getKijiAdmin() {
-    return mKijiAdmin;
-  }
-
-  /**
-   * Gets the uri of the kiji instance used for testing.
-   *
-   * @return The uri of the test kiji instance.
-   */
-  protected KijiURI getKijiURI() {
-    return mURI;
-  }
-
-  protected Configuration getConfiguration() {
+  public Configuration getConf() {
     return mConf;
   }
 }

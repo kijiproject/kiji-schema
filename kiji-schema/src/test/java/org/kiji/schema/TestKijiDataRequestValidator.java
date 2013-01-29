@@ -32,8 +32,9 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
 
   @Before
   public void setupLayout() throws Exception {
-    mTableLayout = getKiji().getMetaTable()
-        .updateTableLayout("user", KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED));
+    mTableLayout =
+        KijiTableLayouts.getTableLayout(KijiTableLayouts.FULL_FEATURED);
+    getKiji().getAdmin().createTable(mTableLayout.getName(), mTableLayout, false);
   }
 
   @Test

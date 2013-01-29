@@ -60,9 +60,10 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
 
   @Before
   public void setupTests() throws IOException {
-    mTableLayout = getKiji().getMetaTable().updateTableLayout("table",
-        KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE_UPDATE_NEW_COLUMN));
-    mTableLayout = getKiji().getMetaTable().getTableLayout("table");
+    mTableLayout =
+        KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE_UPDATE_NEW_COLUMN);
+    getKiji().getAdmin().createTable(mTableLayout.getName(), mTableLayout, false);
+
     mColumnNameTranslator = new ColumnNameTranslator(mTableLayout);
     final CellSpec cellSpec = mTableLayout.getCellSpec(new KijiColumnName("family", "new"))
         .setSchemaTable(getKiji().getSchemaTable());
