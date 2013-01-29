@@ -48,10 +48,16 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
 
   public static final String TABLE_NAME = "test";
 
-  private final KijiDataRequest mDataRequest = new KijiDataRequest()
-      .addColumn(new KijiDataRequest.Column("group").withMaxVersions(Integer.MAX_VALUE))
-      .addColumn(new KijiDataRequest.Column("map").withMaxVersions(Integer.MAX_VALUE))
-      .addColumn(new KijiDataRequest.Column("memoryMap").withMaxVersions(Integer.MAX_VALUE));
+  private final KijiDataRequest mDataRequest;
+
+  public BaseKijiTableWriterDeletesIntegrationTest() {
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.addColumns().withMaxVersions(Integer.MAX_VALUE)
+        .addFamily("group")
+        .addFamily("map")
+        .addFamily("memoryMap");
+    mDataRequest = builder.build();
+  }
 
   private Kiji mKiji = null;
   private KijiTable mTable = null;

@@ -49,6 +49,7 @@ import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
@@ -605,24 +606,23 @@ public final class LsTool extends VersionValidatedTool {
       int maxVersions,
       long minTimestamp,
       long maxTimestamp) {
-    final KijiDataRequest request = new KijiDataRequest()
+    final KijiDataRequestBuilder builder = KijiDataRequest.builder()
         .withTimeRange(minTimestamp, maxTimestamp);
+
+    final KijiDataRequestBuilder.ColumnsDef colBuilder =
+        builder.addColumns().withMaxVersions(maxVersions);
 
     for (Entry<FamilyLayout, List<String>> entry : mapTypeFamilies.entrySet()) {
       String familyName = entry.getKey().getName();
       // If the map family is without qualifiers, add entire family.
       if (entry.getValue().isEmpty()) {
         LOG.debug("Adding family to data request: " + familyName);
-        request.addColumn(
-            new KijiDataRequest.Column(new KijiColumnName(familyName))
-                .withMaxVersions(maxVersions));
-      // If the map family is with qualifiers, add only the columns of interest.
+        colBuilder.addFamily(familyName);
       } else {
+        // If the map family is with qualifiers, add only the columns of interest.
         for (String qualifier : entry.getValue()) {
-        LOG.debug("Adding column to data request: " + familyName + ":" + qualifier);
-        request.addColumn(
-            new KijiDataRequest.Column(familyName, qualifier)
-                .withMaxVersions(maxVersions));
+          LOG.debug("Adding column to data request: " + familyName + ":" + qualifier);
+          colBuilder.add(familyName, qualifier);
         }
       }
     }
@@ -631,12 +631,10 @@ public final class LsTool extends VersionValidatedTool {
       String familyName = entry.getKey().getName();
       for (ColumnLayout column : entry.getValue()) {
         LOG.debug("Adding column to data request: " + column.getName());
-        request.addColumn(
-            new KijiDataRequest.Column(familyName, column.getName())
-                .withMaxVersions(maxVersions));
+        colBuilder.add(familyName, column.getName());
       }
     }
-    return request;
+    return builder.build();
   }
 
   /**

@@ -3,6 +3,9 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
+  * SCHEMA-133. Introduce KijiDataRequestBuilder class. KijiDataRequest
+      objects are now immutable. Construct one with KijiDataRequest.create(),
+      or call KijiDataRequest.builder() to get a KijiDataRequestBuilder.
   * SCHEMA-102. Removed overloaded variety of toHBaseFilter that accepted a
       ColumnNameTranslator.
   * SCHEMA-82. KijiCell is now the uniquely located cell in a table with

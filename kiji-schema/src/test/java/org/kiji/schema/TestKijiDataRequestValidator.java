@@ -39,9 +39,9 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
 
   @Test
   public void testValidate() throws InvalidLayoutException {
-    KijiDataRequest request = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("info", "name").withMaxVersions(1))
-        .withTimeRange(2L, 3L);
+    KijiDataRequestBuilder builder = KijiDataRequest.builder().withTimeRange(2, 3);
+    builder.addColumns().withMaxVersions(1).add("info", "name");
+    KijiDataRequest request = builder.build();
 
     KijiDataRequestValidator validator = new KijiDataRequestValidator(request);
     validator.validate(mTableLayout);
@@ -49,9 +49,9 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
 
   @Test(expected=KijiDataRequestException.class)
   public void testValidateNoSuchFamily() throws InvalidLayoutException {
-    KijiDataRequest request = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("blahblah", "name").withMaxVersions(1))
-        .withTimeRange(2, 3);
+    KijiDataRequestBuilder builder = KijiDataRequest.builder().withTimeRange(2, 3);
+    builder.addColumns().withMaxVersions(1).add("blahblah", "name");
+    KijiDataRequest request = builder.build();
 
     KijiDataRequestValidator validator = new KijiDataRequestValidator(request);
     validator.validate(mTableLayout);
@@ -59,10 +59,11 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
 
   @Test(expected=KijiDataRequestException.class)
   public void testValidateNoSuchColumn() throws InvalidLayoutException {
-    KijiDataRequest request = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("info", "name").withMaxVersions(1))
-        .addColumn(new KijiDataRequest.Column("info", "blahblah").withMaxVersions(1))
-        .withTimeRange(2, 3);
+    KijiDataRequestBuilder builder = KijiDataRequest.builder().withTimeRange(2, 3);
+    builder.addColumns().withMaxVersions(1)
+        .add("info", "name")
+        .add("info", "blahblah");
+    KijiDataRequest request = builder.build();
 
     KijiDataRequestValidator validator = new KijiDataRequestValidator(request);
     validator.validate(mTableLayout);

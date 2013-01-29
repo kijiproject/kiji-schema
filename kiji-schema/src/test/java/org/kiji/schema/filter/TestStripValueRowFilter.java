@@ -32,6 +32,7 @@ import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
@@ -63,8 +64,9 @@ public class TestStripValueRowFilter extends KijiClientTest {
 
 
     final KijiTableReader reader = table.openTableReader();
-    final KijiDataRequest dataRequest = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("info", "name").withMaxVersions(2));
+    final KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.addColumns().withMaxVersions(2).add("info", "name");
+    final KijiDataRequest dataRequest = builder.build();
     final KijiRowFilter rowFilter = new StripValueRowFilter();
     final KijiScannerOptions scannerOptions =
         new KijiScannerOptions()

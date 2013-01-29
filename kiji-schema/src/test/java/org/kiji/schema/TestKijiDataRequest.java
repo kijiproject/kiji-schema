@@ -23,6 +23,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
@@ -37,11 +38,12 @@ import org.junit.Test;
 public class TestKijiDataRequest {
   @Test
   public void testSerializability() throws IOException, ClassNotFoundException {
-    KijiDataRequest expected = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("foo", "bar1"))
-        .addColumn(new KijiDataRequest.Column("foo", "bar2"))
-        .addColumn(new KijiDataRequest.Column("foo", "bar3"))
-        .addColumn(new KijiDataRequest.Column("foo", "bar4"));
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.addColumns().add("foo", "bar1")
+        .add("foo", "bar2")
+        .add("foo", "bar3")
+        .add("foo", "bar4");
+    KijiDataRequest expected = builder.build();
 
     ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
     new ObjectOutputStream(byteOutput).writeObject(expected);
@@ -56,34 +58,61 @@ public class TestKijiDataRequest {
 
   @Test
   public void testColumnRequestEquals() {
-    KijiDataRequest.Column foo0 = new KijiDataRequest.Column("foo", "bar");
-    KijiDataRequest.Column foo1 = new KijiDataRequest.Column("foo", "bar");
-    KijiDataRequest.Column foo2 = new KijiDataRequest.Column("foo", "bar").withMaxVersions(2);
-    KijiDataRequest.Column foo3 = new KijiDataRequest.Column("foo", "baz");
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.addColumns().add("foo", "bar");
+    KijiDataRequest req0 = builder.build();
+
+    builder = KijiDataRequest.builder();
+    builder.addColumns().add("foo", "bar");
+    KijiDataRequest req1 = builder.build();
+    assertTrue(req0 != req1);
+    assertEquals(req0, req0);
+    KijiDataRequest.Column foo0 = req0.getColumn("foo", "bar");
+    KijiDataRequest.Column foo1 = req1.getColumn("foo", "bar");
+    assertEquals(foo0, foo0);
     assertEquals(foo0, foo1);
-    assertThat(foo1, is(not(foo2)));
+    assertEquals(foo1, foo0);
+
+    builder = KijiDataRequest.builder();
+    builder.addColumns().withMaxVersions(2).add("foo", "bar");
+    builder.addColumns().add("foo", "baz");
+    KijiDataRequest req2 = builder.build();
+    KijiDataRequest.Column foo2 = req2.getColumn("foo", "bar");
     assertThat(new Object(), is(not((Object) foo2)));
+    assertFalse(foo0.equals(foo2));
+    assertFalse(foo2.equals(foo0));
+    assertThat(foo1, is(not(foo2)));
+
+    KijiDataRequest.Column foo3 = req2.getColumn("foo", "baz");
+    assertFalse(foo0.equals(foo3));
     assertThat(foo1, is(not(foo3)));
   }
 
   @Test
   public void testDataRequestEquals() {
-    KijiDataRequest request0 = new KijiDataRequest();
-    request0.addColumn(new KijiDataRequest.Column("foo").withMaxVersions(2));
-    request0.addColumn(new KijiDataRequest.Column("bar", "baz").withMaxVersions(5));
-    request0.withTimeRange(3L, 4L);
-    KijiDataRequest request1 = new KijiDataRequest();
-    request1.addColumn(new KijiDataRequest.Column("foo").withMaxVersions(2));
-    request1.addColumn(new KijiDataRequest.Column("bar", "baz").withMaxVersions(5));
-    request1.withTimeRange(3L, 4L);
-    KijiDataRequest request2 = new KijiDataRequest();
-    request2.addColumn(new KijiDataRequest.Column("foo").withMaxVersions(2));
-    request2.addColumn(new KijiDataRequest.Column("car", "bot").withMaxVersions(5));
-    request2.withTimeRange(3L, 4L);
-    KijiDataRequest request3 = new KijiDataRequest();
-    request3.addColumn(new KijiDataRequest.Column("foo").withMaxVersions(2));
-    request3.addColumn(new KijiDataRequest.Column("car", "bot").withMaxVersions(3));
-    request3.withTimeRange(3L, 4L);
+    KijiDataRequestBuilder builder0 = KijiDataRequest.builder()
+        .withTimeRange(3L, 4L);
+    builder0.addColumns().withMaxVersions(2).addFamily("foo");
+    builder0.addColumns().withMaxVersions(5).add("bar", "baz");
+    KijiDataRequest request0 = builder0.build();
+
+    KijiDataRequestBuilder builder1 = KijiDataRequest.builder()
+        .withTimeRange(3L, 4L);
+    builder1.addColumns().withMaxVersions(2).addFamily("foo");
+    builder1.addColumns().withMaxVersions(5).add("bar", "baz");
+    KijiDataRequest request1 = builder1.build();
+
+    KijiDataRequestBuilder builder2 = KijiDataRequest.builder()
+        .withTimeRange(3L, 4L);
+    builder2.addColumns().withMaxVersions(2).addFamily("foo");
+    builder2.addColumns().withMaxVersions(5).add("car", "bot");
+    KijiDataRequest request2 = builder2.build();
+
+    KijiDataRequestBuilder builder3 = KijiDataRequest.builder()
+        .withTimeRange(3L, 4L);
+    builder3.addColumns().withMaxVersions(2).addFamily("foo");
+    builder3.addColumns().withMaxVersions(3).add("car", "bot");
+    KijiDataRequest request3 = builder3.build();
 
     assertEquals(request0, request1);
     assertThat(new Object(), is(not((Object) request0)));
@@ -93,43 +122,99 @@ public class TestKijiDataRequest {
 
   @Test
   public void testMerge() {
-    KijiDataRequest first = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("foo", "bar").withMaxVersions(2))
-        .withTimeRange(3, 4);
+    KijiDataRequestBuilder builder1 = KijiDataRequest.builder().withTimeRange(3, 4);
+    builder1.addColumns().withMaxVersions(2).add("foo", "bar");
+    KijiDataRequest first = builder1.build();
 
-    KijiDataRequest second = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("baz", "bot"))
-        .addColumn(new KijiDataRequest.Column("foo", "bar").withMaxVersions(6))
-        .withTimeRange(2, 4);
+    KijiDataRequestBuilder builder2 = KijiDataRequest.builder().withTimeRange(2, 4);
+    builder2.addColumns().add("baz", "bot");
+    builder2.addColumns().withMaxVersions(6).add("foo", "bar");
+    KijiDataRequest second = builder2.build();
 
-    assertTrue("merge() should have mutated the object in place", first == first.merge(second));
+    KijiDataRequest merged = first.merge(second);
+    assertTrue("merge() cannot mutate the object in place", first != merged);
 
-    KijiDataRequest.Column fooBarColumnRequest = first.getColumn("foo", "bar");
+    KijiDataRequest.Column fooBarColumnRequest = merged.getColumn("foo", "bar");
     assertNotNull("Missing column foo:bar from merged request", fooBarColumnRequest);
     assertEquals("Max versions was not increased", 6, fooBarColumnRequest.getMaxVersions());
-    assertEquals("Time range was not extended", 2L, first.getMinTimestamp());
-    assertEquals(4L, first.getMaxTimestamp());
+    assertEquals("Time range was not extended", 2L, merged.getMinTimestamp());
+    assertEquals(4L, merged.getMaxTimestamp());
 
-    KijiDataRequest.Column bazBotColumnRequest = first.getColumn("baz", "bot");
+    KijiDataRequest.Column bazBotColumnRequest = merged.getColumn("baz", "bot");
     assertNotNull("Missing column from merged-in request", bazBotColumnRequest);
+
+    KijiDataRequest symmetricMerged = second.merge(first);
+    assertEquals("Merge must be symmetric", merged, symmetricMerged);
   }
 
   @Test(expected=IllegalArgumentException.class)
   public void testInvalidColumnSpec() {
-    // The user really wants 'new KijiDataRequest.Column("family", "qualifier")'.
+    // The user really wants 'builder.columns().add("family", "qualifier")'.
     // This will throw an exception.
-    new KijiDataRequest.Column("family:qualifier");
+    KijiDataRequest.builder().addColumns().addFamily("family:qualifier");
   }
 
   @Test
   public void testPageSize() {
-    final KijiDataRequest first = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("foo", "bar").withPageSize(1));
-    final KijiDataRequest second = new KijiDataRequest(first);
-    final KijiDataRequest third = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("foo", "bar"));
+    final KijiDataRequestBuilder builder1 = KijiDataRequest.builder();
+    builder1.addColumns().withPageSize(1).add("foo", "bar");
+    final KijiDataRequest first = builder1.build();
 
-    assertEquals(first, second);
-    assertThat(first, is(not(third)));
+    final KijiDataRequestBuilder builder2 = KijiDataRequest.builder();
+    builder2.addColumns().add("foo", "bar");
+    final KijiDataRequest second = builder2.build();
+
+    assertThat(first, is(not(second)));
+    assertFalse(first.equals(second));
+    assertFalse(second.equals(first));
+  }
+
+  @Test
+  public void testPageSizeMerge() {
+    // Page size should merge to the smallest value.
+
+    final KijiDataRequestBuilder builder1 = KijiDataRequest.builder();
+    builder1.addColumns().withPageSize(1).add("foo", "bar");
+    final KijiDataRequest first = builder1.build();
+
+    final KijiDataRequestBuilder builder2 = KijiDataRequest.builder();
+    builder2.addColumns().withPageSize(3).add("foo", "bar");
+    final KijiDataRequest second = builder2.build();
+
+    assertEquals("Unexpected page size for 'first'",
+        1, first.getColumn("foo", "bar").getPageSize());
+    assertEquals("Unexpected page size for 'second'",
+        3, second.getColumn("foo", "bar").getPageSize());
+
+    final KijiDataRequest merge1 = first.merge(second);
+    final KijiDataRequest merge2 = second.merge(first);
+    assertEquals("Merged results should be symmetric", merge1, merge2);
+    assertEquals("Unexpected merged page size",
+        1, merge1.getColumn("foo", "bar").getPageSize());
+  }
+
+  @Test
+  public void testPageSizeMergeWithZero() {
+    // ... unless the smallest value is zero, in which case we go with the
+    // non-zero value.
+
+    final KijiDataRequestBuilder builder1 = KijiDataRequest.builder();
+    builder1.addColumns().withPageSize(4).add("foo", "bar");
+    final KijiDataRequest first = builder1.build();
+
+    final KijiDataRequestBuilder builder2 = KijiDataRequest.builder();
+    builder2.addColumns().add("foo", "bar");
+    final KijiDataRequest second = builder2.build();
+
+    assertEquals("Unexpected page size for 'first'",
+        4, first.getColumn("foo", "bar").getPageSize());
+    assertEquals("Unexpected page size for 'second'",
+        0, second.getColumn("foo", "bar").getPageSize());
+
+    final KijiDataRequest merge1 = first.merge(second);
+    final KijiDataRequest merge2 = second.merge(first);
+    assertEquals("Merged results should be symmetric", merge1, merge2);
+    assertEquals("Unexpected merged page size",
+        4, merge1.getColumn("foo", "bar").getPageSize());
   }
 }

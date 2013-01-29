@@ -32,7 +32,6 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.KijiDataRequest.Column;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -69,7 +68,9 @@ public class TestFakeKiji {
 
     final KijiTable table = kiji.openTable("table");
     {
-      final KijiDataRequest dataRequest = new KijiDataRequest().addColumn(new Column("family"));
+      final KijiDataRequestBuilder builder = KijiDataRequest.builder();
+      builder.addColumns().addFamily("family");
+      final KijiDataRequest dataRequest = builder.build();
       final KijiRowScanner scanner =
           table.openTableReader().getScanner(dataRequest);
       assertFalse(scanner.iterator().hasNext());
@@ -84,7 +85,9 @@ public class TestFakeKiji {
 
     {
       final KijiTableReader reader = table.openTableReader();
-      final KijiDataRequest dataRequest = new KijiDataRequest().addColumn(new Column("family"));
+      final KijiDataRequestBuilder builder = KijiDataRequest.builder();
+      builder.addColumns().addFamily("family");
+      final KijiDataRequest dataRequest = builder.build();
       final KijiRowScanner scanner =
           table.openTableReader().getScanner(dataRequest);
       final Iterator<KijiRowData> it = scanner.iterator();

@@ -38,7 +38,7 @@ public final class StripValueRowFilter extends KijiRowFilter {
   /** {@inheritDoc} */
   @Override
   public KijiDataRequest getDataRequest() {
-    return new KijiDataRequest();
+    return KijiDataRequest.builder().build();
   }
 
   /** {@inheritDoc} */

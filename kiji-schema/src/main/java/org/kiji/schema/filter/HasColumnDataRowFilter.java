@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.hbase.HBaseColumnName;
 
 /**
@@ -80,9 +81,9 @@ public final class HasColumnDataRowFilter extends KijiRowFilter {
   /** {@inheritDoc} */
   @Override
   public KijiDataRequest getDataRequest() {
-    KijiDataRequest dataRequest = new KijiDataRequest();
-    dataRequest.addColumn(new KijiDataRequest.Column(mFamily, mQualifier));
-    return dataRequest;
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.addColumns().add(mFamily, mQualifier);
+    return builder.build();
   }
 
   /** {@inheritDoc} */
