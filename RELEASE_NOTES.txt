@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc3
+  * SCHEMA-83. Added containsCell method to KijiRowData.
   * SCHEMA-154. KijiAdmin is now an interface. Use Kiji.getAdmin() to
       get an instance.
   * SCHEMA-105. Hide KijiColumnPager from public API.
@@ -34,7 +35,7 @@ Version 1.0.0-rc3
       KijiTable.openTableReader() to get an instance of KijiTableReader for a
       given table.
   * SCHEMA-114. Fix NullPointerException in `kiji install`.
-  * SCHEMA-20. Improve validation of cell schema changes.    
+  * SCHEMA-20. Improve validation of cell schema changes.
       - Counters must specify schema storage 'final'.
       - Final columns require inline schema specifications and cannot change.
       - Schema storage cannot be modified.
