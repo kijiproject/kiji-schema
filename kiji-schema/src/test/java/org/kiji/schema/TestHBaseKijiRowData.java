@@ -520,13 +520,13 @@ public class TestHBaseKijiRowData extends KijiClientTest {
             .withRow("row1")
                .withFamily("family")
                   .withQualifier("column").withValue(1, "foo1")
-      .build();
+        .build();
 
     final KijiTable table = kiji.openTable("table");
     final KijiTableReader reader = table.openTableReader();
 
     final KijiRowData row1 = reader.get(table.getEntityId("row1"), new KijiDataRequest()
-      .addColumn(new KijiDataRequest.Column("family", "column")));
+        .addColumn(new KijiDataRequest.Column("family", "column")));
     assertTrue(row1.containsCell("family", "column", 1L));
     assertFalse(row1.containsCell("family", "column", 2L));
     assertFalse(row1.containsCell("blope", "column", 1L));

@@ -389,7 +389,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public synchronized boolean containsCell(String family, String qualifier, Long timestamp) {
     return containsColumn(family, qualifier)
-      && getTimestamps(family, qualifier).contains(timestamp);
+        && getTimestamps(family, qualifier).contains(timestamp);
   }
 
   /** {@inheritDoc} */
