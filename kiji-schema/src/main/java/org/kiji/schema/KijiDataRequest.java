@@ -106,7 +106,7 @@ public final class KijiDataRequest implements Serializable {
      * @param qualifier The name of the column qualifier to request.
      * @param maxVersions the max versions of the column to request.
      * @param filter a column filter to attach to the results of this column request.
-     * @param pageSize the number of cells per page to retrieve at a time.
+     * @param pageSize the default number of cells per page to retrieve at a time.
      */
     Column(String family, String qualifier, int maxVersions, KijiColumnFilter filter,
         int pageSize) {

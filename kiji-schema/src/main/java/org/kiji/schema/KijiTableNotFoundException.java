@@ -38,6 +38,7 @@ public final class KijiTableNotFoundException extends IOException {
    */
   public KijiTableNotFoundException(String tableName) {
     super("Table not found: " + tableName);
+    mTableName = tableName;
   }
 
   /** @return the name of the missing table. */

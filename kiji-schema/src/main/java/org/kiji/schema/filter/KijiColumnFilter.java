@@ -46,6 +46,7 @@ import org.kiji.schema.hbase.HBaseColumnName;
 @ApiAudience.Public
 @Inheritance.Extensible
 public abstract class KijiColumnFilter implements Serializable {
+    private static final long serialVersionUID = 1L;
   /**
    * An object available to KijiColumnFilters that can be used to help implement the
    * toHBaseFilter() method.

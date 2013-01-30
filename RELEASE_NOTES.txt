@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
+  * SCHEMA-169. Add KijiPager class that allows users to easily paginate and
+      iterate over values from a column while reading from a KijiTable. 
   * SCHEMA-99. KijiConfiguration removed. Use a KijiURI paired with a
       hadoop Configuration object instead.
   * SCHEMA-155. Merged methods in KijiAdmin into Kiji.
