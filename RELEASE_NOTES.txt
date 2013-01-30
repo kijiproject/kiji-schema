@@ -8,6 +8,8 @@ Version 1.0.0-rc4
       are represented as KijiCell<Long> with no writer schema instead.
   * SCHEMA-143. KijiURI constructors are now hidden.  KijiURIs should be built
       with KijiURIBuilders.
+  * SCHEMA-109. KijiInstaller is no longer static.  Get an instance of it with
+      KijiInstaller.get().
 
 Version 1.0.0-rc3
   * SCHEMA-83. Added containsCell method to KijiRowData.

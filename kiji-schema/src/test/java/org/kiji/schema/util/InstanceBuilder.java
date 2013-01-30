@@ -135,7 +135,7 @@ public class InstanceBuilder {
     // Install & open a Kiji instance.
     LOG.info(String.format("Building instance: %s", uri.toString()));
     try {
-      KijiInstaller.install(uri, conf);
+      KijiInstaller.get().install(uri, conf);
     } catch (KijiInvalidNameException kine) {
       throw new IOException(kine);
     }

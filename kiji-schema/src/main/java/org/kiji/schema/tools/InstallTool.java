@@ -60,7 +60,7 @@ public final class InstallTool extends BaseTool {
     getPrintStream().println("Creating kiji instance: " + getURI());
     getPrintStream().println("Creating meta tables for kiji instance in hbase...");
     try {
-      KijiInstaller.install(getURI(), HBaseFactory.Provider.get(), getConf());
+      KijiInstaller.get().install(getURI(), HBaseFactory.Provider.get(), getConf());
       getPrintStream().println("Successfully created kiji instance: " + getURI());
       return 0;
     } catch (KijiAlreadyExistsException kaee) {

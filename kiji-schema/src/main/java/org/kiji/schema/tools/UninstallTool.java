@@ -64,7 +64,7 @@ public final class UninstallTool extends BaseTool {
       }
     }
     try {
-      KijiInstaller.uninstall(getURI(), getConf());
+      KijiInstaller.get().uninstall(getURI(), getConf());
       getPrintStream().println("Deleted kiji instance: " + getURI().toString());
       return 0;
     } catch (IOException ioe) {
