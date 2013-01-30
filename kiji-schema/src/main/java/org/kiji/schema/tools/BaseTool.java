@@ -158,7 +158,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
       // Then use the URI to retrieve connection settings for the zookeeper quorum, which should be
       // enough to talk to an HBase instance.
       try {
-        setURI(KijiURI.parse(mInstanceURIStr));
+        setURI(KijiURI.newBuilder(mInstanceURIStr).build());
       } catch (KijiURIException kue) {
         throw new IllegalArgumentException(
             String.format("Invalid kiji URI '--kiji=%s'.", mInstanceURIStr), kue);

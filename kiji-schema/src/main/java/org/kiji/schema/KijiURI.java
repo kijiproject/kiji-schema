@@ -415,57 +415,26 @@ public final class KijiURI {
   }
 
   /**
-   * Constructs a fully qualified Kiji table URI from a string.
-   *
-   * @param uri Kiji URI
-   * @return A KijiURI represented by uri.
-   * @throws KijiURIException if the URI is invalid.
-   */
-  public static KijiURI parse(String uri) throws KijiURIException {
-    try {
-      return new KijiURI(new URI(uri));
-    } catch (URISyntaxException exn) {
-      throw new KijiURIException(uri, exn.getMessage());
-    }
-  }
-
-  /**
-   * Constructs a new KijiURI from an existing URI.
-   *
-   * @param uri The existing URI.
-   * @return The new Kiji URI.
-   * @throws KijiURIException If the URI is an invalid Kiji URI.
-   */
-  public static KijiURI fromURI(URI uri) throws KijiURIException {
-    return new KijiURI(uri);
-  }
-
-  /**
-   * Gets a builder configured with this Kiji URI.
+   * Gets a builder configured with default Kiji URI fields.
    *
    * @return A builder configured with this Kiji URI.
    */
-  public KijiURIBuilder newBuilder() {
-    return new KijiURIBuilder(
-          mZookeeperQuorum,
-          mZookeeperClientPort,
-          mInstanceName,
-          mTableName,
-          mColumnNames);
+  public static KijiURIBuilder getBuilder() {
+    return new KijiURIBuilder();
   }
 
   /**
-   * Gets a builder configured with the Kiji URI.
+   * Gets a builder configured with a Kiji URI.
    *
-   * @param other The Kiji URI to configure the builder from.
-   * @return A builder configured with other.
+   * @param uri The Kiji URI to configure the builder from.
+   * @return A builder configured with uri.
    */
-  public KijiURIBuilder newBuilder(KijiURI other) {
-    return new KijiURIBuilder(other.getZookeeperQuorum(),
-        other.getZookeeperClientPort(),
-        other.getInstance(),
-        other.getTable(),
-        other.getColumns());
+  public static KijiURIBuilder newBuilder(KijiURI uri) {
+    return new KijiURIBuilder(uri.getZookeeperQuorumOrdered(),
+        uri.getZookeeperClientPort(),
+        uri.getInstance(),
+        uri.getTable(),
+        uri.getColumnsOrdered());
   }
 
   /**
@@ -473,11 +442,14 @@ public final class KijiURI {
    *
    * @param uri String specification of a Kiji URI.
    * @return A builder configured with uri.
-   * @throws KijiURIException If the uri is an invalid Kiji URI.
+   * @throws KijiURIException If the uri is invalid.
    */
-  public KijiURIBuilder newBuilder(String uri) throws KijiURIException {
-    KijiURI kijiURI = KijiURI.parse(uri);
-    return kijiURI.newBuilder();
+  public static KijiURIBuilder newBuilder(String uri) throws KijiURIException {
+    try {
+      return newBuilder(new KijiURI(new URI(uri)));
+    } catch (URISyntaxException exn) {
+      throw new KijiURIException(uri, exn.getMessage());
+    }
   }
 
   /**

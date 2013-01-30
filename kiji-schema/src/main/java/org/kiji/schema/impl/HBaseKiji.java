@@ -134,11 +134,11 @@ public final class HBaseKiji implements Kiji {
     mKijiConf = new KijiConfiguration(kijiConf);
     mHTableFactory = Preconditions.checkNotNull(tableFactory);
     mLockFactory = Preconditions.checkNotNull(lockFactory);
-    mURI = KijiURI.parse(String.format("kiji://%s:%d/%s",
+    mURI = KijiURI.newBuilder(String.format("kiji://%s:%d/%s",
         mKijiConf.getConf().get(HConstants.ZOOKEEPER_QUORUM),
         mKijiConf.getConf().getInt(HConstants.ZOOKEEPER_CLIENT_PORT,
             HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT),
-        mKijiConf.getName()));
+        mKijiConf.getName())).build();
 
     LOG.debug(String.format("Opening kiji instance '%s'", mURI));
 

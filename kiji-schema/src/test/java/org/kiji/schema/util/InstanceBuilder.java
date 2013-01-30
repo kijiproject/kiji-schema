@@ -121,8 +121,8 @@ public class InstanceBuilder {
   public Kiji build() throws IOException {
     // Populate constants.
     final Configuration conf = HBaseConfiguration.create();
-    final KijiURI uri = KijiURI.parse(
-        String.format("kiji://.fake.%d/%s", FAKE_COUNT.getAndIncrement(), mInstanceName));
+    final KijiURI uri = KijiURI.newBuilder(
+        String.format("kiji://.fake.%d/%s", FAKE_COUNT.getAndIncrement(), mInstanceName)).build();
 
     // In-process MapReduce execution:
     conf.set("mapred.job.tracker", "local");

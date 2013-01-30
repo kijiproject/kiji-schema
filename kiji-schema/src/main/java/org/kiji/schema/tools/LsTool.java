@@ -427,7 +427,7 @@ public final class LsTool extends VersionValidatedTool {
       return listTables();
     }
 
-    setURI(getURI().newBuilder().withTableName(mTableName).build());
+    setURI(KijiURI.newBuilder(getURI()).withTableName(mTableName).build());
 
     // else, list row(s) from this specific table.
     final KijiTableLayout tableLayout = metaTable.getTableLayout(mTableName);

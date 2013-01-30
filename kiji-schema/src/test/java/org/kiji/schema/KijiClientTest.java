@@ -97,7 +97,8 @@ public class KijiClientTest {
         String.format(".fake.%s-%d", mTestName.getMethodName(), fakeHBaseCounter);
     final String instanceName =
         String.format("%s_%s", getClass().getSimpleName(), mTestName.getMethodName());
-    final KijiURI uri = KijiURI.parse(String.format("kiji://%s/%s", hbaseAddress, instanceName));
+    final KijiURI uri =
+        KijiURI.newBuilder(String.format("kiji://%s/%s", hbaseAddress, instanceName)).build();
     KijiInstaller.install(uri, mConf);
     final Kiji kiji = Kiji.Factory.open(uri, mConf);
     mKijis.add(kiji);

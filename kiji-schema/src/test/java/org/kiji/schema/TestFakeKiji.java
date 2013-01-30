@@ -45,7 +45,7 @@ public class TestFakeKiji {
   @Test
   public void testFakeKiji() throws Exception {
     LOG.info("Opening an in-memory kiji instance");
-    final KijiURI uri = KijiURI.parse("kiji://.fake.kiji/instance");
+    final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji/instance").build();
     final Configuration conf = HBaseConfiguration.create();
     KijiInstaller.install(uri, conf);
 
