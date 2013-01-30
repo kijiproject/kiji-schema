@@ -32,7 +32,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
@@ -46,6 +45,7 @@ import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiPager;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.NoSuchColumnException;
@@ -69,6 +69,9 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** The request used to retrieve this Kiji row data. */
   private final KijiDataRequest mDataRequest;
 
+  /** The KijiTable we are reading from. */
+  private final HBaseKijiTable mHTable;
+
   /** The layout for the table this row data came from. */
   private final KijiTableLayout mTableLayout;
 
@@ -77,12 +80,6 @@ public final class HBaseKijiRowData implements KijiRowData {
 
   /** A Kiji cell decoder factory. */
   private final KijiCellDecoderFactory mCellDecoderFactory;
-
-  /** An optional HTable instance used for fetching the more results from paged columns. */
-  private final HTableInterface mHTable;
-
-  /** A column pager (will only be used if paging is enabled, otherwise set to null). */
-  private final KijiColumnPager mColumnPager;
 
   /** Schema table to resolve schema hashes or IDs. */
   private final KijiSchemaTable mSchemaTable;
@@ -115,7 +112,6 @@ public final class HBaseKijiRowData implements KijiRowData {
     mResult = result;
     mCellDecoderFactory = decoderFactory;
     mHTable = null;
-    mColumnPager = null;
     mSchemaTable = schemaTable;
   }
 
@@ -158,12 +154,6 @@ public final class HBaseKijiRowData implements KijiRowData {
     mTableLayout = table.getLayout();
     mResult = result;
     mCellDecoderFactory = SpecificCellDecoderFactory.get();
-    mHTable = mDataRequest.isPagingEnabled()
-        ? table.getHTable()
-        : null;
-    mColumnPager = mDataRequest.isPagingEnabled()
-        ? new KijiColumnPager(mEntityId, mDataRequest, mTableLayout, mHTable)
-        : null;
 
     try {
       mSchemaTable = table.getKiji().getSchemaTable();
@@ -173,6 +163,7 @@ public final class HBaseKijiRowData implements KijiRowData {
 
     // Compute this lazily.
     mFilteredMap = null;
+    mHTable = table;
   }
 
   /**
@@ -306,6 +297,7 @@ public final class HBaseKijiRowData implements KijiRowData {
               + " because it doesn't contain Kiji data.");
           continue;
         }
+        LOG.debug("Adding family [{}] to getMap() result.", kijiColumnName.getName());
 
         // First check if all columns were requested.
         KijiDataRequest.Column columnRequest =
@@ -375,7 +367,12 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public synchronized boolean containsColumn(String family) {
+
     final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
+        for (Map.Entry<String, NavigableMap<String, NavigableMap<Long, byte[]>>> columnMapEntry
+          : getMap().entrySet()) {
+          LOG.debug("The result return contains family [{}]", columnMapEntry.getKey());
+        }
     if (null == columnMap) {
       return false;
     }
@@ -418,61 +415,6 @@ public final class HBaseKijiRowData implements KijiRowData {
           "Cannot retrieve schema for non-existent column: " + family + ":" + qualifier);
     }
     return schema;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized boolean nextPage(String family, String qualifier) throws IOException {
-    if (null == mColumnPager) {
-      LOG.warn("Paging is not available in unit tests.\n"
-          + "The KijiRowData instance given to your produce/gather() method will contain "
-          + "all data regardless of whether a page size was specified in its KijiDataRequest. "
-          + "Calling KijiRowData.nextPage() will always return false.");
-      return false;
-    }
-
-    // Fetch the next page of results.
-    final NavigableMap<Long, byte[]> nextPage = mColumnPager.getNextPage(family, qualifier);
-
-    // Clear the current page of results.
-    final NavigableMap<String, NavigableMap<Long, byte[]>> qualifierMap = mFilteredMap.get(family);
-    qualifierMap.remove(qualifier);
-
-    if (null == nextPage) {
-      // No more pages.
-      return false;
-    }
-
-    // Populate the map with the new page.
-    qualifierMap.put(qualifier, nextPage);
-    return true;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public synchronized boolean nextPage(String family) throws IOException {
-    if (null == mColumnPager) {
-      LOG.warn("Paging is not available in unit tests.\n"
-          + "The KijiRowData instance given to your produce/gather() method will contain "
-          + "all data regardless of whether a page size was specified in its KijiDataRequest. "
-          + "Calling KijiRowData.nextPage() will always return false.");
-      return false;
-    }
-
-    // Fetch the next page of results.
-    final NavigableMap<String, NavigableMap<Long, byte[]>> nextPage =
-        mColumnPager.getNextPage(family);
-
-    // Clear the current page of results.
-    mFilteredMap.remove(family);
-    if (null == nextPage) {
-      // No more pages.
-      return false;
-    }
-
-    // Populate the map with the new page.
-    mFilteredMap.put(family, nextPage);
-    return true;
   }
 
   /**
@@ -653,5 +595,23 @@ public final class HBaseKijiRowData implements KijiRowData {
     final CellSpec cellSpec = mTableLayout.getCellSpec(new KijiColumnName(family, qualifier))
         .setSchemaTable(mSchemaTable);
     return mCellDecoderFactory.create(cellSpec);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiPager getPager(String family, String qualifier)
+    throws KijiColumnPagingNotEnabledException {
+    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
+    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mHTable,  kijiColumnName);
+  }
+
+    /** {@inheritDoc} */
+  @Override
+  public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
+    final KijiColumnName kijiFamily = new KijiColumnName(family);
+    if (kijiFamily.isFullyQualified()) {
+      throw new IllegalArgumentException("Family name (" + family + ") had a colon ':' in it");
+    }
+    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mHTable, kijiFamily);
   }
 }
