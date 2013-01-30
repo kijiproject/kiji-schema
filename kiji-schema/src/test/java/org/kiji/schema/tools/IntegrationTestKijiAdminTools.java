@@ -470,8 +470,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
   @Test
   public void testDeleteiUpTo() throws Exception {
     getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
-    Kiji testKiji = Kiji.Factory.open(new KijiConfiguration(getIntegrationHelper().getConf(),
-      getKijiURI().getInstance()));
+    Kiji testKiji = Kiji.Factory.open(getKijiURI(), getIntegrationHelper().getConf());
     KijiTable testTable = testKiji.openTable("foo");
     KijiTableWriter testWriter = testTable.openTableWriter();
     testWriter.put(testTable.getEntityId("gwu@usermail.example.com"), "info", "email",

@@ -81,21 +81,21 @@ public final class KijiInstaller {
       throw new KijiInvalidNameException(String.format(
           "Kiji URI '%s' does not specify a Kiji instance name", uri));
     }
-    final KijiConfiguration kijiConf = new KijiConfiguration(conf, uri);
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
     final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
     final LockFactory lockFactory = hbaseFactory.getLockFactory(uri, conf);
 
     final HBaseAdmin hbaseAdmin = adminFactory.create(conf);
     try {
-      if (kijiConf.exists(hbaseAdmin)) {
+      if (hbaseAdmin.tableExists(
+          KijiManagedHBaseTableName.getSystemTableName(uri.getInstance()).toString())) {
         throw new KijiAlreadyExistsException(String.format(
             "Kiji instance '%s' already exists.", uri), uri);
       }
       LOG.info(String.format("Installing kiji instance '%s'.", uri));
-      HBaseSystemTable.install(hbaseAdmin, kijiConf, tableFactory);
+      HBaseSystemTable.install(hbaseAdmin, uri, conf, tableFactory);
       HBaseMetaTable.install(hbaseAdmin, uri);
-      HBaseSchemaTable.install(hbaseAdmin, kijiConf, tableFactory, lockFactory);
+      HBaseSchemaTable.install(hbaseAdmin, uri, conf, tableFactory, lockFactory);
 
     } finally {
       IOUtils.closeQuietly(hbaseAdmin);
@@ -119,7 +119,6 @@ public final class KijiInstaller {
       throw new KijiInvalidNameException(String.format(
           "Kiji URI '%s' does not specify a Kiji instance name", uri));
     }
-    final KijiConfiguration kijiConf = new KijiConfiguration(conf, uri);
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
 
     LOG.info(String.format("Removing the kiji instance '%s'.", uri.getInstance()));
@@ -137,9 +136,9 @@ public final class KijiInstaller {
       try {
 
         // Delete the system tables:
-        HBaseSystemTable.uninstall(hbaseAdmin, kijiConf);
+        HBaseSystemTable.uninstall(hbaseAdmin, uri);
         HBaseMetaTable.uninstall(hbaseAdmin, uri);
-        HBaseSchemaTable.uninstall(hbaseAdmin, kijiConf);
+        HBaseSchemaTable.uninstall(hbaseAdmin, uri);
 
       } finally {
         IOUtils.closeQuietly(hbaseAdmin);

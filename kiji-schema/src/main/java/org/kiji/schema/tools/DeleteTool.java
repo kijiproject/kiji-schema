@@ -32,9 +32,10 @@ import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
-import org.kiji.schema.KijiConfiguration;
+import org.kiji.schema.KijiConfKeys;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.KijiURI;
 
 
 /**
@@ -73,7 +74,7 @@ public final class DeleteTool extends VersionValidatedTool {
   private KijiAdmin mAdmin;
 
   @Flag(name="instance", usage="The name of the Kiji instance to use.")
-  private String mInstanceName = KijiConfiguration.DEFAULT_INSTANCE_NAME;
+  private String mInstanceName = KijiConfKeys.DEFAULT_INSTANCE_NAME;
 
   @Flag(name="table", usage="The name of the Kiji table to delete or delete from.")
   private String mTableName = "";
@@ -292,7 +293,8 @@ public final class DeleteTool extends VersionValidatedTool {
   @Override
   protected void setup() throws Exception {
     super.setup();
-    mKiji = Kiji.Factory.open(new KijiConfiguration(getConf(), mInstanceName));
+    mKiji = Kiji.Factory.open(KijiURI.newBuilder().withInstanceName(mInstanceName).build(),
+        getConf());
     mTable = mKiji.openTable(mTableName);
     mWriter = mTable.openTableWriter();
     mAdmin = mKiji.getAdmin();
