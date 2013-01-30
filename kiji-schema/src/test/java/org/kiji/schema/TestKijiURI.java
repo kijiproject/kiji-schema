@@ -29,8 +29,6 @@ import java.util.Arrays;
 
 import org.junit.Test;
 
-import org.kiji.schema.KijiURI.KijiURIBuilder;
-
 public class TestKijiURI {
   @Test
   public void testFromURI() throws KijiURIException, URISyntaxException {

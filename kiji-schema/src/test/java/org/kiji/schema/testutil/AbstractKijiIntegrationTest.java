@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.KijiURI.KijiURIBuilder;
 import org.kiji.schema.KijiURIException;
 import org.kiji.schema.tools.BaseTool;
 
@@ -465,8 +464,7 @@ public abstract class AbstractKijiIntegrationTest {
           final String instanceName = UUID.randomUUID().toString().replaceAll("-", "_");
           final IntegrationHelper intHelper = new IntegrationHelper(HBaseConfiguration.create());
           try {
-            final KijiURI kijiURI = 
-                mHBaseURI.newBuilder().withInstanceName(instanceName).build();
+            final KijiURI kijiURI = mHBaseURI.newBuilder().withInstanceName(instanceName).build();
             intHelper.installKiji(kijiURI);
 
             // This blocks if the queue is full:
