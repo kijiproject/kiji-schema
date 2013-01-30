@@ -49,15 +49,4 @@ public interface KijiFactory extends PriorityProvider {
    * @throws IOException on I/O error.
    */
   Kiji open(KijiURI uri, Configuration conf) throws IOException;
-
-  /**
-   * Opens a Kiji instance. This method of opening a Kiji instance has been deprecated
-   * in favor of a method that doesn't use KijiConfiguration.
-   *
-   * @param kijiConf The configuration.
-   * @return An opened kiji instance.
-   * @throws IOException If there is an error.
-   */
-  @Deprecated
-  Kiji open(KijiConfiguration kijiConf) throws IOException;
 }

@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -470,8 +469,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
   @Test
   public void testDeleteiUpTo() throws Exception {
     getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
-    Kiji testKiji = Kiji.Factory.open(new KijiConfiguration(getIntegrationHelper().getConf(),
-      getKijiURI().getInstance()));
+    Kiji testKiji = Kiji.Factory.open(getKijiURI(), getIntegrationHelper().getConf());
     KijiTable testTable = testKiji.openTable("foo");
     KijiTableWriter testWriter = testTable.openTableWriter();
     testWriter.put(testTable.getEntityId("gwu@usermail.example.com"), "info", "email",
