@@ -99,7 +99,7 @@ public class KijiClientTest {
         String.format("%s_%s", getClass().getSimpleName(), mTestName.getMethodName());
     final KijiURI uri =
         KijiURI.newBuilder(String.format("kiji://%s/%s", hbaseAddress, instanceName)).build();
-    KijiInstaller.install(uri, mConf);
+    KijiInstaller.get().install(uri, mConf);
     final Kiji kiji = Kiji.Factory.open(uri, mConf);
     mKijis.add(kiji);
     return kiji;
@@ -114,7 +114,7 @@ public class KijiClientTest {
     LOG.debug("Closing mock kiji instance");
     for (Kiji kiji : mKijis) {
       mKiji.release();
-      KijiInstaller.uninstall(kiji.getURI(), kiji.getConf());
+      KijiInstaller.get().uninstall(kiji.getURI(), kiji.getConf());
     }
     mKijis = null;
     mKiji = null;

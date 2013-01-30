@@ -40,6 +40,13 @@ import org.kiji.schema.util.LockFactory;
 public final class KijiInstaller {
   private static final Logger LOG = LoggerFactory.getLogger(KijiInstaller.class);
 
+  /** Singleton KijiInstaller. **/
+  private static final KijiInstaller SINGLETON = new KijiInstaller();
+
+  /** Constructs a KijiInstaller. */
+  private KijiInstaller() {
+  }
+
   /**
    * Installs the specified Kiji instance.
    *
@@ -48,7 +55,7 @@ public final class KijiInstaller {
    * @throws IOException on I/O error.
    * @throws KijiInvalidNameException if the Kiji instance name is invalid or already exists.
    */
-  public static void install(KijiURI uri, Configuration conf)
+  public void install(KijiURI uri, Configuration conf)
       throws IOException, KijiInvalidNameException {
     install(uri, HBaseFactory.Provider.get(), conf);
   }
@@ -61,7 +68,7 @@ public final class KijiInstaller {
    * @throws IOException on I/O error.
    * @throws KijiInvalidNameException if the instance name is invalid or already exists.
    */
-  public static void uninstall(KijiURI uri, Configuration conf)
+  public void uninstall(KijiURI uri, Configuration conf)
       throws IOException, KijiInvalidNameException {
     uninstall(uri, HBaseFactory.Provider.get(), conf);
   }
@@ -75,7 +82,7 @@ public final class KijiInstaller {
    * @throws IOException on I/O error.
    * @throws KijiInvalidNameException if the instance name is invalid or already exists.
    */
-  public static void install(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
+  public void install(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
       throws IOException, KijiInvalidNameException {
     if (uri.getInstance() == null) {
       throw new KijiInvalidNameException(String.format(
@@ -113,7 +120,7 @@ public final class KijiInstaller {
    * @throws KijiInvalidNameException if the instance name is invalid.
    * @throws KijiNotInstalledException if the specified instance does not exist.
    */
-  public static void uninstall(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
+  public void uninstall(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
       throws IOException, KijiInvalidNameException {
     if (uri.getInstance() == null) {
       throw new KijiInvalidNameException(String.format(
@@ -150,7 +157,12 @@ public final class KijiInstaller {
     LOG.info(String.format("Removed kiji instance '%s'.", uri.getInstance()));
   }
 
-  /** Utility class may not be instantiated. */
-  private KijiInstaller() {
+  /**
+   * Gets an instance of a KijiInstaller.
+   *
+   * @return An instance of a KijiInstaller.
+   */
+  public static KijiInstaller get() {
+    return SINGLETON;
   }
 }

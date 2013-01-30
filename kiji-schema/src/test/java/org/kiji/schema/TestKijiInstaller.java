@@ -29,22 +29,22 @@ public class TestKijiInstaller {
   public void testInstallThenUninstall() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
     final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji-installer/test").build();
-    KijiInstaller.install(uri, conf);
-    KijiInstaller.uninstall(uri, conf);
+    KijiInstaller.get().install(uri, conf);
+    KijiInstaller.get().uninstall(uri, conf);
   }
 
   @Test(expected=KijiInvalidNameException.class)
   public void testInstallNullInstance() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
     final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji-installer/").build();
-    KijiInstaller.install(uri, conf);
+    KijiInstaller.get().install(uri, conf);
   }
 
   @Test(expected=KijiInvalidNameException.class)
   public void testUninstallNullInstance() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
     final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji-installer/").build();
-    KijiInstaller.uninstall(uri, conf);
+    KijiInstaller.get().uninstall(uri, conf);
   }
 
   @Test(expected=KijiNotInstalledException.class)
@@ -52,6 +52,6 @@ public class TestKijiInstaller {
     final Configuration conf = HBaseConfiguration.create();
     final KijiURI uri =
         KijiURI.newBuilder("kiji://.fake.kiji-installer/anInstanceThatNeverExisted").build();
-    KijiInstaller.uninstall(uri, conf);
+    KijiInstaller.get().uninstall(uri, conf);
   }
 }
