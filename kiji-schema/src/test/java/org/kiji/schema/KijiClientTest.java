@@ -117,6 +117,7 @@ public class KijiClientTest {
         KijiURI.newBuilder(String.format("kiji://%s/%s", hbaseAddress, instanceName)).build();
     KijiInstaller.get().install(uri, mConf);
     final Kiji kiji = Kiji.Factory.open(uri, mConf);
+
     mKijis.add(kiji);
     return kiji;
   }

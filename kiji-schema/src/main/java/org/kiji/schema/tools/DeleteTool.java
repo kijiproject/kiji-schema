@@ -30,11 +30,8 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
-
 
 /**
  * Command-line tool to delete kiji tables, rows, and cells.
@@ -66,12 +63,8 @@ public final class DeleteTool extends VersionValidatedTool {
 
   private static final long UNSPECIFIED_TIMESTAMP = Long.MIN_VALUE;
 
-  private Kiji mKiji;
   private KijiTable mTable;
   private KijiTableWriter mWriter;
-
-  @Flag(name="instance", usage="The name of the Kiji instance to use.")
-  private String mInstanceName = KijiConfiguration.DEFAULT_INSTANCE_NAME;
 
   @Flag(name="table", usage="The name of the Kiji table to delete or delete from.")
   private String mTableName = "";
@@ -277,7 +270,7 @@ public final class DeleteTool extends VersionValidatedTool {
           return 0;
         }
       }
-      mKiji.deleteTable(mTableName);
+      getKiji().deleteTable(mTableName);
       getPrintStream().println("Kiji table deleted.");
       return 0;
     }
@@ -290,8 +283,7 @@ public final class DeleteTool extends VersionValidatedTool {
   @Override
   protected void setup() throws Exception {
     super.setup();
-    mKiji = Kiji.Factory.open(new KijiConfiguration(getConf(), mInstanceName));
-    mTable = mKiji.openTable(mTableName);
+    mTable = getKiji().openTable(mTableName);
     mWriter = mTable.openTableWriter();
   }
 
@@ -300,7 +292,6 @@ public final class DeleteTool extends VersionValidatedTool {
   protected void cleanup() throws IOException {
     IOUtils.closeQuietly(mWriter);
     IOUtils.closeQuietly(mTable);
-    mKiji.release();
     super.cleanup();
   }
 

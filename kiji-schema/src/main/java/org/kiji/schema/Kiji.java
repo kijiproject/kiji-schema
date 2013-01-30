@@ -97,22 +97,6 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
       return get().open(uri, conf);
     }
 
-    /**
-     * Opens a Kiji instance. This method of opening a Kiji instance has been deprecated
-     * in favor of a method that doesn't use KijiConfiguration.
-     *
-     * <p> Caller does not need to call Kiji.retain(),
-     *     but must call Kiji.release() when done with it.
-     *
-     * @param kijiConf The configuration.
-     * @return An opened kiji instance.
-     * @throws IOException If there is an error.
-     */
-    @Deprecated
-    public static Kiji open(KijiConfiguration kijiConf) throws IOException {
-      return get().open(kijiConf);
-    }
-
     /** Utility class may not be instantiated. */
     private Factory() {
     }

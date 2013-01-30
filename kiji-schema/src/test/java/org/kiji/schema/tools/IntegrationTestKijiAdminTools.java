@@ -34,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -150,7 +149,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
 
     // Delete the foo table.
     ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
-      "--instance=" + getKijiURI().getInstance(),
+      "--kiji=" + getKijiURI().toString(),
       "--table=foo",
       "--interactive=false",
     });
@@ -238,7 +237,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     } finally {
       // Delete the table.
       ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
-            "--instance=" + getKijiURI().getInstance(),
+            "--kiji=" + getKijiURI().toString(),
             "--table=foo",
             "--interactive=false",
           });
@@ -264,7 +263,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
 
     // Delete the table.
     ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
-          "--instance=" + getKijiURI().getInstance(),
+          "--kiji=" + getKijiURI().toString(),
           "--table=foo",
           "--interactive=false",
         });
@@ -316,7 +315,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
 
     // Delete the table.
     ToolResult deleteResult = runTool(new DeleteTool(), new String[] {
-          "--instance=" + getKijiURI().getInstance(),
+          "--kiji=" + getKijiURI().toString(),
           "--table=" + tableName,
           "--interactive=false",
         });
@@ -338,7 +337,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
 
     ToolResult deleteRowResult = runTool(new DeleteTool(), new String[] {
-      "--instance=" + getKijiURI().getInstance(),
+      "--kiji=" + getKijiURI().toString(),
       "--table=foo",
       "--row=gwu@usermail.example.com",
       "--interactive=false",
@@ -361,7 +360,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
 
     ToolResult deleteFamilyResult = runTool(new DeleteTool(), new String[] {
-      "--instance=" + getKijiURI().getInstance(),
+      "--kiji=" + getKijiURI().toString(),
       "--table=foo",
       "--row=gwu@usermail.example.com",
       "--family=info",
@@ -385,7 +384,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
 
     ToolResult deleteColumnResult = runTool(new DeleteTool(), new String[] {
-      "--instance=" + getKijiURI().getInstance(),
+      "--kiji=" + getKijiURI().toString(),
       "--table=foo",
       "--row=gwu@usermail.example.com",
       "--family=info",
@@ -410,7 +409,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
 
     ToolResult deleteMostRecentResult = runTool(new DeleteTool(), new String[] {
-      "--instance=" + getKijiURI().getInstance(),
+      "--kiji=" + getKijiURI().toString(),
       "--table=foo",
       "--row=gwu@usermail.example.com",
       "--family=info",
@@ -445,7 +444,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     testKiji.release();
 
     ToolResult deleteExactResult = runTool(new DeleteTool(), new String[] {
-      "--instance=" + getKijiURI().getInstance(),
+      "--kiji=" + getKijiURI().toString(),
       "--table=foo",
       "--row=gwu@usermail.example.com",
       "--family=info",
@@ -470,8 +469,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
   @Test
   public void testDeleteiUpTo() throws Exception {
     getIntegrationHelper().createAndPopulateFooTable(getKijiURI());
-    Kiji testKiji = Kiji.Factory.open(new KijiConfiguration(getIntegrationHelper().getConf(),
-      getKijiURI().getInstance()));
+    Kiji testKiji = Kiji.Factory.open(getKijiURI(), getIntegrationHelper().getConf());
     KijiTable testTable = testKiji.openTable("foo");
     KijiTableWriter testWriter = testTable.openTableWriter();
     testWriter.put(testTable.getEntityId("gwu@usermail.example.com"), "info", "email",
@@ -481,7 +479,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     testKiji.release();
 
     ToolResult deleteUpToResult = runTool(new DeleteTool(), new String[] {
-      "--instance=" + getKijiURI().getInstance(),
+      "--kiji=" + getKijiURI().toString(),
       "--table=foo",
       "--row=gwu@usermail.example.com",
       "--family=info",

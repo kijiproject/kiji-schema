@@ -78,7 +78,7 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
    */
   @Before
   public void setup() throws Exception {
-    mKiji = Kiji.Factory.open(getKijiConfiguration());
+    mKiji = Kiji.Factory.open(getKijiURI(), getIntegrationHelper().getConf());
 
     LOG.info("Creating test table.");
     final File layoutFile =

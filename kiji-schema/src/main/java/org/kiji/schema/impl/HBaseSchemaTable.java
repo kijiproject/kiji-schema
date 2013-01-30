@@ -44,6 +44,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -61,8 +62,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.MD5Hash;
 import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
@@ -133,61 +134,67 @@ public class HBaseSchemaTable extends KijiSchemaTable {
   /**
    * Creates an HTable handle to the schema V5 table.
    *
-   * @param conf Kiji/HBase configuration to open the table.
+   * @param kijiURI the KijiURI.
+   * @param conf the Hadoop configuration.
    * @param factory HTableInterface factory.
    * @return a new interface for the table storing the schemas up until data layout v5.
    * @throws IOException on I/O error.
    */
   public static HTableInterface newSchemaV5Table(
-      KijiConfiguration conf,
+      KijiURI kijiURI,
+      Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
-    return factory.create(conf.getConf(),
-        KijiManagedHBaseTableName.getSchemaV5TableName(conf.getName()).toString());
+    return factory.create(conf,
+        KijiManagedHBaseTableName.getSchemaV5TableName(kijiURI.getInstance()).toString());
   }
 
   /**
    * Creates an HTable handle to the schema hash table.
    *
-   * @param conf Kiji/HBase configuration to open the table.
+   * @param kijiURI the KijiURI.
+   * @param conf the Hadoop configuration.
    * @param factory HTableInterface factory.
    * @return a new interface for the table storing the mapping from schema hash to schema entry.
    * @throws IOException on I/O error.
    */
   public static HTableInterface newSchemaHashTable(
-      KijiConfiguration conf,
+      KijiURI kijiURI,
+      Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
-    return factory.create(conf.getConf(),
-        KijiManagedHBaseTableName.getSchemaHashTableName(conf.getName()).toString());
+    return factory.create(conf,
+        KijiManagedHBaseTableName.getSchemaHashTableName(kijiURI.getInstance()).toString());
   }
 
   /**
    * Creates an HTable handle to the schema ID table.
    *
-   * @param conf Kiji/HBase configuration to open the table.
+   * @param kijiURI the KijiURI.
+   * @param conf the Hadoop configuration.
    * @param factory HTableInterface factory.
    * @return a new interface for the table storing the mapping from schema ID to schema entry.
    * @throws IOException on I/O error.
    */
   public static HTableInterface newSchemaIdTable(
-      KijiConfiguration conf,
+      KijiURI kijiURI,
+      Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
-    return factory.create(conf.getConf(),
-        KijiManagedHBaseTableName.getSchemaIdTableName(conf.getName()).toString());
+    return factory.create(conf,
+        KijiManagedHBaseTableName.getSchemaIdTableName(kijiURI.getInstance()).toString());
   }
 
   /**
    * Creates a lock for a given Kiji instance.
    *
-   * @param conf Configuration of the Kiji instance.
+   * @param kijiURI URI of the Kiji instance.
    * @param factory Factory for locks.
    * @return a lock for the specified Kiji instance.
    * @throws IOException on I/O error.
    */
-  public static Lock newLock(KijiConfiguration conf, LockFactory factory) throws IOException {
-    final String name = new File("/kiji", conf.getName()).toString();
+  public static Lock newLock(KijiURI kijiURI, LockFactory factory) throws IOException {
+    final String name = new File("/kiji", kijiURI.getInstance()).toString();
     return factory.create(name);
   }
 
@@ -236,19 +243,21 @@ public class HBaseSchemaTable extends KijiSchemaTable {
   /**
    * Open a connection to the HBase schema table for a Kiji instance.
    *
-   * @param kijiConf The kiji configuration.
+   * @param kijiURI the KijiURI
+   * @param conf The Hadoop configuration.
    * @param tableFactory HTableInterface factory.
    * @param lockFactory Factory for locks.
    * @throws IOException on I/O error.
    */
   public HBaseSchemaTable(
-      KijiConfiguration kijiConf,
+      KijiURI kijiURI,
+      Configuration conf,
       HTableInterfaceFactory tableFactory,
       LockFactory lockFactory)
       throws IOException {
-    this(newSchemaHashTable(kijiConf, tableFactory),
-        newSchemaIdTable(kijiConf, tableFactory),
-        newLock(kijiConf, lockFactory));
+    this(newSchemaHashTable(kijiURI, conf, tableFactory),
+        newSchemaIdTable(kijiURI, conf, tableFactory),
+        newLock(kijiURI, lockFactory));
   }
 
   /**
@@ -584,14 +593,16 @@ public class HBaseSchemaTable extends KijiSchemaTable {
    * Install the schema table into a Kiji instance.
    *
    * @param admin The HBase Admin interface for the HBase cluster to install into.
-   * @param kijiConf The Kiji configuration.
+   * @param kijiURI the KijiURI.
+   * @param conf The Hadoop configuration.
    * @param tableFactory HTableInterface factory.
    * @param lockFactory Factory for locks.
    * @throws IOException on I/O error.
    */
   public static void install(
       HBaseAdmin admin,
-      KijiConfiguration kijiConf,
+      KijiURI kijiURI,
+      Configuration conf,
       HTableInterfaceFactory tableFactory,
       LockFactory lockFactory)
       throws IOException {
@@ -604,7 +615,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
     final int maxVersions = Integer.MAX_VALUE;
 
     final HTableDescriptor hashTableDescriptor = new HTableDescriptor(
-        KijiManagedHBaseTableName.getSchemaHashTableName(kijiConf.getName()).toString());
+        KijiManagedHBaseTableName.getSchemaHashTableName(kijiURI.getInstance()).toString());
     final HColumnDescriptor hashColumnDescriptor = new HColumnDescriptor(
         SCHEMA_COLUMN_FAMILY_BYTES, // family name.
         maxVersions, // max versions
@@ -617,7 +628,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
     admin.createTable(hashTableDescriptor);
 
     final HTableDescriptor idTableDescriptor = new HTableDescriptor(
-        KijiManagedHBaseTableName.getSchemaIdTableName(kijiConf.getName()).toString());
+        KijiManagedHBaseTableName.getSchemaIdTableName(kijiURI.getInstance()).toString());
     final HColumnDescriptor idColumnDescriptor = new HColumnDescriptor(
         SCHEMA_COLUMN_FAMILY_BYTES, // family name.
         maxVersions, // max versions
@@ -630,9 +641,9 @@ public class HBaseSchemaTable extends KijiSchemaTable {
     admin.createTable(idTableDescriptor);
 
     final HBaseSchemaTable schemaTable = new HBaseSchemaTable(
-        newSchemaHashTable(kijiConf, tableFactory),
-        newSchemaIdTable(kijiConf, tableFactory),
-        newLock(kijiConf, lockFactory));
+        newSchemaHashTable(kijiURI, conf, tableFactory),
+        newSchemaIdTable(kijiURI, conf, tableFactory),
+        newLock(kijiURI, lockFactory));
     try {
       schemaTable.setSchemaIdCounter(0L);
       schemaTable.registerPrimitiveSchemas();
@@ -675,21 +686,21 @@ public class HBaseSchemaTable extends KijiSchemaTable {
    * Disables and removes the schema table from HBase.
    *
    * @param admin The HBase Admin object.
-   * @param kijiConf The configuration for the kiji instance to remove.
+   * @param kijiURI The KijiURI for the instance to remove.
    * @throws IOException If there is an error.
    */
-  public static void uninstall(HBaseAdmin admin, KijiConfiguration kijiConf)
+  public static void uninstall(HBaseAdmin admin, KijiURI kijiURI)
       throws IOException {
     final String hashTableName =
-        KijiManagedHBaseTableName.getSchemaHashTableName(kijiConf.getName()).toString();
+        KijiManagedHBaseTableName.getSchemaHashTableName(kijiURI.getInstance()).toString();
     deleteTable(admin, hashTableName);
 
     final String idTableName =
-        KijiManagedHBaseTableName.getSchemaIdTableName(kijiConf.getName()).toString();
+        KijiManagedHBaseTableName.getSchemaIdTableName(kijiURI.getInstance()).toString();
     deleteTable(admin, idTableName);
 
     final String v5TableName =
-        KijiManagedHBaseTableName.getSchemaV5TableName(kijiConf.getName()).toString();
+        KijiManagedHBaseTableName.getSchemaV5TableName(kijiURI.getInstance()).toString();
     deleteTable(admin, v5TableName);
   }
 

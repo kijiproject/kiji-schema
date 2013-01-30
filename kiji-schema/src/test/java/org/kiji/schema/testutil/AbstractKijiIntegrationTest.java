@@ -45,7 +45,6 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiURIException;
 import org.kiji.schema.tools.BaseTool;
@@ -151,9 +150,6 @@ public abstract class AbstractKijiIntegrationTest {
 
   /** The randomly generated URI for the instance. */
   private KijiURI mKijiURI;
-
-  /** The Kiji configuration for this test's private instance. */
-  private KijiConfiguration mKijiConf;
 
   // Disable checkstyle since mTempDir must be a public to work as a JUnit @Rule.
   // CSOFF: VisibilityModifierCheck
@@ -265,9 +261,6 @@ public abstract class AbstractKijiIntegrationTest {
     // Get a new Kiji instance, with a randomly-generated name.
     mKijiURI = mCreationThread.getFreshKiji();
     mHelper = new IntegrationHelper(mConf);
-
-    // Construct a Kiji configuration.
-    mKijiConf = new KijiConfiguration(mConf, mKijiURI.getInstance());
   }
 
   @After
@@ -278,7 +271,6 @@ public abstract class AbstractKijiIntegrationTest {
     }
 
     mHelper = null;
-    mKijiConf = null;
     mKijiURI = null;
     mConf = null;
 
@@ -289,11 +281,6 @@ public abstract class AbstractKijiIntegrationTest {
   /** @return The integration helper. */
   protected IntegrationHelper getIntegrationHelper() {
     return mHelper;
-  }
-
-  /** @return The Kiji configuration for this test instance. */
-  protected KijiConfiguration getKijiConfiguration() {
-    return mKijiConf;
   }
 
   /** @return The KijiURI for this test instance. */

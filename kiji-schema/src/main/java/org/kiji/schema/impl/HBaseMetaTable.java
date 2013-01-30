@@ -27,6 +27,7 @@ import java.util.NavigableMap;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -35,7 +36,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiTableKeyValueDatabase;
@@ -76,34 +76,38 @@ public class HBaseMetaTable extends KijiMetaTable {
   /**
    * Creates an HTableInterface for the specified table.
    *
-   * @param kijiConf Kiji configuration.
+   * @param kijiURI the KijiURI.
+   * @param conf Hadoop configuration.
    * @param factory HTableInterface factory to use.
    * @return a new HTableInterface for the specified table.
    * @throws IOException on I/O error.
    */
   public static HTableInterface newMetaTable(
-      KijiConfiguration kijiConf,
+      KijiURI kijiURI,
+      Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
     return factory.create(
-        kijiConf.getConf(),
-        KijiManagedHBaseTableName.getMetaTableName(kijiConf.getName()).toString());
+        conf,
+        KijiManagedHBaseTableName.getMetaTableName(kijiURI.getInstance()).toString());
   }
 
   /**
    * Create a connection to a Kiji meta table backed by an HTable within HBase.
    *
-   * @param kijiConf The Kiji configuration.
+   * @param kijiURI The KijiURI.
+   * @param conf The Hadoop configuration.
    * @param schemaTable The Kiji schema table.
    * @param factory HTableInterface factory.
    * @throws IOException If there is an error.
    */
   public HBaseMetaTable(
-      KijiConfiguration kijiConf,
+      KijiURI kijiURI,
+      Configuration conf,
       KijiSchemaTable schemaTable,
       HTableInterfaceFactory factory)
       throws IOException {
-    this(newMetaTable(kijiConf, factory), schemaTable);
+    this(newMetaTable(kijiURI, conf, factory), schemaTable);
   }
 
   /**

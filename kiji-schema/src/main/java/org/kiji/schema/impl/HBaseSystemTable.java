@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -38,8 +39,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiSystemTable;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.TableKeyNotFoundException;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.util.Debug;
@@ -50,7 +51,8 @@ import org.kiji.schema.util.Debug;
  * <p>The system table (a Kiji system table) is a simple key-value store for system-wide
  * properties of a Kiji installation.  There is a single column family "value".  For a
  * key-value property (K,V), the key K is stored as the row key in the HTable,
- * and the value V is stored in the "value:" column.<p>
+ * and the value V is stored in the "value:" column.<p>import org.kiji.schema.KijiURI;
+i
  */
 @ApiAudience.Private
 public class HBaseSystemTable extends KijiSystemTable {
@@ -83,32 +85,36 @@ public class HBaseSystemTable extends KijiSystemTable {
   /**
    * Creates a new HTableInterface for the Kiji system table.
    *
-   * @param kijiConf Kiji configuration.
+   * @param kijiURI The KijiURI.
+   * @param conf The Hadoop configuration.
    * @param factory HTableInterface factory.
    * @return a new HTableInterface for the Kiji system table.
    * @throws IOException on I/O error.
    */
   public static HTableInterface newSystemTable(
-      KijiConfiguration kijiConf,
+      KijiURI kijiURI,
+      Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
     final String tableName =
-        KijiManagedHBaseTableName.getSystemTableName(kijiConf.getName()).toString();
-    return factory.create(kijiConf.getConf(), tableName);
+        KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString();
+    return factory.create(conf, tableName);
   }
 
   /**
    * Connect to the HBase system table inside a Kiji instance.
    *
-   * @param kijiConf The Kiji configuration.
+   * @param kijiURI The KijiURI.
+   * @param conf the Hadoop configuration.
    * @param factory HTableInterface factory.
    * @throws IOException If there is an error.
    */
   public HBaseSystemTable(
-      KijiConfiguration kijiConf,
+      KijiURI kijiURI,
+      Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
-    this(newSystemTable(kijiConf, factory));
+    this(newSystemTable(kijiURI, conf, factory));
   }
 
   /**
@@ -202,18 +208,20 @@ public class HBaseSystemTable extends KijiSystemTable {
    * Installs a Kiji system table into a running HBase instance.
    *
    * @param admin The HBase cluster to install into.
-   * @param kijiConf The Kiji configuration.
+   * @param kijiURI The KijiURI.
+   * @param conf The Hadoop configuration.
    * @param factory HTableInterface factory.
    * @throws IOException If there is an error.
    */
   public static void install(
       HBaseAdmin admin,
-      KijiConfiguration kijiConf,
+      KijiURI kijiURI,
+      Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
     // Install the table.
     HTableDescriptor tableDescriptor = new HTableDescriptor(
-        KijiManagedHBaseTableName.getSystemTableName(kijiConf.getName()).toString());
+        KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString());
     HColumnDescriptor columnDescriptor = new HColumnDescriptor(
         Bytes.toBytes(VALUE_COLUMN_FAMILY),  // family name.
         1,  // max versions
@@ -225,7 +233,7 @@ public class HBaseSystemTable extends KijiSystemTable {
     tableDescriptor.addFamily(columnDescriptor);
     admin.createTable(tableDescriptor);
 
-    HBaseSystemTable systemTable = new HBaseSystemTable(kijiConf, factory);
+    HBaseSystemTable systemTable = new HBaseSystemTable(kijiURI, conf, factory);
     try {
       systemTable.loadDefaults(DEFAULTS_PROPERTIES_FILE);
     } finally {
@@ -237,13 +245,13 @@ public class HBaseSystemTable extends KijiSystemTable {
    * Disables and delete the system table from HBase.
    *
    * @param admin The HBase admin object.
-   * @param kijiConf The configuration for the kiji instance to remove.
+   * @param kijiURI The URI for the kiji instance to remove.
    * @throws IOException If there is an error.
    */
-  public static void uninstall(HBaseAdmin admin, KijiConfiguration kijiConf)
+  public static void uninstall(HBaseAdmin admin, KijiURI kijiURI)
       throws IOException {
     final String tableName =
-        KijiManagedHBaseTableName.getSystemTableName(kijiConf.getName()).toString();
+        KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString();
     admin.disableTable(tableName);
     admin.deleteTable(tableName);
   }
