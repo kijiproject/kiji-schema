@@ -419,7 +419,7 @@ public final class KijiURI {
    *
    * @return A builder configured with this Kiji URI.
    */
-  public static KijiURIBuilder getBuilder() {
+  public static KijiURIBuilder newBuilder() {
     return new KijiURIBuilder();
   }
 

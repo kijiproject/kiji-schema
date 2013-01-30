@@ -262,6 +262,16 @@ public class TestKijiURI {
   }
 
   @Test
+  public void testKijiURIBuilderDefault() throws KijiURIException {
+    KijiURI uri = KijiURI.newBuilder().build();
+    assertTrue(uri.getZookeeperQuorum().isEmpty());
+    assertEquals(uri.getZookeeperClientPort(), KijiURI.DEFAULT_ZOOKEEPER_CLIENT_PORT);
+    assertEquals(uri.getInstance(), null);
+    assertEquals(uri.getTable(), null);
+    assertTrue(uri.getColumns().isEmpty());
+  }
+
+  @Test
   public void testKijiURIBuilderFromInstance() throws KijiURIException {
     final KijiURI uri = KijiURI.newBuilder("kiji://zkhost:1234/.unset/table").build();
     KijiURI built = KijiURI.newBuilder(uri).build();
