@@ -153,7 +153,7 @@ public final class FlushTableTool extends VersionValidatedTool {
     }
 
     if (null != mTableName) {
-      setURI(getURI().getBuilder().withTableName(mTableName).build());
+      setURI(getURI().newBuilder().withTableName(mTableName).build());
       getPrintStream().println("Flushing table: " + getURI().toString());
       flushTable(mHBaseAdmin, getKiji().getURI().getInstance(), mTableName);
     }

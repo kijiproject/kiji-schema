@@ -465,8 +465,8 @@ public abstract class AbstractKijiIntegrationTest {
           final String instanceName = UUID.randomUUID().toString().replaceAll("-", "_");
           final IntegrationHelper intHelper = new IntegrationHelper(HBaseConfiguration.create());
           try {
-            final KijiURI kijiURI =
-                KijiURIBuilder.createFromKijiURI(mHBaseURI).withInstanceName(instanceName).build();
+            final KijiURI kijiURI = 
+                mHBaseURI.newBuilder().withInstanceName(instanceName).build();
             intHelper.installKiji(kijiURI);
 
             // This blocks if the queue is full:

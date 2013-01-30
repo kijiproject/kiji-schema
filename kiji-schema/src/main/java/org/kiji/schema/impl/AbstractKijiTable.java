@@ -69,7 +69,7 @@ public abstract class AbstractKijiTable implements KijiTable {
   protected AbstractKijiTable(Kiji kiji, String name) throws IOException {
     mKiji = kiji;
     mName = name;
-    mTableURI = mKiji.getURI().getBuilder().withTableName(mName).build();
+    mTableURI = mKiji.getURI().newBuilder().withTableName(mName).build();
     mIsOpen = true;
     if (CLEANUP_LOG.isDebugEnabled()) {
       mConstructorStack = Debug.getStackTrace();

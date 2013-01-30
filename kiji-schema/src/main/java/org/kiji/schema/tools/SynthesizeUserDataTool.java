@@ -97,7 +97,7 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
     NGramSynthesizer fullNameSynth = new NGramSynthesizer(nameSynth, 2);
     EmailSynthesizer emailSynth = new EmailSynthesizer(random, nameDictionary);
 
-    setURI(getURI().getBuilder().withTableName(mTableName).build());
+    setURI(getURI().newBuilder().withTableName(mTableName).build());
     getPrintStream().printf("Generating %d users on kiji table '%s'...%n",
         mNumUsers, getURI().toString());
     KijiTable kijiTable = getKiji().openTable(mTableName);

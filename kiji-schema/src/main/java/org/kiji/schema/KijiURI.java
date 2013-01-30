@@ -235,30 +235,6 @@ public final class KijiURI {
     }
 
     /**
-     * Constructs a new builder for KijiURIs with default values.
-     *
-     * @return A new builder for Kiji URIs.
-     */
-    public static KijiURIBuilder create() {
-      return new KijiURIBuilder();
-    }
-
-    /**
-     * Constructs a new builder for KijiURIs from an existing KijiURI.
-     *
-     * @param kijiURI The base KijiURI.
-     * @return A new builder for Kiji URIs.
-     */
-    public static KijiURIBuilder createFromKijiURI(KijiURI kijiURI) {
-      return new KijiURIBuilder(
-          kijiURI.getZookeeperQuorum(),
-          kijiURI.getZookeeperClientPort(),
-          kijiURI.getInstance(),
-          kijiURI.getTable(),
-          kijiURI.getColumns());
-    }
-
-    /**
      * Configures the KijiURI with Zookeeper Quorum.
      *
      * @param zookeeperQuorum The zookeeper quorum.
@@ -272,11 +248,11 @@ public final class KijiURI {
     /**
      * Configures the KijiURI with the Zookeeper client port.
      *
-     * @param clientPort The port.
+     * @param zookeeperClientPort The port.
      * @return This builder instance so you may chain configuration method calls.
      */
-    public KijiURIBuilder withClientPort(int clientPort) {
-      mZookeeperClientPort = clientPort;
+    public KijiURIBuilder withZookeeperClientPort(int zookeeperClientPort) {
+      mZookeeperClientPort = zookeeperClientPort;
       return this;
     }
 
@@ -469,8 +445,39 @@ public final class KijiURI {
    *
    * @return A builder configured with this Kiji URI.
    */
-  public KijiURIBuilder getBuilder() {
-    return KijiURIBuilder.createFromKijiURI(this);
+  public KijiURIBuilder newBuilder() {
+    return new KijiURIBuilder(
+          mZookeeperQuorum,
+          mZookeeperClientPort,
+          mInstanceName,
+          mTableName,
+          mColumnNames);
+  }
+
+  /**
+   * Gets a builder configured with the Kiji URI.
+   *
+   * @param other The Kiji URI to configure the builder from.
+   * @return A builder configured with other.
+   */
+  public KijiURIBuilder newBuilder(KijiURI other) {
+    return new KijiURIBuilder(other.getZookeeperQuorum(),
+        other.getZookeeperClientPort(),
+        other.getInstance(),
+        other.getTable(),
+        other.getColumns());
+  }
+
+  /**
+   * Gets a builder configured with the Kiji URI.
+   *
+   * @param uri String specification of a Kiji URI.
+   * @return A builder configured with uri.
+   * @throws KijiURIException If the uri is an invalid Kiji URI.
+   */
+  public KijiURIBuilder newBuilder(String uri) throws KijiURIException {
+    KijiURI kijiURI = KijiURI.parse(uri);
+    return kijiURI.newBuilder();
   }
 
   /**
