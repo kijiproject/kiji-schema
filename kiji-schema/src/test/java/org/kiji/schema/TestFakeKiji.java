@@ -60,10 +60,9 @@ public class TestFakeKiji {
     assertNotNull(kiji.getMetaTable());
 
     {
-      final KijiAdmin admin = kiji.getAdmin();
       final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
       final KijiTableLayout tableLayout = new KijiTableLayout(layoutDesc, null);
-      admin.createTable("table", tableLayout, false);
+      kiji.createTable("table", tableLayout);
     }
 
     final KijiTable table = kiji.openTable("table");

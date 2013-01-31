@@ -126,7 +126,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   public void setupLayout() throws Exception {
     final KijiTableLayout tableLayout =
         KijiTableLayouts.getTableLayout(KijiTableLayouts.ROW_DATA_TEST);
-    getKiji().getAdmin().createTable(tableLayout.getName(), tableLayout, false);
+    getKiji().createTable(tableLayout.getName(), tableLayout);
 
     ColumnNameTranslator translator = new ColumnNameTranslator(tableLayout);
     HBaseColumnName hcolumn = translator.toHBaseColumnName(new KijiColumnName("family", "empty"));

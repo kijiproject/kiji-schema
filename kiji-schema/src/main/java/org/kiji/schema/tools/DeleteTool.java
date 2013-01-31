@@ -31,7 +31,6 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
@@ -70,7 +69,6 @@ public final class DeleteTool extends VersionValidatedTool {
   private Kiji mKiji;
   private KijiTable mTable;
   private KijiTableWriter mWriter;
-  private KijiAdmin mAdmin;
 
   @Flag(name="instance", usage="The name of the Kiji instance to use.")
   private String mInstanceName = KijiConfiguration.DEFAULT_INSTANCE_NAME;
@@ -279,7 +277,7 @@ public final class DeleteTool extends VersionValidatedTool {
           return 0;
         }
       }
-      mAdmin.deleteTable(mTableName);
+      mKiji.deleteTable(mTableName);
       getPrintStream().println("Kiji table deleted.");
       return 0;
     }
@@ -295,7 +293,6 @@ public final class DeleteTool extends VersionValidatedTool {
     mKiji = Kiji.Factory.open(new KijiConfiguration(getConf(), mInstanceName));
     mTable = mKiji.openTable(mTableName);
     mWriter = mTable.openTableWriter();
-    mAdmin = mKiji.getAdmin();
   }
 
   /** {@inheritDoc} */

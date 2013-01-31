@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
+  * SCHEMA-155. Merged methods in KijiAdmin into Kiji.
   * SCHEMA-133. Introduce KijiDataRequestBuilder class. KijiDataRequest
       objects are now immutable. Construct one with KijiDataRequest.create(),
       or call KijiDataRequest.builder() to get a KijiDataRequestBuilder.

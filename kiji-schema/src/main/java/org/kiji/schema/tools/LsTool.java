@@ -45,7 +45,6 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
-import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
@@ -193,9 +192,8 @@ public final class LsTool extends VersionValidatedTool {
    * @throws IOException If there is an error.
    */
   private int listTables() throws IOException {
-    final KijiAdmin admin = getKiji().getAdmin();
     getPrintStream().println("Listing tables in kiji instance: " + getURI().toString());
-    for (String name : admin.getTableNames()) {
+    for (String name : getKiji().getTableNames()) {
       getPrintStream().println(name);
     }
     return 0;

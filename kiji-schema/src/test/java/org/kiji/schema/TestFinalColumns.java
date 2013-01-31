@@ -37,11 +37,10 @@ public class TestFinalColumns extends KijiClientTest {
   @Test
   public void testFakeKiji() throws Exception {
     final Kiji kiji = getKiji();
-    final KijiAdmin admin = kiji.getAdmin();
 
     final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.FINAL_COLUMN);
     final KijiTableLayout tableLayout = new KijiTableLayout(layoutDesc, null);
-    admin.createTable("table", tableLayout, false);
+    kiji.createTable("table", tableLayout);
 
     final KijiTable table = kiji.openTable("table");
     final KijiTableWriter writer = table.openTableWriter();

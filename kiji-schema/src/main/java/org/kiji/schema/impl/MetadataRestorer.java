@@ -34,7 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiAdmin;
+import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.avro.MetadataBackup;
@@ -95,7 +95,6 @@ public class MetadataRestorer {
    *
    * @param tableName the name of the table to restore.
    * @param tableBackup the deserialized backup of the TableLayout to restore.
-   * @param admin A KijiAdmin connected to the Kiji instance.
    * @param metaTable the MetaTable of the connected Kiji instance.
    * @param kiji the connected Kiji instance.
    * @throws IOException if there is an error communicating with HBase
@@ -103,24 +102,27 @@ public class MetadataRestorer {
   private void restoreTable(
     String tableName,
     TableBackup tableBackup,
-    KijiAdmin admin,
     KijiMetaTable metaTable,
     Kiji kiji)
     throws IOException {
     Preconditions.checkNotNull(tableBackup);
     Preconditions.checkArgument(!tableBackup.getLayouts().isEmpty(),
-      "Backup for table '%s' contains no layout.", tableName);
-     LOG.info("Creating table '{}'.", tableName);
-      long timestamp = Long.MAX_VALUE;
-      TableLayoutBackupEntry initialEntry = null;
-      for (TableLayoutBackupEntry entry : tableBackup.getLayouts()) {
-        if (entry.getTimestamp() < timestamp) {
-          timestamp = entry.getTimestamp();
-          initialEntry = entry;
-        }
+        "Backup for table '%s' contains no layout.", tableName);
+    LOG.info("Creating table '{}'.", tableName);
+    long timestamp = Long.MAX_VALUE;
+    TableLayoutBackupEntry initialEntry = null;
+    for (TableLayoutBackupEntry entry : tableBackup.getLayouts()) {
+      if (entry.getTimestamp() < timestamp) {
+        timestamp = entry.getTimestamp();
+        initialEntry = entry;
       }
-      final KijiTableLayout initialLayout = new KijiTableLayout(initialEntry.getLayout(), null);
-      admin.createTable(tableName, initialLayout, true);
+    }
+    final KijiTableLayout initialLayout = new KijiTableLayout(initialEntry.getLayout(), null);
+    try {
+      kiji.createTable(tableName, initialLayout);
+    } catch (KijiAlreadyExistsException kaee) {
+      LOG.info("Table already exists in HBase. Continuing with restore operation.");
+    }
 
     LOG.info("Restoring layout history for table '%s' (%d layouts).", tableName,
         tableBackup.getLayouts().size());
@@ -143,7 +145,6 @@ public class MetadataRestorer {
 
     final KijiMetaTable metaTable = kiji.getMetaTable();
     try {
-      final KijiAdmin admin = kiji.getAdmin();
       HBaseMetaTable.uninstall(hbaseAdmin, kiji.getURI());
       HBaseMetaTable.install(hbaseAdmin, kiji.getURI());
 
@@ -151,7 +152,7 @@ public class MetadataRestorer {
         final String tableName = layoutEntry.getKey();
         LOG.debug("Found table backup entry for " + tableName);
         final TableBackup tableBackup = layoutEntry.getValue();
-        restoreTable(tableName, tableBackup, admin, metaTable, kiji);
+        restoreTable(tableName, tableBackup, metaTable, kiji);
       }
     } finally {
       hbaseAdmin.close();

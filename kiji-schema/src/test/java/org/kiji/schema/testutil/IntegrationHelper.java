@@ -42,7 +42,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
@@ -310,8 +309,7 @@ public class IntegrationHelper extends Configured {
    */
   public void deleteFooTable(KijiURI kijiURI) throws Exception {
     final Kiji kiji = Kiji.Factory.open(kijiURI, getConf());
-    final KijiAdmin admin = kiji.getAdmin();
-    admin.deleteTable("foo");
+    kiji.deleteTable("foo");
     kiji.release();
   }
 }

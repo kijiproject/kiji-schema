@@ -29,7 +29,6 @@ import java.util.NavigableSet;
 import org.junit.Test;
 
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder;
@@ -48,11 +47,10 @@ public class TestStripValueRowFilter extends KijiClientTest {
   @Test
   public void testStripValuesFilter() throws Exception {
     final Kiji kiji = getKiji();
-    final KijiAdmin admin = kiji.getAdmin();
 
     final KijiTableLayout fooLayout =
         new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST), null);
-    admin.createTable("foo", fooLayout, false);
+    kiji.createTable("foo", fooLayout);
 
     final KijiTable table = kiji.openTable("foo");
     {

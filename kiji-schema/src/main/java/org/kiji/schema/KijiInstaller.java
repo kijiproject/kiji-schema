@@ -134,10 +134,9 @@ public final class KijiInstaller {
 
     final Kiji kiji = Kiji.Factory.open(uri, conf);
     try {
-      final KijiAdmin kijiAdmin = kiji.getAdmin();
-      for (String tableName : kijiAdmin.getTableNames()) {
+      for (String tableName : kiji.getTableNames()) {
         LOG.debug("Deleting kiji table " + tableName + "...");
-        kijiAdmin.deleteTable(tableName);
+        kiji.deleteTable(tableName);
       }
 
       // Delete the user tables:
