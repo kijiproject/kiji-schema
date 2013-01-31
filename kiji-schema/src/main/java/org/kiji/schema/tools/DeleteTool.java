@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
+import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiTable;
@@ -73,7 +74,7 @@ public final class DeleteTool extends VersionValidatedTool {
   private KijiAdmin mAdmin;
 
   @Flag(name="instance", usage="The name of the Kiji instance to use.")
-  private String mInstanceName = Kiji.DEFAULT_INSTANCE_NAME;
+  private String mInstanceName = KConstants.DEFAULT_INSTANCE_NAME;
 
   @Flag(name="table", usage="The name of the Kiji table to delete or delete from.")
   private String mTableName = "";

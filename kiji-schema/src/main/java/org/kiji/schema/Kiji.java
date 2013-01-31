@@ -45,9 +45,6 @@ import org.kiji.schema.util.ReferenceCountable;
 @ApiAudience.Public
 @Inheritance.Sealed
 public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
-  /** Default Kiji instance name */
-  public static final String DEFAULT_INSTANCE_NAME = "default";
-
   /**
    * Provider for the default Kiji factory.
    *
