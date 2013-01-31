@@ -125,6 +125,11 @@ public class InstanceBuilder {
         String.format("kiji://.fake.%d/%s", FAKE_COUNT.getAndIncrement(), mInstanceName)).build();
 
     // In-process MapReduce execution:
+    // TODO(KIJIMR-19): remove this, InstanceBuilder should not be concerned by configuration.
+    //     This is a temporary fix until all job builders have a withConf() setter.
+    final String tmpDir = "file:///tmp/hdfs-testing-" + System.nanoTime();
+    conf.set("fs.default.name", tmpDir);
+    conf.set("fs.default.FS", tmpDir);
     conf.set("mapred.job.tracker", "local");
 
     // Install & open a Kiji instance.
