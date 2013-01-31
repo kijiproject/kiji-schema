@@ -101,6 +101,7 @@ public class KijiClientTest {
         KijiURI.newBuilder(String.format("kiji://%s/%s", hbaseAddress, instanceName)).build();
     KijiInstaller.install(uri, mConf);
     final Kiji kiji = Kiji.Factory.open(uri, mConf);
+
     mKijis.add(kiji);
     return kiji;
   }
@@ -138,7 +139,7 @@ public class KijiClientTest {
         // TODO: Remove wrapping:
         throw new IOException(exn);
       }
-    }
+    }  LOG.warn("passed");
     return mKiji;
   }
 

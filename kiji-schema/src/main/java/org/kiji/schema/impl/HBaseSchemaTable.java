@@ -147,8 +147,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
       HTableInterfaceFactory factory)
       throws IOException {
     return factory.create(conf,
-        KijiManagedHBaseTableName.getSchemaV5TableName(conf.get(kijiURI.getInstance(),
-            KijiConfKeys.DEFAULT_INSTANCE_NAME)).toString());
+        KijiManagedHBaseTableName.getSchemaV5TableName(kijiURI.getInstance()).toString());
   }
 
   /**
