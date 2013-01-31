@@ -53,7 +53,7 @@ public class TestHBaseMetaTable {
   @Test
   public void testLayouts() throws Exception {
     final TableLayoutDesc desc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
-    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
 
     expect(mTableLayoutDatabase.updateTableLayout("table", desc)).andReturn(layout);
     expect(mTableLayoutDatabase.getTableLayout("table")).andReturn(layout);

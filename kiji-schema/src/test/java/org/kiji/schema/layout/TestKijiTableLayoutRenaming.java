@@ -83,7 +83,7 @@ public class TestKijiTableLayoutRenaming {
   private final KijiTableLayout mRefLayout;
 
   public TestKijiTableLayoutRenaming() throws Exception {
-    mRefLayout = new KijiTableLayout(mRefLayoutDesc, null);
+    mRefLayout = KijiTableLayout.newLayout(mRefLayoutDesc);
   }
 
   @Test
@@ -125,7 +125,7 @@ public class TestKijiTableLayoutRenaming {
                     .build()))
             .build()))
         .build();
-    final KijiTableLayout layout2 = new KijiTableLayout(desc2, mRefLayout);
+    final KijiTableLayout layout2 = KijiTableLayout.createUpdatedLayout(desc2, mRefLayout);
     final FamilyLayout fLayout2 = layout2.getFamilyMap().get("family_name");
     assertEquals(1, fLayout2.getColumnMap().size());
     assertNull(fLayout2.getColumnMap().get("column_name"));
@@ -164,7 +164,7 @@ public class TestKijiTableLayoutRenaming {
             .build()))
         .build();
     try {
-      new KijiTableLayout(desc2, mRefLayout);
+      KijiTableLayout.createUpdatedLayout(desc2, mRefLayout);
       Assert.fail("Invalid layout with implicitly renamed column did not fail");
     } catch (InvalidLayoutException ile) {
       // Expected failure
@@ -202,7 +202,7 @@ public class TestKijiTableLayoutRenaming {
                     .build()))
             .build()))
         .build();
-    final KijiTableLayout layout2 = new KijiTableLayout(desc2, mRefLayout);
+    final KijiTableLayout layout2 = KijiTableLayout.createUpdatedLayout(desc2, mRefLayout);
     assertEquals(1, layout2.getFamilies().size());
     assertNull(layout2.getFamilyMap().get("family_name"));
     final FamilyLayout fLayout2 = layout2.getFamilyMap().get("renamed_family_name");
@@ -243,7 +243,7 @@ public class TestKijiTableLayoutRenaming {
             .build()))
         .build();
     try {
-      new KijiTableLayout(desc2, mRefLayout);
+      KijiTableLayout.createUpdatedLayout(desc2, mRefLayout);
       Assert.fail("Invalid layout with implicitly renamed family did not fail");
     } catch (InvalidLayoutException ile) {
       // Expected failure
@@ -281,7 +281,7 @@ public class TestKijiTableLayoutRenaming {
                     .build()))
             .build()))
         .build();
-    final KijiTableLayout layout2 = new KijiTableLayout(desc2, mRefLayout);
+    final KijiTableLayout layout2 = KijiTableLayout.createUpdatedLayout(desc2, mRefLayout);
     assertEquals(1, layout2.getLocalityGroups().size());
     assertEquals(1, layout2.getLocalityGroupMap().size());
     final LocalityGroupLayout lgLayout2 =
@@ -323,7 +323,7 @@ public class TestKijiTableLayoutRenaming {
             .build()))
         .build();
     try {
-      new KijiTableLayout(desc2, mRefLayout);
+      KijiTableLayout.createUpdatedLayout(desc2, mRefLayout);
       Assert.fail("Invalid layout with implicitly renamed locality group did not fail");
     } catch (InvalidLayoutException ile) {
       // Expected failure

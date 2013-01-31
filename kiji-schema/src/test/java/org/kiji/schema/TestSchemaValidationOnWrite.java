@@ -40,7 +40,7 @@ public class TestSchemaValidationOnWrite extends KijiClientTest {
     final Kiji kiji = getKiji();
 
     final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED);
-    final KijiTableLayout tableLayout = new KijiTableLayout(layoutDesc, null);
+    final KijiTableLayout tableLayout = KijiTableLayout.newLayout(layoutDesc);
     kiji.createTable("user", tableLayout);
 
     final KijiTable table = kiji.openTable("user");

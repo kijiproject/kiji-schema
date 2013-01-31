@@ -42,8 +42,8 @@ public class TestKijiRowScanner {
   @Before
   public void setupEnvironment() throws Exception {
     // Get the test table layouts.
-    final KijiTableLayout layout = new KijiTableLayout(
-        KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST), null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(
+        KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST));
 
     // Populate the environment.
     mKiji = new InstanceBuilder()
