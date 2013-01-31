@@ -25,9 +25,6 @@ import org.kiji.annotations.ApiAudience;
 @ApiAudience.Framework
 public final class KijiConfKeys {
 
-  /** Default Kiji instance name. */
-  public static final String DEFAULT_INSTANCE_NAME = "default";
-
   /** Utility classes cannot be instaniated. */
   private KijiConfKeys() {
   }
