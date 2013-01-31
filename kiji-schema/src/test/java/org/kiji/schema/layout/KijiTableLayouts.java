@@ -62,7 +62,7 @@ public final class KijiTableLayouts {
    * @throws IOException on I/O error.
    */
   public static KijiTableLayout getTableLayout(String resourcePath) throws IOException {
-    return new KijiTableLayout(getLayout(resourcePath), null);
+    return KijiTableLayout.newLayout(getLayout(resourcePath));
   }
 
   /** A fully-featured layout example. */

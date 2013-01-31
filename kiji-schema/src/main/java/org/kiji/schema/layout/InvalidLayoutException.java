@@ -30,6 +30,9 @@ import org.kiji.annotations.ApiAudience;
  *   <li>Invalid data schemas.</li>
  *   <li>Missing family or column names.</li>
  *   <li>The family or column ids were not assigned.</li>
+ *   <li>The update layout is inconsistent with respect to a reference layout.  See
+ *       {@link org.kiji.schema.layout.KijiTableLayout KijiTableLayout}
+ *       for a description of update layouts.</li>
  * </ul>
  */
 @ApiAudience.Public
