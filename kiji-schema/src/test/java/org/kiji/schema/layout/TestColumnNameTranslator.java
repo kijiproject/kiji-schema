@@ -36,7 +36,7 @@ public class TestColumnNameTranslator {
   @Before
   public void readLayout() throws Exception {
     mTableLayout =
-        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED), null);
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED));
     System.out.println(mTableLayout);
   }
 

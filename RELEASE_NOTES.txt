@@ -3,12 +3,15 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
-  * SCHEMA-10. CLI tools use KijiURIs:
+  * SCHEMA-118. KijiTableLayout constructors are now hidden. Create a new layout
+      with KijiTableLayout.newLayout(TableLayoutDesc) or create one updated from
+      an old one with KijiTableLayout.createUpdatedLayout(TableLayoutDesc,
+      KijiTableLayout).
+   * SCHEMA-10. CLI tools use KijiURIs:
       - "kiji ls" flags --instances and --table are remove and inferred
         from URI in --kiji=kiji://...
       - flag --table is no longer; it is superseeded by the table component
         from Kiji URIs.
-      
   * SCHEMA-123. Removed spin-wait from deleteTable in HBaseKiji.
   * SCHEMA-169. Add KijiPager class that allows users to easily paginate and
       iterate over values from a column while reading from a KijiTable.

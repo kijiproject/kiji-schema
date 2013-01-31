@@ -373,7 +373,7 @@ public final class HBaseKiji implements Kiji {
       final KijiMetaTable metaTable = getMetaTable();
       final List<KijiTableLayout> layouts = metaTable.getTableLayoutVersions(tableName, 1);
       final KijiTableLayout currentLayout = layouts.isEmpty() ? null : layouts.get(0);
-      newLayout = new KijiTableLayout(update, currentLayout);
+      newLayout = KijiTableLayout.createUpdatedLayout(update, currentLayout);
     } else {
       // Actually set it.
       LOG.debug("Applying layout update: " + update);

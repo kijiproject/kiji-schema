@@ -591,7 +591,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testContainsColumn() throws Exception {
     final KijiTableLayout layout =
-        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE), null);
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
 
     final Kiji kiji = new InstanceBuilder()
         .withTable("table", layout)

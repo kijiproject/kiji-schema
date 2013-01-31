@@ -48,7 +48,7 @@ public class TestKijiAdmin extends KijiClientTest {
 
   @Test
   public void testCreateTable() throws Exception {
-    final KijiTableLayout tableLayout = new KijiTableLayout(mLayoutDesc, null);
+    final KijiTableLayout tableLayout = KijiTableLayout.newLayout(mLayoutDesc);
 
     getKiji().createTable("table", tableLayout);
     assertEquals(tableLayout.getName().toString(), getLayout("table").getName().toString());
@@ -56,7 +56,7 @@ public class TestKijiAdmin extends KijiClientTest {
 
   @Test
   public void testSetTableLayoutAdd() throws Exception {
-    getKiji().createTable("table", new KijiTableLayout(mLayoutDesc, null));
+    getKiji().createTable("table", KijiTableLayout.newLayout(mLayoutDesc));
 
     mLayoutDescUpdate.setReferenceLayout(getLayout("table").getDesc().getLayoutId());
 
@@ -67,7 +67,7 @@ public class TestKijiAdmin extends KijiClientTest {
 
   @Test
   public void testSetTableLayoutModify() throws Exception {
-    getKiji().createTable("table", new KijiTableLayout(mLayoutDesc, null));
+    getKiji().createTable("table", KijiTableLayout.newLayout(mLayoutDesc));
 
     final TableLayoutDesc newTableLayoutDesc = TableLayoutDesc.newBuilder(mLayoutDesc).build();
     assertEquals(3, (int) newTableLayoutDesc.getLocalityGroups().get(0).getMaxVersions());
@@ -90,7 +90,7 @@ public class TestKijiAdmin extends KijiClientTest {
 
   @Test(expected=KijiTableNotFoundException.class)
   public void testDeleteTable() throws Exception {
-    getKiji().createTable("table", new KijiTableLayout(mLayoutDesc, null));
+    getKiji().createTable("table", KijiTableLayout.newLayout(mLayoutDesc));
     assertNotNull(getLayout("table"));
 
     getKiji().deleteTable("table");

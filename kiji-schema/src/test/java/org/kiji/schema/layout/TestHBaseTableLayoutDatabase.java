@@ -86,7 +86,7 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
   @Test
   public void testSetLayout() throws Exception {
     final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
-    final KijiTableLayout layout = new KijiTableLayout(layoutDesc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(layoutDesc);
 
     final Get expectedGet =
         new Get(Bytes.toBytes(layout.getDesc().getName()))
@@ -119,7 +119,7 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
   @Test
   public void testGetLayout() throws Exception {
     final KijiTableLayout version1 =
-        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE), null);
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
 
     final Get expectedGet = new Get(Bytes.toBytes(version1.getDesc().getName()))
         .addColumn(Bytes.toBytes(mFamily), Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT))
@@ -141,11 +141,11 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
   @Test
   public void testGetMulitipleLayouts() throws Exception {
     final KijiTableLayout layout1 =
-        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE), null);
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
     final KijiTableLayout layout2 =
-        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE), null);
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
     final KijiTableLayout layout3 =
-        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE), null);
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
 
     layout1.getDesc().setVersion("1.1");
     layout2.getDesc().setVersion("2.2");

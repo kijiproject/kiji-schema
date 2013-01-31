@@ -51,7 +51,7 @@ public class TestKijiPager extends KijiClientTest {
   public void setupInstance() throws Exception {
     final Kiji kiji = getKiji();
     mTableLayout =
-        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST), null);
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST));
     kiji.createTable("user", mTableLayout);
 
     mTable = kiji.openTable("user");

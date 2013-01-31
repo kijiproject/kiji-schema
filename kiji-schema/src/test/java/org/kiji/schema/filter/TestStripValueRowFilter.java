@@ -49,7 +49,7 @@ public class TestStripValueRowFilter extends KijiClientTest {
     final Kiji kiji = getKiji();
 
     final KijiTableLayout fooLayout =
-        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST), null);
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
     kiji.createTable("foo", fooLayout);
 
     final KijiTable table = kiji.openTable("foo");
