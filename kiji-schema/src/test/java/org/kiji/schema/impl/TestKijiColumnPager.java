@@ -95,9 +95,9 @@ public class TestKijiColumnPager extends KijiClientTest {
         Bytes.toBytes("Garrett"), tableLayout.getDesc().getKeysFormat());
 
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().add("info", "name");
-    builder.column().withMaxVersions(5).withPageSize(2).add("info", "location");
-    builder.column().withMaxVersions(4).withPageSize(2).add("jobs");
+    builder.columns().add("info", "name");
+    builder.columns().withMaxVersions(5).withPageSize(2).add("info", "location");
+    builder.columns().withMaxVersions(4).withPageSize(2).addFamily("jobs");
     mDataRequest = builder.build();
 
     mHTable = createMock(HTableInterface.class);

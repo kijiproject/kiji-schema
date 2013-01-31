@@ -26,7 +26,6 @@ import org.junit.Test;
 
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiDataRequest;
-import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
@@ -54,9 +53,7 @@ public class TestInstanceBuilder {
     final KijiTableReader reader = table.openTableReader();
 
     // Verify the first row.
-    final KijiDataRequestBuilder reqBuilder = KijiDataRequest.builder();
-    reqBuilder.column().add("family", "column");
-    final KijiDataRequest req = reqBuilder.build();
+    final KijiDataRequest req = KijiDataRequest.create("family", "column");
     final KijiRowData row1 = reader.get(table.getEntityId("row1"), req);
     assertEquals("foo2", row1.getValue("family", "column", 2).toString());
 

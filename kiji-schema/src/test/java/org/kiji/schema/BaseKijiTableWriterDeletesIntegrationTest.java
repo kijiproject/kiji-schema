@@ -52,10 +52,10 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
 
   public BaseKijiTableWriterDeletesIntegrationTest() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().withMaxVersions(Integer.MAX_VALUE)
-        .add("group")
-        .add("map")
-        .add("memoryMap");
+    builder.columns().withMaxVersions(Integer.MAX_VALUE)
+        .addFamily("group")
+        .addFamily("map")
+        .addFamily("memoryMap");
     mDataRequest = builder.build();
   }
 

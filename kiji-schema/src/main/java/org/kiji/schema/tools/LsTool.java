@@ -609,19 +609,20 @@ public final class LsTool extends VersionValidatedTool {
     final KijiDataRequestBuilder builder = KijiDataRequest.builder()
         .withTimeRange(minTimestamp, maxTimestamp);
 
-    final KijiDataRequestBuilder.Column colBuilder = builder.column().withMaxVersions(maxVersions);
+    final KijiDataRequestBuilder.ColumnsDef colBuilder =
+        builder.columns().withMaxVersions(maxVersions);
 
     for (Entry<FamilyLayout, List<String>> entry : mapTypeFamilies.entrySet()) {
       String familyName = entry.getKey().getName();
       // If the map family is without qualifiers, add entire family.
       if (entry.getValue().isEmpty()) {
         LOG.debug("Adding family to data request: " + familyName);
-        colBuilder.add(familyName);
-      // If the map family is with qualifiers, add only the columns of interest.
+        colBuilder.addFamily(familyName);
       } else {
+        // If the map family is with qualifiers, add only the columns of interest.
         for (String qualifier : entry.getValue()) {
-        LOG.debug("Adding column to data request: " + familyName + ":" + qualifier);
-        colBuilder.add(familyName, qualifier);
+          LOG.debug("Adding column to data request: " + familyName + ":" + qualifier);
+          colBuilder.add(familyName, qualifier);
         }
       }
     }

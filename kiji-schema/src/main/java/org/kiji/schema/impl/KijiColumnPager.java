@@ -199,7 +199,7 @@ public final class KijiColumnPager {
     // Construct a KijiDataRequest for just the single column.
     KijiDataRequestBuilder builder = KijiDataRequest.builder()
         .withTimeRange(mDataRequest.getMinTimestamp(), mDataRequest.getMaxTimestamp());
-    builder.column(requestedColumn);
+    builder.columns(requestedColumn);
     KijiDataRequest nextPageRequest = builder.build();
 
     // Turn it into an HBase Get.

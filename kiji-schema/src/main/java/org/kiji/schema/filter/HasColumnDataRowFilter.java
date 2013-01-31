@@ -29,7 +29,6 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
-import org.kiji.schema.KijiDataRequestBuilder;
 
 /**
  * A KijiRowFilter that excludes rows that have no data for some column <code>columnName</code>.
@@ -81,9 +80,7 @@ public final class HasColumnDataRowFilter extends KijiRowFilter {
   /** {@inheritDoc} */
   @Override
   public KijiDataRequest getDataRequest() {
-    KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().add(mFamily, mQualifier);
-    return builder.build();
+    return KijiDataRequest.create(mFamily, mQualifier);
   }
 
   /** {@inheritDoc} */

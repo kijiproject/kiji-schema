@@ -156,7 +156,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().add("family", "qual0");
+    builder.columns().add("family", "qual0");
     KijiDataRequest dataRequest = builder.build();
     KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory, tableLayout,
         result, getKiji().getSchemaTable());
@@ -176,7 +176,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().add("family");
+    builder.columns().addFamily("family");
     KijiDataRequest dataRequest = builder.build();
     HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -256,8 +256,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().withMaxVersions(1).add("family", "qual0");
-    builder.column().withMaxVersions(2).add("family", "qual1");
+    builder.columns().withMaxVersions(1).add("family", "qual0");
+    builder.columns().withMaxVersions(2).add("family", "qual1");
     KijiDataRequest dataRequest = builder.build();
     KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -283,8 +283,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().withMaxVersions(1).add("family", "qual0");
-    builder.column().withMaxVersions(2).add("family", "qual1");
+    builder.columns().withMaxVersions(1).add("family", "qual0");
+    builder.columns().withMaxVersions(2).add("family", "qual1");
     KijiDataRequest dataRequest = builder.build();
     KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -314,8 +314,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.withTimeRange(2L, 6L);
-    builder.column().withMaxVersions(1).add("family", "qual0");
-    builder.column().withMaxVersions(2).add("family", "qual1");
+    builder.columns().withMaxVersions(1).add("family", "qual0");
+    builder.columns().withMaxVersions(2).add("family", "qual1");
     KijiDataRequest dataRequest = builder.build();
     KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -336,7 +336,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().withMaxVersions(1).add("family", "qual0");
+    builder.columns().withMaxVersions(1).add("family", "qual0");
     KijiDataRequest dataRequest = builder.build();
     HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -365,8 +365,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     final KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().add("family", "qual0");
-    builder.column().add("family", "qual1");
+    builder.columns().add("family", "qual0");
+    builder.columns().add("family", "qual1");
     KijiDataRequest dataRequest = builder.build();
     KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -403,7 +403,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().withMaxVersions(1).add("family");
+    builder.columns().withMaxVersions(1).addFamily("family");
     KijiDataRequest dataRequest = builder.build();
     KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -430,7 +430,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().withMaxVersions(Integer.MAX_VALUE).add("family", "nodequal0");
+    builder.columns().withMaxVersions(Integer.MAX_VALUE).add("family", "nodequal0");
     KijiDataRequest dataRequest = builder.build();
     KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -464,7 +464,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().withMaxVersions(Integer.MAX_VALUE).add("family", "nodequal0");
+    builder.columns().withMaxVersions(Integer.MAX_VALUE).add("family", "nodequal0");
     KijiDataRequest dataRequest = builder.build();
     KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -487,7 +487,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().add("family", "nodequal0");
+    builder.columns().add("family", "nodequal0");
     KijiDataRequest dataRequest = builder.build();
     KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -507,9 +507,9 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().add("family", "qual0");
-    builder.column().add("family", "qual1");
-    builder.column().add("family", "qual2");
+    builder.columns().add("family", "qual0");
+    builder.columns().add("family", "qual1");
+    builder.columns().add("family", "qual2");
     KijiDataRequest dataRequest = builder.build();
     HBaseKijiRowData rowData = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
         tableLayout, result, getKiji().getSchemaTable());
@@ -537,7 +537,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.column().add("family", "qual0")
+    builder.columns().add("family", "qual0")
         .add("family", "qual1")
         .add("family", "qual2");
     KijiDataRequest dataRequest = builder.build();

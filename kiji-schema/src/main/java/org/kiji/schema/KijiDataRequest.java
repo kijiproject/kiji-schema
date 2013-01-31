@@ -22,11 +22,15 @@ package org.kiji.schema;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import com.google.common.base.Objects;
+import com.google.common.base.Objects.ToStringHelper;
+import com.google.common.collect.ImmutableMap;
+import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.hadoop.hbase.HConstants;
 
 import org.kiji.annotations.ApiAudience;
@@ -67,10 +71,8 @@ public final class KijiDataRequest implements Serializable {
   /** Serialization version. */
   public static final long serialVersionUID = 1L;
 
-  /**
-   * Map from full column name to Column describing the request.
-   */
-  private final HashMap<String, Column> mColumns;
+  /** Unmodifiable map from full column name to Column describing the request. */
+  private final Map<String, Column> mColumns;
 
   /** The minimum timestamp of cells to be read (inclusive). */
   private final long mMinTimestamp;
@@ -156,9 +158,9 @@ public final class KijiDataRequest implements Serializable {
     }
 
     /**
-     * Gets the max number of most recent versions in this request.
+     * Gets the max number of most recent versions in this column.
      *
-     * @return A number of versions.
+     * @return The maximum number of most recent versions in this column.
      */
     public int getMaxVersions() { return mMaxVersions; }
 
@@ -195,10 +197,12 @@ public final class KijiDataRequest implements Serializable {
       if (!(other instanceof Column)) {
         return false;
       }
-      Column spec = (Column) other;
-      return getName().equals(spec.getName())
-          && mMaxVersions == spec.mMaxVersions
-          && mPageSize == spec.mPageSize;
+      final Column otherCol = (Column) other;
+      return new EqualsBuilder()
+          .append(getName(), otherCol.getName())
+          .append(mMaxVersions, otherCol.mMaxVersions)
+          .append(mPageSize, otherCol.mPageSize)
+          .isEquals();
     }
 
     /** {@inheritDoc} */
@@ -210,12 +214,12 @@ public final class KijiDataRequest implements Serializable {
     /** {@inheritDoc} */
     @Override
     public String toString() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("name=").append(getName()).append("/")
-          .append("maxVersions=").append(getMaxVersions()).append("/")
-          .append("filter=").append(getFilter()).append("/")
-          .append("pageSize=").append(getPageSize());
-      return sb.toString();
+      return Objects.toStringHelper(Column.class)
+          .add("name", getName())
+          .add("maxVersions", getMaxVersions())
+          .add("filter", getFilter())
+          .add("pageSize", getPageSize())
+          .toString();
     }
   }
 
@@ -228,13 +232,14 @@ public final class KijiDataRequest implements Serializable {
    * @param maxTs the exclusive upper-bound on timestamps to request.
    */
   KijiDataRequest(Collection<Column> columns, long minTs, long maxTs) {
-    mColumns = new HashMap<String, Column>();
     mMinTimestamp = minTs;
     mMaxTimestamp = maxTs;
 
+    final ImmutableMap.Builder<String, Column> builder = ImmutableMap.builder();
     for (Column col : columns) {
-      mColumns.put(col.getName(), col);
+      builder.put(col.getName(), col);
     }
+    mColumns = builder.build();
   }
 
   /**
@@ -251,10 +256,9 @@ public final class KijiDataRequest implements Serializable {
    */
   public static KijiDataRequest create(String family) {
     KijiDataRequestBuilder builder = builder();
-    builder.column().add(family);
+    builder.columns().addFamily(family);
     return builder.build();
   }
-
 
   /**
    * Factory method for a simple KijiDataRequest for the most recent
@@ -271,7 +275,7 @@ public final class KijiDataRequest implements Serializable {
    */
   public static KijiDataRequest create(String family, String qualifier) {
     KijiDataRequestBuilder builder = builder();
-    builder.column().add(family, qualifier);
+    builder.columns().add(family, qualifier);
     return builder.build();
   }
 
@@ -290,7 +294,7 @@ public final class KijiDataRequest implements Serializable {
    * @return a new Column request for family:qualifier, with properties merged from
    *     col1 and col2.
    */
-  private Column mergeColumn(String family, String qualifier, Column col1, Column col2) {
+  private static Column mergeColumn(String family, String qualifier, Column col1, Column col2) {
     assert null != col1;
     assert null != col2;
 
@@ -432,11 +436,11 @@ public final class KijiDataRequest implements Serializable {
    * null if none exists.
    *
    * @param family The requested column family name.
-   * @param key The requested column qualifier name.
+   * @param qualifier The requested column qualifier name.
    * @return The requested column.
    */
-  public Column getColumn(String family, String key) {
-    return mColumns.get(key != null ? family + ":" + key : family);
+  public Column getColumn(String family, String qualifier) {
+    return mColumns.get(qualifier != null ? family + ":" + qualifier : family);
   }
 
   /**
@@ -451,7 +455,7 @@ public final class KijiDataRequest implements Serializable {
   /**
    * Gets the collection of requested columns.
    *
-   * @return All the requested column specs.
+   * @return All the requested column specs as an immutable collection.
    */
   public Collection<Column> getColumns() {
     return mColumns.values();
@@ -507,21 +511,21 @@ public final class KijiDataRequest implements Serializable {
       return false;
     }
 
-    KijiDataRequest request = (KijiDataRequest) other;
-    if (mColumns.size() != request.mColumns.size()) {
+    final KijiDataRequest otherReq = (KijiDataRequest) other;
+    if (mColumns.size() != otherReq.mColumns.size()) {
       return false;
     }
     for (String columnName : mColumns.keySet()) {
-      if (!request.mColumns.containsKey(columnName)) {
+      if (!otherReq.mColumns.containsKey(columnName)) {
         return false;
       }
-      if (!mColumns.get(columnName).equals(request.mColumns.get(columnName))) {
+      if (!mColumns.get(columnName).equals(otherReq.mColumns.get(columnName))) {
         return false;
       }
     }
 
-    return request.mMinTimestamp == mMinTimestamp
-        && request.mMaxTimestamp == mMaxTimestamp;
+    return otherReq.mMinTimestamp == mMinTimestamp
+        && otherReq.mMaxTimestamp == mMaxTimestamp;
   }
 
   /** {@inheritDoc} */
@@ -533,12 +537,14 @@ public final class KijiDataRequest implements Serializable {
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    for (String columnName : mColumns.keySet()) {
-      sb.append("Column:").append(mColumns.get(columnName).toString()).append("\n");
+    final ToStringHelper helper = Objects.toStringHelper(KijiDataRequest.class);
+    // TODO: For style points, sort the columns by name before we emit this list.
+    for (Map.Entry<String, Column> entry : mColumns.entrySet()) {
+      helper.add(String.format("column[%s]", entry.getKey()), entry.getValue());
     }
-    sb.append("timeRange=").append(getMinTimestamp()).append(",").append(getMaxTimestamp());
-    return sb.toString();
+    return helper
+        .add("timeRange", String.format("%s,%s", getMinTimestamp(), getMaxTimestamp()))
+        .toString();
   }
 
   /**
