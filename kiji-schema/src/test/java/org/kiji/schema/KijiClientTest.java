@@ -139,7 +139,7 @@ public class KijiClientTest {
         // TODO: Remove wrapping:
         throw new IOException(exn);
       }
-    }  LOG.warn("passed");
+    }
     return mKiji;
   }
 

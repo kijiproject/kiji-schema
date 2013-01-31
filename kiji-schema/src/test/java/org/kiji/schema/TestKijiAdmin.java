@@ -39,15 +39,6 @@ public class TestKijiAdmin extends KijiClientTest {
     return getKiji().getMetaTable().getTableLayout(table);
   }
 
-  @Test
-  public void dummyTest() throws Exception {
-  mLayoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
-  mLayoutDescUpdate =
-        KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE_UPDATE_NEW_LOCALITY_GROUP);
-  final KijiTableLayout tableLayout = new KijiTableLayout(mLayoutDesc, null);
-getKiji();//.getAdmin().createTable("table", tableLayout, false);
-}
-/**
   @Before
   public void setup() throws IOException {
     mLayoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
@@ -83,7 +74,6 @@ getKiji();//.getAdmin().createTable("table", tableLayout, false);
     newTableLayoutDesc.getLocalityGroups().get(0).setMaxVersions(1);
     newTableLayoutDesc.setReferenceLayout(getLayout("table").getDesc().getLayoutId());
 
-
     final KijiTableLayout newTableLayout =
         getKiji().getAdmin().setTableLayout("table", newTableLayoutDesc);
     assertEquals(
@@ -114,5 +104,5 @@ getKiji();//.getAdmin().createTable("table", tableLayout, false);
   public void testSetTableLayoutOnATableThatDoesNotExist() throws Exception {
     final TableLayoutDesc tableLayoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
     getKiji().getAdmin().setTableLayout("table", tableLayoutDesc);
-  }*/
+  }
 }

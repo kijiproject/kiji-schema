@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
@@ -55,9 +54,6 @@ public final class HBaseKiji implements Kiji {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKiji.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger(HBaseKiji.class.getName() + ".Cleanup");
-
-  /** The kiji URI. */
-  private final KijiURI mKijiURI;
 
   /** The hadoop configuration. */
   private final Configuration mConf;
@@ -134,17 +130,16 @@ public final class HBaseKiji implements Kiji {
       HTableInterfaceFactory tableFactory,
       LockFactory lockFactory)
       throws IOException {
-    // Keep deep copies of the kijiURI and configuration.
-    mKijiURI = KijiURI.newBuilder(kijiURI).build();
+    // Deep copy the configuration.
     mConf = new Configuration(conf);
 
     mHTableFactory = Preconditions.checkNotNull(tableFactory);
     mLockFactory = Preconditions.checkNotNull(lockFactory);
-    mURI = KijiURI.newBuilder(String.format("kiji://%s:%d/%s",
-        mConf.get(HConstants.ZOOKEEPER_QUORUM),
-        mConf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT,
-            HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT),
-        mKijiURI.getInstance())).build();
+    mURI = KijiURI.newBuilder()
+        .withZookeeperQuorum(kijiURI.getZookeeperQuorum().toArray(new String[0]))
+        .withZookeeperClientPort(kijiURI.getZookeeperClientPort())
+        .withInstanceName(kijiURI.getInstance())
+        .build();
 
     LOG.debug(String.format("Opening kiji instance '%s'", mURI));
 
@@ -198,7 +193,7 @@ public final class HBaseKiji implements Kiji {
   public synchronized KijiSchemaTable getSchemaTable() throws IOException {
     Preconditions.checkState(mIsOpen);
     if (null == mSchemaTable) {
-      mSchemaTable = new HBaseSchemaTable(mKijiURI, mConf, mHTableFactory, mLockFactory);
+      mSchemaTable = new HBaseSchemaTable(mURI, mConf, mHTableFactory, mLockFactory);
     }
     return mSchemaTable;
   }
@@ -208,7 +203,7 @@ public final class HBaseKiji implements Kiji {
   public synchronized KijiSystemTable getSystemTable() throws IOException {
     Preconditions.checkState(mIsOpen);
     if (null == mSystemTable) {
-      mSystemTable = new HBaseSystemTable(mKijiURI, mConf, mHTableFactory);
+      mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
     }
     return mSystemTable;
   }
@@ -218,7 +213,7 @@ public final class HBaseKiji implements Kiji {
   public synchronized KijiMetaTable getMetaTable() throws IOException {
     Preconditions.checkState(mIsOpen);
     if (null == mMetaTable) {
-      mMetaTable = new HBaseMetaTable(mKijiURI, mConf, getSchemaTable(), mHTableFactory);
+      mMetaTable = new HBaseMetaTable(mURI, mConf, getSchemaTable(), mHTableFactory);
     }
     return mMetaTable;
   }

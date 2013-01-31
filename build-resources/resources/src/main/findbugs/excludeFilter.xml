@@ -80,5 +80,12 @@
     <Class name="org.kiji.schema.impl.HBaseKijiRowData" />
     <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
   </Match>
-
+  <Match>
+    <!--
+       When decoding a cell, the cell may contain an empty byte array,
+       thus null is used to indicate a missing cell.
+    -->
+    <Class name="org.kiji.schema.impl.HBaseKiji" />
+    <Bug pattern="ITA_INEFFICIENT_TO_ARRAY" />
+  </Match>
 </FindBugsFilter>

@@ -62,7 +62,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiConfKeys;
 import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiURI;

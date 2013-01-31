@@ -41,8 +41,8 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiSystemTable;
-import org.kiji.schema.TableKeyNotFoundException;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.TableKeyNotFoundException;
 import org.kiji.schema.util.Debug;
 
 /**
@@ -51,7 +51,8 @@ import org.kiji.schema.util.Debug;
  * <p>The system table (a Kiji system table) is a simple key-value store for system-wide
  * properties of a Kiji installation.  There is a single column family "value".  For a
  * key-value property (K,V), the key K is stored as the row key in the HTable,
- * and the value V is stored in the "value:" column.<p>
+ * and the value V is stored in the "value:" column.<p>import org.kiji.schema.KijiURI;
+i
  */
 @ApiAudience.Private
 public class HBaseSystemTable extends KijiSystemTable {
@@ -104,7 +105,7 @@ public class HBaseSystemTable extends KijiSystemTable {
    * Connect to the HBase system table inside a Kiji instance.
    *
    * @param kijiURI The KijiURI.
-   * @param the Hadoop configuration.
+   * @param conf the Hadoop configuration.
    * @param factory HTableInterface factory.
    * @throws IOException If there is an error.
    */
