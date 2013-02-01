@@ -69,9 +69,9 @@ public class OperatorRowFilter extends KijiRowFilter {
   /** {@inheritDoc} */
   @Override
   public KijiDataRequest getDataRequest() {
-    KijiDataRequest dataRequest = new KijiDataRequest();
+    KijiDataRequest dataRequest = KijiDataRequest.builder().build();
     for (KijiRowFilter filter : mFilters) {
-      dataRequest.merge(filter.getDataRequest());
+      dataRequest = dataRequest.merge(filter.getDataRequest());
     }
     return dataRequest;
   }

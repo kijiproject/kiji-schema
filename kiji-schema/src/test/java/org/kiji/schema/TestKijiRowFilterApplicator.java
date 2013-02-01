@@ -81,9 +81,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
   public class MyKijiRowFilter extends KijiRowFilter {
     @Override
     public KijiDataRequest getDataRequest() {
-      KijiDataRequest dataRequest = new KijiDataRequest();
-      dataRequest.addColumn(new KijiDataRequest.Column("family", "new"));
-      return dataRequest;
+      return KijiDataRequest.create("family", "new");
     }
 
     @Override
@@ -112,8 +110,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
   @Test
   public void testApplyToScan() throws Exception {
     // Initialize a scan object with some requested data.
-    final KijiDataRequest priorDataRequest = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("family", "column"));
+    final KijiDataRequest priorDataRequest = KijiDataRequest.create("family", "column");
     final Scan actualScan = new HBaseDataRequestAdapter(priorDataRequest).toScan(mTableLayout);
 
     // Construct a row filter and apply it to the existing scan.

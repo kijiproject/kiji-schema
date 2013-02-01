@@ -53,13 +53,12 @@ public class TestInstanceBuilder {
     final KijiTableReader reader = table.openTableReader();
 
     // Verify the first row.
-    final KijiRowData row1 = reader.get(table.getEntityId("row1"), new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("family", "column")));
+    final KijiDataRequest req = KijiDataRequest.create("family", "column");
+    final KijiRowData row1 = reader.get(table.getEntityId("row1"), req);
     assertEquals("foo2", row1.getValue("family", "column", 2).toString());
 
     // Verify the second row.
-    final KijiRowData row2 = reader.get(table.getEntityId("row2"), new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("family", "column")));
+    final KijiRowData row2 = reader.get(table.getEntityId("row2"), req);
     assertEquals("foo3", row2.getValue("family", "column", 100).toString());
 
     IOUtils.closeQuietly(reader);

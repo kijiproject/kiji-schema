@@ -80,9 +80,7 @@ public final class HasColumnDataRowFilter extends KijiRowFilter {
   /** {@inheritDoc} */
   @Override
   public KijiDataRequest getDataRequest() {
-    KijiDataRequest dataRequest = new KijiDataRequest();
-    dataRequest.addColumn(new KijiDataRequest.Column(mFamily, mQualifier));
-    return dataRequest;
+    return KijiDataRequest.create(mFamily, mQualifier);
   }
 
   /** {@inheritDoc} */

@@ -77,7 +77,7 @@ public final class ColumnValueEqualsRowFilter extends KijiRowFilter {
   /** {@inheritDoc} */
   @Override
   public KijiDataRequest getDataRequest() {
-    return new KijiDataRequest().addColumn(new KijiDataRequest.Column(mFamily, mQualifier));
+    return KijiDataRequest.create(mFamily, mQualifier);
   }
 
   /** {@inheritDoc} */

@@ -73,8 +73,7 @@ public class TestHBaseKijiTableWriter {
   @Test
   public void testPutWithTimestamp() throws Exception {
     final EntityId entityId = mTable.getEntityId("foo");
-    final KijiDataRequest request = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("info", "name"));
+    final KijiDataRequest request = KijiDataRequest.create("info", "name");
     mWriter.put(entityId, "info", "name", 123L, "baz");
 
     final String actual = mReader.get(entityId, request).getValue("info", "name", 123L).toString();
@@ -84,8 +83,7 @@ public class TestHBaseKijiTableWriter {
   @Test
   public void testIncrement() throws Exception {
     final EntityId entityId = mTable.getEntityId("foo");
-    final KijiDataRequest request = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("info", "visits"));
+    final KijiDataRequest request = KijiDataRequest.create("info", "visits");
     mWriter.increment(entityId, "info", "visits", 5L);
 
     KijiCell<Long> counter = mReader.get(entityId, request).getMostRecentCell("info", "visits");
@@ -103,8 +101,7 @@ public class TestHBaseKijiTableWriter {
   @Test
   public void testSetCounter() throws Exception {
     final EntityId entityId = mTable.getEntityId("bar");
-    final KijiDataRequest request = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("info", "visits"));
+    final KijiDataRequest request = KijiDataRequest.create("info", "visits");
     mWriter.put(entityId, "info", "visits", 5L);
 
     KijiCell<Long> counter = mReader.get(entityId, request).getMostRecentCell("info", "visits");
