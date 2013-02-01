@@ -61,7 +61,8 @@ public final class KijiRowFilterApplicator {
    * An implementation of KijiRowFilter.Context that translates kiji entityIds, column
    * names, and cell values to their HBase counterparts.
    */
-  private class KijiRowFilterContext extends KijiRowFilter.Context {
+  @ApiAudience.Private
+  private final class KijiRowFilterContext extends KijiRowFilter.Context {
     private final ColumnNameTranslator mColumnNameTranslator;
 
     /**
@@ -69,7 +70,7 @@ public final class KijiRowFilterApplicator {
      *
      * @param columnNameTranslator Column name translator for the table to apply filter to.
      */
-    public KijiRowFilterContext(ColumnNameTranslator columnNameTranslator) {
+    private KijiRowFilterContext(ColumnNameTranslator columnNameTranslator) {
       mColumnNameTranslator = columnNameTranslator;
     }
 
