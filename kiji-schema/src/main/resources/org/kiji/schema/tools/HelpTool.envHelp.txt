@@ -21,7 +21,8 @@ ENVIRONMENT VARIABLES
                       kiji system. The libraries specified in KIJI_CLASSPATH will be
                       placed first on the classpath so that they will take precedence over
                       libraries provided by the kiji system. By default KIJI_CLASSPATH is
-                      empty.
+                      empty. Note that jars in KIJI_CLASSPATH are not automatically added
+                      to the distributed cache for map reduce jobs.
 
   KIJI_JAVA_OPTS      Should contain extra arguments to pass to the JVM used to execute
                       tools. By default, KIJI_JAVA_OPTS is empty.
