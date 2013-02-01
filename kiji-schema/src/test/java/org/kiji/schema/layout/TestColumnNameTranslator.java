@@ -25,9 +25,9 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.hbase.HBaseColumnName;
 
 
 public class TestColumnNameTranslator {

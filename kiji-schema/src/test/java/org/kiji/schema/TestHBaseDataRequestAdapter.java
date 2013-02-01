@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.HBaseDataRequestAdapter;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;

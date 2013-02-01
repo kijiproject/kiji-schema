@@ -26,6 +26,7 @@ import java.util.List;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.filter.KijiRowFilter;
+import org.kiji.schema.hbase.HBaseScanOptions;
 
 /**
  * Interface for reading data from a kiji table.

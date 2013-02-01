@@ -42,7 +42,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.EntityId;
-import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
@@ -51,6 +50,7 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;

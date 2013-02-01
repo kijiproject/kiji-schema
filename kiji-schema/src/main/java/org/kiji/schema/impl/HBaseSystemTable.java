@@ -39,9 +39,9 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiConfiguration;
-import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.TableKeyNotFoundException;
+import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.util.Debug;
 
 /**

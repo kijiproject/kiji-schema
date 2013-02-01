@@ -25,7 +25,7 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiManagedHBaseTableName;
+import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 
 /**
  * Compares {@link org.apache.hadoop.hbase.HTableDescriptor}s.  They

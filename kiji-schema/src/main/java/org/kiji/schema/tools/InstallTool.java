@@ -25,9 +25,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.HBaseFactory;
 import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiInstaller;
+import org.kiji.schema.hbase.HBaseFactory;
 
 /**
  * A command-line tool for installing kiji instances on hbase clusters.

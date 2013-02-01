@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.hbase;
 
 import java.io.IOException;
 
@@ -29,6 +29,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.Lookups;
 import org.kiji.delegation.PriorityProvider;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.impl.HBaseAdminFactory;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.util.LockFactory;

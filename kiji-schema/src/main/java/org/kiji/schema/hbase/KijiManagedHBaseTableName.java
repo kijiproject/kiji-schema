@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.hbase;
 
 import java.util.regex.Pattern;
 
@@ -26,6 +26,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.NotAKijiManagedTableException;
 
 /**
  * <p>Multiple instances of Kiji can be installed on a single HBase

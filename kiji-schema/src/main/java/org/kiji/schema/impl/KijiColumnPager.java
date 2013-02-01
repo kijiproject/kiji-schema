@@ -34,12 +34,12 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestException;
 import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 

@@ -29,11 +29,11 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**

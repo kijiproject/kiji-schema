@@ -28,9 +28,9 @@ import org.apache.hadoop.hbase.filter.SkipFilter;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.DecodedCell;
-import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.hbase.HBaseColumnName;
 
 /**
  * A KijiRowFilter that only includes rows where a specific column's most recent value

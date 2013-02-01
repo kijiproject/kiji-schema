@@ -26,9 +26,9 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.hbase.HBaseColumnName;
 
 /**
  * A KijiRowFilter that excludes rows that have no data for some column <code>columnName</code>.

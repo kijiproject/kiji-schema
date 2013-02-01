@@ -32,7 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.HBaseFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiConfiguration;
@@ -41,6 +40,7 @@ import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.VersionInfo;
 import org.kiji.schema.util.ZooKeeperLockFactory;

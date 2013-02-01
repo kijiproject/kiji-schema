@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.hbase;
 
 import java.io.IOException;
 import java.util.Map;
@@ -26,6 +26,7 @@ import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 
 import org.kiji.delegation.Priority;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.impl.DefaultHBaseAdminFactory;
 import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 import org.kiji.schema.impl.HBaseAdminFactory;

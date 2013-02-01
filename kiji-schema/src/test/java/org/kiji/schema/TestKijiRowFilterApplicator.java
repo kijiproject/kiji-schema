@@ -36,6 +36,7 @@ import org.junit.Test;
 
 import org.kiji.schema.filter.KijiRowFilter;
 import org.kiji.schema.filter.KijiRowFilterApplicator;
+import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.HBaseDataRequestAdapter;
 import org.kiji.schema.layout.ColumnNameTranslator;
