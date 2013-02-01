@@ -139,16 +139,6 @@ public final class KijiDataRequestBuilder {
    * KijiDataRequest.</p>
    */
   @ApiAudience.Public
-  // REVIEW(taton) rename to ColumnsBuilder?
-  //     I would also like to have a static, independent version the ColumnsBuilder,
-  //     so I can write a KijiDataRequest in a single expression:
-  //
-  //     final KijiDataRequest request = KijiDataRequest.newBuilder()
-  //         .addColumns(ColumnsBuilder.create()
-  //             .withX(...)
-  //             .add(...)
-  //             .build())
-  //         .build();
   public final class ColumnsDef {
 
     /** The maximum number of versions from the column to read (of the most recent). */
