@@ -20,12 +20,16 @@
 package org.kiji.schema;
 
 import java.io.IOException;
+import java.io.PrintStream;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.Lookups;
+import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ReferenceCountable;
 
 /**
@@ -146,8 +150,78 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
   KijiMetaTable getMetaTable() throws IOException;
 
   /**
-   * @return the KijiAdmin for this Kiji instance.
+   * Creates a Kiji table in an HBase instance.
+   *
+   * @param name The name of the table to create.
+   * @param layout The initial layout of the table (with unassigned column ids).
    * @throws IOException on I/O error.
+   * @throws KijiAlreadyExistsException if the table already exists.
    */
-  KijiAdmin getAdmin() throws IOException;
+  void createTable(String name, KijiTableLayout layout) throws IOException;
+
+  /**
+   * Creates a Kiji table in an HBase instance.
+   *
+   * @param name The name of the table to create.
+   * @param layout The initial layout of the table (with unassigned column ids).
+   * @param numRegions The initial number of regions to create.
+   * @throws IllegalArgumentException If numRegions is non-positive, or if numRegions is
+   *     more than 1 and row key hashing on the table layout is disabled.
+   * @throws IOException on I/O error.
+   * @throws KijiAlreadyExistsException if the table already exists.
+   */
+  void createTable(String name, KijiTableLayout layout, int numRegions) throws IOException;
+
+  /**
+   * Creates a Kiji table in an HBase instance.
+   *
+   * @param name The name of the table to create.
+   * @param layout The initial layout of the table (with unassigned column ids).
+   * @param splitKeys The initial key boundaries between regions.  There will be splitKeys
+   *     + 1 regions created.  Pass null to specify the default single region.
+   * @throws IOException on I/O error.
+   * @throws KijiAlreadyExistsException if the table already exists.
+   */
+  void createTable(String name, KijiTableLayout layout, byte[][] splitKeys) throws IOException;
+
+  /**
+   * Deletes a Kiji table.  Removes it from HBase.
+   *
+   * @param name The name of the Kiji table to delete.
+   * @throws IOException If there is an error.
+   */
+  void deleteTable(String name) throws IOException;
+
+  /**
+   * Gets the list of Kiji table names.
+   *
+   * @return A list of the names of Kiji tables installed in the Kiji instance.
+   * @throws IOException If there is an error.
+   */
+  List<String> getTableNames() throws IOException;
+
+  /**
+   * Sets the layout of a table.
+   *
+   * @param name The name of the Kiji table to affect.
+   * @param update Layout update.
+   * @return the updated layout.
+   * @throws IOException If there is an error.
+   */
+  KijiTableLayout modifyTableLayout(String name, TableLayoutDesc update) throws IOException;
+
+  /**
+   * Sets the layout of a table, or print the results of setting the table layout if
+   * dryRun is true.
+   *
+   * @param name The name of the Kiji table to affect.
+   * @param update Layout update.
+   * @param dryRun true if this is a 'dry run', false if changes should be made.
+   * @param printStream the print stream to use for information if dryRun is true.
+   *     If null, stdout will be used.
+   * @return the updated layout.
+   * @throws IOException If there is an error.
+   */
+  KijiTableLayout modifyTableLayout(String name, TableLayoutDesc update, boolean dryRun,
+      PrintStream printStream) throws IOException;
 }

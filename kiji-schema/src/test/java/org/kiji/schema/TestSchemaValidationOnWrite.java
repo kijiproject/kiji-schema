@@ -38,11 +38,10 @@ public class TestSchemaValidationOnWrite extends KijiClientTest {
   @Test
   public void testWrite() throws Exception {
     final Kiji kiji = getKiji();
-    final KijiAdmin admin = kiji.getAdmin();
 
     final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED);
     final KijiTableLayout tableLayout = new KijiTableLayout(layoutDesc, null);
-    admin.createTable("user", tableLayout, false);
+    kiji.createTable("user", tableLayout);
 
     final KijiTable table = kiji.openTable("user");
     final KijiTableWriter writer = table.openTableWriter();

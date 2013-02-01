@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiInvalidNameException;
 import org.kiji.schema.KijiTable;
@@ -142,7 +141,6 @@ public class InstanceBuilder {
     final Kiji kiji = Kiji.Factory.open(uri, conf);
 
     // Build tables.
-    final KijiAdmin admin = kiji.getAdmin();
     for (Map.Entry<String, Map<EntityId, Map<String, Map<String, Map<Long, Object>>>>> tableEntry
         : mCells.entrySet()) {
       final String tableName = tableEntry.getKey();
@@ -152,7 +150,7 @@ public class InstanceBuilder {
 
       // Create & open a Kiji table.
       LOG.info(String.format("  Building table: %s", tableName));
-      admin.createTable(tableName, layout, false);
+      kiji.createTable(tableName, layout);
       final KijiTable kijiTable = kiji.openTable(tableName);
       final KijiTableWriter writer = kijiTable.openTableWriter();
 

@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
-import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.SplitKeyFile;
@@ -100,7 +99,6 @@ public final class CreateTableTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final KijiAdmin admin = getKiji().getAdmin();
     getPrintStream().println("Parsing table layout: " + mLayout);
     final Path path = new Path(mLayout);
     final FileSystem fs =
@@ -118,7 +116,7 @@ public final class CreateTableTool extends VersionValidatedTool {
     getPrintStream().println("Creating kiji table: " + getURI().toString() + "...");
     if (mNumRegions > 1) {
       // Create a table with an initial number of evenly split regions.
-      admin.createTable(mTableName, tableLayout, false, mNumRegions);
+      getKiji().createTable(mTableName, tableLayout, mNumRegions);
     } else if (!mSplitKeyFilePath.isEmpty()) {
       switch (tableLayout.getDesc().getKeysFormat().getEncoding()) {
       case HASH:
@@ -144,11 +142,11 @@ public final class CreateTableTool extends VersionValidatedTool {
       }
 
       // Create the table with the given split keys.
-      admin.createTable(mTableName, tableLayout, false,
+      getKiji().createTable(mTableName, tableLayout,
           splitKeys.toArray(new byte[splitKeys.size()][]));
     } else {
       // Create a table with the default initial region.
-      admin.createTable(mTableName, tableLayout, false);
+      getKiji().createTable(mTableName, tableLayout);
     }
 
     return 0;

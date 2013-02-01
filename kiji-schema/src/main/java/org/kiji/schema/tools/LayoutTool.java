@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
-import org.kiji.schema.KijiAdmin;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ToJson;
@@ -102,10 +102,9 @@ public final class LayoutTool extends VersionValidatedTool {
   /**
    * Implements the --do=dump operation.
    *
-   * @param admin kiji admin interface.
    * @throws Exception on error.
    */
-  private void dumpLayout(KijiAdmin admin) throws Exception {
+  private void dumpLayout() throws Exception {
     final KijiTableLayout layout = getKiji().getMetaTable().getTableLayout(mTableName);
     final String json = ToJson.toJsonString(layout.getDesc());
     if (mWriteTo.isEmpty()) {
@@ -144,21 +143,20 @@ public final class LayoutTool extends VersionValidatedTool {
   /**
    * Implements the --do=set operation.
    *
-   * @param admin kiji admin interface.
+   * @param kiji Kiji instance.
    * @throws Exception on error.
    */
-  private void setLayout(KijiAdmin admin) throws Exception {
+  private void setLayout(Kiji kiji) throws Exception {
     final TableLayoutDesc layoutDesc = loadJsonTableLayoutDesc(mLayout);
-    admin.setTableLayout(mTableName, layoutDesc, mDryRun, getPrintStream());
+    kiji.modifyTableLayout(mTableName, layoutDesc, mDryRun, getPrintStream());
   }
 
   /**
    * Dumps the history of layouts of a given table.
    *
-   * @param admin kiji admin interface.
    * @throws Exception on error.
    */
-  private void history(KijiAdmin admin) throws Exception {
+  private void history() throws Exception {
     // Gather all of the layouts stored in the metaTable.
     final NavigableMap<Long, KijiTableLayout> timedLayouts =
         getKiji().getMetaTable().getTimedTableLayoutVersions(mTableName, mMaxVersions);
@@ -187,15 +185,14 @@ public final class LayoutTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final KijiAdmin admin = getKiji().getAdmin();
     if (mDo.equals("dump")) {
-      dumpLayout(admin);
+      dumpLayout();
     } else if (mDo.equals("set")) {
       Preconditions.checkArgument(!mLayout.isEmpty(),
           "Specify the layout with --layout=path/to/layout.json");
-      setLayout(admin);
+      setLayout(getKiji());
     } else if (mDo.equals("history")) {
-      history(admin);
+      history();
     } else {
       System.err.println("Unknown layout action: " + mDo);
       System.err.println("Specify the action to perform with --do=(dump|set|history)");
