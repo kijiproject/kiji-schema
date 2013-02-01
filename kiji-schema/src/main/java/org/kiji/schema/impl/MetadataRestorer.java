@@ -33,7 +33,6 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.HBaseFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiMetaTable;
@@ -42,6 +41,7 @@ import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
+import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**

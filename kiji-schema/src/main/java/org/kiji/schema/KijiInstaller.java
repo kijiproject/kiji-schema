@@ -28,6 +28,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.impl.HBaseAdminFactory;
 import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;

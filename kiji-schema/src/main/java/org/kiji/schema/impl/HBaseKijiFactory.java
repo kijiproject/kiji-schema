@@ -27,11 +27,11 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Priority;
-import org.kiji.schema.HBaseFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiFactory;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.hbase.HBaseFactory;
 
 /** Factory for constructing instances of HBaseKiji. */
 @ApiAudience.Private

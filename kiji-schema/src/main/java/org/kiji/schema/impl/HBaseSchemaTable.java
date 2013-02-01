@@ -62,10 +62,10 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiConfiguration;
-import org.kiji.schema.KijiManagedHBaseTableName;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.avro.MD5Hash;
 import org.kiji.schema.avro.SchemaTableEntry;
+import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.ByteStreamArray.EncodingException;

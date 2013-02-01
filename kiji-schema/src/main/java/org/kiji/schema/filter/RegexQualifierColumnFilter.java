@@ -28,8 +28,8 @@ import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.apache.hadoop.hbase.filter.RegexStringComparator;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.hbase.HBaseColumnName;
 
 
 /**

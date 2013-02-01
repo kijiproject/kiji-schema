@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 
 /**
  * <p>The configuration for a single instance of Kiji, as a cluster could

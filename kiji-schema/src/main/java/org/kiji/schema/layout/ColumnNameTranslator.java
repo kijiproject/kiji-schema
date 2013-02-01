@@ -28,9 +28,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;

@@ -44,6 +44,7 @@ import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.Node;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.RawEntityId;

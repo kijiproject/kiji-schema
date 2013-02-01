@@ -26,9 +26,9 @@ import org.apache.hadoop.hbase.filter.Filter;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
-import org.kiji.schema.HBaseColumnName;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.ColumnNameTranslator;
 
 /**

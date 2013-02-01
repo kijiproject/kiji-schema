@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.hbase;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
