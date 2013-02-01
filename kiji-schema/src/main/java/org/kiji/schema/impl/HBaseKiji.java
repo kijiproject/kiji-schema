@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
@@ -35,7 +34,6 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.HBaseFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAdmin;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiSystemTable;
@@ -57,8 +55,8 @@ public final class HBaseKiji implements Kiji {
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger(HBaseKiji.class.getName() + ".Cleanup");
 
-  /** The kiji configuration. */
-  private final KijiConfiguration mKijiConf;
+  /** The hadoop configuration. */
+  private final Configuration mConf;
 
   /** Factory for HTable instances. */
   private final HTableInterfaceFactory mHTableFactory;
@@ -97,18 +95,18 @@ public final class HBaseKiji implements Kiji {
    * Creates a new <code>HBaseKiji</code> instance.
    * This should only be used by Kiji.Factory.open();
    *
-   * @see org.kiji.schema.Kiji#open(KijiConfiguration)
+   * @see org.kiji.schema.Kiji#open(KijiURI, Configuraiton)
    *
-   * @param kijiConf The kiji configuration.
+   * @param kijiURI The KijiURI.
+   * @param conf The Hadoop Configuration.
    * @throws IOException If there is an error.
-   * @deprecated KijiConfiguration is going away. Use open(KijiURI, …).
    */
-  @Deprecated
-  HBaseKiji(KijiConfiguration kijiConf) throws IOException {
-    this(kijiConf,
+  HBaseKiji(KijiURI kijiURI, Configuration conf) throws IOException {
+    this(kijiURI,
+        conf,
         true,
         DefaultHTableInterfaceFactory.get(),
-        new ZooKeeperLockFactory(kijiConf.getConf()));
+        new ZooKeeperLockFactory(conf));
   }
 
   /**
@@ -117,7 +115,8 @@ public final class HBaseKiji implements Kiji {
    * <p> Should only be used by Kiji.Factory.open().
    * <p> Caller does not need to use retain(), but must call release() when done with it.
    *
-   * @param kijiConf Kiji configuration.
+   * @param kijiURI the KijiURI.
+   * @param conf Hadoop Configuration.
    * @param validateVersion Validate that the installed version of kiji is compatible with
    *     this client.
    * @param tableFactory HTableInterface factory.
@@ -125,20 +124,22 @@ public final class HBaseKiji implements Kiji {
    * @throws IOException on I/O error.
    */
   HBaseKiji(
-      KijiConfiguration kijiConf,
+      KijiURI kijiURI,
+      Configuration conf,
       boolean validateVersion,
       HTableInterfaceFactory tableFactory,
       LockFactory lockFactory)
       throws IOException {
-    // Keep a deep copy of the kiji configuration.
-    mKijiConf = new KijiConfiguration(kijiConf);
+    // Deep copy the configuration.
+    mConf = new Configuration(conf);
+
     mHTableFactory = Preconditions.checkNotNull(tableFactory);
     mLockFactory = Preconditions.checkNotNull(lockFactory);
-    mURI = KijiURI.newBuilder(String.format("kiji://%s:%d/%s",
-        mKijiConf.getConf().get(HConstants.ZOOKEEPER_QUORUM),
-        mKijiConf.getConf().getInt(HConstants.ZOOKEEPER_CLIENT_PORT,
-            HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT),
-        mKijiConf.getName())).build();
+    mURI = KijiURI.newBuilder()
+        .withZookeeperQuorum(kijiURI.getZookeeperQuorum().toArray(new String[0]))
+        .withZookeeperClientPort(kijiURI.getZookeeperClientPort())
+        .withInstanceName(kijiURI.getInstance())
+        .build();
 
     LOG.debug(String.format("Opening kiji instance '%s'", mURI));
 
@@ -178,7 +179,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public Configuration getConf() {
-    return mKijiConf.getConf();
+    return mConf;
   }
 
   /** {@inheritDoc} */
@@ -192,7 +193,7 @@ public final class HBaseKiji implements Kiji {
   public synchronized KijiSchemaTable getSchemaTable() throws IOException {
     Preconditions.checkState(mIsOpen);
     if (null == mSchemaTable) {
-      mSchemaTable = new HBaseSchemaTable(mKijiConf, mHTableFactory, mLockFactory);
+      mSchemaTable = new HBaseSchemaTable(mURI, mConf, mHTableFactory, mLockFactory);
     }
     return mSchemaTable;
   }
@@ -202,7 +203,7 @@ public final class HBaseKiji implements Kiji {
   public synchronized KijiSystemTable getSystemTable() throws IOException {
     Preconditions.checkState(mIsOpen);
     if (null == mSystemTable) {
-      mSystemTable = new HBaseSystemTable(mKijiConf, mHTableFactory);
+      mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
     }
     return mSystemTable;
   }
@@ -212,7 +213,7 @@ public final class HBaseKiji implements Kiji {
   public synchronized KijiMetaTable getMetaTable() throws IOException {
     Preconditions.checkState(mIsOpen);
     if (null == mMetaTable) {
-      mMetaTable = new HBaseMetaTable(mKijiConf, getSchemaTable(), mHTableFactory);
+      mMetaTable = new HBaseMetaTable(mURI, mConf, getSchemaTable(), mHTableFactory);
     }
     return mMetaTable;
   }
@@ -232,7 +233,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public KijiTable openTable(String tableName) throws IOException {
-    return new HBaseKijiTable(this, tableName, mKijiConf.getConf(), mHTableFactory);
+    return new HBaseKijiTable(this, tableName, mConf, mHTableFactory);
   }
 
   /**

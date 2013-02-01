@@ -36,7 +36,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 import org.kiji.common.flags.Flag;
 import org.kiji.common.flags.FlagParser;
-import org.kiji.schema.KijiConfiguration;
+import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiURIException;
@@ -81,7 +81,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
 
   @Flag(name="kiji", usage="A kiji URI identifying the kiji instance to use.")
   private String mInstanceURIStr = String.format("kiji://.env/%s",
-      KijiConfiguration.DEFAULT_INSTANCE_NAME);
+      KConstants.DEFAULT_INSTANCE_NAME);
 
   @Flag(name="debug", usage="Print stacktraces if the command terminates with an error.")
   private boolean mDebugFlag = false;

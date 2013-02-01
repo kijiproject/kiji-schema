@@ -61,7 +61,7 @@ public class FooTableIntegrationTest extends AbstractKijiIntegrationTest {
   @Before
   public void setupFooTable() throws Exception {
     createAndPopulateFooTable();
-    mKiji = Kiji.Factory.open(getKijiConfiguration());
+    mKiji = Kiji.Factory.open(getKijiURI(), getIntegrationHelper().getConf());
     mKijiTable = mKiji.openTable("foo");
   }
 

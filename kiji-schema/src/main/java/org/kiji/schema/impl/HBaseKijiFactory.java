@@ -29,7 +29,6 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Priority;
 import org.kiji.schema.HBaseFactory;
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiConfiguration;
 import org.kiji.schema.KijiFactory;
 import org.kiji.schema.KijiURI;
 
@@ -47,18 +46,12 @@ public final class HBaseKijiFactory implements KijiFactory {
   public Kiji open(KijiURI uri, Configuration conf) throws IOException {
     final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
     final Configuration confCopy = new Configuration(conf);
-    final KijiConfiguration kijiConf = new KijiConfiguration(confCopy, uri);
     return new HBaseKiji(
-        kijiConf,
+        uri,
+        confCopy,
         true,
         hbaseFactory.getHTableInterfaceFactory(uri),
         hbaseFactory.getLockFactory(uri, confCopy));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public Kiji open(KijiConfiguration kijiConf) throws IOException {
-    return new HBaseKiji(kijiConf);
   }
 
   /** {@inheritDoc} */
