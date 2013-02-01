@@ -46,7 +46,7 @@ import org.kiji.schema.layout.impl.CellSpec;
  * There are several limitations when filtering cells this way, as the filter relies on byte
  * comparisons, which does not play well with Avro records.
  */
-@ApiAudience.Private
+@ApiAudience.Framework
 public final class KijiRowFilterApplicator {
   /** The row filter to be applied by this applicator. */
   private final KijiRowFilter mRowFilter;
@@ -99,16 +99,30 @@ public final class KijiRowFilterApplicator {
 
   /**
    * Creates a new <code>KijiRowFilterApplicator</code> instance.
+   * This private constructor is used by the <code>create()</code> factory method.
    *
    * @param rowFilter The row filter to be applied.
    * @param schemaTable The kiji schema table.
    * @param tableLayout The layout of the table this filter applies to.
    */
-  public KijiRowFilterApplicator(KijiRowFilter rowFilter, KijiTableLayout tableLayout,
+  private KijiRowFilterApplicator(KijiRowFilter rowFilter, KijiTableLayout tableLayout,
       KijiSchemaTable schemaTable) {
     mRowFilter = rowFilter;
     mTableLayout = tableLayout;
     mSchemaTable = schemaTable;
+  }
+
+  /**
+   * Creates a new <code>KijiRowFilterApplicator</code> instance.
+   *
+   * @param rowFilter The row filter to be applied.
+   * @param schemaTable The kiji schema table.
+   * @param tableLayout The layout of the table this filter applies to.
+   * @return a new KijiRowFilterApplicator instance.
+   */
+  public static KijiRowFilterApplicator create(KijiRowFilter rowFilter, KijiTableLayout tableLayout,
+      KijiSchemaTable schemaTable) {
+    return new KijiRowFilterApplicator(rowFilter, tableLayout, schemaTable);
   }
 
   /**

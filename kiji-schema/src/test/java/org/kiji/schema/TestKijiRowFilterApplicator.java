@@ -119,7 +119,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
     // Construct a row filter and apply it to the existing scan.
     final KijiRowFilter rowFilter = new MyKijiRowFilter();
     final KijiRowFilterApplicator applicator =
-        new KijiRowFilterApplicator(rowFilter, mTableLayout, getKiji().getSchemaTable());
+        KijiRowFilterApplicator.create(rowFilter, mTableLayout, getKiji().getSchemaTable());
     applicator.applyTo(actualScan);
 
     // After filter application, expect the scan to also have the column requested by the filter.

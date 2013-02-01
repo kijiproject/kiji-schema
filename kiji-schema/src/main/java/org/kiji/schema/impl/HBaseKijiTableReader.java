@@ -146,8 +146,8 @@ public class HBaseKijiTableReader implements KijiTableReader {
       }
 
       if (null != rowFilter) {
-        final KijiRowFilterApplicator applicator =
-            new KijiRowFilterApplicator(rowFilter, tableLayout, mTable.getKiji().getSchemaTable());
+        final KijiRowFilterApplicator applicator = KijiRowFilterApplicator.create(
+            rowFilter, tableLayout, mTable.getKiji().getSchemaTable());
         applicator.applyTo(scan);
       }
 
