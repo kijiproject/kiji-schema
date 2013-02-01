@@ -29,7 +29,6 @@ import org.kiji.annotations.Inheritance;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.ColumnNameTranslator;
 
 /**
  * A column filter provides a means of filtering cells from a column on the server side.
@@ -75,43 +74,4 @@ public abstract class KijiColumnFilter implements Serializable {
    */
   public abstract Filter toHBaseFilter(KijiColumnName kijiColumnName, Context context)
       throws IOException;
-
-  /**
-   * Expresses a KijiColumnFilter in terms of an equivalent HBase filter, translating the
-   * KijiColumnNames to the corresponding HBaseColumnName.
-   * @param kijiColumnName The column this filter applies to.
-   * @param columnNameTranslator The column name translator that maps KijiColumnNames to
-   * HBaseColumnNames.
-   * @return An equivalent HBase Filter
-   * @throws IOException If there is an error
-   */
-  public Filter toHBaseFilter(KijiColumnName kijiColumnName,
-      final ColumnNameTranslator columnNameTranslator) throws IOException {
-    return toHBaseFilter(kijiColumnName, new NameTranslatingFilterContext(columnNameTranslator));
-  }
-
-  /**
-   * A Context for KijiColumnFilters that translates column names to their HBase
-   * representation.
-   */
-  private static class NameTranslatingFilterContext implements Context {
-    /** The translator to use. */
-    private final ColumnNameTranslator mTranslator;
-
-    /**
-     * Initialize this context with the specified column name translator.
-     *
-     * @param translator the translator to use.
-     */
-    public NameTranslatingFilterContext(ColumnNameTranslator translator) {
-      mTranslator = translator;
-    }
-
-    @Override
-    public HBaseColumnName getHBaseColumnName(KijiColumnName kijiColumnName)
-        throws NoSuchColumnException {
-      return mTranslator.toHBaseColumnName(kijiColumnName);
-    }
-  }
-
 }

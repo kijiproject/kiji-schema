@@ -40,6 +40,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.hbase.HBaseScanOptions;
@@ -279,7 +280,8 @@ public class HBaseDataRequestAdapter {
     KijiColumnFilter userColumnFilter = columnRequest.getFilter();
     if (null != userColumnFilter) {
 
-      Filter hBaseFilter = userColumnFilter.toHBaseFilter(kijiColumnName, columnNameTranslator);
+      Filter hBaseFilter = userColumnFilter.toHBaseFilter(kijiColumnName,
+          new NameTranslatingFilterContext(columnNameTranslator));
       requestFilter.addFilter(hBaseFilter);
     }
 
@@ -302,4 +304,28 @@ public class HBaseDataRequestAdapter {
     return requestFilter;
   }
 
+  /**
+   * A Context for KijiColumnFilters that translates column names to their HBase
+   * representation.
+   */
+  private static final class NameTranslatingFilterContext implements KijiColumnFilter.Context {
+    /** The translator to use. */
+    private final ColumnNameTranslator mTranslator;
+
+    /**
+     * Initialize this context with the specified column name translator.
+     *
+     * @param translator the translator to use.
+     */
+    private NameTranslatingFilterContext(ColumnNameTranslator translator) {
+      mTranslator = translator;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public HBaseColumnName getHBaseColumnName(KijiColumnName kijiColumnName)
+        throws NoSuchColumnException {
+      return mTranslator.toHBaseColumnName(kijiColumnName);
+    }
+  }
 }
