@@ -19,12 +19,14 @@
 
 package org.kiji.schema;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.junit.After;
@@ -34,6 +36,8 @@ import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.util.TestFileUtils;
+
 /**
  * Base class for tests that interact with kiji as a client.
  * Provides MetaTable and KijiSchemaTable access.
@@ -42,7 +46,7 @@ public class KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(KijiClientTest.class);
 
   /** Test method name (eg. "testFeatureX"). */
-  // JUnit requires public, checkstyle disagrees, I'm staying out of this:
+  // JUnit requires public, checkstyle disagrees:
   // CSOFF: VisibilityModifierCheck
   @Rule
   public final TestName mTestName = new TestName();
@@ -51,11 +55,17 @@ public class KijiClientTest {
   /** Counter for fake HBase instances. */
   private final AtomicLong mFakeHBaseInstanceCounter = new AtomicLong();
 
+  /** Test identifier, eg. "org_package_ClassName_testMethodName". */
+  private String mTestId;
+
   /** Kiji instances opened during test, and that must be released and cleaned up after. */
   private List<Kiji> mKijis = Lists.newArrayList();
 
+  /** Local temporary directory, automatically cleaned up after. */
+  private File mLocalTempDir = null;
+
   /** Default test Kiji instance. */
-  private Kiji mKiji;
+  private Kiji mKiji = null;
 
   /** The configuration object for this kiji instance. */
   private Configuration mConf;
@@ -66,18 +76,24 @@ public class KijiClientTest {
    * @throws Exception on error.
    */
   @Before
-  public final void setUpKijiTest() throws Exception {
+  public final void setupKijiTest() throws Exception {
     try {
-      doSetUp();
+      doSetupKijiTest();
     } catch (Exception exn) {
-      // Make exceptions in setUp() visible:
+      // Make exceptions from setup method visible:
       exn.printStackTrace();
       throw exn;
     }
   }
 
-  private void doSetUp() throws Exception {
+  private void doSetupKijiTest() throws Exception {
+    mTestId =
+        String.format("%s_%s", getClass().getName().replace('.', '_'), mTestName.getMethodName());
+    mLocalTempDir = TestFileUtils.createTempDir(mTestId, "temp-dir");
     mConf = HBaseConfiguration.create();
+    mConf.set("fs.defaultFS", "file://" + mLocalTempDir);
+    mConf.set("fs.default.name", "file://" + mLocalTempDir);
+    mConf.set("mapred.job.tracker", "local");
     mKiji = null;  // lazily initialized
   }
 
@@ -93,10 +109,10 @@ public class KijiClientTest {
   public Kiji createTestKiji() throws Exception {
     Preconditions.checkNotNull(mConf);
     final long fakeHBaseCounter = mFakeHBaseInstanceCounter.getAndIncrement();
-    final String hbaseAddress =
-        String.format(".fake.%s-%d", mTestName.getMethodName(), fakeHBaseCounter);
     final String instanceName =
         String.format("%s_%s", getClass().getSimpleName(), mTestName.getMethodName());
+    final String hbaseAddress =
+        String.format(".fake.%s-%d", instanceName, fakeHBaseCounter);
     final KijiURI uri =
         KijiURI.newBuilder(String.format("kiji://%s/%s", hbaseAddress, instanceName)).build();
     KijiInstaller.get().install(uri, mConf);
@@ -110,15 +126,22 @@ public class KijiClientTest {
    * @throws Exception If there is an error.
    */
   @After
-  public final void tearDownKijiTest() throws Exception {
-    LOG.debug("Closing mock kiji instance");
+  public final void teardownKijiTest() throws Exception {
+    LOG.debug("Tearing down {}", mTestId);
     for (Kiji kiji : mKijis) {
       mKiji.release();
-      KijiInstaller.get().uninstall(kiji.getURI(), kiji.getConf());
+      KijiInstaller.get().uninstall(kiji.getURI(), mConf);
     }
     mKijis = null;
     mKiji = null;
     mConf = null;
+    FileUtils.deleteDirectory(mLocalTempDir);
+    mLocalTempDir = null;
+    mTestId = null;
+
+    // Force a garbage collection, to trigger finalization of resources and spot
+    // resources that were not released or closed.
+    System.gc();
   }
 
   /**
@@ -142,6 +165,21 @@ public class KijiClientTest {
     return mKiji;
   }
 
+  /** @return a valid identifier for the current test. */
+  public String getTestId() {
+    return mTestId;
+  }
+
+  /** @return a local temporary directory. */
+  public File getLocalTempDir() {
+    return mLocalTempDir;
+  }
+
+  /**
+   * @return a test Hadoop configuration, with:
+   *     <li> a default FS
+   *     <li> a job tracker
+   */
   public Configuration getConf() {
     return mConf;
   }

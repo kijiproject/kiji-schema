@@ -146,6 +146,9 @@ public abstract class AbstractKijiIntegrationTest {
 
   // -----------------------------------------------------------------------------------------------
 
+  /** Test configuration. */
+  private Configuration mConf;
+
   /** The randomly generated URI for the instance. */
   private KijiURI mKijiURI;
 
@@ -256,22 +259,31 @@ public abstract class AbstractKijiIntegrationTest {
   }
 
   @Before
-  public void setupKiji() throws Exception {
+  public final void setupKijiIntegrationTest() throws Exception {
+    mConf = createConfiguration();
 
     // Get a new Kiji instance, with a randomly-generated name.
     mKijiURI = mCreationThread.getFreshKiji();
-    mHelper = new IntegrationHelper(createConfiguration());
+    mHelper = new IntegrationHelper(mConf);
 
     // Construct a Kiji configuration.
-    mKijiConf = new KijiConfiguration(mHelper.getConf(), mKijiURI.getInstance());
+    mKijiConf = new KijiConfiguration(mConf, mKijiURI.getInstance());
   }
 
   @After
-  public void teardownKiji() throws Exception {
+  public final void teardownKijiIntegrationTest() throws Exception {
     // Schedule the Kiji instance for asynchronous deletion.
     if (null != mKijiURI) {
       mDeletionThread.destroyKiji(mKijiURI);
     }
+
+    mHelper = null;
+    mKijiConf = null;
+    mKijiURI = null;
+    mConf = null;
+
+    // Force garbage collection:
+    System.gc();
   }
 
   /** @return The integration helper. */
@@ -297,6 +309,11 @@ public abstract class AbstractKijiIntegrationTest {
   /** @return The temporary directory to use for test data. */
   protected File getTempDir() {
     return mTempDir.getRoot();
+  }
+
+  /** @return a test Configuration, with a MapReduce and HDFS cluster. */
+  public Configuration getConf() {
+    return mConf;
   }
 
   /**
