@@ -26,7 +26,7 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.apache.commons.io.IOUtils;
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
@@ -78,6 +78,9 @@ public class InstanceBuilder {
   /** Name of the desired Kiji instance. */
   private final String mInstanceName;
 
+  /** Pre-existing Kiji to use, or null. */
+  private final Kiji mExistingKiji;
+
   /**
    * Constructs a new in-memory Kiji instance builder with the default Kiji instance name.
    */
@@ -86,11 +89,24 @@ public class InstanceBuilder {
   }
 
   /**
+   * Constructs a new Kiji instance builder to populate a pre-existing Kiji instance.
+   *
+   * @param kiji Pre-existing (already installed) Kiji instance.
+   */
+  public InstanceBuilder(Kiji kiji) {
+    mExistingKiji = Preconditions.checkNotNull(kiji);
+    mInstanceName = kiji.getURI().getInstance();
+    mCells = new HashMap<String, Map<EntityId, Map<String, Map<String, Map<Long, Object>>>>>();
+    mLayouts = new HashMap<String, KijiTableLayout>();
+  }
+
+  /**
    * Constructs a new in-memory Kiji instance builder.
    *
    * @param instance Desired name of the Kiji instance.
    */
   public InstanceBuilder(String instance) {
+    mExistingKiji = null;
     mInstanceName = instance;
     mCells = new HashMap<String, Map<EntityId, Map<String, Map<String, Map<Long, Object>>>>>();
     mLayouts = new HashMap<String, KijiTableLayout>();
@@ -120,8 +136,11 @@ public class InstanceBuilder {
   public Kiji build() throws IOException {
     // Populate constants.
     final Configuration conf = HBaseConfiguration.create();
-    final KijiURI uri = KijiURI.newBuilder(
-        String.format("kiji://.fake.%d/%s", FAKE_COUNT.getAndIncrement(), mInstanceName)).build();
+    final KijiURI uri = (mExistingKiji != null)
+        ? mExistingKiji.getURI()
+        : KijiURI.newBuilder(
+            String.format("kiji://.fake.%d/%s", FAKE_COUNT.getAndIncrement(), mInstanceName))
+            .build();
 
     // In-process MapReduce execution:
     // TODO(KIJIMR-19): remove this, InstanceBuilder should not be concerned by configuration.
@@ -134,11 +153,15 @@ public class InstanceBuilder {
     // Install & open a Kiji instance.
     LOG.info(String.format("Building instance: %s", uri.toString()));
     try {
-      KijiInstaller.get().install(uri, conf);
+      if (mExistingKiji == null) {
+        KijiInstaller.get().install(uri, conf);
+      }
     } catch (KijiInvalidNameException kine) {
       throw new IOException(kine);
     }
-    final Kiji kiji = Kiji.Factory.open(uri, conf);
+    final Kiji kiji = (mExistingKiji != null)
+        ? mExistingKiji
+        : Kiji.Factory.open(uri, conf);
 
     // Build tables.
     for (Map.Entry<String, Map<EntityId, Map<String, Map<String, Map<Long, Object>>>>> tableEntry
@@ -168,25 +191,16 @@ public class InstanceBuilder {
             for (Map.Entry<Long, Object> valueEntry : qualifier.entrySet()) {
               final long timestamp = valueEntry.getKey();
               final Object value = valueEntry.getValue();
-              LOG.info(String.format("    Building put: %s -> (%s:%s, %d:%s)",
-                  entityId.toString(),
-                  familyName,
-                  qualifierName,
-                  timestamp,
-                  value.toString()));
-              writer.put(
-                  entityId,
-                  familyName,
-                  qualifierName,
-                  timestamp,
-                  value);
+              LOG.info("\tBuilding put: {} -> ({}:{}, {}:{})",
+                  entityId, familyName, qualifierName, timestamp, value);
+              writer.put(entityId, familyName, qualifierName, timestamp, value);
             }
           }
         }
       }
 
-      IOUtils.closeQuietly(kijiTable);
-      IOUtils.closeQuietly(writer);
+      kijiTable.close();
+      writer.close();
     }
 
     // Add the Kiji instance to the environment.

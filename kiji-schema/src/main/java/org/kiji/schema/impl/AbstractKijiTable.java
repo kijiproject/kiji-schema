@@ -138,10 +138,9 @@ public abstract class AbstractKijiTable implements KijiTable {
   @Override
   protected void finalize() throws Throwable {
     if (mIsOpen) {
-      LOG.warn("Closing KijiTable " + mName + " in finalize(). You should close it explicitly");
+      LOG.warn("Closing KijiTable {} in finalize(). You should close it explicitly", mTableURI);
       if (CLEANUP_LOG.isDebugEnabled()) {
-        CLEANUP_LOG.debug("Call stack when this [Abstract]KijiTable was constructed: ");
-        CLEANUP_LOG.debug(mConstructorStack);
+        CLEANUP_LOG.debug("Call stack when this KijiTable was constructed:\n{}", mConstructorStack);
       }
       close();
     }

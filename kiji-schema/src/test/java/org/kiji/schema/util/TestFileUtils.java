@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -16,32 +16,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.kiji.schema.util;
 
-package org.kiji.schema;
-
+import java.io.File;
 import java.io.IOException;
 
-import org.kiji.annotations.ApiAudience;
+import com.google.common.base.Preconditions;
 
-/**
- * Thrown when an attempt to access a table fails because it does not exist.
- */
-@ApiAudience.Public
-public final class KijiTableNotFoundException extends IOException {
-  /** Name of the missing table. */
-  private String mTableName;
+/** File utilities for testing. */
+public final class TestFileUtils {
 
   /**
-   * Creates a new <code>KijiTableNotFoundException</code> for the specified table.
+   * Creates a temporary directory.
    *
-   * @param tableName The name of the table that wasn't found.
+   * @param prefix Directory name prefix.
+   * @param suffix Directory name suffix.
+   * @return the temporary directory.
+   * @throws IOException on I/O error.
    */
-  public KijiTableNotFoundException(String tableName) {
-    super("Table not found: " + tableName);
+  public static File createTempDir(String prefix, String suffix) throws IOException {
+    final File dir = File.createTempFile(prefix, suffix);
+    Preconditions.checkState(dir.delete());
+    Preconditions.checkState(dir.mkdirs());
+    return dir;
   }
 
-  /** @return the name of the missing table. */
-  public String getTableName() {
-    return mTableName;
+  /** Utility class cannot be instantiated. */
+  private TestFileUtils() {
   }
 }
