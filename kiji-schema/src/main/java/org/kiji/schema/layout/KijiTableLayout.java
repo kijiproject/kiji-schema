@@ -77,6 +77,14 @@ import org.kiji.schema.util.ToJson;
  *   KijiTableLayout provides strict validation and accessors to navigate through the layout.
  * </p>
  *
+ * <p>
+ *   KijiTableLayouts can be created via one of two methods: from a concrete layout with
+ *   KijiTableLayout.newLayout(TableLayoutDesc), or as a layout update from a preexisting
+ *   KijiTableLayout, with KijiTableLayout.createUpdatedLayout(TableLayoutDesc, KijiTableLayout).
+ *   For the format requirements of layout descriptors for these methods, see the
+ *   "Layout descriptors" section below.
+ * </p>
+ *
  * <h1>Overall structure</h1>
  * <p>At the top-level, a table contains:
  * <ul>
@@ -119,12 +127,26 @@ import org.kiji.schema.util.ToJson;
  * {@link org.kiji.schema.avro.TableLayoutDesc TableLayoutDesc} Avro records.
  * Layout descriptors come in two flavors: <i>concrete layouts</i> and <i>layout updates</i>.
  *
- * <h2>Concrete layout descriptors</h2>
+ * <h2><i>Concrete layout descriptors</i></h2>
  * A concrete layout descriptors is an absolute, standalone description of a table layout, which
  * does not reference or build upon any previous version of the table layout. Column IDs have
  * been assigned to all locality groups, families and columns.
  *
- * <h2>Layout update descriptors</h2>
+ * <p> Names of tables, locality groups, families and column qualifiers must be valid identifiers.
+ * Name validation occurs in {@link org.kiji.schema.util.KijiNameValidator KijiNameValidator}.
+ *
+ * <h3>Validation rules</h3>
+ *
+ * <ul>
+ *   <li> Table names, locality group names, family names, and column names in a group-type family
+ *        must be valid identifiers (no punctuation or symbols).
+ *        Note: map-type family qualifiers are free-form, but do never appear in a table layout.
+ *   <li> Locality group names and aliases must be unique within the table.
+ *   <li> Family names and aliases must be unique within the table.
+ *   <li> Group-type family qualifiers must be unique within the family.
+ * </ul>
+ *
+ * <h2><i>Layout update descriptors</i></h2>
  * A table layout update descriptor builds on a reference table layout, and describes layout
  * modification to apply on the reference layout.
  * The reference table layout is specified by writing the ID of the reference layout
@@ -138,7 +160,7 @@ import org.kiji.schema.util.ToJson;
  * <p>The result of applying a layout update on top of a concrete reference layout is a new
  * concrete layout.
  *
- * <h1>Names</h1>
+ * <h3>Names</h3>
  *
  * <p> Layout entities are uniquely identified through their primary names.
  * Name aliases can be freely updated, as long as uniqueness requirements are met.
@@ -146,18 +168,12 @@ import org.kiji.schema.util.ToJson;
  * the entity being renamed.
  * The name of a table cannot be changed.
  *
- * <p> Names of tables, locality groups, families and column qualifiers must be valid identifiers.
- * Name validation occurs in {@link org.kiji.schema.util.KijiNameValidator KijiNameValidator}.
+ * <h3> Validation rules for updates </h3>
  *
- * <h1>Validation rules</h1>
+ * <p> Updates are subject to the same restrictions as concrete layout descriptors.
+ * In addition:</p>
  *
  * <ul>
- *   <li> Table names, locality group names, family names, and column names in a group-type family
- *        must be valid identifiers (no punctuation or symbols).
- *        Note: map-type family qualifiers are free-form, but do never appear in a table layout.
- *   <li> Locality group names and aliases must be unique within the table.
- *   <li> Family names and aliases must be unique within the table.
- *   <li> Group-type family qualifiers must be unique within the family.
  *   <li> The type of a family (map-type or group-type) cannot be changed.
  *   <li> A family cannot be moved into a different locality group.
  *   <li> The encoding of Kiji cells (hash, UID, final) cannot be modified.
@@ -250,7 +266,7 @@ public final class KijiTableLayout {
          * @param reference Optional reference layout, or null.
          * @throws InvalidLayoutException if the layout is invalid or inconsistent.
          */
-        public ColumnLayout(ColumnDesc desc, ColumnLayout reference)
+        private ColumnLayout(ColumnDesc desc, ColumnLayout reference)
             throws InvalidLayoutException {
           mDesc = Preconditions.checkNotNull(desc);
 
@@ -291,9 +307,9 @@ public final class KijiTableLayout {
           validateCellSchema(mDesc.getColumnSchema(), referenceSchema);
         }
 
-        /** @return the Avro descriptor for this column. */
+        /** @return A copy of the Avro descriptor for this column. */
         public ColumnDesc getDesc() {
-          return mDesc;
+          return ColumnDesc.newBuilder(mDesc).build();
         }
 
         /** @return the primary name for the column. */
@@ -359,7 +375,7 @@ public final class KijiTableLayout {
        * @param reference Optional reference family layout, or null.
        * @throws InvalidLayoutException if the layout is invalid or inconsistent.
        */
-      public FamilyLayout(FamilyDesc familyDesc, FamilyLayout reference)
+      private FamilyLayout(FamilyDesc familyDesc, FamilyLayout reference)
           throws InvalidLayoutException {
         mDesc = Preconditions.checkNotNull(familyDesc);
 
@@ -608,7 +624,7 @@ public final class KijiTableLayout {
      * @param reference Optional reference locality group, or null.
      * @throws InvalidLayoutException if the layout is invalid or inconsistent.
      */
-    public LocalityGroupLayout(LocalityGroupDesc lgDesc, LocalityGroupLayout reference)
+    private LocalityGroupLayout(LocalityGroupDesc lgDesc, LocalityGroupLayout reference)
         throws InvalidLayoutException {
       mDesc = Preconditions.checkNotNull(lgDesc);
 
@@ -814,22 +830,22 @@ public final class KijiTableLayout {
   private final TableLayoutDesc mDesc;
 
   /** Locality groups in the table, in no particular order. */
-  private /*final*/ ImmutableList<LocalityGroupLayout> mLocalityGroups;
+  private final ImmutableList<LocalityGroupLayout> mLocalityGroups;
 
   /** Map locality group name or alias to locality group layout. */
-  private /*final*/ ImmutableMap<String, LocalityGroupLayout> mLocalityGroupMap;
+  private final ImmutableMap<String, LocalityGroupLayout> mLocalityGroupMap;
 
   /** Families in the table, in no particular order. */
-  private /*final*/ ImmutableList<FamilyLayout> mFamilies;
+  private final ImmutableList<FamilyLayout> mFamilies;
 
   /** Map family names and aliases to family layout. */
-  private /*final*/ ImmutableMap<String, FamilyLayout> mFamilyMap;
+  private final ImmutableMap<String, FamilyLayout> mFamilyMap;
 
   /** Bidirectional map between locality group names (no alias) and IDs. */
-  private /*final*/ ImmutableBiMap<ColumnId, String> mLocalityGroupIdNameMap;
+  private final ImmutableBiMap<ColumnId, String> mLocalityGroupIdNameMap;
 
   /** All primary column names in the table (including names for map-type families). */
-  private /*final*/ ImmutableSet<KijiColumnName> mColumnNames;
+  private final ImmutableSet<KijiColumnName> mColumnNames;
 
   // CSOFF: MethodLengthCheck
   /**
@@ -839,7 +855,7 @@ public final class KijiTableLayout {
    * @param reference Optional reference layout, or null.
    * @throws InvalidLayoutException if the descriptor is invalid or inconsistent wrt reference.
    */
-  public KijiTableLayout(TableLayoutDesc desc, KijiTableLayout reference)
+  private KijiTableLayout(TableLayoutDesc desc, KijiTableLayout reference)
       throws InvalidLayoutException {
     // Deep-copy the descriptor to prevent mutating a parameter:
     mDesc = TableLayoutDesc.newBuilder(Preconditions.checkNotNull(desc)).build();
@@ -1072,7 +1088,7 @@ public final class KijiTableLayout {
           "Table '%s' has no family '%s'.", getName(), columnName.getFamily()));
     }
     if (fLayout.isMapType()) {
-      return fLayout.getDesc().getMapSchema();
+      return CellSchema.newBuilder(fLayout.getDesc().getMapSchema()).build();
     }
 
     // Group-type family:
@@ -1084,7 +1100,7 @@ public final class KijiTableLayout {
       throw new NoSuchColumnException(String.format(
           "Table '%s' has no column '%s'.", getName(), columnName));
     }
-    return cLayout.getDesc().getColumnSchema();
+    return CellSchema.newBuilder(cLayout.getDesc().getColumnSchema()).build();
   }
 
   /**
@@ -1332,6 +1348,36 @@ public final class KijiTableLayout {
   }
 
   /**
+   * Creates and returns a new KijiTableLayout instance as specified by an Avro TableLayoutDesc
+   * description record.
+   *
+   * @param layout The Avro TableLayoutDesc descriptor record that describes the actual layout.
+   * of the table.
+   * @return A new table layout.
+   * @throws InvalidLayoutException If the descriptor is invalid.
+   */
+  public static KijiTableLayout newLayout(TableLayoutDesc layout) throws InvalidLayoutException {
+    return new KijiTableLayout(layout, null);
+  }
+
+  /**
+   * Creates and returns a new KijiTableLayout instance as specified by composing updates described
+   * by a {@link org.kiji.schema.avro.TableLayoutDesc TableLayoutDesc} with the original
+   * KijiTableLayout.  See {@link org.kiji.schema.layout.KijiTableLayout KijiTableLayout}
+   * for what can and cannot be updated.
+   *
+   * @param updateLayoutDesc The Avro TableLayoutDesc descriptor record that describes
+   * the layout update.
+   * @param oldLayout The old table layout.
+   * @return A new table layout.
+   * @throws InvalidLayoutException If the descriptor is invalid or inconsistent wrt reference.
+   */
+  public static KijiTableLayout createUpdatedLayout(
+      TableLayoutDesc updateLayoutDesc, KijiTableLayout oldLayout) throws InvalidLayoutException {
+    return new KijiTableLayout(updateLayoutDesc, oldLayout);
+  }
+
+  /**
    * Reads a table layout descriptor from its JSON serialized form.
    *
    * @param istream JSON input stream.
@@ -1345,5 +1391,4 @@ public final class KijiTableLayout {
         (TableLayoutDesc) FromJson.fromJsonString(json, TableLayoutDesc.SCHEMA$);
     return desc;
   }
-
 }

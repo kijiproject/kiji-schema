@@ -36,7 +36,7 @@ public class TestHTableSchemaTranslator {
     final HTableSchemaTranslator translator = new HTableSchemaTranslator();
 
     final KijiTableLayout tableLayout =
-        new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED), null);
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED));
     final HTableDescriptor tableDescriptor =
         translator.toHTableDescriptor("myinstance", tableLayout);
 

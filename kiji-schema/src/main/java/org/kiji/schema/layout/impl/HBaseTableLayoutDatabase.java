@@ -157,7 +157,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
       throws IOException {
     final List<KijiTableLayout> layouts = getTableLayoutVersions(tableName, 1);
     final KijiTableLayout currentLayout = layouts.isEmpty() ? null : layouts.get(0);
-    final KijiTableLayout tableLayout = new KijiTableLayout(update, currentLayout);
+    final KijiTableLayout tableLayout = KijiTableLayout.createUpdatedLayout(update, currentLayout);
 
     Preconditions.checkArgument(tableName.equals(tableLayout.getName()));
 
@@ -227,7 +227,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
 
     final List<KijiTableLayout> layouts = Lists.newArrayList();
     for (KeyValue column : result.getColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES)) {
-      layouts.add(new KijiTableLayout(decodeTableLayoutDesc(column.getValue()), null));
+      layouts.add(KijiTableLayout.newLayout(decodeTableLayoutDesc(column.getValue())));
     }
     return layouts;
   }
@@ -259,7 +259,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
     for (Map.Entry<Long, byte[]> timeSerieEntry : timeSerieMap.entrySet()) {
       final long timestamp = timeSerieEntry.getKey();
       final byte[] bytes = timeSerieEntry.getValue();
-      final KijiTableLayout layout = new KijiTableLayout(decodeTableLayoutDesc(bytes), null);
+      final KijiTableLayout layout = KijiTableLayout.newLayout(decodeTableLayoutDesc(bytes));
       Preconditions.checkState(timedLayouts.put(timestamp, layout) == null);
     }
     return timedLayouts;

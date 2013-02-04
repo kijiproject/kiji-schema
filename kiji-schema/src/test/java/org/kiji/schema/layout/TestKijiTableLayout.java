@@ -65,7 +65,7 @@ public class TestKijiTableLayout {
             .build())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals("1", layout.getDesc().getLayoutId());
     assertTrue(layout.getLocalityGroups().isEmpty());
     assertTrue(layout.getLocalityGroupMap().isEmpty());
@@ -81,13 +81,13 @@ public class TestKijiTableLayout {
         .setKeysFormat(RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.RAW).build())
         .setVersion("6.0")
         .build();
-    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals("1", layout.getDesc().getLayoutId());
 
     final TableLayoutDesc descV2 = TableLayoutDesc.newBuilder(desc)
         .setReferenceLayout("1")
         .build();
-    final KijiTableLayout layoutV2 = new KijiTableLayout(descV2, layout);
+    final KijiTableLayout layoutV2 = KijiTableLayout.createUpdatedLayout(descV2, layout);
     assertEquals("2", layoutV2.getDesc().getLayoutId());
   }
 
@@ -109,7 +109,7 @@ public class TestKijiTableLayout {
             .setCompressionType(CompressionType.GZ)
             .build()))
         .build();
-    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     final LocalityGroupLayout lgLayout = layout.getLocalityGroupMap().get("locality_group_name");
     assertNotNull(lgLayout);
     assertEquals(1, layout.getLocalityGroups().size());
@@ -147,7 +147,7 @@ public class TestKijiTableLayout {
                     .build()))
             .build()))
         .build();
-    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     final FamilyLayout fLayout = layout.getFamilyMap().get("family_name");
     assertNotNull(fLayout);
     assertTrue(fLayout.isMapType());
@@ -188,7 +188,7 @@ public class TestKijiTableLayout {
                     .build()))
             .build()))
         .build();
-    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     final FamilyLayout fLayout = layout.getFamilyMap().get("family_name");
     assertNotNull(fLayout);
     assertTrue(fLayout.isGroupType());
@@ -235,7 +235,7 @@ public class TestKijiTableLayout {
                     .build()))
             .build()))
         .build();
-    final KijiTableLayout refLayout = new KijiTableLayout(refDesc, null);
+    final KijiTableLayout refLayout = KijiTableLayout.newLayout(refDesc);
 
     {
       // Target layout deleting the column
@@ -268,7 +268,7 @@ public class TestKijiTableLayout {
                       .build()))
               .build()))
           .build();
-      final KijiTableLayout layout = new KijiTableLayout(desc, refLayout);
+      final KijiTableLayout layout = KijiTableLayout.createUpdatedLayout(desc, refLayout);
       final FamilyLayout fLayout = layout.getFamilyMap().get("family_name");
       assertNotNull(fLayout);
       assertTrue(fLayout.getColumns().isEmpty());
@@ -297,7 +297,7 @@ public class TestKijiTableLayout {
               .build()))
           .build();
       try {
-        new KijiTableLayout(desc, refLayout);
+        KijiTableLayout.createUpdatedLayout(desc, refLayout);
         Assert.fail("Layout update with missing column did not fail.");
       } catch (InvalidLayoutException ile) {
         // Exception is expected!
@@ -335,7 +335,7 @@ public class TestKijiTableLayout {
               .build()))
           .build();
       try {
-        new KijiTableLayout(desc, refLayout);
+        KijiTableLayout.createUpdatedLayout(desc, refLayout);
         Assert.fail("Invalid layout update with bad column renaming did not throw.");
       } catch (InvalidLayoutException ile) {
         // Expected
@@ -377,7 +377,7 @@ public class TestKijiTableLayout {
                     .build()))
             .build()))
         .build();
-    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals(
         layout.getLocalityGroupMap().get("locality_group_name"),
         layout.getLocalityGroupMap().get("locality_group_alias1"));
@@ -482,7 +482,7 @@ public class TestKijiTableLayout {
         ))
         .build();
 
-    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     final LocalityGroupLayout lgLayout = layout.getLocalityGroupMap().get("locality_group_name");
     assertEquals(1, lgLayout.getId().getId());
     final FamilyLayout fLayout = lgLayout.getFamilyMap().get("family_name");
@@ -565,7 +565,7 @@ public class TestKijiTableLayout {
         ))
         .build();
     try {
-      new KijiTableLayout(desc, null);
+      KijiTableLayout.newLayout(desc);
       fail("Invalid layout with duplicate family name did not throw.");
     } catch (InvalidLayoutException ile) {
       // Expected:
@@ -614,7 +614,7 @@ public class TestKijiTableLayout {
                 .build()))
         .build();
     try {
-      new KijiTableLayout(desc, null);
+      KijiTableLayout.newLayout(desc);
       fail("Invalid layout with duplicate qualifier name did not throw.");
     } catch (InvalidLayoutException ile) {
       // Expected:
@@ -660,7 +660,7 @@ public class TestKijiTableLayout {
                 .build()))
         .build();
     try {
-      new KijiTableLayout(desc, null);
+      KijiTableLayout.newLayout(desc);
       fail("Invalid family with both map-type and columnsdid not throw.");
     } catch (InvalidLayoutException ile) {
       // Expected
@@ -685,7 +685,7 @@ public class TestKijiTableLayout {
             .build()))
         .build();
     try {
-      new KijiTableLayout(desc, null);
+      KijiTableLayout.newLayout(desc);
       fail("Invalid locality group with negative TTL seconds did not throw");
     } catch (InvalidLayoutException ile) {
       assertTrue(ile.getMessage().contains("Invalid TTL seconds for locality group"));
@@ -707,7 +707,7 @@ public class TestKijiTableLayout {
             .build()))
         .build();
     try {
-      new KijiTableLayout(desc, null);
+      KijiTableLayout.newLayout(desc);
       fail("Invalid locality group with negative max versions did not throw");
     } catch (InvalidLayoutException ile) {
       assertTrue(ile.getMessage().contains("Invalid max versions for locality group"));
@@ -744,7 +744,7 @@ public class TestKijiTableLayout {
                     .build()))
             .build()))
         .build();
-    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals(
         SchemaStorage.FINAL,
         layout.getCellSchema(new KijiColumnName("family_name", "column_name")).getStorage());
@@ -781,7 +781,7 @@ public class TestKijiTableLayout {
             .build()))
         .build();
     try {
-      new KijiTableLayout(desc, null);
+      KijiTableLayout.newLayout(desc);
       fail("Final column schema must be inline");
     } catch (InvalidLayoutException ile) {
       assertTrue(ile.getMessage().contains("Invalid final column schema"));
@@ -817,7 +817,7 @@ public class TestKijiTableLayout {
                     .build()))
             .build()))
         .build();
-    final KijiTableLayout layout = new KijiTableLayout(desc, null);
+    final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals(
         SchemaStorage.FINAL,
         layout.getCellSchema(new KijiColumnName("family_name", "column_name")).getStorage());

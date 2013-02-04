@@ -79,7 +79,7 @@ public class TestKijiTableLayoutChangeSchema {
   private final KijiTableLayout mRefLayout;
 
   public TestKijiTableLayoutChangeSchema() throws Exception {
-    mRefLayout = new KijiTableLayout(mRefLayoutDesc, null);
+    mRefLayout = KijiTableLayout.newLayout(mRefLayoutDesc);
   }
 
   /** Changing schema storage is not allowed and should fail. */
@@ -114,7 +114,7 @@ public class TestKijiTableLayoutChangeSchema {
             .build()))
         .build();
     try {
-      new KijiTableLayout(desc2, mRefLayout);
+      KijiTableLayout.createUpdatedLayout(desc2, mRefLayout);
       fail("Schema storage modifications changes should fail");
     } catch (InvalidLayoutException itl) {
       // Expected
@@ -153,7 +153,7 @@ public class TestKijiTableLayoutChangeSchema {
                     .build()))
             .build()))
         .build();
-    final KijiTableLayout refLayout = new KijiTableLayout(desc1, null);
+    final KijiTableLayout refLayout = KijiTableLayout.newLayout(desc1);
 
     final TableLayoutDesc desc2 = TableLayoutDesc.newBuilder()
         .setName("table_name")
@@ -184,7 +184,7 @@ public class TestKijiTableLayoutChangeSchema {
             .build()))
         .build();
     try {
-      new KijiTableLayout(desc2, refLayout);
+      KijiTableLayout.createUpdatedLayout(desc2, refLayout);
       fail("Counters are forever");
     } catch (InvalidLayoutException itl) {
       // Expected

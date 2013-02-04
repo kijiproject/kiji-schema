@@ -128,7 +128,7 @@ public class TestKijiTableLayoutAddColumn {
 
   @Test
   public void testAddColumn() throws Exception {
-    final KijiTableLayout layout1 = new KijiTableLayout(getLayoutV1Desc(), null);
+    final KijiTableLayout layout1 = KijiTableLayout.newLayout(getLayoutV1Desc());
     {
       final FamilyLayout fLayout1 = layout1.getFamilyMap().get("family_name");
       assertEquals(1, fLayout1.getId().getId());
@@ -136,7 +136,7 @@ public class TestKijiTableLayoutAddColumn {
       assertEquals(1, c1Layout1.getId().getId());
     }
 
-    final KijiTableLayout layout2 = new KijiTableLayout(getLayoutV2Desc(), layout1);
+    final KijiTableLayout layout2 = KijiTableLayout.createUpdatedLayout(getLayoutV2Desc(), layout1);
     {
       final FamilyLayout fLayout2 = layout2.getFamilyMap().get("family_name");
       assertEquals(1, fLayout2.getId().getId());
@@ -146,7 +146,7 @@ public class TestKijiTableLayoutAddColumn {
       assertEquals(2, c2Layout2.getId().getId());
     }
 
-    final KijiTableLayout layout3 = new KijiTableLayout(getLayoutV3Desc(), layout2);
+    final KijiTableLayout layout3 = KijiTableLayout.createUpdatedLayout(getLayoutV3Desc(), layout2);
     {
       final FamilyLayout fLayout3 = layout3.getFamilyMap().get("family_name");
       assertEquals(1, fLayout3.getId().getId());
@@ -155,7 +155,7 @@ public class TestKijiTableLayoutAddColumn {
       assertEquals(2, c2Layout3.getId().getId());
     }
 
-    final KijiTableLayout layout4 = new KijiTableLayout(getLayoutV4Desc(), layout3);
+    final KijiTableLayout layout4 = KijiTableLayout.createUpdatedLayout(getLayoutV4Desc(), layout3);
     {
       final FamilyLayout fLayout4 = layout4.getFamilyMap().get("family_name");
       assertEquals(1, fLayout4.getId().getId());

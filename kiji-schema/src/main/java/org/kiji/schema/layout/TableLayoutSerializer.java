@@ -86,7 +86,7 @@ public final class TableLayoutSerializer {
         new SpecificDatumReader<TableLayoutDesc>(TableLayoutDesc.class);
     final Decoder jsonDecoder =
         DecoderFactory.get().jsonDecoder(TableLayoutDesc.SCHEMA$, jsonTableLayout);
-    return new KijiTableLayout(reader.read(null, jsonDecoder), null);
+    return KijiTableLayout.newLayout(reader.read(null, jsonDecoder));
   }
 
   /**

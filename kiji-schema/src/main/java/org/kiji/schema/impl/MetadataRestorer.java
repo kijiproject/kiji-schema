@@ -107,17 +107,20 @@ public class MetadataRestorer {
     throws IOException {
     Preconditions.checkNotNull(tableBackup);
     Preconditions.checkArgument(!tableBackup.getLayouts().isEmpty(),
-        "Backup for table '%s' contains no layout.", tableName);
+      "Backup for table '%s' contains no layout.", tableName);
     LOG.info("Creating table '{}'.", tableName);
-    long timestamp = Long.MAX_VALUE;
+
+    // The initial entry is the entry with the lowest timestamp.
+    long lowestTimestamp = Long.MAX_VALUE;
     TableLayoutBackupEntry initialEntry = null;
     for (TableLayoutBackupEntry entry : tableBackup.getLayouts()) {
-      if (entry.getTimestamp() < timestamp) {
-        timestamp = entry.getTimestamp();
+      if (entry.getTimestamp() < lowestTimestamp) {
+        lowestTimestamp = entry.getTimestamp();
         initialEntry = entry;
       }
     }
-    final KijiTableLayout initialLayout = new KijiTableLayout(initialEntry.getLayout(), null);
+
+    final KijiTableLayout initialLayout = KijiTableLayout.newLayout(initialEntry.getLayout());
     try {
       kiji.createTable(tableName, initialLayout);
     } catch (KijiAlreadyExistsException kaee) {
