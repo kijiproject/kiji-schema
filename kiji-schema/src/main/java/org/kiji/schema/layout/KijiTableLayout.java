@@ -79,8 +79,8 @@ import org.kiji.schema.util.ToJson;
  *
  * <p>
  *   KijiTableLayouts can be created via one of two methods: from a concrete layout with
- *   KijiTableLayout.newLayout(TableLayoutDesc), or as a layout update from a preexisting
- *   KijiTableLayout, with KijiTableLayout.createUpdatedLayout(TableLayoutDesc, KijiTableLayout).
+ *   {@link #newLayout(TableLayoutDesc)}, or as a layout update from a preexisting
+ *   KijiTableLayout, with {@link #createUpdatedLayout(TableLayoutDesc,KijiTableLayout)}.
  *   For the format requirements of layout descriptors for these methods, see the
  *   "Layout descriptors" section below.
  * </p>
