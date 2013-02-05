@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import org.kiji.schema.EntityId;
+import org.kiji.schema.EntityIdException;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.avro.ComponentType;
 import org.kiji.schema.avro.HashSpec;
@@ -53,6 +54,23 @@ public class TestFormattedEntityId {
         .setName("anint").setType(ComponentType.INTEGER).build());
     components.add(RowKeyComponent.newBuilder()
         .setName("along").setType(ComponentType.LONG).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 makeStringRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("astring").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("astring").setType(ComponentType.STRING).build());
 
     // build the row key format
     RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
@@ -360,10 +378,38 @@ public class TestFormattedEntityId {
     assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
   }
 
-  @Test(expected = EntityIdException.class)
+  @Test
+  public void testEmptyStringFormattedEntityId() {
+    RowKeyFormat2 format = makeStringRowKeyFormat();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String(""));
+    inputRowKey.add(new String(""));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+    byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
+    assertNotNull(hbaseRowKey);
+    System.out.println("Hbase Key is: ");
+    for (byte b: hbaseRowKey) {
+      System.out.format("%x ", b);
+    }
+    System.out.format("\n");
+
+    FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+    List<Object> actuals = testEntityId.getComponents();
+    assertEquals(format.getComponents().size(), actuals.size());
+    assertEquals(new String(""), actuals.get(0));
+    assertEquals(new String(""), actuals.get(1));
+
+    assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
+
+  }
+
+  @Test(expected=EntityIdException.class)
   public void testBadNullFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormat();
 
+    // no nonnull values allowed after null
     List<Object> inputRowKey = new ArrayList<Object>();
     inputRowKey.add(new String("one"));
     inputRowKey.add(null);
@@ -372,7 +418,7 @@ public class TestFormattedEntityId {
     FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
   }
 
-  @Test(expected = EntityIdException.class)
+  @Test(expected=EntityIdException.class)
   public void testTooManyComponentsFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormat();
 
@@ -385,19 +431,20 @@ public class TestFormattedEntityId {
     FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
   }
 
-  @Test(expected = EntityIdException.class)
+  @Test(expected=EntityIdException.class)
   public void testWrongComponentTypeFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormat();
 
     List<Object> inputRowKey = new ArrayList<Object>();
     inputRowKey.add(new String("one"));
+    // should be integer.
     inputRowKey.add(new Long(1L));
     inputRowKey.add(new Long(7));
 
     FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
   }
 
-  @Test(expected = EntityIdException.class)
+  @Test(expected=EntityIdException.class)
   public void testUnexpectedNullFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormatNoNulls();
 
@@ -408,7 +455,7 @@ public class TestFormattedEntityId {
     FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
   }
 
-  @Test(expected = EntityIdException.class)
+  @Test(expected=EntityIdException.class)
   public void testTooFewComponentsFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormatNoNulls();
 
@@ -418,16 +465,16 @@ public class TestFormattedEntityId {
     FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
   }
 
-  @Test(expected = EntityIdException.class)
+  @Test(expected=EntityIdException.class)
   public void testBadHbaseKey() {
     RowKeyFormat2 format = makeIntRowKeyFormat();
-    byte[] hbkey =new byte[]{(byte)0x01, (byte)0x02, (byte)0x042, (byte)0x01, (byte)0x02,
-        (byte)0x042, (byte)0x01, (byte)0x02, (byte)0x042, };
+    byte[] hbkey = new byte[]{(byte) 0x01, (byte) 0x02, (byte) 0x042, (byte) 0x01, (byte) 0x02,
+        (byte) 0x042, (byte) 0x01, (byte) 0x02, (byte) 0x042, };
 
     FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbkey, format);
   }
 
-  @Test(expected = EntityIdException.class)
+  @Test(expected=EntityIdException.class)
   public void testUnicodeZeroStringFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormat();
 
@@ -437,7 +484,7 @@ public class TestFormattedEntityId {
     FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
   }
 
-  @Test(expected = EntityIdException.class)
+  @Test(expected=EntityIdException.class)
   public void testNullFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormat();
 
@@ -447,7 +494,7 @@ public class TestFormattedEntityId {
     FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test(expected=NullPointerException.class)
   public void testNullInputFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormat();
 
@@ -456,7 +503,7 @@ public class TestFormattedEntityId {
     FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
   }
 
-  @Test(expected = EntityIdException.class)
+  @Test(expected=EntityIdException.class)
   public void testEmptyFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormat();
 

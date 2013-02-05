@@ -143,6 +143,10 @@ public final class CreateTableTool extends VersionValidatedTool {
             "Row key hashing is enabled for the table.  Use --num-regions instead.");
       case RAW:
         break;
+      case FORMATTED:
+        // TODO Support pre-splitting tables for FORMATTED RKF
+        // (https://jira.kiji.org/browse/SCHEMA-172)
+        throw new RuntimeException("CLI support for FORMATTED row keys is not yet available");
       default:
         throw new RuntimeException(
             "Unexpected row key encoding: " + getEncoding(tableLayout.getDesc().getKeysFormat()));

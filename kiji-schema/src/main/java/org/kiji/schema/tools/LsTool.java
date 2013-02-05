@@ -56,6 +56,7 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
@@ -437,6 +438,11 @@ public final class LsTool extends VersionValidatedTool {
 
     final KijiTable table = kiji.openTable(uri.getTable());
     final KijiTableLayout tableLayout = table.getLayout();
+
+    // TODO https://jira.kiji.org/browse/SCHEMA-171
+    if (tableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat2) {
+      throw new RuntimeException("CLI support for FORMATTED row keys is still unavailable");
+    }
 
     final String[] rawColumnNames =
         (mColumns.equals("*")) ? null : StringUtils.split(mColumns, ",");

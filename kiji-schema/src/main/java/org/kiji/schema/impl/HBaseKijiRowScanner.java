@@ -196,7 +196,6 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
       CLEANUP_LOG.debug("Call stack when this scanner was constructed:");
       CLEANUP_LOG.debug(mConstructorStack);
       close();
-      throw new RuntimeException("Debugging close scanner");
     }
     super.finalize();
   }

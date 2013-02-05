@@ -104,10 +104,10 @@ public class HBaseKijiTable extends AbstractKijiTable {
     }
     mTableLayout = kiji.getMetaTable().getTableLayout(name);
     if (mTableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat) {
-      mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat)mTableLayout.getDesc()
+      mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat) mTableLayout.getDesc()
           .getKeysFormat());
     } else if (mTableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat2) {
-      mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat2)mTableLayout.getDesc()
+      mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat2) mTableLayout.getDesc()
           .getKeysFormat());
     } else {
       throw new RuntimeException("Invalid Row Key format found in Kiji Table");
@@ -116,7 +116,7 @@ public class HBaseKijiTable extends AbstractKijiTable {
 
   /** {@inheritDoc} **/
   @Override
-  public EntityId getEntityId(Object ... kijiRowKey) {
+  public EntityId getEntityId(Object... kijiRowKey) {
     return mEntityIdFactory.getEntityId(kijiRowKey);
   }
 

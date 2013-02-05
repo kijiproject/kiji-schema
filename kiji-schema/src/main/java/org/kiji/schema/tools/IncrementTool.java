@@ -34,6 +34,7 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.KijiTableLayout;
 
@@ -89,6 +90,11 @@ public final class IncrementTool extends VersionValidatedTool {
     if (null == tableLayout) {
       LOG.error("No such table: {}", getURI());
       return 1;
+    }
+
+    // TODO Fix CLI with formatted row key format (https://jira.kiji.org/browse/SCHEMA-171)
+    if (tableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat2) {
+      throw new RuntimeException("CLI does not support Formatted Row Key format as yet");
     }
 
     final KijiColumnName column = new KijiColumnName(mColName);

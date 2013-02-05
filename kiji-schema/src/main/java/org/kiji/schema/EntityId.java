@@ -58,7 +58,8 @@ public abstract class EntityId {
   public abstract byte[] getHBaseRowKey();
 
   /**
-   * Get the individual components of the kiji Row Key representation.
+   * Get the individual components of the kiji Row Key representation. This excludes hash
+   * prefixes and only includes user-addressible components.
    * E.g. If the key is composed of a String followed by an Int, getComponentByIndex(0)
    * returns the String component. Zero based indexing.
    *
@@ -69,7 +70,8 @@ public abstract class EntityId {
   public abstract <T> T getComponentByIndex(int idx);
 
   /**
-   * Get the components of the row key as a List of Objects.
+   * Get the components of the row key as a List of Objects. This excludes hash
+   * prefixes and only includes user-addressible components.
    *
    * @return List of Objects representing the individual components of a row key.
    */

@@ -132,7 +132,7 @@ public class IntegrationTestFormattedRowKeys
     expected.add(mTable.getEntityId(new String("x"), new String("a0"), new String("aa0"),
         Integer.valueOf(Integer.MAX_VALUE)));
 
-    for (EntityId eid:expected) {
+    for (EntityId eid: expected) {
       mWriter.put(eid, "family", "column", "1");
     }
 

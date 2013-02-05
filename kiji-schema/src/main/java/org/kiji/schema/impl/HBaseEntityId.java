@@ -27,7 +27,10 @@ import com.google.common.base.Preconditions;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 
-/** Entity ID encapsulating an HBase row key. */
+/**
+ * Entity ID encapsulating an HBase row key. This literally
+ * represents a byte[] containing an hbase row key.
+ */
 @ApiAudience.Private
 public class HBaseEntityId extends EntityId {
   private byte[] mHBaseRowKey;

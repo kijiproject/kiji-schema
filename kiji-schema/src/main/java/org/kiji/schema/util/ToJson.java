@@ -207,7 +207,7 @@ public final class ToJson {
     final JsonGenerator generator = JSON_FACTORY.createJsonGenerator(stringWriter);
     // We have disabled this because we used unions to represent row key formats
     // in the table layout. This is a HACK and needs a better solution.
-    // TODO: Find better solution.
+    // TODO: Find better solution. https://jira.kiji.org/browse/SCHEMA-174
     //generator.disable(Feature.QUOTE_FIELD_NAMES);
     generator.setPrettyPrinter(new DefaultPrettyPrinter());
     final ObjectMapper mapper = new ObjectMapper();

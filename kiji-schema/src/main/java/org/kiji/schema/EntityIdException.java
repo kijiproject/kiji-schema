@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 /**
  * Thrown when kiji encounters a row key component name that is not valid.

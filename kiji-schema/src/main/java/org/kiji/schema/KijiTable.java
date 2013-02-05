@@ -48,12 +48,23 @@ public interface KijiTable extends Closeable {
   KijiTableLayout getLayout();
 
   /**
-   * Creates an entity ID for the specified UTF8 encoded Kiji row key.
+   * Creates an entity ID from a list of key components.
    *
-   * @param kijiRowKey UTF8 encoded Kiji row key.
-   * @return a new entity ID for the specified Kiji row key.
+   * @param kijiRowKey This can be one of the following depending on row key encoding:
+   *                   <ul>
+   *                      <li>
+   *                      Raw, Hash, Hash-Prefix EntityId: A single String or byte array
+   *                      component.
+   *                      </li>
+   *                      <li>
+   *                      Formatted EntityId: The primitive row key components (string, int,
+   *                      long) either passed in their expected order in the key or as an ordered
+   *                      list of components.
+   *                      </li>
+   *                   </ul>
+   * @return a new EntityId with the specified Kiji row key.
    */
-  EntityId getEntityId(Object ... kijiRowKey);
+  EntityId getEntityId(Object... kijiRowKey);
 
   /**
    * Opens an appropriate implementation of KijiTableReader for this table.  The caller is

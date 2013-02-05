@@ -56,6 +56,7 @@ import org.kiji.schema.avro.FamilyDesc;
 import org.kiji.schema.avro.LocalityGroupDesc;
 import org.kiji.schema.avro.RowKeyComponent;
 import org.kiji.schema.avro.RowKeyEncoding;
+import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
@@ -203,7 +204,12 @@ import org.kiji.schema.util.ToJson;
  *   <li> Raw encoding: the user has direct control over the encoding of row keys in the HBase
  *        table. In other words, the HBase row key is exactly the Kiji row key. These are used
  *        when the user would like to use arrays of bytes as row keys.
- *        See {@link org.kiji.schema.impl.RawEntityId RawEntityId}.
+ *   </li>
+ *   <li> Hashed: Deprecated! The HBase row key is computed as a hash of a single String or
+ *   byte array component.
+ *   </li>
+ *   <li> Hash-prefixed: the HBase row key is computed as the concatenation of the hash of a
+ *   single String or byte array component.
  *   </li>
  *   <li> Formatted: the row key is comprised of one or more components. Each component can be
  *        a string, a number or a hash of another component. The user will specify the size
@@ -860,56 +866,101 @@ public final class KijiTableLayout {
   private final ImmutableSet<KijiColumnName> mColumnNames;
 
   /**
-   * Ensure a row key format specified in a layout file is sane.
+   * Ensure a row key format (version 1) specified in a layout file is sane.
    * @param format The RowKeyFormat created from the layout file for a table.
-   * @return Boolean indicating whether row key format is valid.
+   * @throws InvalidLayoutException If the format is invalid.
    */
-  private boolean isValidRowKeyFormat2(RowKeyFormat2 format) {
+  private void isValidRowKeyFormat1(RowKeyFormat format) throws InvalidLayoutException {
+    RowKeyEncoding rowKeyEncoding = format.getEncoding();
+    if (rowKeyEncoding != RowKeyEncoding.RAW
+        && rowKeyEncoding != RowKeyEncoding.HASH
+        && rowKeyEncoding != RowKeyEncoding.HASH_PREFIX) {
+      throw new InvalidLayoutException("RowKeyFormat only supports encodings"
+          + "of type RAW, HASH and HASH_PREFIX. Use RowKeyFormat2 instead");
+    }
+    if (rowKeyEncoding == RowKeyEncoding.HASH || rowKeyEncoding == RowKeyEncoding.HASH_PREFIX) {
+      if (format.getHashSize() < 0 || format.getHashSize() > Hasher.HASH_SIZE_BYTES) {
+        throw new InvalidLayoutException("HASH or HASH_PREFIX row key formats require hash size"
+            + "to be between 1 and " + Hasher.HASH_SIZE_BYTES);
+      }
+    }
+  }
+
+  /**
+   * Ensure a row key format (version 2) specified in a layout file is sane.
+   * @param format The RowKeyFormat2 created from the layout file for a table.
+   * @throws InvalidLayoutException If the format is invalid.
+   */
+  private void isValidRowKeyFormat2(RowKeyFormat2 format) throws InvalidLayoutException {
+    // RowKeyFormat2 can only contain RAW or FORMATTED encoding types.
+    if (format.getEncoding() != RowKeyEncoding.RAW
+        && format.getEncoding() != RowKeyEncoding.FORMATTED) {
+      throw new InvalidLayoutException("RowKeyFormat2 only supports RAW or FORMATTED encoding."
+          + "Found " + format.getEncoding().name());
+    }
+
     // For RAW encoding, ignore the rest of the fields.
     if (format.getEncoding() == RowKeyEncoding.RAW) {
-      return true;
+      return;
     }
 
     // At least one primitive component.
     if (format.getComponents().size() <= 0) {
-      return false;
+      throw new InvalidLayoutException("At least 1 component is required in row key format.");
     }
 
     // Nullable index cannot be the first element or anything greater
     // than the components length (number of components).
     if (format.getNullableStartIndex() <= 0
         || format.getNullableStartIndex() > format.getComponents().size()) {
-      return false;
+      throw new InvalidLayoutException("Invalid index for nullable component. The second component"
+          + "onwards can be set to null.");
     }
 
     // Range scan index cannot be the first element or anything greater
     // than the components length (number of components).
     if (format.getRangeScanStartIndex() <= 0
       || format.getRangeScanStartIndex() > format.getComponents().size()) {
-      return false;
+      throw new InvalidLayoutException("Invalid range scan index. Range scans are supported "
+          + "starting with the second component.");
     }
 
     Set<String> nameset = new HashSet<String>();
     for (RowKeyComponent component: format.getComponents()) {
       // ensure names are valid "[a-zA-Z_][a-zA-Z0-9_]*"
       if (!isValidName(component.getName())) {
-        return false;
+        throw new InvalidLayoutException("Names should begin with an alphabet followed by a "
+            + "combination of alphabets, numbers and underscores.");
       }
       nameset.add(component.getName());
     }
 
     // repeated component names
     if (nameset.size() != format.getComponents().size()) {
-      return false;
+      throw new InvalidLayoutException("Component name already used.");
     }
 
     // hash size invalid
     if (format.getSalt().getHashSize() <= 0
         || format.getSalt().getHashSize() > Hasher.HASH_SIZE_BYTES) {
-      return false;
+      throw new InvalidLayoutException("Valid hash sizes are between 1 and "
+          + Hasher.HASH_SIZE_BYTES);
     }
+  }
 
-    return true;
+  /**
+   * Ensure that the layout version matches the feature set.
+   *
+   * @param desc The table layout descriptor.
+   * @throws InvalidLayoutException If there is a feature mismatch.
+   */
+  private void checkVersioning(TableLayoutDesc desc) throws InvalidLayoutException {
+    String versionNumber = desc.getVersion().split("-")[1];
+    if (Float.parseFloat(versionNumber) < 1.1 && desc.getKeysFormat()
+        instanceof RowKeyFormat2) {
+      throw new InvalidLayoutException("RowKeyFormat2 requires the layout version to be greater"
+          + "than or equal to 1.1");
+    }
   }
 
   // CSOFF: MethodLengthCheck
@@ -931,6 +982,8 @@ public final class KijiTableLayout {
     if (!isValidName(getName())) {
       throw new InvalidLayoutException(String.format("Invalid table name: '%s'.", getName()));
     }
+
+    checkVersioning(desc);
 
     if (reference != null) {
       if (!getName().equals(reference.getName())) {
@@ -960,11 +1013,11 @@ public final class KijiTableLayout {
       }
     }
 
-    if (mDesc.getKeysFormat() instanceof RowKeyFormat2) {
+    if (mDesc.getKeysFormat() instanceof RowKeyFormat) {
+      isValidRowKeyFormat1((RowKeyFormat) mDesc.getKeysFormat());
+    } else if (mDesc.getKeysFormat() instanceof RowKeyFormat2) {
       // Check validity of row key format.
-      if (!isValidRowKeyFormat2((RowKeyFormat2)mDesc.getKeysFormat())) {
-        throw new InvalidLayoutException(String.format("Invalid row key format"));
-      }
+      isValidRowKeyFormat2((RowKeyFormat2) mDesc.getKeysFormat());
     }
 
     // Build localities:

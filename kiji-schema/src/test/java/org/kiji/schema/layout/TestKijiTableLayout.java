@@ -58,7 +58,7 @@ import org.kiji.schema.util.ToJson;
 public class TestKijiTableLayout {
   private static final Logger LOG = LoggerFactory.getLogger(TestKijiTableLayout.class);
 
-  private static final String TABLE_LAYOUT_VERSION = "kiji-1.0";
+  private static final String TABLE_LAYOUT_VERSION = "kiji-1.1";
 
   private RowKeyFormat makeHashedRKF1() {
     return RowKeyFormat.newBuilder()
@@ -91,6 +91,7 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  // Invalid row key format
   private RowKeyFormat2 noComponentsRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -103,6 +104,7 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  // Invalid row key format
   private RowKeyFormat2 badNullableIndexRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -119,6 +121,7 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  // Invalid row key format.
   private RowKeyFormat2 zeroNullableIndexRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -135,6 +138,7 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  // Invalid row key format.
   private RowKeyFormat2 tooHighNullableIndexRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -151,6 +155,7 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  // Invalid row key format.
   private RowKeyFormat2 badRangeScanIndexRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -167,6 +172,7 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  // Invalid row key format.
   private RowKeyFormat2 tooHighRangeScanIndexRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -183,6 +189,7 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  // Invalid row key format.
   private RowKeyFormat2 badCompNameRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -199,6 +206,7 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  // Invalid row key format.
   private RowKeyFormat2 badHashSizeRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -218,6 +226,7 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  // Invalid row key format.
   private RowKeyFormat2 repeatedNamesRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -235,6 +244,7 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  // Invalid row key format.
   private RowKeyFormat2 emptyCompNameRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -274,7 +284,7 @@ public class TestKijiTableLayout {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(makeRawRKF1())
-        .setVersion("6.0")
+        .setVersion("kiji-6.0")
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals("1", layout.getDesc().getLayoutId());
@@ -1004,7 +1014,7 @@ public class TestKijiTableLayout {
         layout.getCellSchema(new KijiColumnName("family_name", "column_name")).getStorage());
   }
 
-  @Test (expected = InvalidLayoutException.class)
+  @Test(expected=InvalidLayoutException.class)
   public void testNoComponentsRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
@@ -1014,7 +1024,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout ktl = new KijiTableLayout(desc, null);
   }
 
-  @Test (expected = InvalidLayoutException.class)
+  @Test(expected=InvalidLayoutException.class)
   public void testBadNullableIndexRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
@@ -1024,7 +1034,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout ktl = new KijiTableLayout(desc, null);
   }
 
-  @Test (expected = InvalidLayoutException.class)
+  @Test(expected=InvalidLayoutException.class)
   public void badRangeScanIndexRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
@@ -1034,7 +1044,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout ktl = new KijiTableLayout(desc, null);
   }
 
-  @Test (expected = InvalidLayoutException.class)
+  @Test(expected=InvalidLayoutException.class)
   public void badCompNameRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
@@ -1044,7 +1054,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout ktl = new KijiTableLayout(desc, null);
   }
 
-  @Test (expected = InvalidLayoutException.class)
+  @Test(expected=InvalidLayoutException.class)
   public void badHashSizeRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
@@ -1054,7 +1064,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout ktl = new KijiTableLayout(desc, null);
   }
 
-  @Test (expected = InvalidLayoutException.class)
+  @Test(expected=InvalidLayoutException.class)
   public void repeatedNamesRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
@@ -1064,7 +1074,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout ktl = new KijiTableLayout(desc, null);
   }
 
-  @Test (expected = InvalidLayoutException.class)
+  @Test(expected=InvalidLayoutException.class)
   public void tooHighRangeScanIndexRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
@@ -1074,7 +1084,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout ktl = new KijiTableLayout(desc, null);
   }
 
-  @Test (expected = InvalidLayoutException.class)
+  @Test(expected=InvalidLayoutException.class)
   public void zeroNullableIndexRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
@@ -1084,7 +1094,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout ktl = new KijiTableLayout(desc, null);
   }
 
-  @Test (expected = InvalidLayoutException.class)
+  @Test(expected=InvalidLayoutException.class)
   public void tooHighNullableScanIndexRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
@@ -1094,7 +1104,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout ktl = new KijiTableLayout(desc, null);
   }
 
-  @Test (expected = InvalidLayoutException.class)
+  @Test(expected=InvalidLayoutException.class)
   public void emptyCompNameRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")

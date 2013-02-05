@@ -24,13 +24,17 @@ import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
-
+import org.kiji.schema.EntityIdException;
 import org.kiji.schema.avro.ComponentType;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat2;
@@ -43,10 +47,13 @@ import org.kiji.schema.util.Hasher;
  */
 @ApiAudience.Private
 public final class FormattedEntityId extends EntityId {
-  /** HBase row key bytes. */
+  // HBase row key bytes. The encoded components of the row key
+  // potentially including a hash prefix, as specified in the row key format.
   private byte[] mHBaseRowKey;
 
   private List<Object> mComponentValues;
+
+  private static final Logger LOG = LoggerFactory.getLogger(FormattedEntityId.class);
 
   /**
    * Convert class of object to the correct ComponentType.
@@ -54,27 +61,26 @@ public final class FormattedEntityId extends EntityId {
    * @return ComponentType representing the class of the input object.
    */
   private static ComponentType getType(Object obj) {
-    ComponentType type = null;
     if (obj instanceof String) {
-      type = ComponentType.STRING;
+      return ComponentType.STRING;
     } else if (obj instanceof Integer) {
-      type = ComponentType.INTEGER;
+      return ComponentType.INTEGER;
     } else if (obj instanceof Long) {
-      type = ComponentType.LONG;
+      return ComponentType.LONG;
     }
-    return type;
+    throw new EntityIdException("Unexpected type for Component " + obj.getClass().getName());
   }
 
   /**
    * Creates a FormattedEntityId from the specified Kiji row key.
    *
    * @param kijiRowKey An ordered list of objects of row key components.
-   * @param format The RowKeyFormat as specified in the layout file.
+   * @param format The RowKeyFormat2 as specified in the layout file.
    * @return a new FormattedEntityId with the specified Kiji row key.
    */
   public static FormattedEntityId getEntityId(List<Object> kijiRowKey,
       RowKeyFormat2 format) {
-
+    Preconditions.checkNotNull(format);
     Preconditions.checkNotNull(kijiRowKey);
     // Validity check for kiji  Row Key.
     if (kijiRowKey.size() > format.getComponents().size()) {
@@ -84,10 +90,12 @@ public final class FormattedEntityId extends EntityId {
       throw new EntityIdException("Too few components in kiji Row key");
     }
 
-    // validate the components passed in against the row key format
+    // Validate the components passed in against the row key format such
+    // as prevent non-null component from following null components and checking
+    // component types against the format specified.
     boolean hasSeenNull = false;
     for (int i = 0; i < kijiRowKey.size(); i++) {
-      // non-null component follows null component
+      // Prevent non-null components that follow null components
       if (hasSeenNull) {
         if (null == kijiRowKey.get(i)) {
           continue;
@@ -95,9 +103,9 @@ public final class FormattedEntityId extends EntityId {
           throw new EntityIdException("Non null component follows null component");
         }
       } else if (null == kijiRowKey.get(i)) {
-      // we found a null, check if this is at a position greater than or equal to
-      // nullable_start_index (the position from which null values are allowed)
-      // also set the flag indicating we've seen a null value
+        // we found a null, check if this is at a position greater than or equal to
+        // nullable_start_index (the position from which null values are allowed)
+        // also set the flag indicating we've seen a null value
         if (format.getNullableStartIndex() <= i) {
           hasSeenNull = true;
           continue;
@@ -132,20 +140,26 @@ public final class FormattedEntityId extends EntityId {
    * @return a new FormattedEntityId with the specified HBase row key.
    */
   public static FormattedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat2 format) {
-    List<Object> kijiRowKey = null;
+    Preconditions.checkNotNull(format);
+    Preconditions.checkNotNull(hbaseRowKey);
     byte[] cloneHbaseKey = hbaseRowKey.clone();
     // we modify the hbaseRowKey in the makeKijiRowKey code for integer encoding, so we make
     // a copy of it to pass to this function.
-    kijiRowKey = makeKijiRowKey(format, cloneHbaseKey);
+    List<Object> kijiRowKey = makeKijiRowKey(format, cloneHbaseKey);
     return new FormattedEntityId(format, hbaseRowKey, kijiRowKey);
   }
 
   /**
    * Create an hbase row key, which is a byte array from the given formatted kijiRowKey.
+   * This method requires that the kijiRowKey argument is the correct length for the specified
+   * format.
    * The following encoding will be used to ensure correct ordering:
    * Strings are UTF-8 encoded and terminated by a null byte. Strings cannot contain "\u0000".
    * Integers are exactly 4 bytes long.
    * Longs are exactly 8 bytes long.
+   * Both integers and longs have the sign bit flipped so that their values are wrapped around to
+   * create the correct lexicographic ordering. (i.e. after converting to byte array,
+   * MIN_INT < 0 < MAX_INT).
    * Hashed components are exactly hash_size bytes long and are the first component of
    * the hbase key.
    * Except for the first, all components of a kijiRowKey can be null. However, to maintain
@@ -153,6 +167,7 @@ public final class FormattedEntityId extends EntityId {
    * in the row key format specifies which component (and hence following components) are nullable.
    * By default, the hash only uses the first component, but this can be changed using the Range
    * Scan index.
+   *
    * @param format The formatted row key format for this table.
    * @param kijiRowKey An ordered list of Objects of the key components.
    * @return A byte array representing the encoded Hbase row key.
@@ -168,30 +183,31 @@ public final class FormattedEntityId extends EntityId {
       if (null == kijiRowKey.get(pos)) {
         continue;
       }
+      byte[] tempBytes;
       switch (getType(kijiRowKey.get(pos))) {
         case STRING:
           if (((String)kijiRowKey.get(pos)).contains("\u0000")) {
             throw new EntityIdException("String component cannot contain \u0000");
           }
           try {
-            hbaseKey.add(((String)kijiRowKey.get(pos)).getBytes("UTF-8"));
+            hbaseKey.add(((String) kijiRowKey.get(pos)).getBytes("UTF-8"));
           } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            LOG.error(e.toString());
             throw new EntityIdException(String.format(
                 "UnsupportedEncoding for component %d", pos));
           }
           break;
         case INTEGER:
-          int temp = (Integer)kijiRowKey.get(pos);
-          byte[] tempBytes = ByteBuffer.allocate(Integer.SIZE / Byte.SIZE)
+          int temp = (Integer) kijiRowKey.get(pos);
+          tempBytes = ByteBuffer.allocate(Integer.SIZE / Byte.SIZE)
               .putInt(temp).array();
-          tempBytes[0] = (byte)((int)tempBytes[0] ^ (int)Byte.MIN_VALUE);
+          tempBytes[0] = (byte)((int) tempBytes[0] ^ (int)Byte.MIN_VALUE);
           hbaseKey.add(tempBytes);
           break;
         case LONG:
-          long templong = (Long)kijiRowKey.get(pos);
+          long templong = (Long) kijiRowKey.get(pos);
           tempBytes = ByteBuffer.allocate(Long.SIZE / Byte.SIZE).putLong(templong).array();
-          tempBytes[0] = (byte)((int)tempBytes[0] ^ (int)Byte.MIN_VALUE);
+          tempBytes[0] = (byte)((int) tempBytes[0] ^ (int)Byte.MIN_VALUE);
           hbaseKey.add(tempBytes);
           break;
         default:
@@ -218,11 +234,12 @@ public final class FormattedEntityId extends EntityId {
     }
     for (; pos < hbaseKey.size(); pos++) {
       baos.write(hbaseKey.get(pos), 0, hbaseKey.get(pos).length);
-      if (format.getComponents().get(pos).getType() == ComponentType.STRING) {
+      if (format.getComponents().get(pos).getType() == ComponentType.STRING
+          || format.getComponents().get(pos) == null) {
+        // empty strings will be encoded as null, hence we need to delimit them too
         baos.write(zeroDelim);
       }
     }
-
     return baos.toByteArray();
   }
 
@@ -232,8 +249,9 @@ public final class FormattedEntityId extends EntityId {
   }
 
   /**
-   * Convert a byte array containing an hbase row key into a Map corresponding to the key_spec
-   * in the layout file.
+   * Decode a byte array containing an hbase row key into an ordered list corresponding to
+   * the key format in the layout file.
+   *
    * @param format The row key format as specified in the layout file.
    * @param hbaseRowKey A byte array containing the hbase row key.
    * @return An ordered list of component values in the key.
@@ -253,14 +271,14 @@ public final class FormattedEntityId extends EntityId {
         case STRING:
           // Read the row key until we encounter a Null (0) byte or end.
           int endpos = pos;
-          while (endpos < hbaseRowKey.length && (hbaseRowKey[endpos] != (byte)0)) {
+          while (endpos < hbaseRowKey.length && (hbaseRowKey[endpos] != (byte) 0)) {
             endpos += 1;
           }
           String str = null;
           try {
             str = new String(hbaseRowKey, pos, endpos - pos, "UTF-8");
           } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            LOG.error(e.toString());
             throw new EntityIdException(String.format(
                 "UnsupportedEncoding for component %d", kijiRowElem));
           }
@@ -269,7 +287,7 @@ public final class FormattedEntityId extends EntityId {
           break;
         case INTEGER:
           // Toggle highest order bit to return to original 2's complement.
-          hbaseRowKey[pos] =  (byte)((int)hbaseRowKey[pos] ^ (int)Byte.MIN_VALUE);
+          hbaseRowKey[pos] =  (byte)((int) hbaseRowKey[pos] ^ (int) Byte.MIN_VALUE);
           try {
             buf = ByteBuffer.wrap(hbaseRowKey, pos, Integer.SIZE / Byte.SIZE);
           } catch (IndexOutOfBoundsException e) {
@@ -280,7 +298,7 @@ public final class FormattedEntityId extends EntityId {
           break;
         case LONG:
           // Toggle highest order bit to return to original 2's complement.
-          hbaseRowKey[pos] =  (byte)((int)hbaseRowKey[pos] ^ (int)Byte.MIN_VALUE);
+          hbaseRowKey[pos] =  (byte)((int) hbaseRowKey[pos] ^ (int) Byte.MIN_VALUE);
           try {
             buf = ByteBuffer.wrap(hbaseRowKey, pos, Long.SIZE / Byte.SIZE);
           } catch (IndexOutOfBoundsException e) {
@@ -293,6 +311,18 @@ public final class FormattedEntityId extends EntityId {
           throw new RuntimeException("Invalid code path");
       }
       kijiRowElem += 1;
+    }
+
+    // Fail if there are extra bytes in hbase row key.
+    if (pos < hbaseRowKey.length) {
+      throw new EntityIdException("Extra bytes in hbase row key cannot be mapped to any "
+          + "component");
+    }
+
+    // Fail if we encounter nulls before it is legal to do so.
+    if (kijiRowElem < format.getNullableStartIndex()) {
+      throw new EntityIdException("Too few components decoded from hbase row key. Component "
+          + "number " + kijiRowElem + " cannot be null");
     }
 
     // finish up with nulls for everything that wasn't in the key/not materialized.
@@ -326,8 +356,7 @@ public final class FormattedEntityId extends EntityId {
 
   /** {@inheritDoc} **/
   @Override
-  @SuppressWarnings("unchecked")
   public List<Object> getComponents() {
-    return (List<Object>)((ArrayList)mComponentValues).clone();
+    return Collections.unmodifiableList(new ArrayList(mComponentValues));
   }
 }

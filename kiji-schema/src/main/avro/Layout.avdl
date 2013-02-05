@@ -182,20 +182,31 @@ protocol KijiTableLayoutRecords {
 
   /**
    * Row keys can either be raw bytes, hash, hash-prefixed or be formatted. Formatted row keys
-   * compose of one or more primitive types (string, int, long). By default
+   * are composed of one or more primitive types (string, int, long). By default
    * they are prefixed by the hash of the first component.
    */
   enum RowKeyEncoding {
     /** raw bytes */
     RAW,
 
-    /** Deprecated, use FORMATTED. Row keys are hashed. */
+    /**
+     * Deprecated, use FORMATTED. Row keys are the hash of one string component.
+     * Requires RowKeyFormat below.
+     */
     HASH,
 
-    /** Deprecated, use FORMATTED. Row keys are prefixed by a hash. */
+    /**
+     * Deprecated, use FORMATTED. Row keys are one string component with a hash prefix.
+     * Requires RowKeyFormat below.
+     */
     HASH_PREFIX,
 
-    /** user specified format */
+    /**
+     * User specified format. The key may be composed of one or more primitive types (string,
+     * int, long) prefixed by the hash of the first k components, 1 <= k < numComponents, where k
+     * can be specified using range_scan_start_index in RowKeyFormat2 below.
+     * This requires the user to use RowKeyFormat2 below.
+     */
     FORMATTED
   }
 
@@ -207,7 +218,10 @@ protocol KijiTableLayoutRecords {
     /** Hashing algorithm used. */
     HashType hash_type = "MD5";
 
-    /** Size of the hash. */
+    /**
+     * Size of the hash. If used for salting purposes, i.e. the hash is not the sole
+     * component of the key, use a smaller hash size.
+     */
     int hash_size = 16;
 
     /** Use with caution! Under normal circumstances, an hbase row key is created as
@@ -221,6 +235,7 @@ protocol KijiTableLayoutRecords {
   /**
    * Deprecated! Use RowKeyFormat2 instead.
    * The specification for the row key. Fields have default values for suggested usage.
+   * Encoding cannot be FORMATTED if you use this record.
    */
   record RowKeyFormat {
 
@@ -239,8 +254,7 @@ protocol KijiTableLayoutRecords {
   }
 
   /**
-   * Type of a component of a row key.
-   * We currently support string, integers and longs.
+   * Types of row key components supported in FORMATTED encoding.
    */
   enum ComponentType {
     STRING,
@@ -264,6 +278,7 @@ protocol KijiTableLayoutRecords {
 
   /**
    * The specification for the row key. Fields have default values for suggested usage.
+   * Only RAW and FORMATTED encoding can be used with this record.
    */
   record RowKeyFormat2 {
     /** Whether the row key is raw bytes or composed of one or more primitive types. */
@@ -307,7 +322,10 @@ protocol KijiTableLayoutRecords {
     /** User description of the table. */
     string description = "";
 
-    /** Whether row key hashing should be managed by Kiji. */
+    /**
+     * The format of row keys for the table. Please use RowKeyFormat2 as
+     * RowKeyFormat is deprecated.
+     */
     union { RowKeyFormat, RowKeyFormat2 } keys_format;
 
     /** Locality groups in the table. */
