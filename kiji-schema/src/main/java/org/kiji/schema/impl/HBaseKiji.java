@@ -477,15 +477,9 @@ public final class HBaseKiji implements Kiji {
     // Delete from the meta table.
     getMetaTable().deleteTable(tableName);
 
-    // TODO(KIJI-401): HBaseAdmin lies about deleteTable being a synchronous operation.  Let's wait
-    // until the table is actually gone.
-    while (getHBaseAdmin().tableExists(hbaseTable)) {
-      LOG.debug("Waiting for HBase table " + hbaseTable + " to be deleted...");
-      try {
-        Thread.sleep(500);
-      } catch (InterruptedException e) {
-        // Being interrupted here is fine.
-      }
+    // If the table persists immediately after deletion attempt, then give up.
+    if (getHBaseAdmin().tableExists(hbaseTable)) {
+      LOG.warn("HBase table " + hbaseTable + " survives deletion attempt. Giving up...");
     }
   }
 
