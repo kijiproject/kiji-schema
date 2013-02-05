@@ -31,8 +31,6 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.mapreduce.TableSplit;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -48,6 +46,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiRegion;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
@@ -55,7 +54,6 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiURIException;
-import org.kiji.schema.impl.DefaultHBaseFactory;
 import org.kiji.schema.impl.HBaseEntityId;
 import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.HBaseKijiTable;
@@ -97,16 +95,16 @@ public class KijiTableInputFormat
     final Kiji kiji = Kiji.Factory.open(inputTableURI, conf);
     final KijiTable table = kiji.openTable(inputTableURI.getTable());
 
-    final HBaseAdmin admin =
-        DefaultHBaseFactory.Provider.get().getHBaseAdminFactory(inputTableURI).create(conf);
     final HTableInterface htable = HBaseKijiTable.downcast(table).getHTable();
 
-    final List<HRegionInfo> regions = admin.getTableRegions(htable.getTableName());
     final List<InputSplit> splits = Lists.newArrayList();
-    for (HRegionInfo region : regions) {
+    for (KijiRegion region : table.getRegions()) {
       final byte[] startKey = region.getStartKey();
+      // TODO: a smart way to get which location is most relevant.
+      final String location =
+          region.getLocations().isEmpty() ? null : region.getLocations().iterator().next();
       final TableSplit tableSplit = new TableSplit(
-          htable.getTableName(), startKey, region.getEndKey(), table.getName());
+          htable.getTableName(), startKey, region.getEndKey(), location);
       splits.add(new KijiTableSplit(tableSplit, startKey));
     }
     return splits;

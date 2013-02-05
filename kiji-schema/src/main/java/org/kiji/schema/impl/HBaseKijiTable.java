@@ -20,21 +20,31 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.List;
 
+import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiRegion;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * <p>A KijiTable that exposes the underlying HBase implementation.</p>
@@ -45,6 +55,8 @@ import org.kiji.schema.layout.KijiTableLayout;
  */
 @ApiAudience.Private
 public class HBaseKijiTable extends AbstractKijiTable {
+  private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTable.class);
+
   /** The underlying HTable that stores this Kiji table's data. */
   private final HTableInterface mHTable;
 
@@ -136,6 +148,47 @@ public class HBaseKijiTable extends AbstractKijiTable {
   @Override
   public KijiTableWriter openTableWriter() throws IOException {
     return new HBaseKijiTableWriter(this);
+  }
+
+  /**
+   * Return the regions in this table as a list.
+   *
+   * <p>This method was copied from HFileOutputFormat of 0.90.1-cdh3u0 and modified to
+   * return KijiRegion instead of ImmutableBytesWritable.</p>
+   *
+   * @return An ordered list of the table regions.
+   * @throws IOException on I/O error.
+   */
+  @Override
+  public List<KijiRegion> getRegions() throws IOException {
+    final HBaseAdmin hbaseAdmin = ((HBaseKiji) getKiji()).getHBaseAdmin();
+    final HTableInterface hbaseTable = getHTable();
+
+    final List<HRegionInfo> regions = hbaseAdmin.getTableRegions(hbaseTable.getTableName());
+    final List<KijiRegion> result = Lists.newArrayList();
+
+    // If we can get the concrete HTable, we can get location information.
+    if (hbaseTable instanceof HTable) {
+      LOG.debug("Casting HTableInterface to an HTable.");
+      final HTable concreteHBaseTable = (HTable) hbaseTable;
+      try {
+        for (HRegionInfo region: regions) {
+          List<HRegionLocation> hLocations =
+              concreteHBaseTable.getRegionsInRange(region.getStartKey(), region.getEndKey());
+          result.add(new HBaseKijiRegion(region, hLocations));
+        }
+      } finally {
+        ResourceUtils.closeOrLog(concreteHBaseTable);
+      }
+    } else {
+      LOG.warn("Unable to cast HTableInterface {} to an HTable.  "
+          + "Creating Kiji regions without location info.", getURI());
+      for (HRegionInfo region: regions) {
+        result.add(new HBaseKijiRegion(region));
+      }
+    }
+
+    return result;
   }
 
   /** {@inheritDoc} */

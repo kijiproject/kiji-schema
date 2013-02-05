@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
@@ -74,4 +75,12 @@ public interface KijiTable extends Closeable {
    * @return A KijiTableWriter for this table.
    */
   KijiTableWriter openTableWriter() throws IOException;
+
+  /**
+   * Return the regions in this table as an ordered list.
+   *
+   * @return An ordered list of the table regions.
+   * @throws IOException on I/O error.
+   */
+  List<KijiRegion> getRegions() throws IOException;
 }

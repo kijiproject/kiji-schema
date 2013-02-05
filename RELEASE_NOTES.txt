@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
+  * SCHEMA-153. Adds a getRegions() method to KijiTable. Returns logical
+      region divisions in a kiji table.
   * SCHEMA-119. Remove TableLayoutSerializer class.
   * SCHEMA-147. Hide OperatorRowFilter. You should use AndRowFilter or
       OrRowFilter directly.
