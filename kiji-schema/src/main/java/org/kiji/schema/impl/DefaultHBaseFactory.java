@@ -57,7 +57,7 @@ public final class DefaultHBaseFactory implements HBaseFactory {
   /** {@inheritDoc} */
   @Override
   public LockFactory getLockFactory(KijiURI uri, Configuration conf) throws IOException {
-    return new ZooKeeperLockFactory(conf);
+    return new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(uri));
   }
 
   /** {@inheritDoc} */

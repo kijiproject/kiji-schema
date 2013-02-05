@@ -21,8 +21,10 @@ package org.kiji.schema;
 
 import java.io.IOException;
 
+import com.google.common.base.Joiner;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,9 +92,14 @@ public final class KijiInstaller {
       throw new KijiInvalidNameException(String.format(
           "Kiji URI '%s' does not specify a Kiji instance name", uri));
     }
+
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
     final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
     final LockFactory lockFactory = hbaseFactory.getLockFactory(uri, conf);
+
+    // TODO: Factor this in HBaseKiji
+    conf.set(HConstants.ZOOKEEPER_QUORUM, Joiner.on(",").join(uri.getZookeeperQuorumOrdered()));
+    conf.setInt(HConstants.ZOOKEEPER_CLIENT_PORT, uri.getZookeeperClientPort());
 
     final HBaseAdmin hbaseAdmin = adminFactory.create(conf);
     try {
@@ -129,6 +136,10 @@ public final class KijiInstaller {
           "Kiji URI '%s' does not specify a Kiji instance name", uri));
     }
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
+
+    // TODO: Factor this in HBaseKiji
+    conf.set(HConstants.ZOOKEEPER_QUORUM, Joiner.on(",").join(uri.getZookeeperQuorumOrdered()));
+    conf.setInt(HConstants.ZOOKEEPER_CLIENT_PORT, uri.getZookeeperClientPort());
 
     LOG.info(String.format("Removing the kiji instance '%s'.", uri.getInstance()));
 

@@ -129,7 +129,7 @@ public final class TestingHBaseFactory implements HBaseFactory {
         return newFactory;
       }
     }
-    return new ZooKeeperLockFactory(conf);
+    return new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(uri));
   }
 
   /** Resets the testing HBase factory. */
