@@ -23,76 +23,50 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.File;
 import java.io.IOException;
 
-import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
-import org.kiji.schema.testutil.ToolResult;
-import org.kiji.schema.tools.CreateTableTool;
 
-/**
- * Base class for integration tests that exercise KijiTableWriter delete functionality.
- */
-public abstract class BaseKijiTableWriterDeletesIntegrationTest
-    extends AbstractKijiIntegrationTest {
-  private static final Logger LOG = LoggerFactory.getLogger(
-      BaseKijiTableWriterDeletesIntegrationTest.class);
+/** Exercises KijiTableWriter delete functionality. */
+public class IntegrationTestKijiTableWriterDeletes extends AbstractKijiIntegrationTest {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(IntegrationTestKijiTableWriterDeletes.class);
 
-  public static final String TABLE_NAME = "test";
-
-  private final KijiDataRequest mDataRequest;
-
-  public BaseKijiTableWriterDeletesIntegrationTest() {
-    KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(Integer.MAX_VALUE)
-        .addFamily("group")
-        .addFamily("map")
-        .addFamily("memoryMap");
-    mDataRequest = builder.build();
-  }
-
+  private KijiDataRequest mDataRequest = null;
   private Kiji mKiji = null;
   private KijiTable mTable = null;
   private KijiTableWriter mWriter = null;
   private KijiTableReader mReader = null;
 
   /**
-   * Creates the KijiTableWriter to test.
-   *
-   * @param table The table to write to.
-   * @return A new KijiTableWriter to test.
-   * @throws IOException If there is an error creating the writer.
-   */
-  protected abstract KijiTableWriter createWriter(KijiTable table) throws IOException;
-
-  /**
    * Creates a test table for deleting data.
    */
   @Before
-  public void setup() throws Exception {
-    mKiji = Kiji.Factory.open(getKijiURI(), getIntegrationHelper().getConf());
+  public final void setupIntegrationTestKijiTableWriterDeletes() throws Exception {
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.addColumns().withMaxVersions(Integer.MAX_VALUE)
+        .addFamily("group")
+        .addFamily("map")
+        .addFamily("memoryMap");
+    mDataRequest = builder.build();
+
+    mKiji = Kiji.Factory.open(getKijiURI(), getConf());
 
     LOG.info("Creating test table.");
-    final File layoutFile =
-        KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.DELETES_TEST));
-    final ToolResult createResult = runTool(new CreateTableTool(), new String[] {
-      "--table=" + TABLE_NAME,
-      "--layout=" + layoutFile,
-    });
-    assertEquals(0, createResult.getReturnCode());
+    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.DELETES_TEST);
+    mKiji.createTable(layout.getName(), layout);
 
     LOG.info("Populating test table.");
-    mTable = mKiji.openTable(TABLE_NAME);
-    mWriter = createWriter(mTable);
-
+    mTable = mKiji.openTable(layout.getName());
+    mWriter = mTable.openTableWriter();
     mWriter.put(mTable.getEntityId("alpha"), "group", "a", 1L, "1");
     mWriter.put(mTable.getEntityId("alpha"), "group", "a", 2L, "2");
     mWriter.put(mTable.getEntityId("alpha"), "group", "a", 3L, "3");
@@ -101,7 +75,6 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
     mWriter.put(mTable.getEntityId("alpha"), "map", "key2", 3L, "3");
     mWriter.put(mTable.getEntityId("alpha"), "memoryMap", "key1", 2L, "2");
     mWriter.put(mTable.getEntityId("alpha"), "memoryMap", "key2", 4L, "4");
-
     mWriter.flush();
 
     mReader = mTable.openTableReader();
@@ -116,10 +89,10 @@ public abstract class BaseKijiTableWriterDeletesIntegrationTest
    * Deletes the test table.
    */
   @After
-  public void teardown() throws IOException {
-    IOUtils.closeQuietly(mReader);
-    IOUtils.closeQuietly(mWriter);
-    IOUtils.closeQuietly(mTable);
+  public final void teardownIntegrationTestKijiTableWriterDeletes() throws Exception {
+    mReader.close();
+    mWriter.close();
+    mTable.close();
     mKiji.release();
   }
 

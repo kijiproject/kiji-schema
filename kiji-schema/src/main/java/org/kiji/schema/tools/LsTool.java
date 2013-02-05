@@ -35,7 +35,6 @@ import com.google.common.collect.Maps;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -45,11 +44,11 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder;
-import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
@@ -64,27 +63,39 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 /**
  * Command-line tool to explore kiji table data like the 'ls' command of a unix shell.
  *
- * List all kiji tables:
- *   kiji ls
- *
  * List all kiji instances:
- *   kiji ls --instances
+ * <pre>
+ *   kiji ls --kiji=kiji://hbase-address/
+ * </pre>
+ *
+ * List all kiji tables:
+ * <pre>
+ *   kiji ls --kiji=kiji://hbase-address/kiji-instance/
+ * </pre>
  *
  * List all families in a kiji table foo:
- *   kiji ls --table=foo
+ * <pre>
+ *   kiji ls --kiji=kiji://hbase-address/kiji-instance/table-name/
+ * </pre>
  *
  * List all data in the info:email and derived:domain columns of a table foo:
- *   kiji ls --table=foo --columns=info:email,derived:domain
+ * <pre>
+ *   kiji ls \
+ *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
+ *       --columns=info:email,derived:domain
+ * </pre>
  *
  * List all data in the info:email and derived:domain columns of a table foo in row bar:
- *   kiji ls --table=foo --columns=info:email,derived:domain --entity-id=bar
+ * <pre>
+ *   kiji ls \
+ *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
+ *       --columns=info:email,derived:domain \
+ *       --entity-id=bar
+ * </pre>
  */
 @ApiAudience.Private
 public final class LsTool extends VersionValidatedTool {
   private static final Logger LOG = LoggerFactory.getLogger(LsTool.class);
-
-  @Flag(name="table", usage="kiji table name")
-  private String mTableName = "";
 
   @Flag(name="columns", usage="Comma-delimited columns (family:qualifier), or * for all columns")
   private String mColumns = "*";
@@ -116,9 +127,6 @@ public final class LsTool extends VersionValidatedTool {
 
   @Flag(name="max-timestamp", usage="Max timestamp of versions to display")
   private long mMaxTimestamp = Long.MAX_VALUE;
-
-  @Flag(name="instances", usage="List all kiji instances installed on the cluster")
-  private boolean mInstances = false;
 
   /** {@inheritDoc} */
   @Override
@@ -409,27 +417,25 @@ public final class LsTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    if (mInstances) {
-      return listInstances();
-    }
-
-    KijiMetaTable metaTable;
-    try {
-      metaTable = getKiji().getMetaTable();
-    } catch (TableNotFoundException e) {
-      LOG.error("Could not open the kiji meta table.  Has kiji been installed?", e);
+    final KijiURI uri = getURI();
+    if (uri.getZookeeperQuorum() == null) {
+      LOG.error("Specify an HBase cluster with --kiji=kiji://zookeeper-quorum");
       return 1;
     }
 
-    if (mTableName.isEmpty()) {
+    if (uri.getInstance() == null) {
+      return listInstances();
+    }
+
+    final Kiji kiji = getKiji();
+
+    if (uri.getTable() == null) {
       // List tables in this kiji instance.
       return listTables();
     }
 
-    setURI(KijiURI.newBuilder(getURI()).withTableName(mTableName).build());
-
-    // else, list row(s) from this specific table.
-    final KijiTableLayout tableLayout = metaTable.getTableLayout(mTableName);
+    final KijiTable table = kiji.openTable(uri.getTable());
+    final KijiTableLayout tableLayout = table.getLayout();
 
     final String[] rawColumnNames =
         (mColumns.equals("*")) ? null : StringUtils.split(mColumns, ",");
@@ -443,10 +449,8 @@ public final class LsTool extends VersionValidatedTool {
     final KijiDataRequest request = getDataRequest(
         mapTypeFamilies, groupTypeColumns, mMaxVersions, mMinTimestamp, mMaxTimestamp);
 
-    KijiTable table = null;
     KijiTableReader reader = null;
     try {
-      table = getKiji().openTable(mTableName);
       final EntityIdFactory eidFactory = table.getEntityIdFactory();
       reader = table.openTableReader();
       if (mEntityId.isEmpty() && mEntityHash.isEmpty()) {
