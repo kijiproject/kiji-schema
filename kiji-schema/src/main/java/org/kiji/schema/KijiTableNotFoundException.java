@@ -29,7 +29,7 @@ import org.kiji.annotations.ApiAudience;
 @ApiAudience.Public
 public final class KijiTableNotFoundException extends IOException {
   /** Name of the missing table. */
-  private String mTableName;
+  private final String mTableName;
 
   /**
    * Creates a new <code>KijiTableNotFoundException</code> for the specified table.
@@ -38,6 +38,7 @@ public final class KijiTableNotFoundException extends IOException {
    */
   public KijiTableNotFoundException(String tableName) {
     super("Table not found: " + tableName);
+    mTableName = tableName;
   }
 
   /** @return the name of the missing table. */
