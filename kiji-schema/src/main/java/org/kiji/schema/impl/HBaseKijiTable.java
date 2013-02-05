@@ -20,9 +20,13 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.TableNotFoundException;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTableInterface;
 
 import org.kiji.annotations.ApiAudience;
@@ -136,6 +140,16 @@ public class HBaseKijiTable extends AbstractKijiTable {
   @Override
   public KijiTableWriter openTableWriter() throws IOException {
     return new HBaseKijiTableWriter(this);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public List<HRegionInfo> getRegions() throws IOException {
+    final HBaseAdmin hbaseAdmin = ((HBaseKiji) getKiji()).getHBaseAdmin();
+    final HTableInterface hbaseTable = HBaseKijiTable.downcast(this).getHTable();
+
+    final List<HRegionInfo> regions = hbaseAdmin.getTableRegions(hbaseTable.getTableName());
+    return new ArrayList<HRegionInfo>(regions);
   }
 
   /** {@inheritDoc} */

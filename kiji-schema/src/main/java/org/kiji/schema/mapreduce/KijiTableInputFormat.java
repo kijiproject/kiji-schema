@@ -96,14 +96,11 @@ public class KijiTableInputFormat
     final KijiURI inputTableURI = getInputTableURI(conf);
     final Kiji kiji = Kiji.Factory.open(inputTableURI, conf);
     final KijiTable table = kiji.openTable(inputTableURI.getTable());
-
-    final HBaseAdmin admin =
-        DefaultHBaseFactory.Provider.get().getHBaseAdminFactory(inputTableURI).create(conf);
+    
     final HTableInterface htable = HBaseKijiTable.downcast(table).getHTable();
 
-    final List<HRegionInfo> regions = admin.getTableRegions(htable.getTableName());
     final List<InputSplit> splits = Lists.newArrayList();
-    for (HRegionInfo region : regions) {
+    for (HRegionInfo region : table.getRegions()) {
       final byte[] startKey = region.getStartKey();
       final TableSplit tableSplit = new TableSplit(
           htable.getTableName(), startKey, region.getEndKey(), table.getName());
