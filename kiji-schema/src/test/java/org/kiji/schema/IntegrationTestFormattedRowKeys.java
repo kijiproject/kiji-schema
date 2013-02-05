@@ -53,13 +53,13 @@ public class IntegrationTestFormattedRowKeys
 
   public static final String TABLE_NAME = "table";
 
-  private final KijiDataRequest mDataRequest = new KijiDataRequest()
-      .addColumn(new KijiDataRequest.Column("family", "column"));
-
   private Kiji mKiji = null;
   private KijiTable mTable = null;
   private KijiTableWriter mWriter = null;
   private KijiTableReader mReader = null;
+
+  private final KijiDataRequestBuilder mBuilder = KijiDataRequest.builder();
+  private KijiDataRequest mDataRequest = null;
 
   @Before
   public void setup() throws Exception {
@@ -76,6 +76,8 @@ public class IntegrationTestFormattedRowKeys
     mTable = mKiji.openTable(TABLE_NAME);
     mWriter = mTable.openTableWriter();
     mReader = mTable.openTableReader();
+    mBuilder.addColumns().withMaxVersions(1).add("family", "column");
+    mDataRequest = mBuilder.build();
   }
 
   @Test
@@ -138,9 +140,7 @@ public class IntegrationTestFormattedRowKeys
 
     mWriter.flush();
 
-    final KijiDataRequest request = new KijiDataRequest()
-        .addColumn(new KijiDataRequest.Column("family", "column"));
-    final KijiRowScanner scanner = mReader.getScanner(request);
+    final KijiRowScanner scanner = mReader.getScanner(mDataRequest);
     final Iterator<KijiRowData> resultIterator = scanner.iterator();
 
     final Iterator<EntityId> expectedIterator = expected.iterator();

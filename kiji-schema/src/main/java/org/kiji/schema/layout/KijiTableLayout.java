@@ -914,7 +914,7 @@ public final class KijiTableLayout {
     if (format.getNullableStartIndex() <= 0
         || format.getNullableStartIndex() > format.getComponents().size()) {
       throw new InvalidLayoutException("Invalid index for nullable component. The second component"
-          + "onwards can be set to null.");
+          + " onwards can be set to null.");
     }
 
     // Range scan index cannot be the first element or anything greater
@@ -929,8 +929,8 @@ public final class KijiTableLayout {
     for (RowKeyComponent component: format.getComponents()) {
       // ensure names are valid "[a-zA-Z_][a-zA-Z0-9_]*"
       if (!isValidName(component.getName())) {
-        throw new InvalidLayoutException("Names should begin with an alphabet followed by a "
-            + "combination of alphabets, numbers and underscores.");
+        throw new InvalidLayoutException("Names should begin with a letter followed by a "
+            + "combination of letters, numbers and underscores.");
       }
       nameset.add(component.getName());
     }
@@ -945,21 +945,6 @@ public final class KijiTableLayout {
         || format.getSalt().getHashSize() > Hasher.HASH_SIZE_BYTES) {
       throw new InvalidLayoutException("Valid hash sizes are between 1 and "
           + Hasher.HASH_SIZE_BYTES);
-    }
-  }
-
-  /**
-   * Ensure that the layout version matches the feature set.
-   *
-   * @param desc The table layout descriptor.
-   * @throws InvalidLayoutException If there is a feature mismatch.
-   */
-  private void checkVersioning(TableLayoutDesc desc) throws InvalidLayoutException {
-    String versionNumber = desc.getVersion().split("-")[1];
-    if (Float.parseFloat(versionNumber) < 1.1 && desc.getKeysFormat()
-        instanceof RowKeyFormat2) {
-      throw new InvalidLayoutException("RowKeyFormat2 requires the layout version to be greater"
-          + "than or equal to 1.1");
     }
   }
 
@@ -979,11 +964,12 @@ public final class KijiTableLayout {
     // Ensure the array of locality groups is mutable:
     mDesc.setLocalityGroups(Lists.newArrayList(mDesc.getLocalityGroups()));
 
+    // TODO Check version of layout matches the features used.
+    // https://jira.kiji.org/browse/SCHEMA-151
+
     if (!isValidName(getName())) {
       throw new InvalidLayoutException(String.format("Invalid table name: '%s'.", getName()));
     }
-
-    checkVersioning(desc);
 
     if (reference != null) {
       if (!getName().equals(reference.getName())) {

@@ -34,6 +34,7 @@ import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.util.StringUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +49,8 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.RowKeyEncoding;
+import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
@@ -279,13 +282,29 @@ public final class HBaseKiji implements Kiji {
     createTable(tableName, tableLayout, 1);
   }
 
+  /**
+   * Find the encoding of the row key given the format.
+   *
+   * @param rowKeyFormat Format of row keys of type RowKeyFormat or RowKeyFormat2.
+   * @return The specific row key encoding, e.g. RAW, HASH, etc.
+   */
+  private RowKeyEncoding getEncoding(Object rowKeyFormat) {
+    if (rowKeyFormat instanceof RowKeyFormat) {
+      return ((RowKeyFormat) rowKeyFormat).getEncoding();
+    } else if (rowKeyFormat instanceof RowKeyFormat2) {
+      return ((RowKeyFormat2) rowKeyFormat).getEncoding();
+    } else {
+      throw new RuntimeException("Unsupported Row Key Format");
+    }
+  }
+
   /** {@inheritDoc} */
   @Override
   public void createTable(String tableName, KijiTableLayout tableLayout, int numRegions)
       throws IOException {
     Preconditions.checkArgument((numRegions >= 1), "numRegions must be positive: " + numRegions);
     if (numRegions > 1) {
-      if (tableLayout.getDesc().getKeysFormat().getEncoding() == RowKeyEncoding.RAW) {
+      if (getEncoding(tableLayout.getDesc().getKeysFormat()) == RowKeyEncoding.RAW) {
         throw new IllegalArgumentException(
             "May not use numRegions > 1 if row key hashing is disabled in the layout");
       }

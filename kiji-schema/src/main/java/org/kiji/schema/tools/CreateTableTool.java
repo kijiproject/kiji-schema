@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
-import org.kiji.schema.KijiAdmin;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;

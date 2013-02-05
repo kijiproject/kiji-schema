@@ -70,7 +70,9 @@ public class TestFormattedEntityId {
     components.add(RowKeyComponent.newBuilder()
         .setName("astring").setType(ComponentType.STRING).build());
     components.add(RowKeyComponent.newBuilder()
-        .setName("astring").setType(ComponentType.STRING).build());
+        .setName("bstring").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("cstring").setType(ComponentType.STRING).build());
 
     // build the row key format
     RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
@@ -400,6 +402,7 @@ public class TestFormattedEntityId {
     assertEquals(format.getComponents().size(), actuals.size());
     assertEquals(new String(""), actuals.get(0));
     assertEquals(new String(""), actuals.get(1));
+    assertEquals(null, actuals.get(2));
 
     assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
 
