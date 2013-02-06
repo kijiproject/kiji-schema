@@ -54,7 +54,7 @@ function resolve_symlink() {
       count=$(( $count + 1 ))
   done
 
-  # Compute the canonicalized name by finding the physical path 
+  # Compute the canonicalized name by finding the physical path
   # for the directory we're in and appending the target file.
   PHYS_DIR=$(pwd -P)
   RESULT="$PHYS_DIR/$TARGET_FILE"
@@ -67,6 +67,10 @@ bin=`dirname "$prgm"`
 bin=`cd "${bin}" && pwd`
 
 KIJI_HOME="${KIJI_HOME:-${bin}/../}"
+
+# If KIJI_MR_HOME is set, jars that are part of the kiji-mapreduce distribution
+# will be added to the classpath.
+KIJI_MR_HOME=${KIJI_MR_HOME:-""}
 
 # Any user code you want to add to the kiji classpath may be done via this env var.
 KIJI_CLASSPATH=${KIJI_CLASSPATH:-""}
@@ -177,10 +181,13 @@ function mutate_classpath () {
 
 
 # Gather the kiji dependency jars.
-libjars=
-for jar in `ls $KIJI_HOME/lib/*.jar`; do
-    libjars=$libjars:$jar
-done
+libjars="${KIJI_HOME}/lib/*"
+
+# If KIJI_MR_HOME is set and is not equal to KIJI_HOME, add jars in
+# $KIJI_MR_HOME/lib to classpath.
+if [[ -n "$KIJI_MR_HOME" && "$KIJI_HOME" != "$KIJI_MR_HOME" ]]; then
+  libjars="${libjars}:${KIJI_MR_HOME}/lib/*"
+fi
 
 # Gather the HBase classpath.
 hbase_cp=$($HBASE_HOME/bin/hbase classpath)
@@ -192,9 +199,8 @@ hadoop_cp=$(mutate_classpath 'slf4j-log4j12' "$hadoop_cp")
 
 # Note that we put the libjars before the hbase jars, in case there are conflicts.
 kiji_conf=$KIJI_HOME/conf
-kiji_jar=$KIJI_HOME/lib/${project.build.finalName}.jar
 # We put $KIJI_CLASSPATH at the beginning classpath to allow users to win when there are conflicts.
-kiji_cp="$KIJI_CLASSPATH:$kiji_conf:$kiji_jar:$libjars:$hadoop_cp:$hbase_cp"
+kiji_cp="$KIJI_CLASSPATH:$kiji_conf:$libjars:$hadoop_cp:$hbase_cp"
 
 # Determine location of Hadoop native libraries and set java.library.path.
 if [ -d "${HADOOP_HOME}/lib/native" ]; then

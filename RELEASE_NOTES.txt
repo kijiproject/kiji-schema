@@ -3,6 +3,10 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
+  * SCHEMA-175. kiji script can now use tools provided by kiji-mapreduce. To make
+      kiji-mapreduce tools available for use through the kiji script, make sure
+      the environment variable KIJI_MR_HOME is set to the path to a kiji-mapreduce
+      distribution.
   * SCHEMA-153. Adds a getRegions() method to KijiTable. Returns logical
       region divisions in a kiji table.
   * SCHEMA-119. Remove TableLayoutSerializer class.

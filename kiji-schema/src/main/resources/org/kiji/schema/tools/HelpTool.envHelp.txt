@@ -4,10 +4,14 @@ ENVIRONMENT VARIABLES
   Users can set several environment variables to change the behavior of the kiji script and
   the tools it runs. These include:
 
-  KIJI_HOME           Should give the path to the root of the kiji distribution to use when
-                      executing tools. By default, the parent of the directory containing
-                      this script will be used (as this script is likely in the bin
-                      directory of a kiji distribution).
+  KIJI_HOME           Should give the path to the root of the kiji-schema distribution to
+                      use when executing tools. By default, the parent of the directory
+                      containing this script will be used (as this script is likely in the
+                      bin directory of a kiji distribution).
+
+  KIJI_MR_HOME        Should give the path to the root of a kiji-mapreduce distribution to
+                      use when executing tools. Users should set this environment variable
+                      if they wish to use tools provided as part of kiji-mapreduce.
 
   HADOOP_HOME         Should give the path to the root of the hadoop distribution to use
                       when executing tools. By default, /usr/lib/hadoop will be used.
@@ -22,7 +26,14 @@ ENVIRONMENT VARIABLES
                       placed first on the classpath so that they will take precedence over
                       libraries provided by the kiji system. By default KIJI_CLASSPATH is
                       empty. Note that jars in KIJI_CLASSPATH are not automatically added
-                      to the distributed cache for map reduce jobs.
+                      to the distributed cache for MapReduce jobs.
+
+                      To add jars to the distributed cache of MapReduce jobs, use the --lib
+                      flag available on tools provided by kiji-mapreduce. This flag accepts
+                      a path to a directory of jars to be included on the classpath of
+                      MapReduce tasks. Note that library jars that are part of kiji-schema
+                      and kiji-mapreduce are automatically added to the classpath of
+                      MapReduce jobs run with kiji-mapreduce tools.
 
   KIJI_JAVA_OPTS      Should contain extra arguments to pass to the JVM used to execute
                       tools. By default, KIJI_JAVA_OPTS is empty.
