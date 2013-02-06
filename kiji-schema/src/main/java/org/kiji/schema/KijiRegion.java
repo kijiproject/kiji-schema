@@ -19,6 +19,8 @@
 
 package org.kiji.schema;
 
+import java.util.List;
+
 import org.kiji.annotations.ApiAudience;
 
 /**
@@ -40,4 +42,12 @@ public interface KijiRegion {
    * @return The end key of this region.
    */
   byte[] getEndKey();
+
+  /**
+   * Gets the locations of this region in hostname:port form, if available.
+   * The list is empty if no location information is available.
+   *
+   * @return An unordered list of the locations of this region.
+   */
+  List<String> getLocations();
 }

@@ -77,9 +77,9 @@ public interface KijiTable extends Closeable {
   KijiTableWriter openTableWriter() throws IOException;
 
   /**
-   * Return the regions in this table as a list.
+   * Return the regions in this table as an ordered list.
    *
-   * @return the table regions.
+   * @return An ordered list of the table regions.
    * @throws IOException on I/O error.
    */
   List<KijiRegion> getRegions() throws IOException;

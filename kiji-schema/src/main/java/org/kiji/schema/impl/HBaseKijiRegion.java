@@ -19,7 +19,13 @@
 
 package org.kiji.schema.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableList.Builder;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.HRegionLocation;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiRegion;
@@ -30,14 +36,30 @@ import org.kiji.schema.KijiRegion;
 @ApiAudience.Private
 final class HBaseKijiRegion implements KijiRegion {
   private final HRegionInfo mHRegionInfo;
+  private final List<String> mRegionLocations;
 
   /**
    * Constructs a new HBaseKijiRegion backed by an HRegionInfo.
    *
    * @param hRegionInfo The underlying HRegionInfo.
+   * @param locations The HRegionLocations that this region spans.
+   */
+  HBaseKijiRegion(HRegionInfo hRegionInfo, List<HRegionLocation> locations) {
+    mHRegionInfo = hRegionInfo;
+    Builder<String> locationsBuilder = ImmutableList.builder();
+    for (HRegionLocation hLocation : locations) {
+      locationsBuilder.add(hLocation.getHostnamePort());
+    }
+    mRegionLocations = locationsBuilder.build();
+  }
+
+  /**
+   * Constructs a new HBaseKijiRegion backed by an HRegionInfo, with no locality information.
+   *
+   * @param hRegionInfo The underlying HRegionInfo.
    */
   HBaseKijiRegion(HRegionInfo hRegionInfo) {
-    mHRegionInfo = hRegionInfo;
+    this(hRegionInfo, new ArrayList<HRegionLocation>());
   }
 
   /** {@inheritDoc} */
@@ -50,6 +72,12 @@ final class HBaseKijiRegion implements KijiRegion {
   @Override
   public byte[] getEndKey() {
     return mHRegionInfo.getEndKey();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public List<String> getLocations() {
+    return mRegionLocations;
   }
 
 }

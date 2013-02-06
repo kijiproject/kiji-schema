@@ -100,8 +100,11 @@ public class KijiTableInputFormat
     final List<InputSplit> splits = Lists.newArrayList();
     for (KijiRegion region : table.getRegions()) {
       final byte[] startKey = region.getStartKey();
+      // TODO: a smart way to get which location is most relevant.
+      final String location =
+          region.getLocations().isEmpty() ? null : region.getLocations().get(0);
       final TableSplit tableSplit = new TableSplit(
-          htable.getTableName(), startKey, region.getEndKey(), table.getName());
+          htable.getTableName(), startKey, region.getEndKey(), location);
       splits.add(new KijiTableSplit(tableSplit, startKey));
     }
     return splits;

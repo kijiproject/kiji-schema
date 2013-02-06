@@ -22,12 +22,15 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 import java.util.List;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HRegionInfo;
+import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 
 import org.kiji.annotations.ApiAudience;
@@ -150,7 +153,7 @@ public class HBaseKijiTable extends AbstractKijiTable {
    * <p>This method was copied from HFileOutputFormat of 0.90.1-cdh3u0 and modified to
    * return KijiRegion instead of ImmutableBytesWritable.</p>
    *
-   * @return the table regions.
+   * @return An ordered list of the table regions.
    * @throws IOException on I/O error.
    */
   @Override
@@ -159,10 +162,20 @@ public class HBaseKijiTable extends AbstractKijiTable {
     final HTableInterface hbaseTable = HBaseKijiTable.downcast(this).getHTable();
 
     final List<HRegionInfo> regions = hbaseAdmin.getTableRegions(hbaseTable.getTableName());
+
+    // If we can get the concrete HTable, we can get location information.
+    final HTable concreteHBaseTable = hbaseTable instanceof HTable ? (HTable) hbaseTable : null;
     final List<KijiRegion> result = Lists.newArrayList();
     for (HRegionInfo region: regions) {
-      result.add(new HBaseKijiRegion(region));
+      if (concreteHBaseTable != null) {
+        List<HRegionLocation> hLocations =
+            concreteHBaseTable.getRegionsInRange(region.getStartKey(), region.getEndKey());
+        result.add(new HBaseKijiRegion(region, hLocations));
+      } else {
+        result.add(new HBaseKijiRegion(region));
+      }
     }
+    IOUtils.closeQuietly(concreteHBaseTable);
     return result;
   }
 
