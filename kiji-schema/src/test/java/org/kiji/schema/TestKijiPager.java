@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -23,9 +23,11 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.NavigableMap;
 
 import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -47,7 +49,6 @@ public class TestKijiPager extends KijiClientTest {
 
   @Before
   public void setupInstance() throws Exception {
-
     final Kiji kiji = getKiji();
     mTableLayout =
         new KijiTableLayout(KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST), null);
@@ -55,6 +56,12 @@ public class TestKijiPager extends KijiClientTest {
 
     mTable = kiji.openTable("user");
     mReader = mTable.openTableReader();
+  }
+
+  @After
+  public void teardown() throws IOException {
+    mReader.close();
+    mTable.close();
   }
 
   @Test(expected=KijiColumnPagingNotEnabledException.class)
@@ -75,12 +82,12 @@ public class TestKijiPager extends KijiClientTest {
   public void testGroupTypeColumnPaging() throws IOException {
     EntityId id = mTable.getEntityId("me");
     final KijiTableWriter writer = mTable.openTableWriter();
-      writer.put(id, "info", "name", 1L, "me");
-      writer.put(id, "info", "name", 2L, "me-too");
-      writer.put(id, "info", "name", 3L, "me-three");
-      writer.put(id, "info", "name", 4L, "me-four");
-      writer.put(id, "info", "name", 5L, "me-five");
-      writer.close();
+    writer.put(id, "info", "name", 1L, "me");
+    writer.put(id, "info", "name", 2L, "me-too");
+    writer.put(id, "info", "name", 3L, "me-three");
+    writer.put(id, "info", "name", 4L, "me-four");
+    writer.put(id, "info", "name", 5L, "me-five");
+    writer.close();
 
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().withMaxVersions(5).withPageSize(2).add("info", "name");
@@ -110,6 +117,52 @@ public class TestKijiPager extends KijiClientTest {
     assertEquals("The number of returned values is incorrect: ", 1 , resultMap3.size());
     assertEquals("Incorrect first value of second page:", "me", resultMap3.get(1L).toString());
     pager.close();
+  }
+
+  /* Test that a pager retrieved for a group type column family acts as expected. */
+  @Test
+  public void testGroupTypeColumnPagingFromScan() throws IOException {
+    EntityId id = mTable.getEntityId("me");
+    final KijiTableWriter writer = mTable.openTableWriter();
+      writer.put(id, "info", "name", 1L, "me");
+      writer.put(id, "info", "name", 2L, "me-too");
+      writer.put(id, "info", "name", 3L, "me-three");
+      writer.put(id, "info", "name", 4L, "me-four");
+      writer.put(id, "info", "name", 5L, "me-five");
+      writer.close();
+
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.addColumns().withMaxVersions(5).withPageSize(2).add("info", "name");
+    final KijiDataRequest dataRequest = builder.build();
+    assertTrue(!dataRequest.isEmpty());
+    assertTrue(dataRequest.isPagingEnabled());
+    assertTrue(dataRequest.getColumn("info", "name").isPagingEnabled());
+    EntityId meId = HashedEntityId.fromKijiRowKey(
+        Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+    Iterator<KijiRowData> scanner = mReader.getScanner(dataRequest).iterator();
+    assertTrue(scanner.hasNext());
+    KijiRowData myRowData = scanner.next();
+    KijiPager pager = myRowData.getPager("info", "name");
+    assertTrue(pager.hasNext());
+
+    final NavigableMap<Long, CharSequence> resultMap = pager.next().getValues("info", "name");
+    assertEquals("The number of returned values is incorrect: ", 2, resultMap.size());
+    assertEquals("Incorrect first value of first page:", "me-five", resultMap.get(5L).toString());
+    assertEquals("Incorrect second value of first page:", "me-four", resultMap.get(4L).toString());
+    assertTrue(pager.hasNext());
+    final NavigableMap<Long, CharSequence> resultMap2 = pager.next().getValues("info", "name");
+    assertEquals("The number of returned values is incorrect: ", 2 , resultMap2.size());
+    assertEquals("Incorrect first value of second page:", "me-three",
+        resultMap2.get(3L).toString());
+    assertEquals("Incorrect second value of second page:", "me-too", resultMap2.get(2L).toString());
+
+    assertTrue(pager.hasNext());
+    final NavigableMap<Long, CharSequence> resultMap3 = pager.next().getValues("info", "name");
+    assertEquals("The number of returned values is incorrect: ", 1 , resultMap3.size());
+    assertEquals("Incorrect first value of second page:", "me", resultMap3.get(1L).toString());
+    pager.close();
+
+    assertTrue(!scanner.hasNext());
   }
 
   @Test
@@ -176,32 +229,39 @@ public class TestKijiPager extends KijiClientTest {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().withMaxVersions(5).withPageSize(2)
       .withFilter(new RegexQualifierColumnFilter("b")).addFamily("jobs");
-    final KijiDataRequest dataRequest = builder.build();
-    assertTrue(!dataRequest.isEmpty());
-    assertTrue(dataRequest.isPagingEnabled());
-    assertTrue(dataRequest.getColumn("jobs", null).isPagingEnabled());
-    EntityId meId = HashedEntityId.fromKijiRowKey(
-        Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
-    LOG.debug("DataRequest is [{}]", dataRequest.toString());
-    KijiRowData myRowData = mReader.get(meId, dataRequest);
-    KijiPager pager = myRowData.getPager("jobs");
-    assertTrue(pager.hasNext());
-    final NavigableMap<String, NavigableMap<Long, CharSequence>> resultMap
-        = pager.next().getValues("jobs");
-    assertEquals("The number of returned values is incorrect: ", 2, resultMap.get("b").size());
-    assertEquals("Incorrect first value of first page:", "always coming in 3rd",
-        resultMap.get("b").get(3L).toString());
-    assertEquals("Incorrect second value of first page:", "always coming in 4th",
-        resultMap.get("b").get(2L).toString());
+    KijiPager pager = null;
+    try {
+      final KijiDataRequest dataRequest = builder.build();
+      assertTrue(!dataRequest.isEmpty());
+      assertTrue(dataRequest.isPagingEnabled());
+      assertTrue(dataRequest.getColumn("jobs", null).isPagingEnabled());
+      EntityId meId = HashedEntityId.fromKijiRowKey(
+          Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+      LOG.debug("DataRequest is [{}]", dataRequest.toString());
+      KijiRowData myRowData = mReader.get(meId, dataRequest);
+      pager = myRowData.getPager("jobs");
+      assertTrue(pager.hasNext());
+      final NavigableMap<String, NavigableMap<Long, CharSequence>> resultMap
+          = pager.next().getValues("jobs");
+      assertEquals("The number of returned values is incorrect: ", 2, resultMap.get("b").size());
+      assertEquals("Incorrect first value of first page:", "always coming in 3rd",
+          resultMap.get("b").get(3L).toString());
+      assertEquals("Incorrect second value of first page:", "always coming in 4th",
+          resultMap.get("b").get(2L).toString());
 
-    assertTrue(pager.hasNext());
-    final NavigableMap<String, NavigableMap<Long, CharSequence>> resultMap2
-        = pager.next().getValues("jobs");
-        assertEquals("The number of returned values is incorrect: ", 1, resultMap2.get("b").size());
-        assertEquals("Incorrect first value of second page:", "always coming in 5th",
-        resultMap2.get("b").get(1L).toString());
-    assertTrue(!pager.hasNext());
-    pager.close();
+      assertTrue(pager.hasNext());
+      final NavigableMap<String, NavigableMap<Long, CharSequence>> resultMap2
+          = pager.next().getValues("jobs");
+          assertEquals("The number of returned values is incorrect: ", 1, resultMap2.get("b")
+              .size());
+          assertEquals("Incorrect first value of second page:", "always coming in 5th",
+          resultMap2.get("b").get(1L).toString());
+      assertTrue(!pager.hasNext());
+    } finally {
+      pager.close();
+    }
   }
+
+
 
 }
