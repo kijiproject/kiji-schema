@@ -181,16 +181,11 @@ function mutate_classpath () {
 
 
 # Gather the kiji dependency jars.
-libjars=
-for jar in `ls $KIJI_HOME/lib/*.jar`; do
-  libjars=$libjars:$jar
-done
+libjars="${KIJI_HOME}/lib/*"
 
 # If KIJI_MR_HOME is set, add kiji-mapreduce jars to dependencies.
 if [ -n "$KIJI_MR_HOME" ]; then
-  for jar in `ls $KIJI_MR_HOME/lib/*.jar`; do
-    libjars=$libjars:$jar
-  done
+  libjars="${libjars}:${KIJI_MR_HOME}/lib/*"
 fi
 
 # Gather the HBase classpath.

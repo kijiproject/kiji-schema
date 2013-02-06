@@ -67,11 +67,13 @@ public final class KijiToolLauncher extends Configured {
 
     if (null == tool) {
       System.err.println("No tool available with name [" + toolName + "]");
-      System.err.println("Try running 'kiji help' to see the available tools.\n");
-      System.err.println("If you are attempting to use a tool that is part of kiji-mapreduce and");
-      System.err.println("it is not listed when 'kiji help' is run, you may not have the");
-      System.err.println("environment variable KIJI_MR_HOME set. Set KIJI_MR_HOME to the path");
-      System.err.println("to a kiji-mapreduce distribution to make the tools available.");
+      System.err.println("Try running 'kiji help' to see the available tools.");
+
+      if (!System.getenv().containsKey("KIJI_MR_HOME")) {
+        System.err.println("\nNote that you do not have the environment variable KIJI_MR_HOME");
+        System.err.println("set. Set KIJI_MR_HOME to the path to a kiji-mapreduce distribution");
+        System.err.println("to make kiji-mapreduce tools available.");
+      }
       return 1;
     }
 

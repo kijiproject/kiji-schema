@@ -18,6 +18,10 @@ Version 1.0.0-rc4
       with KijiURIBuilders.
   * SCHEMA-109. KijiInstaller is no longer static.  Get an instance of it with
       KijiInstaller.get().
+  * SCHEMA-175. kiji script can now use tools provided by kiji-mapreduce. To make
+      kiji-mapreduce tools available for use through the kiji script, make sure
+      the environment variable KIJI_MR_HOME is set to the path to a kiji-mapreduce
+      distribution.
 
 Version 1.0.0-rc3
   * SCHEMA-83. Added containsCell method to KijiRowData.
