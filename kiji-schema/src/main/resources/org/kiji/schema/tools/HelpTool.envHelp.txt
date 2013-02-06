@@ -4,10 +4,14 @@ ENVIRONMENT VARIABLES
   Users can set several environment variables to change the behavior of the kiji script and
   the tools it runs. These include:
 
-  KIJI_HOME           Should give the path to the root of the kiji distribution to use when
-                      executing tools. By default, the parent of the directory containing
-                      this script will be used (as this script is likely in the bin
-                      directory of a kiji distribution).
+  KIJI_HOME           Should give the path to the root of the kiji-schema distribution to
+                      use when executing tools. By default, the parent of the directory
+                      containing this script will be used (as this script is likely in the
+                      bin directory of a kiji distribution).
+
+  KIJI_MR_HOME        Should give the path to the root of a kiji-mapreduce distribution to
+                      use when executing tools. Users should set this environment variable
+                      if they wish to use tools provided as part of kiji-mapreduce.
 
   HADOOP_HOME         Should give the path to the root of the hadoop distribution to use
                       when executing tools. By default, /usr/lib/hadoop will be used.
