@@ -45,6 +45,7 @@ import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiURIException;
 import org.kiji.schema.tools.BaseTool;
@@ -358,10 +359,8 @@ public abstract class AbstractKijiIntegrationTest {
    */
   protected ToolResult runTool(BaseTool tool, String[] args) throws Exception {
     // Append the --instance=<instance-name> flag on the end of the args.
-    String[] argsWithKiji = Arrays.copyOf(args, args.length + 2);
-    argsWithKiji[args.length] = "--kiji=" + mKijiURI;
-    argsWithKiji[args.length + 1] = "--debug=true";
-
+    final String[] argsWithKiji = Arrays.copyOf(args, args.length + 1);
+    argsWithKiji[args.length] = "--debug=true";
     return mHelper.runTool(mHelper.getConf(), tool, argsWithKiji);
   }
 
@@ -466,11 +465,11 @@ public abstract class AbstractKijiIntegrationTest {
         while (mActive) {
           // Create a new Kiji instance.
           final String instanceName = UUID.randomUUID().toString().replaceAll("-", "_");
-          final IntegrationHelper intHelper = new IntegrationHelper(HBaseConfiguration.create());
+          final Configuration conf = HBaseConfiguration.create();
           try {
             final KijiURI kijiURI =
                 KijiURI.newBuilder(mHBaseURI).withInstanceName(instanceName).build();
-            intHelper.installKiji(kijiURI);
+            KijiInstaller.get().install(kijiURI, conf);
 
             // This blocks if the queue is full:
             mKijiQueue.put(kijiURI);

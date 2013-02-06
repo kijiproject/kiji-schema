@@ -122,7 +122,7 @@ public final class HBaseKiji implements Kiji {
         conf,
         true,
         DefaultHTableInterfaceFactory.get(),
-        new ZooKeeperLockFactory(conf));
+        new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(kijiURI)));
   }
 
   /**

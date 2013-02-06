@@ -21,8 +21,11 @@ package org.kiji.schema.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.zookeeper.WatchedEvent;
@@ -30,6 +33,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.KijiURI;
 
 /** Factory for ZooKeeperLock instances. */
 @ApiAudience.Private
@@ -49,19 +53,44 @@ public final class ZooKeeperLockFactory implements LockFactory {
   /**
    * Creates a ZooKeeper client.
    *
-   * @param conf Configuration.
+   * @param zkConnStr ZooKeeper quorum, as a comma separated list of ZooKeeper node "host:port".
    * @return a new ZooKeeper client.
    * @throws IOException on I/O error.
    */
-  public static ZooKeeper newZooKeeper(Configuration conf) throws IOException {
-    final String zkQuorum = conf.get(HConstants.ZOOKEEPER_QUORUM);
-    final String zkClientPort = conf.get(HConstants.ZOOKEEPER_CLIENT_PORT);
-    final String zkConnStr = String.format("%s:%s", zkQuorum, zkClientPort);
+  public static ZooKeeper newZooKeeper(String zkConnStr) throws IOException {
     return new ZooKeeper(zkConnStr, 60000, ZOOKEEPER_NOOP_WATCHER);
   }
 
-  /** ZooKeeper instance to use. */
-  private final ZooKeeper mZooKeeper;
+  /**
+   * Creates a ZooKeeper connection string from an HBase configuration.
+   *
+   * @param conf HBase configuration with ZooKeeper quorum and client port set.
+   * @return a ZooKeeper connection string.
+   */
+  public static String zkConnStr(Configuration conf) {
+    final int zkClientPort =
+        conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT);
+    final List<String> zkNodes = Lists.newArrayList();
+    for (String zkNode : conf.get(HConstants.ZOOKEEPER_QUORUM).split(",")) {
+      zkNodes.add(String.format("%s:%d", zkNode, zkClientPort));
+    }
+    return Joiner.on(",").join(zkNodes);
+  }
+
+  /**
+   * Creates a ZooKeeper connection string from a Kiji URI specifying an HBase instance.
+   *
+   * @param uri Kiji URI specifying an HBase instance.
+   * @return a ZooKeeper connection string.
+   */
+  public static String zkConnStr(KijiURI uri) {
+    final int zkClientPort = uri.getZookeeperClientPort();
+    final List<String> zkNodes = Lists.newArrayList();
+    for (String zkNode : uri.getZookeeperQuorumOrdered()) {
+      zkNodes.add(String.format("%s:%d", zkNode, zkClientPort));
+    }
+    return Joiner.on(",").join(zkNodes);
+  }
 
   /**
    * Creates a factory for ZooKeeperLock.
@@ -75,12 +104,15 @@ public final class ZooKeeperLockFactory implements LockFactory {
   /**
    * Creates a factory for ZooKeeperLock.
    *
-   * @param conf ZooKeeper configuration.
+   * @param zkConnStr ZooKeeper connection.
    * @throws IOException on I/O error.
    */
-  public ZooKeeperLockFactory(Configuration conf) throws IOException {
-    this(newZooKeeper(conf));
+  public ZooKeeperLockFactory(String zkConnStr) throws IOException {
+    this(newZooKeeper(zkConnStr));
   }
+
+  /** ZooKeeper instance to use. */
+  private final ZooKeeper mZooKeeper;
 
   /** {@inheritDoc} */
   @Override

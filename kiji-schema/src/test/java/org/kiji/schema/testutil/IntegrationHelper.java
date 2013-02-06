@@ -19,9 +19,6 @@
 
 package org.kiji.schema.testutil;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -37,21 +34,17 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FileUtil;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.tools.BaseTool;
-import org.kiji.schema.tools.CreateTableTool;
-import org.kiji.schema.tools.InstallTool;
 import org.kiji.schema.tools.KijiToolLauncher;
-import org.kiji.schema.tools.UninstallTool;
-import org.kiji.schema.util.ToJson;
+import org.kiji.schema.util.InstanceBuilder;
 
 /**
  * IntegrationHelper provides methods for installing and managing a Kiji instance during a test.
@@ -125,17 +118,7 @@ public class IntegrationHelper extends Configured {
    * @throws Exception If there is an error.
    */
   public void installKiji(KijiURI kijiURI) throws Exception {
-    // TODO: We should be using command line tools programmatically in tester set up.
-
-    // Write resource to a temporary file.
-    ToolResult result = runTool(getConf(), new InstallTool(), new String[] {
-      "--kiji=" + kijiURI.toString(),
-    });
-
-    if (0 != result.getReturnCode()) {
-      throw new Exception("Non-zero return from installer: " + result.getReturnCode()
-          + ". Stdout: " + result.getStdoutUtf8());
-    }
+    KijiInstaller.get().install(kijiURI, getConf());
   }
 
   /**
@@ -144,14 +127,7 @@ public class IntegrationHelper extends Configured {
    * @throws Exception If there is an error.
    */
   public void uninstallKiji(KijiURI kijiURI) throws Exception {
-    ToolResult result = runTool(getConf(), new UninstallTool(), new String[] {
-      "--kiji=" + kijiURI.toString(),
-      "--interactive=false",
-    });
-    if (0 != result.getReturnCode()) {
-      throw new Exception("Non-zero return from uninstaller: " + result.getReturnCode()
-          + ". Stdout: " + result.getStdoutUtf8());
-    }
+    KijiInstaller.get().uninstall(kijiURI, getConf());
   }
 
   /**
@@ -196,30 +172,20 @@ public class IntegrationHelper extends Configured {
   /**
    * Writes the files necessary to create the foo table.
    *
-   * @param layoutFile A file to hold the table layout.
    * @param dataFile A file to hold the table data.
    * @param formatFile A file to hold the data format.
-   * @throws java.io.IOException If there is an error while writing the files.
+   * @throws IOException If there is an error while writing the files.
    */
-  private void writeFooTableFiles(File layoutFile, File dataFile, File formatFile)
-      throws IOException {
-    InputStream layoutStream = null;
+  private void writeFooTableFiles(File dataFile, File formatFile) throws IOException {
     InputStream dataStream = null;
     InputStream formatStream = null;
-
     try {
-      layoutStream = new ByteArrayInputStream(Bytes.toBytes(ToJson.toJsonString(
-          KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST))));
       dataStream = getClass().getClassLoader().getResourceAsStream(INPUT_FILE);
       formatStream = getClass().getClassLoader().getResourceAsStream(INPUT_FORMAT_FILE);
 
-      writeTempFile(layoutFile, layoutStream);
       writeTempFile(dataFile, dataStream);
       writeTempFile(formatFile, formatStream);
     } finally {
-      if (null != layoutStream) {
-        layoutStream.close();
-      }
       if (null != dataStream) {
         dataStream.close();
       }
@@ -236,69 +202,53 @@ public class IntegrationHelper extends Configured {
    * @throws Exception If there is an error.
    */
   public void createAndPopulateFooTable(KijiURI kijiURI) throws Exception {
-    // Create the temp files needed to create the foo table.
-    final File layoutFile = File.createTempFile("layout", ".json");
-    layoutFile.deleteOnExit();
+    final Kiji kiji = Kiji.Factory.open(kijiURI, getConf());
+    try {
+      final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST);
+      final long timestamp = System.currentTimeMillis();
+
+      new InstanceBuilder(kiji)
+          .withTable(layout.getName(), layout)
+              .withRow("gwu@usermail.example.com")
+                  .withFamily("info")
+                      .withQualifier("email").withValue(timestamp, "gwu@usermail.example.com")
+                      .withQualifier("name").withValue(timestamp, "Garret Wu")
+              .withRow("aaron@usermail.example.com")
+                  .withFamily("info")
+                      .withQualifier("email").withValue(timestamp, "aaron@usermail.example.com")
+                      .withQualifier("name").withValue(timestamp, "Aaron Kimball")
+              .withRow("christophe@usermail.example.com")
+                  .withFamily("info")
+                      .withQualifier("email")
+                          .withValue(timestamp, "christophe@usermail.example.com")
+                      .withQualifier("name").withValue(timestamp, "Christophe Bisciglia")
+              .withRow("kiyan@usermail.example.com")
+                  .withFamily("info")
+                      .withQualifier("email").withValue(timestamp, "kiyan@usermail.example.com")
+                      .withQualifier("name").withValue(timestamp, "Kiyan Ahmadizadeh")
+              .withRow("john.doe@gmail.com")
+                  .withFamily("info")
+                      .withQualifier("email").withValue(timestamp, "john.doe@gmail.com")
+                      .withQualifier("name").withValue(timestamp, "John Doe")
+              .withRow("jane.doe@gmail.com")
+                  .withFamily("info")
+                      .withQualifier("email").withValue(timestamp, "jane.doe@gmail.com")
+                      .withQualifier("name").withValue(timestamp, "Jane Doe")
+          .build();
+
+    } finally {
+      kiji.release();
+    }
+
+    // Create the temp files needed to populate the foo table.
     final File dataFile = File.createTempFile("data", ".csv");
     dataFile.deleteOnExit();
     final File dataFormatFile = File.createTempFile("data-format", ".csv");
     dataFormatFile.deleteOnExit();
     // Write the temp files needed for the test.
-    writeFooTableFiles(layoutFile, dataFile, dataFormatFile);
-
-    // Create a foo table.
-    String layoutFilename = layoutFile.getPath();
-    LOG.info("layout file path: " + layoutFilename);
-    ToolResult createResult = runTool(getConf(), new CreateTableTool(), new String[] {
-      "--kiji=" + kijiURI,
-      "--table=foo",
-      "--layout=" + layoutFilename,
-    });
-    assertEquals(0, createResult.getReturnCode());
-
-    // Add data to foo table.
-    final Kiji kiji = Kiji.Factory.open(kijiURI, getConf());
-    final KijiTable table = kiji.openTable("foo");
-    final KijiTableWriter fooWriter = table.openTableWriter();
-    try {
-      long timestamp = System.currentTimeMillis();
-      fooWriter.put(table.getEntityId("gwu@usermail.example.com"), "info", "email", timestamp,
-          "gwu@usermail.example.com");
-      fooWriter.put(table.getEntityId("gwu@usermail.example.com"), "info", "name", timestamp,
-          "Garrett Wu");
-
-      fooWriter.put(table.getEntityId("aaron@usermail.example.com"), "info", "email", timestamp,
-          "aaron@usermail.example.com");
-      fooWriter.put(table.getEntityId("aaron@usermail.example.com"), "info", "name", timestamp,
-          "Aaron Kimball");
-
-      fooWriter.put(table.getEntityId("christophe@usermail.example.com"), "info", "email",
-          timestamp, "christophe@usermail.example.com");
-      fooWriter.put(table.getEntityId("christophe@usermail.example.com"), "info", "name", timestamp,
-          "Christophe Bisciglia");
-
-      fooWriter.put(table.getEntityId("kiyan@usermail.example.com"), "info", "email", timestamp,
-          "kiyan@usermail.example.com");
-      fooWriter.put(table.getEntityId("kiyan@usermail.example.com"), "info", "name", timestamp,
-          "Kiyan Ahmadizadeh");
-
-      fooWriter.put(table.getEntityId("john.doe@gmail.com"), "info", "email", timestamp,
-          "john.doe@gmail.com");
-      fooWriter.put(table.getEntityId("john.doe@gmail.com"), "info", "name", timestamp,
-          "John Doe");
-
-      fooWriter.put(table.getEntityId("jane.doe@gmail.com"), "info", "email", timestamp,
-          "jane.doe@gmail.com");
-      fooWriter.put(table.getEntityId("jane.doe@gmail.com"), "info", "name", timestamp,
-          "Jane Doe");
-    } finally {
-      IOUtils.closeQuietly(fooWriter);
-      IOUtils.closeQuietly(table);
-      kiji.release();
-      layoutFile.delete();
-      dataFile.delete();
-      dataFormatFile.delete();
-    }
+    writeFooTableFiles(dataFile, dataFormatFile);
+    dataFile.delete();
+    dataFormatFile.delete();
   }
 
   /**
@@ -309,7 +259,10 @@ public class IntegrationHelper extends Configured {
    */
   public void deleteFooTable(KijiURI kijiURI) throws Exception {
     final Kiji kiji = Kiji.Factory.open(kijiURI, getConf());
-    kiji.deleteTable("foo");
-    kiji.release();
+    try {
+      kiji.deleteTable("foo");
+    } finally {
+      kiji.release();
+    }
   }
 }
