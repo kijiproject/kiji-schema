@@ -23,8 +23,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.hadoop.hbase.HRegionInfo;
-
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -81,11 +79,8 @@ public interface KijiTable extends Closeable {
   /**
    * Return the regions in this table as a list.
    *
-   * <p>This method was copied from HFileOutputFormat of 0.90.1-cdh3u0 and modified to
-   * return HRegionInfo instead of ImmutableBytesWritable.</p>
-   *
    * @return the table regions.
    * @throws IOException on I/O error.
    */
-  List<HRegionInfo> getRegions() throws IOException;
+  List<KijiRegion> getRegions() throws IOException;
 }

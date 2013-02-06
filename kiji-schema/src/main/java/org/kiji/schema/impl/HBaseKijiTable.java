@@ -20,8 +20,9 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
+
+import com.google.common.collect.Lists;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -33,6 +34,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiRegion;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiTableReader;
@@ -142,14 +144,26 @@ public class HBaseKijiTable extends AbstractKijiTable {
     return new HBaseKijiTableWriter(this);
   }
 
-  /** {@inheritDoc} */
+  /**
+   * Return the regions in this table as a list.
+   *
+   * <p>This method was copied from HFileOutputFormat of 0.90.1-cdh3u0 and modified to
+   * return KijiRegion instead of ImmutableBytesWritable.</p>
+   *
+   * @return the table regions.
+   * @throws IOException on I/O error.
+   */
   @Override
-  public List<HRegionInfo> getRegions() throws IOException {
+  public List<KijiRegion> getRegions() throws IOException {
     final HBaseAdmin hbaseAdmin = ((HBaseKiji) getKiji()).getHBaseAdmin();
     final HTableInterface hbaseTable = HBaseKijiTable.downcast(this).getHTable();
 
     final List<HRegionInfo> regions = hbaseAdmin.getTableRegions(hbaseTable.getTableName());
-    return new ArrayList<HRegionInfo>(regions);
+    final List<KijiRegion> result = Lists.newArrayList();
+    for (HRegionInfo region: regions) {
+      result.add(new HBaseKijiRegion(region));
+    }
+    return result;
   }
 
   /** {@inheritDoc} */
