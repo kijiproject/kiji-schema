@@ -155,18 +155,24 @@ import org.kiji.schema.util.ToJson;
  * The first layout of a newly created table has no reference layout.
  *
  * <p>During a layout update, the user may delete or declare new locality groups, families and/or
- * columns. The user may also modify existing locality groups, families and/or columns.
+ * columns, or modify existing entities, by specifying the new layout.  Update validation rules
+ * are enforced to ensure compatibility (see Validation rules for updates below).
  *
- * <p>The result of applying a layout update on top of a concrete reference layout is a new
- * concrete layout.
- *
- * <h3>Names</h3>
- *
- * <p> Layout entities are uniquely identified through their primary names.
- * Name aliases can be freely updated, as long as uniqueness requirements are met.
+ * <p>Entities may also be renamed, as long as uniqueness requirements are met.
  * Primary name updates must be explicitly annotated by setting the {@code renamedFrom} field of
  * the entity being renamed.
  * The name of a table cannot be changed.
+ *
+ * <p>For example, suppose the reference layout contained one locality group Users, and one family
+ * Info, containing a column Name, and a user wishes to add an Info: Address column to the the
+ * locality group Users.
+ * To perform this update, the user could specify a layout update identical to the reference
+ * layout, except set the {@code reference_layout} field to the {@code layout_id} of the reference
+ * layout, and add a new {@link ColumnDesc} record to the the {@code columns} field of the
+ * {@link FamilyDesc} for the Info family.
+ *
+ * <p>The result of applying a layout update on top of a concrete reference layout is a new
+ * concrete layout.
  *
  * <h3> Validation rules for updates </h3>
  *
