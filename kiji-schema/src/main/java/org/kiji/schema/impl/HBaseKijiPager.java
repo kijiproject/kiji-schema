@@ -114,7 +114,6 @@ public final class HBaseKijiPager implements KijiPager {
   /** {@inheritDoc} */
   @Override
   public KijiRowData next(int pageSize) {
-
     // Initialize a data request builder from the paged column.
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
       builder.withTimeRange(mColumnDataRequest.getMinTimestamp(),
@@ -138,7 +137,7 @@ public final class HBaseKijiPager implements KijiPager {
       return new HBaseKijiRowData(mEntityId, nextPageDataRequest, mTable, nextResultPage);
     } catch (IOException ioe) {
       LOG.error("Unable to get next page of results: {}", ioe);
-      throw new NoSuchElementException();
+      return new HBaseKijiRowData(mEntityId, nextPageDataRequest, mTable, new Result());
     }
 
   }

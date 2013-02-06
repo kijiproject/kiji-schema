@@ -60,10 +60,13 @@ import org.kiji.annotations.Inheritance;
 public interface KijiPager extends Iterator<KijiRowData>, Closeable {
 
   /**
-  * Gets the next page of results, with specified page size, for a column or family.
+  * Gets the next page of results, with specified page size, for a column or family. The
+  * KijiRowData returned may potentially have no values. This method does not throw a
+  * NoSuchElementException.
   *
   * @param pageSize The number of cells to retrieve for this page.
-  * @return The HBase result containing the next page of data, or null if there is no more data.
+  * @return The HBase result containing the next page of data, or an empty {@link KijiRowData}
+  * if there is no more data.
   */
   KijiRowData next(int pageSize);
 }
