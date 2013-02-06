@@ -45,9 +45,6 @@ import org.kiji.schema.impl.HashedEntityId;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 
-/**
- *
- */
 public class TestKijiPaginationFilter extends KijiClientTest {
    private static final Logger LOG = LoggerFactory.getLogger(TestKijiPaginationFilter.class);
    private KijiTableReader mReader;

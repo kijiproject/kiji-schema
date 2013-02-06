@@ -222,7 +222,7 @@ public interface KijiRowData {
   <T> NavigableMap<Long, KijiCell<T>> getCells(String family, String qualifier)
       throws IOException;
   /**
-   * Gets a HBaseKijiPager for the specified column, or throws a KijiColumnPagingNotEnabledException
+   * Gets a KijiPager for the specified column, or throws a KijiColumnPagingNotEnabledException
    * if the page size was not set in the dataRequest used to construct this rowData.
    *
    * @param family A column family name.
@@ -233,7 +233,7 @@ public interface KijiRowData {
   KijiPager getPager(String family, String qualifier) throws KijiColumnPagingNotEnabledException;
 
   /**
-   * Gets a HBaseKijiPager for the specified column, or throws a KijiColumnPagingNotEnabledException
+   * Gets a KijiPager for the specified column, or throws a KijiColumnPagingNotEnabledException
    * if the page size was not set in the dataRequest used to construct this rowData.
    *
    * @param family A column family name.

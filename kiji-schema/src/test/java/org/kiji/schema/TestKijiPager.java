@@ -19,7 +19,6 @@
 
 package org.kiji.schema;
 
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -40,11 +39,11 @@ import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 public class TestKijiPager extends KijiClientTest {
-   private static final Logger LOG = LoggerFactory.getLogger(TestKijiPaginationFilter.class);
-   /** Objects to reinstantiate between tests. */
-   private KijiTableReader mReader;
-   private KijiTableLayout mTableLayout;
-   private KijiTable mTable;
+  private static final Logger LOG = LoggerFactory.getLogger(TestKijiPaginationFilter.class);
+  /** Objects to reinstantiate between tests. */
+  private KijiTableReader mReader;
+  private KijiTableLayout mTableLayout;
+  private KijiTable mTable;
 
   @Before
   public void setupInstance() throws Exception {
@@ -60,7 +59,6 @@ public class TestKijiPager extends KijiClientTest {
 
   @Test(expected=KijiColumnPagingNotEnabledException.class)
   public void testColumnPagingNotEnabled() throws IOException {
-
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().withMaxVersions(5).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
@@ -76,7 +74,7 @@ public class TestKijiPager extends KijiClientTest {
   @Test
   public void testGroupTypeColumnPaging() throws IOException {
     EntityId id = mTable.getEntityId("me");
-   final KijiTableWriter writer = mTable.openTableWriter();
+    final KijiTableWriter writer = mTable.openTableWriter();
       writer.put(id, "info", "name", 1L, "me");
       writer.put(id, "info", "name", 2L, "me-too");
       writer.put(id, "info", "name", 3L, "me-three");

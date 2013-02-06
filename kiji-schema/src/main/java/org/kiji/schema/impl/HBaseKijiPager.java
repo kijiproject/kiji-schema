@@ -20,12 +20,14 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.NoSuchElementException;
 
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
@@ -35,10 +37,10 @@ import org.kiji.schema.KijiRowData;
 import org.kiji.schema.filter.KijiPaginationFilter;
 import org.kiji.schema.layout.KijiTableLayout;
 
-/** Implementation of a KijiPager for HBase.
- *
- *
+/**
+ * <p>Implementation of a KijiPager for HBase.</p>
  */
+@ApiAudience.Private
 public final class HBaseKijiPager implements KijiPager {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiPager.class);
   /** The entity id for the row. */
@@ -115,11 +117,11 @@ public final class HBaseKijiPager implements KijiPager {
 
     // Initialize a data request builder from the paged column.
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.withTimeRange(mColumnDataRequest.getMinTimestamp(),
-      mColumnDataRequest.getMaxTimestamp()).addColumns()
+      builder.withTimeRange(mColumnDataRequest.getMinTimestamp(),
+        mColumnDataRequest.getMaxTimestamp()).addColumns()
       .withFilter(new KijiPaginationFilter(pageSize, mOffset, // Add a pagination filter.
-      mColumnDataRequest.getColumn(mColumnName.getFamily(),
-      mColumnName.getQualifier()).getFilter())) // Pass in user defined filters.
+        mColumnDataRequest.getColumn(mColumnName.getFamily(),
+        mColumnName.getQualifier()).getFilter())) // Pass in user defined filters.
       .withMaxVersions(mMaxVersions).add(mColumnName);
 
     KijiDataRequest nextPageDataRequest = builder.build();
@@ -136,7 +138,7 @@ public final class HBaseKijiPager implements KijiPager {
       return new HBaseKijiRowData(mEntityId, nextPageDataRequest, mTable, nextResultPage);
     } catch (IOException ioe) {
       LOG.error("Unable to get next page of results: {}", ioe);
-      return null;
+      throw new NoSuchElementException();
     }
 
   }

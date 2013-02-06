@@ -164,7 +164,7 @@ public class HBaseDataRequestAdapter {
     // filters for timestamp ranges and max versions.  We need to generate a request that
     // will include all versions that we need, and add filters for the individual columns.
     int largestMaxVersions = 0;
-    // If every column is paged, we should add a keyonly filter to a signle column, so we can have
+    // If every column is paged, we should add a keyonly filter to a single column, so we can have
     // access to entityIds in our KijiRowData that is constructed.
     boolean completelyPaged = mKijiDataRequest.isPagingEnabled() ? true : false;
     for (KijiDataRequest.Column columnRequest : mKijiDataRequest.getColumns()) {
@@ -191,7 +191,8 @@ public class HBaseDataRequestAdapter {
     }
 
     if (completelyPaged) {
-      //We need a column from this request, and our get
+      // If every column in our data request is paged, we should construct a get that reuqests
+      // the least possible amount from each row.
       KijiDataRequest.Column sampleColumnRequest = mKijiDataRequest.getColumns().iterator().next();
       KijiColumnName kijiColumnName = sampleColumnRequest.getColumnName();
       HBaseColumnName hbaseColumnName = columnTranslator.toHBaseColumnName(kijiColumnName);
@@ -200,7 +201,7 @@ public class HBaseDataRequestAdapter {
       } else {
         get.addColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier());
       }
-      // If our data request has paging enabled on every column, we need to artificiall construct a
+      // If our data request has paging enabled on every column, we need to artificially construct a
       // Get, so that we have access to the entityId for each row. This will be used to construct
       // a KijiRowData.
       filterList.addFilter(new FirstKeyOnlyFilter());

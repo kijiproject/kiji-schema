@@ -43,7 +43,7 @@ public class KijiPaginationFilter extends KijiColumnFilter {
   /* Other filters to be checked before the pagination filter. */
   private KijiColumnFilter mInputFilter;
 
-    /**
+  /**
    * Initialize pagination filter with limit, offset, and other filters to fold in.
    *
    * @param limit The max number of versions to return.
@@ -61,8 +61,7 @@ public class KijiPaginationFilter extends KijiColumnFilter {
    *
    * @param limit The max number of versions to return.
    * @param offset How many versions back in history to begin looking.
-   * @param filter Other filters that will precede
-   * Write unit tests that verify these. HBase's docs are not specific
+   * @param filter Other filter that will precede
    */
   public KijiPaginationFilter(int limit, int offset, KijiColumnFilter filter) {
     mLimit = limit;

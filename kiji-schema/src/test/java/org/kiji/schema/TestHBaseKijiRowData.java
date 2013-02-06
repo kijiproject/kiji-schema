@@ -393,7 +393,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     assertEquals("value0", qual0Strings.get(qual0Strings.firstKey()).toString());
   }
 
-    @Test
+  @Test
   public void testReadMapFamilyTypes() throws IOException {
     final List<KeyValue> kvs = new ArrayList<KeyValue>();
     final EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
