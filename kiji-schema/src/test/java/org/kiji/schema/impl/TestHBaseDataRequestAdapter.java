@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.impl;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -35,8 +35,13 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.EntityId;
+import org.kiji.schema.EntityIdFactory;
+import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.impl.HBaseDataRequestAdapter;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -121,6 +126,7 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
     assertEquals(expectedGet.toString(),
         hbaseDataRequest.toGet(entityId, mTableLayout).toString());
   }
+
 
   @Test
   public void testDataRequestToGetEmpty() throws IOException {

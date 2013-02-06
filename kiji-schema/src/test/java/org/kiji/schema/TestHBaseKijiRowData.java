@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableMap;
 
 import org.apache.avro.Schema;
@@ -47,6 +48,7 @@ import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.impl.HBaseKijiRowData;
+import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.impl.RawEntityId;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -123,7 +125,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   }
 
   @Before
-  public void setupLayout() throws Exception {
+  public void setupInstance() throws Exception {
     final KijiTableLayout tableLayout =
         KijiTableLayouts.getTableLayout(KijiTableLayouts.ROW_DATA_TEST);
     getKiji().createTable(tableLayout.getName(), tableLayout);
@@ -159,8 +161,9 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().add("family", "qual0");
     KijiDataRequest dataRequest = builder.build();
-    KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory, tableLayout,
-        result, getKiji().getSchemaTable());
+    KijiTable table = getKiji().openTable(tableLayout.getName());
+    HBaseKijiTable hKijiTable = HBaseKijiTable.downcast(table);
+    KijiRowData input = new HBaseKijiRowData(foo, dataRequest, hKijiTable, result);
     assertEquals(foo, input.getEntityId());
   }
 
@@ -179,8 +182,9 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().addFamily("family");
     KijiDataRequest dataRequest = builder.build();
-    HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
-        tableLayout, result, getKiji().getSchemaTable());
+    KijiTable table = getKiji().openTable(tableLayout.getName());
+    HBaseKijiTable hKijiTable = HBaseKijiTable.downcast(table);
+    HBaseKijiRowData input = new HBaseKijiRowData(row0, dataRequest, hKijiTable, result);
     input.getMap();
     final int integer = (Integer) input.getMostRecentValue("family", "qual3");
     assertEquals(42, integer);
@@ -387,6 +391,30 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     assertEquals(2, stringsByTime.size());
     final NavigableMap<Long, CharSequence> qual0Strings = stringsByTime.get("qual0");
     assertEquals("value0", qual0Strings.get(qual0Strings.firstKey()).toString());
+  }
+
+  @Test
+  public void testReadMapFamilyTypes() throws IOException {
+    final List<KeyValue> kvs = new ArrayList<KeyValue>();
+    final EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    final byte[] hbaseRowKey = row0.getHBaseRowKey();
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseMapFamily, encodeStr("key0"), encodeStr("value0")));
+    kvs.add(new KeyValue(hbaseRowKey, mHBaseMapFamily, encodeStr("key1"), encodeStr("value1")));
+    final Result result = new Result(kvs);
+
+    final KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.addColumns().addFamily("map");
+    KijiDataRequest dataRequest = builder.build();
+    KijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
+        tableLayout, result, getKiji().getSchemaTable());
+
+    final NavigableMap<String, NavigableMap<Long, CharSequence>> stringsByTime =
+       input.getValues("map");
+    for (Map.Entry<String, NavigableMap<Long, CharSequence>> qualToOtherMap
+      : stringsByTime.entrySet()) {
+      LOG.debug("Qualifiers found: []", qualToOtherMap.getKey());
+    }
   }
 
   @Test

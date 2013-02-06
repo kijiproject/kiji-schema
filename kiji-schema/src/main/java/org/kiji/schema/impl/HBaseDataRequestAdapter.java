@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
+import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,22 +150,7 @@ public class HBaseDataRequestAdapter {
    * @return An HBase Get descriptor, or null if no data was requested.
    * @throws IOException If there is an error.
    */
-  public Get toGet(EntityId entityId, KijiTableLayout tableLayout) throws IOException {
-    return toGet(entityId, tableLayout, 0);
-  }
-
-  /**
-   * Constructs an HBase Get that describes the data requested in the KijiDataRequest for
-   * a particular entity/row.
-   *
-   * @param entityId The row to build an HBase Get request for.
-   * @param tableLayout The layout of the Kiji table to read from.  This is required for
-   *     determining the mapping between Kiji columns and HBase columns.
-   * @param pageIndex Which page of column data to retrieve (zero means the first page).
-   * @return An HBase Get descriptor, or null if no data was requested.
-   * @throws IOException If there is an error.
-   */
-  public Get toGet(EntityId entityId, KijiTableLayout tableLayout, int pageIndex)
+  public Get toGet(EntityId entityId, KijiTableLayout tableLayout)
       throws IOException {
     if (mKijiDataRequest.isEmpty()) {
       return null;
@@ -178,31 +164,48 @@ public class HBaseDataRequestAdapter {
     // filters for timestamp ranges and max versions.  We need to generate a request that
     // will include all versions that we need, and add filters for the individual columns.
     int largestMaxVersions = 0;
-
+    // If every column is paged, we should add a keyonly filter to a single column, so we can have
+    // access to entityIds in our KijiRowData that is constructed.
+    boolean completelyPaged = mKijiDataRequest.isPagingEnabled() ? true : false;
     for (KijiDataRequest.Column columnRequest : mKijiDataRequest.getColumns()) {
-      KijiColumnName kijiColumnName = columnRequest.getColumnName();
+      if (!columnRequest.isPagingEnabled()) {
+        completelyPaged = false;
+        KijiColumnName kijiColumnName = columnRequest.getColumnName();
+        HBaseColumnName hbaseColumnName = columnTranslator.toHBaseColumnName(kijiColumnName);
+        if (!kijiColumnName.isFullyQualified()) {
+          // The request is for all column in a Kiji family.
+          get.addFamily(hbaseColumnName.getFamily());
+        } else {
+          // Calls to Get.addColumn() will invalidate any previous calls to Get.addFamily(),
+          // so we only do it if:
+          //   1. No data from the family has been added to the request yet, OR
+          //   2. Only specific columns from the family have been requested so far.
+          if (!get.getFamilyMap().containsKey(hbaseColumnName.getFamily())
+              || null != get.getFamilyMap().get(hbaseColumnName.getFamily())) {
+            get.addColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier());
+          }
+        }
+        filterList.addFilter(toFilter(columnRequest, columnTranslator, tableLayout));
+        largestMaxVersions = Math.max(largestMaxVersions, columnRequest.getMaxVersions());
+      }
+    }
+
+    if (completelyPaged) {
+      // If every column in our data request is paged, we should construct a get that reuqests
+      // the least possible amount from each row.
+      KijiDataRequest.Column sampleColumnRequest = mKijiDataRequest.getColumns().iterator().next();
+      KijiColumnName kijiColumnName = sampleColumnRequest.getColumnName();
       HBaseColumnName hbaseColumnName = columnTranslator.toHBaseColumnName(kijiColumnName);
       if (!kijiColumnName.isFullyQualified()) {
-        // The request is for all column in a Kiji family.
         get.addFamily(hbaseColumnName.getFamily());
       } else {
-        // The request is for a particular Kiji column "family:qualifier".
-        if (columnRequest.getPageSize() * pageIndex > columnRequest.getMaxVersions()) {
-          LOG.debug("No more pages in column: " + kijiColumnName);
-          continue;
-        }
-
-        // Calls to Get.addColumn() will invalidate any previous calls to Get.addFamily(),
-        // so we only do it if:
-        //   1. No data from the family has been added to the request yet, OR
-        //   2. Only specific columns from the family have been requested so far.
-        if (!get.getFamilyMap().containsKey(hbaseColumnName.getFamily())
-            || null != get.getFamilyMap().get(hbaseColumnName.getFamily())) {
-          get.addColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier());
-        }
+        get.addColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier());
       }
-      filterList.addFilter(toFilter(columnRequest, columnTranslator, tableLayout, pageIndex));
-      largestMaxVersions = Math.max(largestMaxVersions, columnRequest.getMaxVersions());
+      // If our data request has paging enabled on every column, we need to artificially construct a
+      // Get, so that we have access to the entityId for each row. This will be used to construct
+      // a KijiRowData.
+      filterList.addFilter(new FirstKeyOnlyFilter());
+      largestMaxVersions = sampleColumnRequest.getMaxVersions();
     }
 
     if (!get.hasFamilies()) {
@@ -244,15 +247,13 @@ public class HBaseDataRequestAdapter {
    * @param columnRequest A kiji column request.
    * @param columnNameTranslator A column name translator.
    * @param tableLayout A kiji table
-   * @param pageIndex Specifies which page of cells to request (zero is the first page).
    * @return An HBase filter that retrieves only the data for the column request.
    * @throws IOException If there is an error.
    */
   private Filter toFilter(
       KijiDataRequest.Column columnRequest,
       ColumnNameTranslator columnNameTranslator,
-      KijiTableLayout tableLayout,
-      int pageIndex) throws IOException {
+      KijiTableLayout tableLayout) throws IOException {
 
     KijiColumnName kijiColumnName = columnRequest.getColumnName();
     HBaseColumnName hbaseColumnName = columnNameTranslator.toHBaseColumnName(kijiColumnName);
@@ -285,15 +286,7 @@ public class HBaseDataRequestAdapter {
       requestFilter.addFilter(hBaseFilter);
     }
 
-    if (columnRequest.isPagingEnabled()) {
-      // Finally, limit the cells to the current page of results.
-      final int pageSize = columnRequest.getPageSize();
-      final int limit = !kijiColumnName.isFullyQualified()
-          ? pageSize  // Don't do any thing special for requests of a whole family.
-          : Math.min(columnRequest.getMaxVersions() - pageIndex * pageSize, pageSize);
-      final int offset = pageIndex * pageSize;
-      requestFilter.addFilter(new ColumnPaginationFilter(limit, offset));
-    } else if (kijiColumnName.isFullyQualified()) {
+    if (kijiColumnName.isFullyQualified() && !columnRequest.isPagingEnabled()) {
       // Limit the max versions. This optimization only works for requests for particular
       // columns within a family. We can't do this for "give me all the cells in a family"
       // requests because there's no HBase filter that does "give me N versions from each

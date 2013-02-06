@@ -27,9 +27,16 @@ import org.apache.avro.Schema;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
+import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
 
 /**
- * The input data for a single entity in Kiji.  Implementations should be thread-safe.
+ * <p>KijiRowData objects represent information retrieved from a Kiji table, given a
+ * {@link KijiDataRequest}.</p>
+ *
+ * <p> KijiRowDatas should not be constructed directly. KijiClient get access to a KijiRowData
+ * returned {@link KijiTableReader}s, {@link KijiScanner}s, and {@link KijiPager}s. </p>
+ *
+ * Implementations should be thread-safe.
  */
 @ApiAudience.Public
 @Inheritance.Sealed
@@ -214,47 +221,24 @@ public interface KijiRowData {
    */
   <T> NavigableMap<Long, KijiCell<T>> getCells(String family, String qualifier)
       throws IOException;
+  /**
+   * Gets a KijiPager for the specified column, or throws a KijiColumnPagingNotEnabledException
+   * if the page size was not set in the dataRequest used to construct this rowData.
+   *
+   * @param family A column family name.
+   * @param qualifier A column qualifier name.
+   * @return A pager for the specified column.
+   * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the specified column.
+   */
+  KijiPager getPager(String family, String qualifier) throws KijiColumnPagingNotEnabledException;
 
   /**
-   * Populates the next page of cells for a column.
+   * Gets a KijiPager for the specified column, or throws a KijiColumnPagingNotEnabledException
+   * if the page size was not set in the dataRequest used to construct this rowData.
    *
-   * <p>If there are cells remaining, this KijiRowData object is populated with the next
-   * page of cells for the requested column and the method returns true. Otherwise, data
-   * from the column's previous page is removed, and this method returns false. This
-   * method throws an IOException if the column does not have paging enabled in the
-   * KijiDataRequest.</p>
-   *
-   * @param family A column family.
-   * @param qualifier A column qualifier.
-   * @return Whether a new page of cells has been fetched.
-   * @throws IOException If there is an error.
+   * @param family A column family name.
+   * @return A pager for the specified column.
+   * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the specified column.
    */
-  boolean nextPage(String family, String qualifier) throws IOException;
-
-  /**
-   * Populates the next page of cells for a requested column family.
-   *
-   * <p>If there are cells remaining, this KijiRowData object is populated with the next
-   * page of cells for the requested family and the method returns true. Otherwise, data
-   * from the family's previous page is removed, and this method returns false. This
-   * method throws an IOException if the column does not have paging enabled in the
-   * KijiDataRequest.</p>
-   *
-   * <p>An IOException is thrown if this method is called on a family that was not
-   * requested explicitly in the KijiDataRequest. For example, consider the following:
-   *
-   * <pre>
-   *   new KijiDataRequest()
-   *       .addColumn(new KijiDataRequest.Column("foo").withPageSize(10))
-   *       .addColumn(new KijiDataRequest.Column("bar", "baz").withPageSize(10));
-   * </pre>
-   *
-   * It would be valid to call nextPage("foo"), but calling nextPage("bar") would throw an
-   * IOException, since paging was not enabled on the entire "bar" family.</p>
-   *
-   * @param family A column family.
-   * @return Whether a new page of cells has been fetched.
-   * @throws IOException If there is an error.
-   */
-  boolean nextPage(String family) throws IOException;
+  KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException;
 }
