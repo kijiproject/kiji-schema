@@ -22,8 +22,11 @@ package org.kiji.schema.tools;
 import java.io.IOException;
 import java.util.List;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,13 +40,17 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
  * Command-line tool for flushing kiji meta and user tables in hbase.
  */
 @ApiAudience.Private
-public final class FlushTableTool extends VersionValidatedTool {
+public final class FlushTableTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(FlushTableTool.class.getName());
+
+  @Flag(name="table", usage="the KijiURI of the table to flush.")
+  private String mTableURIString = null;
 
   @Flag(name="meta", usage="If true, flushes all kiji meta tables.")
   private boolean mFlushMeta = false;
 
   private HBaseAdmin mHBaseAdmin;
+  private KijiURI mURI;
 
   /** {@inheritDoc} */
   @Override
@@ -70,6 +77,8 @@ public final class FlushTableTool extends VersionValidatedTool {
     Preconditions.checkArgument(mFlushMeta || (getURI().getTable() != null),
         "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table and/or "
         + "specify a flush of metadata with --meta");
+    Preconditions.checkArgument(mTableURIString != null || mFlushMeta,
+        "Requires at least one of --table or --meta");
   }
 
   /**
@@ -122,10 +131,40 @@ public final class FlushTableTool extends VersionValidatedTool {
     hbaseAdmin.flush(hbaseTableName.toString());
   }
 
+  /**
+   * Sets the KijiURI of the target table.
+   *
+   * @param uri The KijiURI of the target table.
+   */
+  protected void setURI(KijiURI uri) {
+    if (null == mURI) {
+      mURI = uri;
+    } else {
+      getPrintStream().println("URI is already set.");
+    }
+  }
+
+  /**
+   * Returns the KijiURI of the target table.
+   *
+   * @return The KijiURI of the target table.
+   */
+  protected KijiURI getURI() {
+    if (null == mURI) {
+      getPrintStream().println("No URI specified.");
+    }
+    return mURI;
+  }
+
   /** {@inheritDoc} */
   @Override
   protected void setup() throws Exception {
     super.setup();
+    setURI(parseURI(mTableURIString));
+    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
+    getConf().set(HConstants.ZOOKEEPER_QUORUM,
+        Joiner.on(",").join(mURI.getZookeeperQuorumOrdered()));
+    setConf(HBaseConfiguration.addHbaseResources(getConf()));
     mHBaseAdmin = new HBaseAdmin(getConf());
   }
 
@@ -142,11 +181,11 @@ public final class FlushTableTool extends VersionValidatedTool {
     if (mFlushMeta) {
       getPrintStream().println("Flushing metadata tables for kiji instance: "
           + getURI().toString());
-      flushMetaTables(mHBaseAdmin, getKiji().getURI().getInstance());
+      flushMetaTables(mHBaseAdmin, getURI().getInstance());
     }
 
-    if (getURI().getTable() != null) {
-      getPrintStream().printf("Flushing table: %s.%n", getURI());
+    if (null != mURI) {
+      getPrintStream().printf("Flushing table: %s.%/n", getURI());
       flushTable(mHBaseAdmin, getURI());
     }
 

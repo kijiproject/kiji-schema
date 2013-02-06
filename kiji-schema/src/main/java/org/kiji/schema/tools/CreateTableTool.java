@@ -19,17 +19,22 @@
 
 package org.kiji.schema.tools;
 
+import java.io.IOException;
 import java.util.List;
 
+import com.google.common.base.Joiner;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.SplitKeyFile;
@@ -39,8 +44,11 @@ import org.kiji.schema.util.SplitKeyFile;
  * Command-line tool for creating kiji tables in kiji instances.
  */
 @ApiAudience.Private
-public final class CreateTableTool extends VersionValidatedTool {
+public final class CreateTableTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(CreateTableTool.class);
+
+  @Flag(name="table", usage="The KijiURI of the kiji table to create.")
+  private String mTableURIString;
 
   @Flag(name="layout", usage="Path to a file containing a JSON table layout.")
   private String mLayout = "";
@@ -55,6 +63,11 @@ public final class CreateTableTool extends VersionValidatedTool {
   @Flag(name="split-key-file",
       usage="Path to a file of row keys to use as boundaries between regions")
   private String mSplitKeyFilePath = "";
+
+  /** Opened Kiji to use. */
+  private Kiji mKiji;
+  /** KijiURI of the table to create. */
+  private KijiURI mURI;
 
   /** {@inheritDoc} */
   @Override
@@ -78,6 +91,9 @@ public final class CreateTableTool extends VersionValidatedTool {
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
+    if (mTableURIString.isEmpty()) {
+      throw new RequiredFlagException("table");
+    }
     if (mLayout.isEmpty()) {
       throw new RequiredFlagException("layout");
     }
@@ -87,6 +103,65 @@ public final class CreateTableTool extends VersionValidatedTool {
     if (mNumRegions < 1) {
       throw new RuntimeException("--num-regions must be positive");
     }
+  }
+
+  /**
+   * Opens a kiji instance.
+   *
+   * @return The opened kiji.
+   * @throws IOException if there is an error.
+   */
+  private Kiji openKiji() throws IOException {
+    return Kiji.Factory.open(getURI(), getConf());
+  }
+
+  /**
+   * Retrieves the kiji instance used by this tool. On the first call to this method,
+   * the kiji instance will be opened and will remain open until {@link #cleanup()} is called.
+   *
+   * @return The kiji instance.
+   * @throws IOException if there is an error loading the kiji.
+   */
+  protected synchronized Kiji getKiji() throws IOException {
+    if (null == mKiji) {
+      mKiji = openKiji();
+    }
+    return mKiji;
+  }
+
+  /**
+   * Returns the kiji URI of the target this tool operates on.
+   *
+   * @return The kiji URI of the target this tool operates on.
+   */
+  protected KijiURI getURI() {
+    if (null == mURI) {
+      getPrintStream().println("No URI specified.");
+    }
+    return mURI;
+  }
+
+  /**
+   * Sets the kiji URI of the target this tool operates on.
+   *
+   * @param uri The kiji URI of the target this tool should operate on.
+   */
+  protected void setURI(KijiURI uri) {
+    if (null == mURI) {
+      mURI = uri;
+    } else {
+      getPrintStream().printf("URI is already set to: %s", mURI.toString());
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void setup() {
+    setURI(parseURI(mTableURIString));
+    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
+    getConf().set(HConstants.ZOOKEEPER_QUORUM,
+        Joiner.on(",").join(getURI().getZookeeperQuorumOrdered()));
+    setConf(HBaseConfiguration.addHbaseResources(getConf()));
   }
 
   /** {@inheritDoc} */
@@ -110,11 +185,10 @@ public final class CreateTableTool extends VersionValidatedTool {
     hbaseTimeout = hbaseTimeout * 10;
     getConf().setInt("hbase.rpc.timeout", hbaseTimeout);
 
-    setURI(KijiURI.newBuilder(getURI()).withTableName(tableName).build());
     getPrintStream().println("Creating kiji table: " + getURI().toString() + "...");
     if (mNumRegions > 1) {
       // Create a table with an initial number of evenly split regions.
-      getKiji().createTable(tableName, tableLayout, mNumRegions);
+      getKiji().createTable(mURI.getTable(), tableLayout, mNumRegions);
     } else if (!mSplitKeyFilePath.isEmpty()) {
       switch (KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat())) {
       case HASH:
@@ -145,11 +219,11 @@ public final class CreateTableTool extends VersionValidatedTool {
       }
 
       // Create the table with the given split keys.
-      getKiji().createTable(tableName, tableLayout,
+      getKiji().createTable(getURI().getTable(), tableLayout,
           splitKeys.toArray(new byte[splitKeys.size()][]));
     } else {
       // Create a table with the default initial region.
-      getKiji().createTable(tableName, tableLayout);
+      getKiji().createTable(getURI().getTable(), tableLayout);
     }
 
     return 0;

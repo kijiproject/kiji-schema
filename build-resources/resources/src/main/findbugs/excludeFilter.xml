@@ -82,10 +82,16 @@
   </Match>
   <Match>
     <!--
-       When decoding a cell, the cell may contain an empty byte array,
-       thus null is used to indicate a missing cell.
+       This is used to create an immutable array
     -->
     <Class name="org.kiji.schema.impl.HBaseKiji" />
     <Bug pattern="ITA_INEFFICIENT_TO_ARRAY" />
+  </Match>
+  <Match>
+    <!--
+      mURI is set 2 lines before being dereferenced
+    -->
+    <Class name="org.kiji.schema.tools.SynthesizeUserDataTool" />
+    <Bug pattern="UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR" />
   </Match>
 </FindBugsFilter>

@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
@@ -90,7 +91,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
     ToolResult createFooTableResult = runTool(new CreateTableTool(), new String[] {
-      "--kiji=" + fooTableURI,
+      "--table=" + fooTableURI,
       "--layout=" + layoutFile,
     });
     assertEquals(0, createFooTableResult.getReturnCode());
@@ -109,7 +110,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
 
     // Synthesize some user data.
     ToolResult synthesizeResult = runTool(new SynthesizeUserDataTool(), new String[] {
-      "--kiji=" + fooTableURI,
+      "--table=" + fooTableURI,
       "--num-users=10",
     });
     assertEquals(0, synthesizeResult.getReturnCode());
@@ -222,12 +223,12 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
     ToolResult createFooTableResult = runTool(new CreateTableTool(), new String[] {
-      "--kiji=" + fooTableURI,
+      "--table=" + fooTableURI,
       "--layout=" + layoutFile,
     });
     assertEquals(0, createFooTableResult.getReturnCode());
     assertEquals("Parsing table layout: " + layoutFile + "\n"
-        + "Creating kiji table: " + getKijiURI().toString() + "foo/...\n",
+        + "Creating kiji table: " + fooTableURI + "...\n",
         createFooTableResult.getStdoutUtf8());
 
     // Attempt to change hashRowKeys (should not be possible).
@@ -235,7 +236,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
         KijiTableLayouts.getTempFile(KijiTableLayouts.getFooChangeHashingTestLayout());
     try {
       ToolResult setHashRowKeyResult = runTool(new LayoutTool(), new String[] {
-        "--kiji=" + fooTableURI,
+        "--table=" + fooTableURI,
         "--do=set",
         "--layout=" + changedLayoutFile,
       });
@@ -261,13 +262,13 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
     ToolResult createFooTableResult = runTool(new CreateTableTool(), new String[] {
-      "--kiji=" + fooTableURI,
+      "--table=" + fooTableURI,
       "--layout=" + layoutFile,
       "--num-regions=" + 2,
     });
     assertEquals(0, createFooTableResult.getReturnCode());
     assertEquals("Parsing table layout: " + layoutFile + "\n"
-        + "Creating kiji table: " + getKijiURI().toString() + "foo/...\n",
+        + "Creating kiji table: " + fooTableURI + "...\n",
         createFooTableResult.getStdoutUtf8());
 
     // Delete the table.
@@ -287,7 +288,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     String splitKeyPath = getClass().getClassLoader().getResource(SPLIT_KEY_FILE).getPath();
     @SuppressWarnings("unused")
     ToolResult createFooTableResult = runTool(new CreateTableTool(), new String[] {
-      "--kiji=" + fooTableURI,
+      "--table=" + fooTableURI,
       "--layout=" + layoutFile,
       "--split-key-file=file://" + splitKeyPath,
     });
@@ -300,7 +301,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getFooChangeHashingTestLayout());
     ToolResult createUnhashedTable = runTool(new CreateTableTool(), new String[]{
-        "--kiji=" + fooTableURI,
+        "--table=" + fooTableURI,
         "--layout=" + layoutFile,
         "--num-regions=4",
     });
@@ -316,13 +317,15 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     final File layoutFile = KijiTableLayouts.getTempFile(desc);
     String splitKeyPath = getClass().getClassLoader().getResource(SPLIT_KEY_FILE).getPath();
     ToolResult createFooTableResult = runTool(new CreateTableTool(), new String[] {
-      "--kiji=" + fooTableURI,
+      "--table=" + KijiURI.newBuilder(getKijiURI()).withTableName(tableName).build(),
       "--layout=" + layoutFile,
       "--split-key-file=file://" + splitKeyPath,
     });
     assertEquals(0, createFooTableResult.getReturnCode());
     assertEquals("Parsing table layout: " + layoutFile + "\n"
-        + "Creating kiji table: " + getKijiURI().toString() + tableName + "/...\n",
+        + "Creating kiji table: "
+        + KijiURI.newBuilder(getKijiURI()).withTableName(tableName).build()
+        + "...\n",
         createFooTableResult.getStdoutUtf8());
 
     // Delete the table.
@@ -330,6 +333,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
         "--kiji=" + fooTableURI,
         "--interactive=false",
     });
+
     assertEquals(0, deleteResult.getReturnCode());
   }
 
@@ -339,7 +343,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     final File layoutFile =
         KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.INVALID_SCHEMA));
     ToolResult createFailResult = runTool(new CreateTableTool(), new String[]{
-        "--kiji=" + fooTableURI,
+        "--table=" + fooTableURI,
         "--layout=" + layoutFile,
     });
   }
@@ -351,7 +355,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
 
     ToolResult deleteRowResult = runTool(new DeleteTool(), new String[] {
       "--kiji=" + fooTableURI,
-      "--row=gwu@usermail.example.com",
+      "--entity-id=gwu@usermail.example.com",
       "--interactive=false",
     });
     assertEquals(0, deleteRowResult.getReturnCode());
@@ -373,9 +377,9 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     final KijiURI fooTableURI = KijiURI.newBuilder(getKijiURI()).withTableName("foo").build();
 
     ToolResult deleteFamilyResult = runTool(new DeleteTool(), new String[] {
-      "--kiji=" + fooTableURI,
-      "--row=gwu@usermail.example.com",
-      "--family=info",
+      "--kiji="
+          + KijiURI.newBuilder(fooTableURI).addColumnName(new KijiColumnName("info")).build(),
+      "--entity-id=gwu@usermail.example.com",
       "--interactive=false",
     });
     assertEquals(0, deleteFamilyResult.getReturnCode());
@@ -397,10 +401,10 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     final KijiURI fooTableURI = KijiURI.newBuilder(getKijiURI()).withTableName("foo").build();
 
     ToolResult deleteColumnResult = runTool(new DeleteTool(), new String[] {
-      "--kiji=" + fooTableURI,
-      "--row=gwu@usermail.example.com",
-      "--family=info",
-      "--qualifier=email",
+      "--kiji="
+          + KijiURI.newBuilder(fooTableURI)
+          .addColumnName(new KijiColumnName("info:email")).build(),
+      "--entity-id=gwu@usermail.example.com",
       "--interactive=false",
     });
     assertEquals(0, deleteColumnResult.getReturnCode());
@@ -422,10 +426,10 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     final KijiURI fooTableURI = KijiURI.newBuilder(getKijiURI()).withTableName("foo").build();
 
     ToolResult deleteMostRecentResult = runTool(new DeleteTool(), new String[] {
-      "--kiji=" + fooTableURI,
-      "--row=gwu@usermail.example.com",
-      "--family=info",
-      "--qualifier=email",
+      "--kiji="
+          + KijiURI.newBuilder(fooTableURI)
+          .addColumnName(new KijiColumnName("info:email")).build(),
+      "--entity-id=gwu@usermail.example.com",
       "--most-recent",
       "--interactive=false",
     });
@@ -456,11 +460,20 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     IOUtils.closeQuietly(testTable);
     testKiji.release();
 
-    ToolResult deleteExactResult = runTool(new DeleteTool(), new String[] {
+    ToolResult lsTestPut = runTool(new LsTool(), new String[] {
       "--kiji=" + fooTableURI,
-      "--row=gwu@usermail.example.com",
-      "--family=info",
-      "--qualifier=email",
+      "--columns=info:email",
+      "entity-id=gwu@usermail.example.com",
+    });
+    assertEquals(0, lsTestPut.getReturnCode());
+    assertEquals(1, StringUtils.countMatches(lsTestPut.getStdoutUtf8(),
+      "9223372036854775806"));
+
+    ToolResult deleteExactResult = runTool(new DeleteTool(), new String[] {
+      "--kiji="
+          + KijiURI.newBuilder(fooTableURI)
+          .addColumnName(new KijiColumnName("info:email")).build(),
+      "--entity-id=gwu@usermail.example.com",
       "--exact-timestamp=" + (Long.MAX_VALUE - 1),
       "--interactive=false",
     });
@@ -492,10 +505,10 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     testKiji.release();
 
     ToolResult deleteUpToResult = runTool(new DeleteTool(), new String[] {
-      "--kiji=" + fooTableURI,
-      "--row=gwu@usermail.example.com",
-      "--family=info",
-      "--qualifier=email",
+      "--kiji="
+          + KijiURI.newBuilder(fooTableURI)
+          .addColumnName(new KijiColumnName("info:email")).build(),
+      "--entity-id=gwu@usermail.example.com",
       "--upto-timestamp=" + (Long.MAX_VALUE - 1),
       "--interactive=false",
     });

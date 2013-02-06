@@ -20,15 +20,19 @@
 package org.kiji.schema.tools;
 
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ToJson;
@@ -45,11 +50,14 @@ import org.kiji.schema.util.ToJson;
  * setting a table layout, and viewing a table's layout history.
  */
 @ApiAudience.Private
-public final class LayoutTool extends VersionValidatedTool {
+public final class LayoutTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(LayoutTool.class);
 
   @Flag(name="do", usage="Action to perform: dump, set, or history.")
   private String mDo = "dump";
+
+  @Flag(name="table", usage="The KijiURI of the table to use.")
+  private String mTableURIString;
 
   @Flag(name="layout",
       usage="Path to the file containing the layout update, in JSON.")
@@ -68,6 +76,12 @@ public final class LayoutTool extends VersionValidatedTool {
           + "Empty means write to console output. "
           + "A '.json' extension is appended to this parameter.")
   private String mWriteTo = "";
+
+  /** The KijiURI of the table to use. */
+  private KijiURI mURI;
+
+  /** The Kiji to use to set layouts. */
+  private Kiji mKiji;
 
   /** {@inheritDoc} */
   @Override
@@ -90,8 +104,7 @@ public final class LayoutTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
-    Preconditions.checkArgument(!getURI().getTable().isEmpty(),
-        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table-name");
+    Preconditions.checkArgument(mTableURIString.isEmpty(), "Requires --table flag");
     Preconditions.checkArgument(mMaxVersions >= 1, "--max-versions must be >= 1");
   }
 
@@ -181,6 +194,65 @@ public final class LayoutTool extends VersionValidatedTool {
         }
       }
     }
+  }
+
+  /**
+   * Opens a kiji instance.
+   *
+   * @return The opened kiji.
+   * @throws IOException if there is an error.
+   */
+  private Kiji openKiji() throws IOException {
+    return Kiji.Factory.open(getURI(), getConf());
+  }
+
+  /**
+   * Retrieves the kiji instance used by this tool. On the first call to this method,
+   * the kiji instance will be opened and will remain open until {@link #cleanup()} is called.
+   *
+   * @return The kiji instance.
+   * @throws IOException if there is an error loading the kiji.
+   */
+  protected synchronized Kiji getKiji() throws IOException {
+    if (null == mKiji) {
+      mKiji = openKiji();
+    }
+    return mKiji;
+  }
+
+  /**
+   * Returns the KijiURI of the table to use.
+   *
+   * @return The kiji URI of the target this tool operates on.
+   */
+  protected KijiURI getURI() {
+    if (null == mURI) {
+      getPrintStream().println("No URI specified.");
+    }
+    return mURI;
+  }
+
+  /**
+   * Sets the kiji URI of the table to use.
+   *
+   * @param uri The kiji URI of the target this tool should operate on.
+   */
+  protected void setURI(KijiURI uri) {
+    if (null == mURI) {
+      mURI = uri;
+    } else {
+      getPrintStream().printf("URI is already set to: %s", mURI.toString());
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void setup() {
+    setURI(parseURI(mTableURIString));
+    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
+    getConf().set(HConstants.ZOOKEEPER_QUORUM,
+        Joiner.on(",").join(mURI.getZookeeperQuorumOrdered()));
+    setConf(HBaseConfiguration.addHbaseResources(getConf()));
   }
 
   /** {@inheritDoc} */
