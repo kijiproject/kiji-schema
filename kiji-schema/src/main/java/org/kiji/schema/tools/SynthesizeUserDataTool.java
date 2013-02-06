@@ -23,28 +23,41 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.tools.synth.DictionaryLoader;
 import org.kiji.schema.tools.synth.EmailSynthesizer;
 import org.kiji.schema.tools.synth.NGramSynthesizer;
 import org.kiji.schema.tools.synth.WordSynthesizer;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Synthesize some user data into a kiji table.
  */
 @ApiAudience.Private
-public final class SynthesizeUserDataTool extends VersionValidatedTool {
+public final class SynthesizeUserDataTool extends BaseTool {
   @Flag(name="name-dict", usage="File that contains people names, one per line")
   private String mNameDictionaryFilename = "org/kiji/schema/tools/synth/top_names.txt";
 
   @Flag(name="num-users", usage="Number of users to synthesize")
   private int mNumUsers = 100;
+
+  @Flag(name="table", usage="kiji table data should be written to")
+  private String mTableURIString = "";
+
+  /** Kiji used by the tool. */
+  private Kiji mKiji;
+  /** KijiURI of the table to store synthesized data. */
+  private KijiURI mURI;
 
   /** {@inheritDoc} */
   @Override
@@ -81,8 +94,75 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
-    Preconditions.checkArgument(getURI().getTable() != null,
-        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table");
+    if (mTableURIString.isEmpty()) {
+      throw new RequiredFlagException("table");
+    }
+  }
+
+  /**
+   * Opens a kiji instance.
+   *
+   * @return The opened kiji.
+   * @throws IOException if there is an error.
+   */
+  private Kiji openKiji() throws IOException {
+    return Kiji.Factory.open(getURI(), getConf());
+  }
+
+  /**
+   * Retrieves the kiji instance used by this tool. On the first call to this method,
+   * the kiji instance will be opened and will remain open until {@link #cleanup()} is called.
+   *
+   * @return The kiji instance.
+   * @throws IOException if there is an error loading the kiji.
+   */
+  protected synchronized Kiji getKiji() throws IOException {
+    if (null == mKiji) {
+      mKiji = openKiji();
+    }
+    return mKiji;
+  }
+
+  /**
+   * Returns the kiji URI of the target this tool operates on.
+   *
+   * @return The kiji URI of the target this tool operates on.
+   */
+  protected KijiURI getURI() {
+    if (null == mURI) {
+      getPrintStream().println("No URI specified.");
+    }
+    return mURI;
+  }
+
+  /**
+   * Sets the kiji URI of the target this tool operates on.
+   *
+   * @param uri The kiji URI of the target this tool should operate on.
+   */
+
+  protected void setURI(KijiURI uri) {
+    if (null == mURI) {
+      mURI = uri;
+    } else {
+      getPrintStream().printf("URI is already set to: %s", mURI.toString());
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void setup() {
+    setURI(parseURI(mTableURIString));
+    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
+    getConf().set(HConstants.ZOOKEEPER_QUORUM,
+        Joiner.on(",").join(mURI.getZookeeperQuorumOrdered()));
+    setConf(HBaseConfiguration.addHbaseResources(getConf()));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void cleanup() {
+    ResourceUtils.releaseOrLog(mKiji);
   }
 
   /** {@inheritDoc} */
@@ -95,7 +175,7 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
     NGramSynthesizer fullNameSynth = new NGramSynthesizer(nameSynth, 2);
     EmailSynthesizer emailSynth = new EmailSynthesizer(random, nameDictionary);
 
-    getPrintStream().printf("Generating %d users on kiji table '%s'...%n", mNumUsers, getURI());
+    getPrintStream().printf("Generating %d users on kiji table '%s'...%/n", mNumUsers, getURI());
     final KijiTable kijiTable = getKiji().openTable(getURI().getTable());
 
     KijiTableWriter tableWriter = kijiTable.openTableWriter();
