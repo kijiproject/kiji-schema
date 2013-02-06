@@ -82,12 +82,12 @@ public class TestKijiPager extends KijiClientTest {
   public void testGroupTypeColumnPaging() throws IOException {
     EntityId id = mTable.getEntityId("me");
     final KijiTableWriter writer = mTable.openTableWriter();
-      writer.put(id, "info", "name", 1L, "me");
-      writer.put(id, "info", "name", 2L, "me-too");
-      writer.put(id, "info", "name", 3L, "me-three");
-      writer.put(id, "info", "name", 4L, "me-four");
-      writer.put(id, "info", "name", 5L, "me-five");
-      writer.close();
+    writer.put(id, "info", "name", 1L, "me");
+    writer.put(id, "info", "name", 2L, "me-too");
+    writer.put(id, "info", "name", 3L, "me-three");
+    writer.put(id, "info", "name", 4L, "me-four");
+    writer.put(id, "info", "name", 5L, "me-five");
+    writer.close();
 
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().withMaxVersions(5).withPageSize(2).add("info", "name");
