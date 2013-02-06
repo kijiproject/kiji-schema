@@ -93,7 +93,7 @@ public final class KijiURI {
   /** Kiji column names. Never null. Empty means unset. Preserves user ordering. */
   private final ImmutableList<KijiColumnName> mColumnNames;
 
-  /** Normalized version of mColumnNames. */
+  /** Normalized version of mColumnNames. Never null. */
   private final ImmutableList<KijiColumnName> mColumnNamesNormalized;
 
   /**
@@ -505,12 +505,12 @@ public final class KijiURI {
     return mTableName;
   }
 
-  /** @return Kiji columns (comma-separated list of Kiji column names), normalized. */
+  /** @return Kiji columns (comma-separated list of Kiji column names), normalized. Never null. */
   public ImmutableList<KijiColumnName> getColumns() {
     return mColumnNamesNormalized;
   }
 
-  /** @return Kiji columns (comma-separated list of Kiji column names), ordered. */
+  /** @return Kiji columns (comma-separated list of Kiji column names), ordered. Never null. */
   public Collection<KijiColumnName> getColumnsOrdered() {
     return mColumnNames;
   }

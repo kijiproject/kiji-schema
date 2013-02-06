@@ -22,25 +22,35 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+import com.google.common.base.Joiner;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.specific.SpecificDatumReader;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.common.flags.Flag;
+import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiSystemTable;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.impl.MetadataRestorer;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * A tool to backup and restore Metadata.
  */
-public class MetadataTool extends VersionValidatedTool {
+public class MetadataTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(MetadataTool.class);
   private MetadataRestorer mRestorer = new MetadataRestorer();
+
+  @Flag(name="kiji", usage="The KijiURI of the instance to use.")
+  private String mKijiURIString = String.format("kiji://.env/%s",
+      KConstants.DEFAULT_INSTANCE_NAME);
   @Flag(name = "backup", usage = "Output filename for Kiji metadata")
   private String mOutFile = "";
   @Flag(name = "restore", usage = "Input filename to restore Kiji metadata from")
@@ -50,6 +60,11 @@ public class MetadataTool extends VersionValidatedTool {
   private boolean mAllTables;
   @Flag(name = "schemas", usage = "Restore schema definitions")
   private boolean mSchemas;
+
+  /** Opened Kiji to use. */
+  private Kiji mKiji;
+  /** KijiURI of the target instance. */
+  private KijiURI mURI;
 
   /** {@inheritDoc} */
   @Override
@@ -137,8 +152,71 @@ public class MetadataTool extends VersionValidatedTool {
   }
 
   /**
-   * {@inheritDoc}
+   * Opens a kiji instance.
+   *
+   * @return The opened kiji.
+   * @throws IOException if there is an error.
    */
+  private Kiji openKiji() throws IOException {
+    return Kiji.Factory.open(getURI(), getConf());
+  }
+
+  /**
+   * Retrieves the kiji instance used by this tool. On the first call to this method,
+   * the kiji instance will be opened and will remain open until {@link #cleanup()} is called.
+   *
+   * @return The kiji instance.
+   * @throws IOException if there is an error loading the kiji.
+   */
+  protected synchronized Kiji getKiji() throws IOException {
+    if (null == mKiji) {
+      mKiji = openKiji();
+    }
+    return mKiji;
+  }
+
+  /**
+   * Returns the kiji URI of the target this tool operates on.
+   *
+   * @return The kiji URI of the target this tool operates on.
+   */
+  protected KijiURI getURI() {
+    if (null == mURI) {
+      getPrintStream().println("No URI specified.");
+    }
+    return mURI;
+  }
+
+  /**
+   * Sets the kiji URI of the target this tool operates on.
+   *
+   * @param uri The kiji URI of the target this tool should operate on.
+   */
+  protected void setURI(KijiURI uri) {
+    if (null == mURI) {
+      mURI = uri;
+    } else {
+      getPrintStream().printf("URI is already set to: %s", mURI.toString());
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void setup() {
+    setURI(parseURI(mKijiURIString));
+    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
+    getConf().set(HConstants.ZOOKEEPER_QUORUM,
+        Joiner.on(",").join(mURI.getZookeeperQuorumOrdered()));
+    setConf(HBaseConfiguration.addHbaseResources(getConf()));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void cleanup() {
+    ResourceUtils.releaseOrLog(mKiji);
+  }
+
+  /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     if (mOutFile.isEmpty() && mInFile.isEmpty()) {

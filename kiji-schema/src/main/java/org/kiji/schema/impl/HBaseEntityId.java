@@ -22,7 +22,9 @@ package org.kiji.schema.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
@@ -66,4 +68,11 @@ public class HBaseEntityId extends EntityId {
     return resp;
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HBaseEntityId.class)
+        .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
+        .toString();
+  }
 }

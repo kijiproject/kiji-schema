@@ -22,14 +22,18 @@ package org.kiji.schema.tools;
 import java.io.IOException;
 import java.util.List;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
+import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 
@@ -37,13 +41,19 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
  * Command-line tool for flushing kiji meta and user tables in hbase.
  */
 @ApiAudience.Private
-public final class FlushTableTool extends VersionValidatedTool {
+public final class FlushTableTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(FlushTableTool.class.getName());
+
+  @Flag(name="target", usage="URI of the Kiji table or the Kiji instance to flush.")
+  private String mTargetURIFlag = KConstants.DEFAULT_URI;
 
   @Flag(name="meta", usage="If true, flushes all kiji meta tables.")
   private boolean mFlushMeta = false;
 
   private HBaseAdmin mHBaseAdmin;
+
+  /** URI of the Kiji table or the Kiji instance to flush. */
+  private KijiURI mTargetURI;
 
   /** {@inheritDoc} */
   @Override
@@ -67,9 +77,14 @@ public final class FlushTableTool extends VersionValidatedTool {
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
-    Preconditions.checkArgument(mFlushMeta || (getURI().getTable() != null),
-        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table and/or "
-        + "specify a flush of metadata with --meta");
+    Preconditions.checkArgument((mTargetURIFlag != null) && !mTargetURIFlag.isEmpty(),
+        "Specify a target Kiji instance or table "
+        + "with --target=kiji://hbase-adress/kiji-instance[/table].");
+    mTargetURI = KijiURI.newBuilder(mTargetURIFlag).build();
+
+    Preconditions.checkArgument(mFlushMeta || (mTargetURI.getTable() != null),
+        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table"
+        + " and/or specify a flush of metadata with --meta.");
   }
 
   /**
@@ -115,7 +130,7 @@ public final class FlushTableTool extends VersionValidatedTool {
    * @throws IOException If there is an error.
    * @throws InterruptedException If the thread is interrupted.
    */
-  private void flushTable(HBaseAdmin hbaseAdmin, KijiURI tableURI)
+  private static void flushTable(HBaseAdmin hbaseAdmin, KijiURI tableURI)
       throws IOException, InterruptedException {
     final KijiManagedHBaseTableName hbaseTableName =
         KijiManagedHBaseTableName.getKijiTableName(tableURI.getInstance(), tableURI.getTable());
@@ -126,6 +141,10 @@ public final class FlushTableTool extends VersionValidatedTool {
   @Override
   protected void setup() throws Exception {
     super.setup();
+    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mTargetURI.getZookeeperClientPort());
+    getConf().set(HConstants.ZOOKEEPER_QUORUM,
+        Joiner.on(",").join(mTargetURI.getZookeeperQuorumOrdered()));
+    setConf(HBaseConfiguration.addHbaseResources(getConf()));
     mHBaseAdmin = new HBaseAdmin(getConf());
   }
 
@@ -141,13 +160,13 @@ public final class FlushTableTool extends VersionValidatedTool {
   protected int run(List<String> nonFlagArgs) throws Exception {
     if (mFlushMeta) {
       getPrintStream().println("Flushing metadata tables for kiji instance: "
-          + getURI().toString());
-      flushMetaTables(mHBaseAdmin, getKiji().getURI().getInstance());
+          + mTargetURI.toString());
+      flushMetaTables(mHBaseAdmin, mTargetURI.getInstance());
     }
 
-    if (getURI().getTable() != null) {
-      getPrintStream().printf("Flushing table: %s.%n", getURI());
-      flushTable(mHBaseAdmin, getURI());
+    if (null != mTargetURI) {
+      getPrintStream().printf("Flushing table '%s'.%n", mTargetURI);
+      flushTable(mHBaseAdmin, mTargetURI);
     }
 
     getPrintStream().println("Flush operations successfully enqueued.");

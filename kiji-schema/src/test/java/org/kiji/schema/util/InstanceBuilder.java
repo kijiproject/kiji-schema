@@ -128,6 +128,22 @@ public class InstanceBuilder {
   }
 
   /**
+   * Adds a table to the testing environment. Note: This will replace any existing added tables
+   * with the same name.
+   *
+   * @param table An existing Kiji table to populate.
+   * @return A builder to continue building with.
+   */
+  public TableBuilder withTable(KijiTable table) {
+    final KijiTableLayout layout = table.getLayout();
+    mCells.put(layout.getName(),
+        new HashMap<EntityId, Map<String, Map<String, Map<Long, Object>>>>());
+    mLayouts.put(layout.getName(), layout);
+
+    return new TableBuilder(layout.getName());
+  }
+
+  /**
    * Builds a test environment. Creates an in-memory HBase cluster, populates and installs
    * the provided Kiji instances.
    *
@@ -172,8 +188,12 @@ public class InstanceBuilder {
           tableEntry.getValue();
 
       // Create & open a Kiji table.
-      LOG.info(String.format("  Building table: %s", tableName));
-      kiji.createTable(tableName, layout);
+      if (kiji.getTableNames().contains(tableName)) {
+        LOG.info(String.format("  Populating existing table: %s", tableName));
+      } else {
+        LOG.info(String.format("  Creating and populating table: %s", tableName));
+        kiji.createTable(tableName, layout);
+      }
       final KijiTable kijiTable = kiji.openTable(tableName);
       final KijiTableWriter writer = kijiTable.openTableWriter();
 
@@ -260,11 +280,11 @@ public class InstanceBuilder {
      * Adds a row to the testing environment. Note: This will replace any existing added rows
      * with the same entityId.
      *
-     * @param rowKey The key of the row being added.
+     * @param components Components of the entity ID for the row to build.
      * @return A builder to continue building with.
      */
-    public RowBuilder withRow(String rowKey) {
-      return withRow(mEntityIdFactory.getEntityId(rowKey));
+    public RowBuilder withRow(Object... components) {
+      return withRow(mEntityIdFactory.getEntityId(components));
     }
 
     /**

@@ -22,7 +22,9 @@ package org.kiji.schema.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
@@ -119,5 +121,19 @@ public final class HashedEntityId extends EntityId {
     List<Object> resp = new ArrayList<Object>();
     resp.add(mKijiRowKey);
     return resp;
+  }
+
+  /** @return the Kiji row key, or null. */
+  public byte[] getKijiRowKey() {
+    return (mKijiRowKey != null) ? mKijiRowKey.clone() : null;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HashedEntityId.class)
+        .add("kiji", (mKijiRowKey == null) ? "<unknown>" : Bytes.toStringBinary(mKijiRowKey))
+        .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
+        .toString();
   }
 }

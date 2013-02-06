@@ -29,33 +29,33 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.CellSchema;
-import org.kiji.schema.avro.RowKeyFormat;
-import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaType;
-import org.kiji.schema.layout.KijiTableLayout;
 
 /**
  * Command-line tool to increment a counter in a cell of a kiji table.
  */
 @ApiAudience.Private
-public final class IncrementTool extends VersionValidatedTool {
+public final class IncrementTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(IncrementTool.class);
 
-  @Flag(name="entity-id", usage="(Unhashed) row entity id")
+  @Flag(name="cell", usage="URI of the cell(s) (qualified column) to increment, "
+      + "such as --cell=kiji://hbase-address/kiji-instance/table/family:qualifier.")
+  private String mCellURIFlag;
+
+  @Flag(name="entity-id", usage="Row entity ID specification.")
   private String mEntityId;
 
-  @Flag(name="entity-hash", usage="Already-hashed row entity id")
-  private String mEntityHash;
-
-  @Flag(name="column", usage="kiji column name")
-  private String mColName = "";
-
-  @Flag(name="value", usage="Integer value to add to the counter.")
+  @Flag(name="value", usage="Integer amount to add to the counter(s). May be negative.")
   private int mValue = 1;
+
+  /** URI specifying qualified columns with counters to increment. */
+  private KijiURI mCellURI;
 
   /** {@inheritDoc} */
   @Override
@@ -78,54 +78,48 @@ public final class IncrementTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
-    Preconditions.checkArgument(getURI().getTable() != null,
-        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table");
+    Preconditions.checkArgument(null != mCellURIFlag, "Specify a cell address with "
+        + "--cell=kiji://hbase-address/kiji-instance/table/family:qualifier");
+    mCellURI = KijiURI.newBuilder(mCellURIFlag).build();
+
+    Preconditions.checkArgument(null != mEntityId, "Specify an entity ID with --entity-id=...");
   }
 
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final KijiTableLayout tableLayout =
-        getKiji().getMetaTable().getTableLayout(getURI().getTable());
-    if (null == tableLayout) {
-      LOG.error("No such table: {}", getURI());
-      return 1;
-    }
-
-    // TODO Fix CLI with formatted row key format (https://jira.kiji.org/browse/SCHEMA-171)
-    if (tableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat2) {
-      throw new RuntimeException("CLI does not support Formatted Row Key format as yet");
-    }
-
-    final KijiColumnName column = new KijiColumnName(mColName);
-    if (null == column.getQualifier()) {
-      LOG.error("Column name must be in the format 'family:qualifier'.");
-      return 1;
-    }
-    final CellSchema cellSchema = tableLayout.getCellSchema(column);
-    if (cellSchema.getType() != SchemaType.COUNTER) {
-      LOG.error("Can't increment non counter-type column: " + column);
-      return 1;
-    }
-
-    final EntityId entityId = ToolUtils.createEntityIdFromUserInputs(
-        mEntityId, mEntityHash, (RowKeyFormat)tableLayout.getDesc().getKeysFormat());
-
-    final KijiTable table = getKiji().openTable(getURI().getTable());
+    final Kiji kiji = Kiji.Factory.open(mCellURI);
     try {
-      KijiTableWriter writer = table.openTableWriter();
+      final KijiTable table = kiji.openTable(mCellURI.getTable());
       try {
-        writer.increment(entityId, column.getFamily(), column.getQualifier(), mValue);
-        return 0;
+        final KijiTableWriter writer = table.openTableWriter();
+        try {
+          for (KijiColumnName column : mCellURI.getColumns()) {
+            try {
+              final CellSchema cellSchema = table.getLayout().getCellSchema(column);
+              if (cellSchema.getType() != SchemaType.COUNTER) {
+                LOG.error("Can't increment non counter-type column '{}'", column);
+                return FAILURE;
+              }
+              final EntityId entityId =
+                  ToolUtils.createEntityIdFromUserInputs(mEntityId, table.getLayout());
+              writer.increment(entityId, column.getFamily(), column.getQualifier(), mValue);
 
-      } catch (IOException ioe) {
-        LOG.error("Error while incrementing counter: {}", ioe);
-        return 1;
+            } catch (IOException ioe) {
+              LOG.error("Error while incrementing column '{}'", column);
+              return FAILURE;
+            }
+          }
+          return SUCCESS;
+
+        } finally {
+          writer.close();
+        }
       } finally {
-        writer.close();
+        table.close();
       }
     } finally {
-      table.close();
+      kiji.release();
     }
   }
 

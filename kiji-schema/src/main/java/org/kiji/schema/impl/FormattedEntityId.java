@@ -27,8 +27,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,9 +144,9 @@ public final class FormattedEntityId extends EntityId {
   public static FormattedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat2 format) {
     Preconditions.checkNotNull(format);
     Preconditions.checkNotNull(hbaseRowKey);
-    byte[] cloneHbaseKey = hbaseRowKey.clone();
     // we modify the hbaseRowKey in the makeKijiRowKey code for integer encoding, so we make
-    // a copy of it to pass to this function.
+    // a copy of it to pass to makeKijiRowKey:
+    byte[] cloneHbaseKey = hbaseRowKey.clone();
     List<Object> kijiRowKey = makeKijiRowKey(format, cloneHbaseKey);
     return new FormattedEntityId(format, hbaseRowKey, kijiRowKey);
   }
@@ -357,6 +359,15 @@ public final class FormattedEntityId extends EntityId {
   /** {@inheritDoc} **/
   @Override
   public List<Object> getComponents() {
-    return Collections.unmodifiableList(new ArrayList(mComponentValues));
+    return Collections.unmodifiableList(mComponentValues);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(FormattedEntityId.class)
+        .add("components", Joiner.on(",").join(mComponentValues))
+        .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
+        .toString();
   }
 }

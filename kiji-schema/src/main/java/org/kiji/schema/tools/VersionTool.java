@@ -19,10 +19,15 @@
 
 package org.kiji.schema.tools;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.common.flags.Flag;
+import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 
 
@@ -31,7 +36,14 @@ import org.kiji.schema.util.VersionInfo;
  * in use for a specified kiji instance.
  */
 @ApiAudience.Private
-public final class VersionTool extends OpenedKijiTool {
+public final class VersionTool extends BaseTool {
+
+  @Flag(name="kiji", usage="The KijiURI of the instance from which to get a version.")
+  private String mKijiURIString;
+
+  private Kiji mKiji;
+  private KijiURI mURI;
+
   /** {@inheritDoc} */
   @Override
   public String getName() {
@@ -48,6 +60,67 @@ public final class VersionTool extends OpenedKijiTool {
   @Override
   public String getCategory() {
     return "Help";
+  }
+
+  /**
+   * Opens a kiji instance.
+   *
+   * @return The opened kiji.
+   * @throws IOException if there is an error.
+   */
+  private Kiji openKiji() throws IOException {
+    return Kiji.Factory.open(getURI(), getConf());
+  }
+
+  /**
+   * Retrieves the kiji instance used by this tool. On the first call to this method,
+   * the kiji instance will be opened and will remain open until {@link #cleanup()} is called.
+   *
+   * @return The kiji instance.
+   * @throws IOException if there is an error loading the kiji.
+   */
+  protected synchronized Kiji getKiji() throws IOException {
+    if (null == mKiji) {
+      mKiji = openKiji();
+    }
+    return mKiji;
+  }
+
+  /**
+   * Returns the kiji URI of the target this tool operates on.
+   *
+   * @return The kiji URI of the target this tool operates on.
+   */
+  protected KijiURI getURI() {
+    if (null == mURI) {
+      getPrintStream().println("No URI specified.");
+    }
+    return mURI;
+  }
+
+  /**
+   * Sets the kiji URI of the target this tool operates on.
+   *
+   * @param uri The kiji URI of the target this tool should operate on.
+   */
+  protected void setURI(KijiURI uri) {
+    if (null == mURI) {
+      mURI = uri;
+    } else {
+      getPrintStream().printf("URI is already set to: %s", mURI.toString());
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void setup() {
+    setURI(parseURI(mKijiURIString));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void cleanup() {
+    ResourceUtils.releaseOrLog(mKiji);
   }
 
   /** {@inheritDoc} */

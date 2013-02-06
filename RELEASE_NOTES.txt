@@ -3,6 +3,12 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
+  * SCHEMA-150. Update CLI tools to support composite entity IDs.
+      Entity IDs can now be specified as:
+        --entity-id=hbase=hex:deadc0de as hexadecimal HBase keys
+        --entity-id=hbase=[utf8:]'hbase\x0akey\x00' as UTF-8 encoded HBase keys
+        --entity-id=[kiji=]'kiji-key' for raw, hashed or hash-prefixed Kiji keys
+        --entity-id="['component1', 2, 'comp3']" for Kiji formatted row keys.
   * SCHEMA-151. Stricter checking of layout "version" fields for compatibility
       with supported layout features. VersionInfo.get(Client/Cluster)DataVersion()
       now return a ProtocolVersion, not a string.
