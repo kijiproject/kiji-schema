@@ -20,7 +20,6 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**
@@ -45,24 +44,23 @@ public final class KijiDataRequestValidator {
    * Validates the data request against the given table layout.
    *
    * @param tableLayout The Kiji table layout to validate against.
-   * @throws InvalidLayoutException If the table layout is invalid.
    * @throws KijiDataRequestException If the data request is invalid.
    */
-  public void validate(KijiTableLayout tableLayout) throws InvalidLayoutException {
-    for (KijiDataRequest.Column wdrColumn : mDataRequest.getColumns()) {
-      final String qualifier = wdrColumn.getQualifier();
+  public void validate(KijiTableLayout tableLayout) {
+    for (KijiDataRequest.Column column : mDataRequest.getColumns()) {
+      final String qualifier = column.getQualifier();
       final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
-          tableLayout.getFamilyMap().get(wdrColumn.getFamily());
+          tableLayout.getFamilyMap().get(column.getFamily());
 
       if (null == fLayout) {
         throw new KijiDataRequestException(String.format("Table '%s' has no family named '%s'.",
-            tableLayout.getName(), wdrColumn.getFamily()));
+            tableLayout.getName(), column.getFamily()));
       }
 
-      if (fLayout.isGroupType() && (null != wdrColumn.getQualifier())) {
+      if (fLayout.isGroupType() && (null != column.getQualifier())) {
         if (!fLayout.getColumnMap().containsKey(qualifier)) {
           throw new KijiDataRequestException(String.format("Table '%s' has no column '%s'.",
-              tableLayout.getName(), wdrColumn.getName()));
+              tableLayout.getName(), column.getName()));
         }
       }
     }
