@@ -42,6 +42,6 @@ public final class KijiURIException extends IOException {
    * @param message Human readable explanation.
    */
   public KijiURIException(String uri, String message) {
-    super(String.format("Invalid Kiji URI: '%s' : %s.", uri, message));
+    super(String.format("Invalid Kiji URI: '%s' : %s", uri, message));
   }
 }
