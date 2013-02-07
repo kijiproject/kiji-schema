@@ -102,7 +102,7 @@ public class KijiTableInputFormat
       final byte[] startKey = region.getStartKey();
       // TODO: a smart way to get which location is most relevant.
       final String location =
-          region.getLocations().isEmpty() ? null : region.getLocations().get(0);
+          region.getLocations().isEmpty() ? null : region.getLocations().iterator().next();
       final TableSplit tableSplit = new TableSplit(
           htable.getTableName(), startKey, region.getEndKey(), location);
       splits.add(new KijiTableSplit(tableSplit, startKey));

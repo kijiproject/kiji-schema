@@ -22,10 +22,7 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.log4j.Logger;
-
 import com.google.common.collect.Lists;
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
@@ -33,6 +30,8 @@ import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityIdFactory;
@@ -56,7 +55,7 @@ import org.kiji.schema.util.ResourceUtils;
  */
 @ApiAudience.Private
 public class HBaseKijiTable extends AbstractKijiTable {
-  private static final Logger LOG = Logger.getLogger(HBaseKijiTable.class);
+  private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTable.class);
 
   /** The underlying HTable that stores this Kiji table's data. */
   private final HTableInterface mHTable;
@@ -163,7 +162,7 @@ public class HBaseKijiTable extends AbstractKijiTable {
   @Override
   public List<KijiRegion> getRegions() throws IOException {
     final HBaseAdmin hbaseAdmin = ((HBaseKiji) getKiji()).getHBaseAdmin();
-    final HTableInterface hbaseTable = HBaseKijiTable.downcast(this).getHTable();
+    final HTableInterface hbaseTable = getHTable();
 
     final List<HRegionInfo> regions = hbaseAdmin.getTableRegions(hbaseTable.getTableName());
     final List<KijiRegion> result = Lists.newArrayList();
@@ -182,8 +181,9 @@ public class HBaseKijiTable extends AbstractKijiTable {
         ResourceUtils.closeOrLog(concreteHBaseTable);
       }
     } else {
-      LOG.warn("Unable to cast HTableInterface to an HTable.  " +
-      		"Creating Kiji regions without location info.");
+      LOG.warn(
+          String.format("Unable to cast HTableInterface %s to an HTable.  ", getURI().toString())
+          + "Creating Kiji regions without location info.");
       for (HRegionInfo region: regions) {
         result.add(new HBaseKijiRegion(region));
       }
