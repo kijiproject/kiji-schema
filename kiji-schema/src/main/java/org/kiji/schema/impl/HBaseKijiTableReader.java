@@ -229,13 +229,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
   private KijiTableLayout getTableLayout(KijiDataRequest dataRequest) {
     KijiDataRequestValidator requestValidator = new KijiDataRequestValidator(dataRequest);
     KijiTableLayout tableLayout = mTable.getLayout();
-    try {
-      requestValidator.validate(tableLayout);
-    } catch (InvalidLayoutException e) {
-      // The table layout should never be invalid at this point, since we got it from a valid
-      // opened table.  If it is, there's something seriously wrong.
-      throw new InternalKijiError(e);
-    }
+    requestValidator.validate(tableLayout);
     return tableLayout;
   }
 
