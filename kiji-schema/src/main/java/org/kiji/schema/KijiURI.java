@@ -360,6 +360,10 @@ public final class KijiURI {
      * @throws KijiURIException If the authority is invalid.
      */
     public AuthorityParser(String authority) throws KijiURIException {
+      if (authority == null) {
+        throw new KijiURIException(authority, "Authority can not be a null String.");
+      }
+
       if (authority.equals(ENV_URI_STRING)) {
         final Configuration conf = HBaseConfiguration.create();
         mZookeeperQuorum = ImmutableList.copyOf(conf.get(HConstants.ZOOKEEPER_QUORUM).split(","));
