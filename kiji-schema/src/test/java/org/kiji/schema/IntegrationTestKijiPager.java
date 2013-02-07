@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
 
+//TODO: Merge with TestKijiPager
 public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(IntegrationTestKijiPager.class);
 
