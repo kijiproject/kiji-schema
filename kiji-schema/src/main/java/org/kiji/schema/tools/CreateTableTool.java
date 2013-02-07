@@ -31,9 +31,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.avro.RowKeyEncoding;
-import org.kiji.schema.avro.RowKeyFormat;
-import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.SplitKeyFile;
 
@@ -92,22 +89,6 @@ public final class CreateTableTool extends VersionValidatedTool {
     }
   }
 
-  /**
-   * Find the encoding of the row key given the format.
-   *
-   * @param rowKeyFormat Format of row keys of type RowKeyFormat or RowKeyFormat2.
-   * @return The specific row key encoding, e.g. RAW, HASH, etc.
-   */
-  private RowKeyEncoding getEncoding(Object rowKeyFormat) {
-    if (rowKeyFormat instanceof RowKeyFormat) {
-      return ((RowKeyFormat) rowKeyFormat).getEncoding();
-    } else if (rowKeyFormat instanceof RowKeyFormat2) {
-      return ((RowKeyFormat2) rowKeyFormat).getEncoding();
-    } else {
-      throw new RuntimeException("Unsupported Row Key Format");
-    }
-  }
-
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
@@ -135,7 +116,7 @@ public final class CreateTableTool extends VersionValidatedTool {
       // Create a table with an initial number of evenly split regions.
       getKiji().createTable(tableName, tableLayout, mNumRegions);
     } else if (!mSplitKeyFilePath.isEmpty()) {
-      switch (getEncoding(tableLayout.getDesc().getKeysFormat())) {
+      switch (KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat())) {
       case HASH:
       case HASH_PREFIX:
         throw new RuntimeException(
@@ -148,7 +129,8 @@ public final class CreateTableTool extends VersionValidatedTool {
         throw new RuntimeException("CLI support for FORMATTED row keys is not yet available");
       default:
         throw new RuntimeException(
-            "Unexpected row key encoding: " + getEncoding(tableLayout.getDesc().getKeysFormat()));
+            "Unexpected row key encoding: "
+                + KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat()));
       }
       // Open the split key file.
       Path splitKeyFilePath = new Path(mSplitKeyFilePath);

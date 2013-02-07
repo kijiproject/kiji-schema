@@ -42,14 +42,12 @@ import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificData;
 import org.apache.commons.io.IOUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
-
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
 import org.kiji.schema.avro.FamilyDesc;
@@ -1501,5 +1499,21 @@ public final class KijiTableLayout {
     final TableLayoutDesc desc =
         (TableLayoutDesc) FromJson.fromJsonString(json, TableLayoutDesc.SCHEMA$);
     return desc;
+  }
+
+  /**
+   * Find the encoding of the row key given the format.
+   *
+   * @param rowKeyFormat Format of row keys of type RowKeyFormat or RowKeyFormat2.
+   * @return The specific row key encoding, e.g. RAW, HASH, etc.
+   */
+  public static RowKeyEncoding getEncoding(Object rowKeyFormat) {
+    if (rowKeyFormat instanceof RowKeyFormat) {
+      return ((RowKeyFormat) rowKeyFormat).getEncoding();
+    } else if (rowKeyFormat instanceof RowKeyFormat2) {
+      return ((RowKeyFormat2) rowKeyFormat).getEncoding();
+    } else {
+      throw new RuntimeException("Unsupported Row Key Format");
+    }
   }
 }
