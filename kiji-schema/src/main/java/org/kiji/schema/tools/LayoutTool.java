@@ -51,9 +51,6 @@ public final class LayoutTool extends VersionValidatedTool {
   @Flag(name="do", usage="Action to perform: dump, set, or history.")
   private String mDo = "dump";
 
-  @Flag(name="table", usage="The kiji table to use.")
-  private String mTableName = "";
-
   @Flag(name="layout",
       usage="Path to the file containing the layout update, in JSON.")
   private String mLayout = "";
@@ -93,9 +90,8 @@ public final class LayoutTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
-    if (mTableName.isEmpty()) {
-      throw new RequiredFlagException("table");
-    }
+    Preconditions.checkArgument(!getURI().getTable().isEmpty(),
+        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table-name");
     Preconditions.checkArgument(mMaxVersions >= 1, "--max-versions must be >= 1");
   }
 
@@ -105,7 +101,7 @@ public final class LayoutTool extends VersionValidatedTool {
    * @throws Exception on error.
    */
   private void dumpLayout() throws Exception {
-    final KijiTableLayout layout = getKiji().getMetaTable().getTableLayout(mTableName);
+    final KijiTableLayout layout = getKiji().getMetaTable().getTableLayout(getURI().getTable());
     final String json = ToJson.toJsonString(layout.getDesc());
     if (mWriteTo.isEmpty()) {
       System.out.println(json);
@@ -148,7 +144,12 @@ public final class LayoutTool extends VersionValidatedTool {
    */
   private void setLayout(Kiji kiji) throws Exception {
     final TableLayoutDesc layoutDesc = loadJsonTableLayoutDesc(mLayout);
-    kiji.modifyTableLayout(mTableName, layoutDesc, mDryRun, getPrintStream());
+    Preconditions.checkArgument(
+        (getURI().getTable() == null)
+        || getURI().getTable().equals(layoutDesc.getName()),
+        String.format("Descriptor table name '%s' does not match URI %s.",
+            layoutDesc.getName(), getURI()));
+    kiji.modifyTableLayout(layoutDesc.getName(), layoutDesc, mDryRun, getPrintStream());
   }
 
   /**
@@ -159,9 +160,9 @@ public final class LayoutTool extends VersionValidatedTool {
   private void history() throws Exception {
     // Gather all of the layouts stored in the metaTable.
     final NavigableMap<Long, KijiTableLayout> timedLayouts =
-        getKiji().getMetaTable().getTimedTableLayoutVersions(mTableName, mMaxVersions);
+        getKiji().getMetaTable().getTimedTableLayoutVersions(getURI().getTable(), mMaxVersions);
     if (timedLayouts.isEmpty()) {
-        throw new RuntimeException("No such table: " + mTableName);
+        throw new RuntimeException("No such table: " + getURI().getTable());
     }
     for (Map.Entry<Long, KijiTableLayout> entry: timedLayouts.entrySet()) {
       final long timestamp = entry.getKey();

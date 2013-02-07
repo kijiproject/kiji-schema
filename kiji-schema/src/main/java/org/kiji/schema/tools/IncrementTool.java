@@ -22,7 +22,7 @@ package org.kiji.schema.tools;
 import java.io.IOException;
 import java.util.List;
 
-import org.apache.commons.io.IOUtils;
+import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +42,6 @@ import org.kiji.schema.layout.KijiTableLayout;
 @ApiAudience.Private
 public final class IncrementTool extends VersionValidatedTool {
   private static final Logger LOG = LoggerFactory.getLogger(IncrementTool.class);
-
-  @Flag(name="table", usage="kiji table name")
-  private String mTableName = "";
 
   @Flag(name="entity-id", usage="(Unhashed) row entity id")
   private String mEntityId;
@@ -79,17 +76,17 @@ public final class IncrementTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
-    if (mTableName.isEmpty()) {
-      throw new RuntimeException("Specify a table on the 'table' flag");
-    }
+    Preconditions.checkArgument(getURI().getTable() != null,
+        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table");
   }
 
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout(mTableName);
+    final KijiTableLayout tableLayout =
+        getKiji().getMetaTable().getTableLayout(getURI().getTable());
     if (null == tableLayout) {
-      LOG.error("No such table: " + mTableName);
+      LOG.error("No such table: {}", getURI());
       return 1;
     }
 
@@ -107,21 +104,22 @@ public final class IncrementTool extends VersionValidatedTool {
     final EntityId entityId = ToolUtils.createEntityIdFromUserInputs(
         mEntityId, mEntityHash, tableLayout.getDesc().getKeysFormat());
 
-    // Closeables.
-    KijiTable table = null;
-    KijiTableWriter writer = null;
+    final KijiTable table = getKiji().openTable(getURI().getTable());
     try {
-      table = getKiji().openTable(mTableName);
-      writer = table.openTableWriter();
-      writer.increment(entityId, column.getFamily(), column.getQualifier(), mValue);
-    } catch (IOException ioe) {
-      LOG.error("Error while incrementing column.");
-      return 1;
+      KijiTableWriter writer = table.openTableWriter();
+      try {
+        writer.increment(entityId, column.getFamily(), column.getQualifier(), mValue);
+        return 0;
+
+      } catch (IOException ioe) {
+        LOG.error("Error while incrementing counter: {}", ioe);
+        return 1;
+      } finally {
+        writer.close();
+      }
     } finally {
-      IOUtils.closeQuietly(writer);
-      IOUtils.closeQuietly(table);
+      table.close();
     }
-    return 0;
   }
 
   /**

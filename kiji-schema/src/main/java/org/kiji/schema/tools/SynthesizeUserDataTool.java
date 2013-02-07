@@ -23,12 +23,13 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Random;
 
+import com.google.common.base.Preconditions;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
-import org.kiji.schema.KijiURI;
 import org.kiji.schema.tools.synth.DictionaryLoader;
 import org.kiji.schema.tools.synth.EmailSynthesizer;
 import org.kiji.schema.tools.synth.NGramSynthesizer;
@@ -44,9 +45,6 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
 
   @Flag(name="num-users", usage="Number of users to synthesize")
   private int mNumUsers = 100;
-
-  @Flag(name="table", usage="kiji table data should be written to")
-  private String mTableName = "";
 
   /** {@inheritDoc} */
   @Override
@@ -83,9 +81,8 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
-    if (mTableName.isEmpty()) {
-      throw new RequiredFlagException("table");
-    }
+    Preconditions.checkArgument(getURI().getTable() != null,
+        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table");
   }
 
   /** {@inheritDoc} */
@@ -98,10 +95,8 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
     NGramSynthesizer fullNameSynth = new NGramSynthesizer(nameSynth, 2);
     EmailSynthesizer emailSynth = new EmailSynthesizer(random, nameDictionary);
 
-    setURI(KijiURI.newBuilder(getURI()).withTableName(mTableName).build());
-    getPrintStream().printf("Generating %d users on kiji table '%s'...%n",
-        mNumUsers, getURI().toString());
-    KijiTable kijiTable = getKiji().openTable(mTableName);
+    getPrintStream().printf("Generating %d users on kiji table '%s'...%n", mNumUsers, getURI());
+    final KijiTable kijiTable = getKiji().openTable(getURI().getTable());
 
     KijiTableWriter tableWriter = kijiTable.openTableWriter();
     for (int i = 0; i < mNumUsers; i++) {
