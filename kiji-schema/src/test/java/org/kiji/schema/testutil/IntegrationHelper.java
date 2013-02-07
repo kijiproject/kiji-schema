@@ -212,7 +212,7 @@ public class IntegrationHelper extends Configured {
               .withRow("gwu@usermail.example.com")
                   .withFamily("info")
                       .withQualifier("email").withValue(timestamp, "gwu@usermail.example.com")
-                      .withQualifier("name").withValue(timestamp, "Garret Wu")
+                      .withQualifier("name").withValue(timestamp, "Garrett Wu")
               .withRow("aaron@usermail.example.com")
                   .withFamily("info")
                       .withQualifier("email").withValue(timestamp, "aaron@usermail.example.com")
