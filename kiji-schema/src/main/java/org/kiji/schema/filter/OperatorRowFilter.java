@@ -31,9 +31,12 @@ import org.kiji.schema.KijiDataRequest;
 
 /**
  * A KijiRowFilter for a logical operator of composed of other filters.
+ *
+ * Clients should access this functionality through one of its subclasses, {@link AndRowFilter}
+ * or {@link OrRowFilter}.
  */
-@ApiAudience.Public
-public class OperatorRowFilter extends KijiRowFilter {
+@ApiAudience.Private
+class OperatorRowFilter extends KijiRowFilter {
   /** The operator to use on the filter operands. */
   private final Operator mOperator;
 
