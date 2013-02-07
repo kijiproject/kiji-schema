@@ -22,6 +22,8 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.log4j.Logger;
+
 import com.google.common.collect.Lists;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -43,6 +45,7 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * <p>A KijiTable that exposes the underlying HBase implementation.</p>
@@ -53,6 +56,8 @@ import org.kiji.schema.layout.KijiTableLayout;
  */
 @ApiAudience.Private
 public class HBaseKijiTable extends AbstractKijiTable {
+  private static final Logger LOG = Logger.getLogger(HBaseKijiTable.class);
+
   /** The underlying HTable that stores this Kiji table's data. */
   private final HTableInterface mHTable;
 
@@ -161,20 +166,29 @@ public class HBaseKijiTable extends AbstractKijiTable {
     final HTableInterface hbaseTable = HBaseKijiTable.downcast(this).getHTable();
 
     final List<HRegionInfo> regions = hbaseAdmin.getTableRegions(hbaseTable.getTableName());
+    final List<KijiRegion> result = Lists.newArrayList();
 
     // If we can get the concrete HTable, we can get location information.
-    final HTable concreteHBaseTable = hbaseTable instanceof HTable ? (HTable) hbaseTable : null;
-    final List<KijiRegion> result = Lists.newArrayList();
-    for (HRegionInfo region: regions) {
-      if (concreteHBaseTable != null) {
-        List<HRegionLocation> hLocations =
-            concreteHBaseTable.getRegionsInRange(region.getStartKey(), region.getEndKey());
-        result.add(new HBaseKijiRegion(region, hLocations));
-      } else {
+    if (hbaseTable instanceof HTable) {
+      LOG.debug("Casting HTableInterface to an HTable.");
+      final HTable concreteHBaseTable = (HTable) hbaseTable;
+      try {
+        for (HRegionInfo region: regions) {
+          List<HRegionLocation> hLocations =
+              concreteHBaseTable.getRegionsInRange(region.getStartKey(), region.getEndKey());
+          result.add(new HBaseKijiRegion(region, hLocations));
+        }
+      } finally {
+        ResourceUtils.closeOrLog(concreteHBaseTable);
+      }
+    } else {
+      LOG.warn("Unable to cast HTableInterface to an HTable.  " +
+      		"Creating Kiji regions without location info.");
+      for (HRegionInfo region: regions) {
         result.add(new HBaseKijiRegion(region));
       }
     }
-    IOUtils.closeQuietly(concreteHBaseTable);
+
     return result;
   }
 

@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -19,35 +19,35 @@
 
 package org.kiji.schema;
 
-import java.util.List;
+import java.util.Collection;
 
 import org.kiji.annotations.ApiAudience;
 
 /**
  * A KijiRegion specifies a logical region in a Kiji Table, bounded by
- * a start key and an end key.
+ * a start key (inclusive) and an end key (exclusive).
  */
 @ApiAudience.Public
 public interface KijiRegion {
   /**
-   * Gets the start key of this region.
+   * Gets the start key (inclusive) of this region.
    *
-   * @return The start key of this region.
+   * @return The start key (inclusive) of this region.
    */
   byte[] getStartKey();
 
   /**
-   * Gets the end key of this region.
+   * Gets the end key (exclusive) of this region.
    *
-   * @return The end key of this region.
+   * @return The end key (exclusive) of this region.
    */
   byte[] getEndKey();
 
   /**
    * Gets the locations of this region in hostname:port form, if available.
-   * The list is empty if no location information is available.
+   * The collection is empty if no location information is available.
    *
-   * @return An unordered list of the locations of this region.
+   * @return The locations of this region; empty if no location information is available.
    */
-  List<String> getLocations();
+  Collection<String> getLocations();
 }

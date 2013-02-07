@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -33,14 +33,16 @@ public class TestKijiTable extends KijiClientTest {
 
   @Test
   public void testGetRegions() throws IOException {
-    // Create a table with 3 regions.
+    final int numRegions = 3;
+
     final Kiji mKiji = getKiji();
     mKiji.createTable(
-        "user", KijiTableLayouts.getTableLayout(KijiTableLayouts.FULL_FEATURED), 3);
+        "user", KijiTableLayouts.getTableLayout(KijiTableLayouts.FULL_FEATURED), numRegions);
     final KijiTable mTable = mKiji.openTable("user");
-    // Check there are 3 regions.
+
+    // Check there are the right number of regions.
     List<KijiRegion> regions = mTable.getRegions();
-    assertEquals(3, regions.size());
+    assertEquals(numRegions, regions.size());
 
     // Check that all KijiRegions have location info.
     for (KijiRegion region : regions) {
