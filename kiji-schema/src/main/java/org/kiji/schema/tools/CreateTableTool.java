@@ -42,9 +42,6 @@ import org.kiji.schema.util.SplitKeyFile;
 public final class CreateTableTool extends VersionValidatedTool {
   private static final Logger LOG = LoggerFactory.getLogger(CreateTableTool.class);
 
-  @Flag(name="table", usage="The name of the kiji table to create.")
-  private String mTableName = "";
-
   @Flag(name="layout", usage="Path to a file containing a JSON table layout.")
   private String mLayout = "";
 
@@ -81,15 +78,11 @@ public final class CreateTableTool extends VersionValidatedTool {
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
-    if (mTableName.isEmpty()) {
-      throw new RequiredFlagException("table");
-    }
     if (mLayout.isEmpty()) {
       throw new RequiredFlagException("layout");
     }
     if (mNumRegions != 1 && !mSplitKeyFilePath.isEmpty()) {
-      throw new RuntimeException(
-          "Only one of --num-regions and --split-key-file may be specified");
+      throw new RuntimeException("Only one of --num-regions and --split-key-file may be specified");
     }
     if (mNumRegions < 1) {
       throw new RuntimeException("--num-regions must be positive");
@@ -105,6 +98,11 @@ public final class CreateTableTool extends VersionValidatedTool {
         fileSystemSpecified(path) ? path.getFileSystem(getConf()) : FileSystem.getLocal(getConf());
     final FSDataInputStream inputStream = fs.open(path);
     final KijiTableLayout tableLayout = KijiTableLayout.createFromEffectiveJson(inputStream);
+    final String tableName = tableLayout.getName();
+    if ((getURI().getTable() != null) && !tableName.equals(getURI().getTable())) {
+      throw new IllegalArgumentException(
+          String.format("Table name '%s' does not match URI %s", tableName, getURI()));
+    }
 
     // For large numbers of initial regions, table creation may take a long time as we wait for
     // the new regions to come online. Increase the hbase RPC timeout to compensate.
@@ -112,11 +110,11 @@ public final class CreateTableTool extends VersionValidatedTool {
     hbaseTimeout = hbaseTimeout * 10;
     getConf().setInt("hbase.rpc.timeout", hbaseTimeout);
 
-    setURI(KijiURI.newBuilder(getURI()).withTableName(mTableName).build());
+    setURI(KijiURI.newBuilder(getURI()).withTableName(tableName).build());
     getPrintStream().println("Creating kiji table: " + getURI().toString() + "...");
     if (mNumRegions > 1) {
       // Create a table with an initial number of evenly split regions.
-      getKiji().createTable(mTableName, tableLayout, mNumRegions);
+      getKiji().createTable(tableName, tableLayout, mNumRegions);
     } else if (!mSplitKeyFilePath.isEmpty()) {
       switch (tableLayout.getDesc().getKeysFormat().getEncoding()) {
       case HASH:
@@ -142,11 +140,11 @@ public final class CreateTableTool extends VersionValidatedTool {
       }
 
       // Create the table with the given split keys.
-      getKiji().createTable(mTableName, tableLayout,
+      getKiji().createTable(tableName, tableLayout,
           splitKeys.toArray(new byte[splitKeys.size()][]));
     } else {
       // Create a table with the default initial region.
-      getKiji().createTable(mTableName, tableLayout);
+      getKiji().createTable(tableName, tableLayout);
     }
 
     return 0;

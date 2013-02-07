@@ -21,11 +21,11 @@ package org.kiji.schema.tools;
 
 import java.util.List;
 
+import com.google.common.base.Preconditions;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.io.DecoderFactory;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,9 +49,6 @@ import org.kiji.schema.layout.KijiTableLayout;
 public final class PutTool extends VersionValidatedTool {
   private static final Logger LOG = LoggerFactory.getLogger(PutTool.class.getName());
 
-  @Flag(name="table", usage="kiji table name")
-  private String mTableName = "";
-
   @Flag(name="entity-id", usage="(Unhashed) row entity id")
   private String mEntityId;
 
@@ -59,7 +56,7 @@ public final class PutTool extends VersionValidatedTool {
   private String mEntityHash;
 
   @Flag(name="column", usage="kiji column name")
-  private String mColName = "";
+  private String mColName = null;
 
   /** Defaults to -1 to indicate that no timestamp has been specified. */
   @Flag(name="timestamp", usage="Cell timestamp")
@@ -93,81 +90,76 @@ public final class PutTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout(mTableName);
-    if (null == tableLayout) {
-      LOG.error("No such table: " + mTableName);
-      return 1;
-    }
-
+    Preconditions.checkArgument((mColName != null) && !mColName.isEmpty(),
+        "Specify a column with --column=family:qualifier");
     final KijiColumnName column = new KijiColumnName(mColName);
-    if (null == column.getQualifier()) {
-      LOG.error("Column name must be in the format 'family:qualifier'.");
-      return 1;
-    }
+    Preconditions.checkArgument(column.getQualifier() != null,
+        "Specify a column qualifier with --column=family:qualifier");
 
-    final CellSchema cellSchema = tableLayout.getCellSchema(column);
-
-    final EntityId entityId = ToolUtils.createEntityIdFromUserInputs(
-        mEntityId, mEntityHash, tableLayout.getDesc().getKeysFormat());
-
-    // Closeables.
-    KijiTable table = null;
-    KijiTableWriter writer = null;
+    final KijiTable table = getKiji().openTable(getURI().getTable());
     try {
-      table = getKiji().openTable(mTableName);
-      writer = table.openTableWriter();
+      final KijiTableLayout tableLayout = table.getLayout();
+      final CellSchema cellSchema = tableLayout.getCellSchema(column);
 
-      if (cellSchema.getType() == SchemaType.COUNTER) {
-        if (-1 == mTimestamp) {
-          try {
-            long value = Long.parseLong(mJsonValue);
-            writer.put(entityId, column.getFamily(), column.getQualifier(), value);
-          } catch (NumberFormatException nfe) {
-            LOG.error("Could not parse value flag to a long: " + nfe.getMessage());
+      final EntityId entityId = ToolUtils.createEntityIdFromUserInputs(
+          mEntityId, mEntityHash, tableLayout.getDesc().getKeysFormat());
+
+      final KijiTableWriter writer = table.openTableWriter();
+      try {
+        if (cellSchema.getType() == SchemaType.COUNTER) {
+          if (-1 == mTimestamp) {
+            try {
+              long value = Long.parseLong(mJsonValue);
+              writer.put(entityId, column.getFamily(), column.getQualifier(), value);
+            } catch (NumberFormatException nfe) {
+              LOG.error("Could not parse value flag to a long: " + nfe.getMessage());
+              return 1;
+            }
+          } else {
+            LOG.error("Counters do not support writing to a specific timestamp."
+                + "  Remove the \"timestamp\" flag.");
             return 1;
           }
         } else {
-          LOG.error("Counters do not support writing to a specific timestamp."
-              + "  Remove the \"timestamp\" flag.");
-          return 1;
-        }
-      } else {
-        // Get writer schema.
-        // Otherwise, set writer Schema in mSchema in preparation to write an Avro record.
-        if (null != mSchemaStr) {
-          try {
-            LOG.debug("Schema is " + mSchemaStr);
-            mSchema = new Schema.Parser().parse(mSchemaStr);
-          } catch (AvroRuntimeException are) {
-            LOG.error("Could not parse writer schema: " + are.toString());
-            return 1;
+          // Get writer schema.
+          // Otherwise, set writer Schema in mSchema in preparation to write an Avro record.
+          if (null != mSchemaStr) {
+            try {
+              LOG.debug("Schema is " + mSchemaStr);
+              mSchema = new Schema.Parser().parse(mSchemaStr);
+            } catch (AvroRuntimeException are) {
+              LOG.error("Could not parse writer schema: " + are.toString());
+              return 1;
+            }
+          } else {
+            try {
+              mSchema = tableLayout.getSchema(column);
+            } catch (Exception e) {
+              LOG.error(e.getMessage());
+              return 1;
+            }
           }
-        } else {
-          try {
-            mSchema = tableLayout.getSchema(column);
-          } catch (Exception e) {
-            LOG.error(e.getMessage());
-            return 1;
+          assert null != mSchema;
+
+          // Create the Avro record to write.
+          GenericDatumReader<Object> reader =
+              new GenericDatumReader<Object>(mSchema);
+          Object datum = reader.read(null,
+              new DecoderFactory().jsonDecoder(mSchema, mJsonValue));
+
+          // Write the put.
+          if (-1 == mTimestamp) {
+            writer.put(entityId, column.getFamily(), column.getQualifier(), datum);
+          } else {
+            writer.put(entityId, column.getFamily(), column.getQualifier(), mTimestamp, datum);
           }
         }
-        assert null != mSchema;
 
-        // Create the Avro record to write.
-        GenericDatumReader<Object> reader =
-            new GenericDatumReader<Object>(mSchema);
-        Object datum = reader.read(null,
-            new DecoderFactory().jsonDecoder(mSchema, mJsonValue));
-
-        // Write the put.
-        if (-1 == mTimestamp) {
-          writer.put(entityId, column.getFamily(), column.getQualifier(), datum);
-        } else {
-          writer.put(entityId, column.getFamily(), column.getQualifier(), mTimestamp, datum);
-        }
+      } finally {
+        writer.close();
       }
     } finally {
-      IOUtils.closeQuietly(writer);
-      IOUtils.closeQuietly(table);
+      table.close();
     }
     return 0;
   }

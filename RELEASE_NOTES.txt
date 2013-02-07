@@ -3,8 +3,12 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
-  * SCHEMA-10. "kiji ls" flags --instances and --table are remove and inferred
-      from URI in --kiji=kiji://...
+  * SCHEMA-10. CLI tools use KijiURIs:
+      - "kiji ls" flags --instances and --table are remove and inferred
+        from URI in --kiji=kiji://...
+      - flag --table is no longer; it is superseeded by the table component
+        from Kiji URIs.
+      
   * SCHEMA-123. Removed spin-wait from deleteTable in HBaseKiji.
   * SCHEMA-169. Add KijiPager class that allows users to easily paginate and
       iterate over values from a column while reading from a KijiTable.

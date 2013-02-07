@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,6 +31,7 @@ import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Command-line tool to delete kiji tables, rows, and cells.
@@ -65,9 +65,6 @@ public final class DeleteTool extends VersionValidatedTool {
 
   private KijiTable mTable;
   private KijiTableWriter mWriter;
-
-  @Flag(name="table", usage="The name of the Kiji table to delete or delete from.")
-  private String mTableName = "";
 
   @Flag(name="row", usage="The name of the row from which to delete. (requires --table)")
   private String mRowName = "";
@@ -112,7 +109,9 @@ public final class DeleteTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
-    Preconditions.checkArgument(!mTableName.equals(""), "--table is required");
+    Preconditions.checkArgument(getURI().getTable() != null,
+        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table-name");
+
     if (mRowName.equals("")) {
       Preconditions.checkArgument(mFamilyName.equals(""), "--family requires --row");
       Preconditions.checkArgument(mQualifier.equals(""), "--qualifier requires --row");
@@ -139,8 +138,8 @@ public final class DeleteTool extends VersionValidatedTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-
-    EntityId mRowId = mTable.getEntityId(mRowName);
+    final String tableName = getURI().getTable();
+    final EntityId mRowId = mTable.getEntityId(mRowName);
 
     // Delete the most recent value from a cell
     if (mMostRecent) {
@@ -264,13 +263,13 @@ public final class DeleteTool extends VersionValidatedTool {
     // Delete a kiji table
     if (mRowName.equals("")) {
       if (isInteractive()) {
-        if (!yesNoPrompt("Are you sure you want to delete kiji table: " + mTableName
-          + " ?")) {
+        if (!yesNoPrompt(String.format(
+            "Are you sure you want to delete kiji table: '%s'?", tableName))) {
           getPrintStream().println("Delete aborted.");
           return 0;
         }
       }
-      getKiji().deleteTable(mTableName);
+      getKiji().deleteTable(tableName);
       getPrintStream().println("Kiji table deleted.");
       return 0;
     }
@@ -283,15 +282,15 @@ public final class DeleteTool extends VersionValidatedTool {
   @Override
   protected void setup() throws Exception {
     super.setup();
-    mTable = getKiji().openTable(mTableName);
+    mTable = getKiji().openTable(getURI().getTable());
     mWriter = mTable.openTableWriter();
   }
 
   /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
-    IOUtils.closeQuietly(mWriter);
-    IOUtils.closeQuietly(mTable);
+    ResourceUtils.closeOrLog(mWriter);
+    ResourceUtils.closeOrLog(mTable);
     super.cleanup();
   }
 
