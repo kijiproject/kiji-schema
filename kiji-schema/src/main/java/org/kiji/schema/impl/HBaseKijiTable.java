@@ -181,8 +181,8 @@ public class HBaseKijiTable extends AbstractKijiTable {
         ResourceUtils.closeOrLog(concreteHBaseTable);
       }
     } else {
-      LOG.warn("Unable to cast HTableInterface {} to an HTable.  " +
-      		"Creating Kiji regions without location info.", getURI());
+      LOG.warn("Unable to cast HTableInterface {} to an HTable.  "
+          + "Creating Kiji regions without location info.", getURI());
       for (HRegionInfo region: regions) {
         result.add(new HBaseKijiRegion(region));
       }
