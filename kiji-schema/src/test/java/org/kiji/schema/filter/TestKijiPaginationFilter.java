@@ -41,6 +41,7 @@ import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.impl.HashedEntityId;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -77,8 +78,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
-    EntityId meId = HashedEntityId.fromKijiRowKey(
-        Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+    EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     final NavigableMap<Long, CharSequence> resultMap = myRowData.getValues("info", "name");
     assertEquals("The number of returned values is incorrect:", 2, resultMap.size());
@@ -102,8 +102,8 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
-    EntityId meId = HashedEntityId.fromKijiRowKey(
-        Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+    EntityId meId = HashedEntityId.getEntityId(
+        Bytes.toBytes("me"), (RowKeyFormat)mTableLayout.getDesc().getKeysFormat());
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     final NavigableMap<Long, CharSequence> resultMap = myRowData.getValues("info", "name");
     assertEquals("The number of returned values is incorrect:", 2, resultMap.size());
@@ -127,8 +127,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
     final KijiDataRequest dataRequest = builder.build();
-    EntityId meId = HashedEntityId.fromKijiRowKey(
-        Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+    EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     final NavigableMap<String, NavigableMap<Long, CharSequence>> resultMap
         = myRowData.<CharSequence>getValues("jobs");
@@ -154,8 +153,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
     final KijiDataRequest dataRequest = builder.build();
-    EntityId meId = HashedEntityId.fromKijiRowKey(
-        Bytes.toBytes("me"), mTableLayout.getDesc().getKeysFormat());
+    EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     final NavigableMap<String, NavigableMap<Long, CharSequence>> resultMap
         = myRowData.<CharSequence>getValues("jobs");

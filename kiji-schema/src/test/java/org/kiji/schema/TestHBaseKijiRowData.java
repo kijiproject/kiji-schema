@@ -396,7 +396,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testReadMapFamilyTypes() throws IOException {
     final List<KeyValue> kvs = new ArrayList<KeyValue>();
-    final EntityId row0 = mEntityIdFactory.fromKijiRowKey("row0");
+    final EntityId row0 = mEntityIdFactory.getEntityId("row0");
     final byte[] hbaseRowKey = row0.getHBaseRowKey();
     kvs.add(new KeyValue(hbaseRowKey, mHBaseMapFamily, encodeStr("key0"), encodeStr("value0")));
     kvs.add(new KeyValue(hbaseRowKey, mHBaseMapFamily, encodeStr("key1"), encodeStr("value1")));

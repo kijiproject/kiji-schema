@@ -31,12 +31,10 @@ import com.google.common.collect.Lists;
 import org.apache.avro.Schema;
 import org.junit.Assert;
 import org.junit.Test;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiColumnName;
-
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
 import org.kiji.schema.avro.ComponentType;
@@ -51,7 +49,6 @@ import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
-
 import org.kiji.schema.util.ToJson;
 
 /** Tests for KijiTableLayout. */
@@ -314,7 +311,8 @@ public class TestKijiTableLayout {
                 .build()))
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
-    final LocalityGroupLayout lgLayout = layout.getLocalityGroupMap().get("locality_group_name");
+    final KijiTableLayout.LocalityGroupLayout lgLayout =
+        layout.getLocalityGroupMap().get("locality_group_name");
     assertNotNull(lgLayout);
     assertEquals(1, layout.getLocalityGroups().size());
     assertEquals(lgLayout, layout.getLocalityGroups().iterator().next());
@@ -351,7 +349,8 @@ public class TestKijiTableLayout {
                 .build()))
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
-    final FamilyLayout fLayout = layout.getFamilyMap().get("family_name");
+    final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
+        layout.getFamilyMap().get("family_name");
     assertNotNull(fLayout);
     assertTrue(fLayout.isMapType());
     assertEquals(fLayout, layout.getFamilies().iterator().next());
@@ -391,7 +390,8 @@ public class TestKijiTableLayout {
                 .build()))
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
-    final FamilyLayout fLayout = layout.getFamilyMap().get("family_name");
+    final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
+        layout.getFamilyMap().get("family_name");
     assertNotNull(fLayout);
     assertTrue(fLayout.isGroupType());
     final KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout cLayout =
@@ -468,7 +468,8 @@ public class TestKijiTableLayout {
               .build()))
           .build();
       final KijiTableLayout layout = KijiTableLayout.createUpdatedLayout(desc, refLayout);
-      final FamilyLayout fLayout = layout.getFamilyMap().get("family_name");
+      final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
+          layout.getFamilyMap().get("family_name");
       assertNotNull(fLayout);
       assertTrue(fLayout.getColumns().isEmpty());
       assertTrue(fLayout.getColumnMap().isEmpty());
@@ -677,7 +678,8 @@ public class TestKijiTableLayout {
         .build();
 
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
-    final LocalityGroupLayout lgLayout = layout.getLocalityGroupMap().get("locality_group_name");
+    final KijiTableLayout.LocalityGroupLayout lgLayout =
+        layout.getLocalityGroupMap().get("locality_group_name");
     assertEquals(1, lgLayout.getId().getId());
     final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
         lgLayout.getFamilyMap().get("family_name");
@@ -1029,7 +1031,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(noComponentsRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
   @Test(expected=InvalidLayoutException.class)
@@ -1039,7 +1041,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(badNullableIndexRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
   @Test(expected=InvalidLayoutException.class)
@@ -1049,7 +1051,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(badRangeScanIndexRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
   @Test(expected=InvalidLayoutException.class)
@@ -1059,7 +1061,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(badCompNameRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
   @Test(expected=InvalidLayoutException.class)
@@ -1069,7 +1071,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(badHashSizeRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
   @Test(expected=InvalidLayoutException.class)
@@ -1079,7 +1081,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(repeatedNamesRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
   @Test(expected=InvalidLayoutException.class)
@@ -1089,7 +1091,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(tooHighRangeScanIndexRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
   @Test(expected=InvalidLayoutException.class)
@@ -1099,7 +1101,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(zeroNullableIndexRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
   @Test(expected=InvalidLayoutException.class)
@@ -1109,7 +1111,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(tooHighNullableIndexRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
   @Test(expected=InvalidLayoutException.class)
@@ -1119,6 +1121,6 @@ public class TestKijiTableLayout {
         .setKeysFormat(emptyCompNameRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = new KijiTableLayout(desc, null);
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 }

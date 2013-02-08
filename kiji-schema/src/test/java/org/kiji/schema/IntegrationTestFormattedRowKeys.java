@@ -24,7 +24,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -34,14 +33,11 @@ import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
-import org.kiji.schema.testutil.ToolResult;
-import org.kiji.schema.tools.CreateTableTool;
 
 /**
  * Integration test for formatted row keys.
@@ -64,15 +60,8 @@ public class IntegrationTestFormattedRowKeys
   @Before
   public void setup() throws Exception {
     mKiji = Kiji.Factory.open(getKijiURI());
-
     LOG.info("Creating test table.");
-    final File layoutFile =
-        KijiTableLayouts.getTempFile(KijiTableLayouts.getLayout(KijiTableLayouts.FORMATTED_RKF));
-    final ToolResult createResult = runTool(new CreateTableTool(), new String[] {
-        "--table=" + TABLE_NAME,
-        "--layout=" + layoutFile,
-    });
-    assertEquals(0, createResult.getReturnCode());
+    mKiji.createTable(TABLE_NAME, KijiTableLayouts.getTableLayout(KijiTableLayouts.FORMATTED_RKF));
     mTable = mKiji.openTable(TABLE_NAME);
     mWriter = mTable.openTableWriter();
     mReader = mTable.openTableReader();
