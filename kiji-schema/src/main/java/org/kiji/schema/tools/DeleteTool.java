@@ -27,8 +27,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.thrift.generated.IllegalArgument;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
@@ -39,6 +37,7 @@ import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Command-line tool to delete Kiji tables, rows, and cells.
@@ -65,8 +64,6 @@ import org.kiji.schema.KijiURI;
  */
 @ApiAudience.Private
 public final class DeleteTool extends BaseTool {
-  private static final Logger LOG = LoggerFactory.getLogger(DeleteTool.class);
-
   @Flag(name="target", usage="URI of the element(s) to delete. Valid scopes are: "
       + "entire Kiji instance, entire Kiji table, entire family/column or set of families/columns.")
   private String mTargetURIFlag = null;
@@ -351,12 +348,12 @@ public final class DeleteTool extends BaseTool {
               ToolUtils.createEntityIdFromUserInputs(mEntityIdFlag, table.getLayout());
           return deleteFromRow(table, entityId, columns, mTimestampMode, mTimestamp);
         } finally {
-          table.close();
+          ResourceUtils.releaseOrLog(table);
         }
       }
 
     } finally {
-      kiji.release();
+      ResourceUtils.releaseOrLog(kiji);
     }
   }
 

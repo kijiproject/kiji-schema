@@ -29,8 +29,6 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.EntityId;
 import org.kiji.schema.Kiji;
@@ -45,16 +43,15 @@ import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.impl.HashedEntityId;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.util.ResourceUtils;
 
 public class TestKijiPaginationFilter extends KijiClientTest {
-   private static final Logger LOG = LoggerFactory.getLogger(TestKijiPaginationFilter.class);
-   private KijiTableReader mReader;
-   private KijiTableLayout mTableLayout;
-   private KijiTable mTable;
+  private KijiTableReader mReader;
+  private KijiTableLayout mTableLayout;
+  private KijiTable mTable;
 
   @Before
   public void setupInstance() throws Exception {
-
     final Kiji kiji = getKiji();
     mTableLayout =
         KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST));
@@ -67,13 +64,13 @@ public class TestKijiPaginationFilter extends KijiClientTest {
   @Test
   public void testGroupTypeColumnPaging() throws IOException {
     EntityId id = mTable.getEntityId("me");
-   final KijiTableWriter writer = mTable.openTableWriter();
-      writer.put(id, "info", "name", 1L, "me");
-      writer.put(id, "info", "name", 2L, "me-too");
-      writer.put(id, "info", "name", 3L, "me-three");
-      writer.put(id, "info", "name", 4L, "me-four");
-      writer.put(id, "info", "name", 5L, "me-five");
-      writer.close();
+    final KijiTableWriter writer = mTable.openTableWriter();
+    writer.put(id, "info", "name", 1L, "me");
+    writer.put(id, "info", "name", 2L, "me-too");
+    writer.put(id, "info", "name", 3L, "me-three");
+    writer.put(id, "info", "name", 4L, "me-four");
+    writer.put(id, "info", "name", 5L, "me-five");
+    ResourceUtils.closeOrLog(writer);
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 1);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
@@ -91,13 +88,13 @@ public class TestKijiPaginationFilter extends KijiClientTest {
   @Test
   public void testGroupTypeColumnPaging2() throws IOException {
     EntityId id = mTable.getEntityId("me");
-   final KijiTableWriter writer = mTable.openTableWriter();
-      writer.put(id, "info", "name", 1L, "me");
-      writer.put(id, "info", "name", 2L, "me-too");
-      writer.put(id, "info", "name", 3L, "me-three");
-      writer.put(id, "info", "name", 4L, "me-four");
-      writer.put(id, "info", "name", 5L, "me-five");
-      writer.close();
+    final KijiTableWriter writer = mTable.openTableWriter();
+    writer.put(id, "info", "name", 1L, "me");
+    writer.put(id, "info", "name", 2L, "me-too");
+    writer.put(id, "info", "name", 3L, "me-three");
+    writer.put(id, "info", "name", 4L, "me-four");
+    writer.put(id, "info", "name", 5L, "me-five");
+    ResourceUtils.closeOrLog(writer);
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 0);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
@@ -115,14 +112,14 @@ public class TestKijiPaginationFilter extends KijiClientTest {
 
   @Test
   public void testMapTypeColumnPaging() throws IOException {
-   final KijiTableWriter writer = mTable.openTableWriter();
-     EntityId id = mTable.getEntityId("me");
-      writer.put(id, "jobs", "e", 1L, "always coming in 5th");
-      writer.put(id, "jobs", "d", 2L, "always coming in 4th");
-      writer.put(id, "jobs", "c", 3L, "always coming in 3rd");
-      writer.put(id, "jobs", "b", 4L, "always coming in 2nd");
-      writer.put(id, "jobs", "a", 5L, "always coming in 1st");
-      writer.close();
+    final KijiTableWriter writer = mTable.openTableWriter();
+    EntityId id = mTable.getEntityId("me");
+    writer.put(id, "jobs", "e", 1L, "always coming in 5th");
+    writer.put(id, "jobs", "d", 2L, "always coming in 4th");
+    writer.put(id, "jobs", "c", 3L, "always coming in 3rd");
+    writer.put(id, "jobs", "b", 4L, "always coming in 2nd");
+    writer.put(id, "jobs", "a", 5L, "always coming in 1st");
+    ResourceUtils.closeOrLog(writer);
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 1);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
@@ -138,16 +135,16 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     assertEquals("always coming in 3rd", resultMap.get("c").get(3L).toString());
   }
 
-    @Test
+  @Test
   public void testFilterMergeColumnPaging() throws IOException {
-   final KijiTableWriter writer = mTable.openTableWriter();
-     EntityId id = mTable.getEntityId("me");
-      writer.put(id, "jobs", "b", 1L, "always coming in 5th");
-      writer.put(id, "jobs", "b", 2L, "always coming in 4th");
-      writer.put(id, "jobs", "b", 3L, "always coming in 3rd");
-      writer.put(id, "jobs", "a", 4L, "always coming in 2nd");
-      writer.put(id, "jobs", "a", 5L, "always coming in 1st");
-      writer.close();
+    final KijiTableWriter writer = mTable.openTableWriter();
+    EntityId id = mTable.getEntityId("me");
+    writer.put(id, "jobs", "b", 1L, "always coming in 5th");
+    writer.put(id, "jobs", "b", 2L, "always coming in 4th");
+    writer.put(id, "jobs", "b", 3L, "always coming in 3rd");
+    writer.put(id, "jobs", "a", 4L, "always coming in 2nd");
+    writer.put(id, "jobs", "a", 5L, "always coming in 1st");
+    ResourceUtils.closeOrLog(writer);
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 0,
         new RegexQualifierColumnFilter("b"));
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
@@ -166,6 +163,6 @@ public class TestKijiPaginationFilter extends KijiClientTest {
 
   @After
   public void cleaup() throws IOException {
-    mReader.close();
+    ResourceUtils.closeOrLog(mReader);
   }
 }

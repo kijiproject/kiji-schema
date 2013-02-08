@@ -41,6 +41,7 @@ import org.junit.Test;
 
 import org.kiji.schema.impl.HBaseSystemTable;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.util.ResourceUtils;
 
 public class TestHBaseSystemTable {
   private HTableInterface mHtable;
@@ -62,7 +63,7 @@ public class TestHBaseSystemTable {
     replay(mHtable);
     HBaseSystemTable systemTable = new HBaseSystemTable(mHtable);
     systemTable.setDataVersion(ProtocolVersion.parse("kiji-100"));
-    systemTable.close();
+    ResourceUtils.closeOrLog(systemTable);
     verify(mHtable);
   }
 
@@ -80,7 +81,7 @@ public class TestHBaseSystemTable {
     replay(mHtable);
     HBaseSystemTable systemTable = new HBaseSystemTable(mHtable);
     assertEquals(ProtocolVersion.parse("100"), systemTable.getDataVersion());
-    systemTable.close();
+    ResourceUtils.closeOrLog(systemTable);
     verify(mHtable);
   }
 

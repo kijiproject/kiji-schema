@@ -38,6 +38,7 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
+import org.kiji.schema.util.ResourceUtils;
 
 public class TestLsTool extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestLsTool.class);
@@ -157,7 +158,7 @@ public class TestLsTool extends KijiClientTest {
       assertTrue(mToolOutputLines[1].startsWith("entity-id=hbase=hex:"));
 
     } finally {
-      table.close();
+      ResourceUtils.releaseOrLog(table);
     }
   }
 
@@ -186,7 +187,7 @@ public class TestLsTool extends KijiClientTest {
       assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), "--kiji=" + table.getURI()));
       // TODO: Validate LsTool output
     } finally {
-      table.close();
+      ResourceUtils.releaseOrLog(table);
     }
   }
 
@@ -240,7 +241,7 @@ public class TestLsTool extends KijiClientTest {
       ));
       // TODO: Validate output
     } finally {
-      table.close();
+      ResourceUtils.releaseOrLog(table);
     }
   }
 }

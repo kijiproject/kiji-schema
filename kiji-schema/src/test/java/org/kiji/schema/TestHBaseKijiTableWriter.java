@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
-import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,6 +30,7 @@ import org.junit.Test;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
+import org.kiji.schema.util.ResourceUtils;
 
 public class TestHBaseKijiTableWriter {
   private Kiji mKiji;
@@ -64,9 +64,9 @@ public class TestHBaseKijiTableWriter {
 
   @After
   public void cleanupEnvironment() throws IOException {
-    IOUtils.closeQuietly(mWriter);
-    IOUtils.closeQuietly(mReader);
-    IOUtils.closeQuietly(mTable);
+    ResourceUtils.closeOrLog(mWriter);
+    ResourceUtils.closeOrLog(mReader);
+    ResourceUtils.releaseOrLog(mTable);
     mKiji.release();
   }
 

@@ -35,7 +35,6 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
 import org.junit.Before;
@@ -43,6 +42,7 @@ import org.junit.Test;
 
 import org.kiji.schema.impl.HBaseTableKeyValueDatabase;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * This class tests that HBaseTableLayoutDatabase is correctly writing and reading from HBase
@@ -79,11 +79,10 @@ public class IntegrationTestHBaseTableKeyValueDatabase extends AbstractKijiInteg
       tableDescriptor.addFamily(new HColumnDescriptor(FAMILY_NAME));
       admin.createTable(tableDescriptor);
     } finally {
-      admin.close();
+      ResourceUtils.closeOrLog(admin);
     }
     mTable = new HTable(conf, TABLE_NAME);
     // Fill it with some data.
-    Put put;
     mDb = new HBaseTableKeyValueDatabase(mTable, FAMILY_NAME);
     mDb.putValue("table1", "config1", Bytes.toBytes("1one"));
     mDb.putValue("table1", "config2", Bytes.toBytes("1two"));
@@ -99,7 +98,7 @@ public class IntegrationTestHBaseTableKeyValueDatabase extends AbstractKijiInteg
       admin.disableTable(TABLE_NAME);
       admin.deleteTable(TABLE_NAME);
     } finally {
-      admin.close();
+      ResourceUtils.closeOrLog(admin);
       mTable.close();
       mTable = null;
       mDb = null;

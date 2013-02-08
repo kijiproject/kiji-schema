@@ -48,6 +48,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.avro.KeyValueBackup;
 import org.kiji.schema.avro.KeyValueBackupEntry;
+import org.kiji.schema.util.ResourceUtils;
 
 
  /**
@@ -194,7 +195,7 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
       LOG.debug("When constructing the tableSet for the metatable we found table '{}'.", tableName);
       tableNames.add(tableName);
     }
-    resultScanner.close();
+    ResourceUtils.closeOrLog(resultScanner);
     return tableNames;
 
   }

@@ -30,6 +30,7 @@ import org.kiji.schema.avro.Node;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.util.ResourceUtils;
 
 /** Tests the schema validation on write. */
 public class TestSchemaValidationOnWrite extends KijiClientTest {
@@ -97,7 +98,7 @@ public class TestSchemaValidationOnWrite extends KijiClientTest {
       LOG.info("Expected error: " + kee);
     }
 
-    writer.close();
-    table.close();
+    ResourceUtils.closeOrLog(writer);
+    ResourceUtils.releaseOrLog(table);
   }
 }

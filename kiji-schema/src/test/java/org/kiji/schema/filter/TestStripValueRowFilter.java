@@ -40,6 +40,7 @@ import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.util.ResourceUtils;
 
 /** Tests the StripValueRowFilter. */
 public class TestStripValueRowFilter extends KijiClientTest {
@@ -57,7 +58,7 @@ public class TestStripValueRowFilter extends KijiClientTest {
       final KijiTableWriter writer = table.openTableWriter();
       writer.put(table.getEntityId("me"), "info", "name", 1L, "me");
       writer.put(table.getEntityId("me"), "info", "name", 2L, "me-too");
-      writer.close();
+      ResourceUtils.closeOrLog(writer);
     }
 
 
@@ -91,7 +92,7 @@ public class TestStripValueRowFilter extends KijiClientTest {
       }
     }
 
-    scanner.close();
-    reader.close();
+    ResourceUtils.closeOrLog(scanner);
+    ResourceUtils.closeOrLog(reader);
   }
 }

@@ -36,6 +36,7 @@ import org.kiji.schema.tools.synth.DictionaryLoader;
 import org.kiji.schema.tools.synth.EmailSynthesizer;
 import org.kiji.schema.tools.synth.NGramSynthesizer;
 import org.kiji.schema.tools.synth.WordSynthesizer;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Synthesize some user data into a kiji table.
@@ -117,8 +118,8 @@ public final class SynthesizeUserDataTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
-    mTable.close();
-    mKiji.release();
+    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.releaseOrLog(mKiji);
 
     mTableURI = null;
     mTable = null;
@@ -152,7 +153,7 @@ public final class SynthesizeUserDataTool extends BaseTool {
         }
       }
     } finally {
-      tableWriter.close();
+      ResourceUtils.closeOrLog(tableWriter);
     }
 
     getPrintStream().printf("%d rows synthesized...%n", mNumUsers);

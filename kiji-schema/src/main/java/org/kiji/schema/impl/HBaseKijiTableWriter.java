@@ -44,7 +44,6 @@ import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.SchemaType;
@@ -53,6 +52,7 @@ import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Makes modifications to a Kiji table by sending requests directly to HBase from the local client.
@@ -71,11 +71,10 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
    * Creates a non-buffered kiji table writer that sends modifications directly to Kiji.
    *
    * @param table A kiji table.
-   * @throws IOException If there is an error creating the writer.
    */
-  public HBaseKijiTableWriter(KijiTable table)
-      throws IOException {
-    mTable = HBaseKijiTable.downcast(table);
+  public HBaseKijiTableWriter(HBaseKijiTable table) {
+    mTable = table;
+    mTable.retain();
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
   }
 
@@ -334,6 +333,6 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   public void close() throws IOException {
     flush();
 
-    // Make sure you also close your Kiji table.
+    ResourceUtils.releaseOrLog(mTable);
   }
 }

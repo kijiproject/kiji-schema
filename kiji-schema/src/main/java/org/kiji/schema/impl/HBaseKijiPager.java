@@ -35,6 +35,7 @@ import org.kiji.schema.KijiPager;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.filter.KijiPaginationFilter;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * <p>Implementation of a KijiPager for HBase.</p>
@@ -92,7 +93,8 @@ public final class HBaseKijiPager implements KijiPager {
     mColumnDataRequest = builder.build();
     mDefaultPageSize = columnRequest.getPageSize();
     mEntityId = entityId;
-    mTable = table; //This should also be closed/released once done.
+    mTable = table;
+    table.retain();
     mLayout = tableLayout;
     mHasNext = true;
     mMaxVersions = columnRequest.getMaxVersions();
@@ -150,7 +152,7 @@ public final class HBaseKijiPager implements KijiPager {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    mTable.close();
+    ResourceUtils.releaseOrLog(mTable);
   }
 
   /**

@@ -31,6 +31,7 @@ import org.junit.Test;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 
 public class TestVersionTool extends KijiClientTest {
@@ -45,7 +46,7 @@ public class TestVersionTool extends KijiClientTest {
     final int exitCode = tool.toolMain(Lists.newArrayList("--debug",
         String.format("--kiji=%s", getKiji().getURI())));
 
-    ps.close();
+    ResourceUtils.closeOrLog(ps);
     final String toolOutput = Bytes.toString(baos.toByteArray());
 
     assertEquals(

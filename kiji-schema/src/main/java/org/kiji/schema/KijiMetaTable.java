@@ -42,8 +42,10 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
   KijiTableKeyValueDatabase {
 
   private static final Logger LOG = LoggerFactory.getLogger(KijiMetaTable.class);
+  // private static final Logger CLEANUP_LOG =
+  //     LoggerFactory.getLogger(KijiMetaTable.class.getName() + ".Cleanup");
   private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger(KijiMetaTable.class.getName() + ".Cleanup");
+      LoggerFactory.getLogger("cleanup." + KijiMetaTable.class.getName());
 
   /** Whether the table is open. */
   private boolean mIsOpen;

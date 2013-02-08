@@ -26,6 +26,7 @@ import java.util.List;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.util.ReferenceCountable;
 
 /**
  * The KijiTable interface provides operations on KijiTables. To perform reads to and
@@ -38,7 +39,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  * <p>
  *   To open a connection to a KijiTable, use {@link Kiji#openTable(String)}. A KijiTable
  *   contains an open connection to an HBase cluster. Because of this, KijiTable objects
- *   must be closed using {@link #close()} when finished using it:
+ *   must be released using {@link #release()} when finished using it:
  * </p>
  * <pre>
  *   <code>
@@ -85,7 +86,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  */
 @ApiAudience.Public
 @Inheritance.Sealed
-public interface KijiTable extends Closeable {
+public interface KijiTable extends ReferenceCountable<KijiTable>, Closeable {
   /** @return the Kiji instance this table belongs to. */
   Kiji getKiji();
 
@@ -121,19 +122,17 @@ public interface KijiTable extends Closeable {
    * Opens a KijiTableReader for this table. The caller of this method is responsible
    * for closing the returned reader.
    *
-   * @throws IOException If there is an error opening the reader.
    * @return A KijiTableReader for this table.
    */
-  KijiTableReader openTableReader() throws IOException;
+  KijiTableReader openTableReader();
 
   /**
    * Opens a KijiTableWriter for this table. The caller of this method is responsible
    * for closing the returned writer.
    *
-   * @throws IOException If there is an error opening the writer.
    * @return A KijiTableWriter for this table.
    */
-  KijiTableWriter openTableWriter() throws IOException;
+  KijiTableWriter openTableWriter();
 
   /**
    * Return the regions in this table as an ordered list.

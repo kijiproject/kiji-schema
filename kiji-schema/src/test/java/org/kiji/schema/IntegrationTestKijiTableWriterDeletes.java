@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
+import org.kiji.schema.util.ResourceUtils;
 
 /** Exercises KijiTableWriter delete functionality. */
 public class IntegrationTestKijiTableWriterDeletes extends AbstractKijiIntegrationTest {
@@ -90,10 +91,10 @@ public class IntegrationTestKijiTableWriterDeletes extends AbstractKijiIntegrati
    */
   @After
   public final void teardownIntegrationTestKijiTableWriterDeletes() throws Exception {
-    mReader.close();
-    mWriter.close();
-    mTable.close();
-    mKiji.release();
+    ResourceUtils.closeOrLog(mReader);
+    ResourceUtils.closeOrLog(mWriter);
+    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.releaseOrLog(mKiji);
   }
 
   @Test
