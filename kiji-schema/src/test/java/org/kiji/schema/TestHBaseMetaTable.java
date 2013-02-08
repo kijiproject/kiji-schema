@@ -36,6 +36,7 @@ import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.util.ResourceUtils;
 
 
 public class TestHBaseMetaTable {
@@ -67,7 +68,7 @@ public class TestHBaseMetaTable {
 
     assertEquals(layout, table.updateTableLayout("table", desc));
     assertEquals(layout, table.getTableLayout("table"));
-    table.close();
+    ResourceUtils.closeOrLog(table);
 
     verify(mHTable);
     verify(mTableLayoutDatabase);

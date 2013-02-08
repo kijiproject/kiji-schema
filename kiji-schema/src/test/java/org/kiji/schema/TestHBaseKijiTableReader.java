@@ -21,7 +21,6 @@ package org.kiji.schema;
 
 import static org.junit.Assert.assertEquals;
 
-import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -29,6 +28,7 @@ import org.junit.Test;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
+import org.kiji.schema.util.ResourceUtils;
 
 public class TestHBaseKijiTableReader {
   private Kiji mKiji;
@@ -61,9 +61,9 @@ public class TestHBaseKijiTableReader {
 
   @After
   public void cleanupEnvironment() throws Exception {
-    IOUtils.closeQuietly(mReader);
-    IOUtils.closeQuietly(mTable);
-    mKiji.release();
+    ResourceUtils.closeOrLog(mReader);
+    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.releaseOrLog(mKiji);
   }
 
   @Test

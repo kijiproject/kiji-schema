@@ -29,11 +29,11 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
-import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.util.Debug;
+import org.kiji.schema.util.ResourceUtils;
 
 
 /**
@@ -42,8 +42,10 @@ import org.kiji.schema.util.Debug;
 @ApiAudience.Private
 public class HBaseKijiRowScanner implements KijiRowScanner {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiRowScanner.class);
+  // private static final Logger CLEANUP_LOG =
+  //     LoggerFactory.getLogger(HBaseKijiRowScanner.class.getName() + ".Cleanup");
   private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger(HBaseKijiRowScanner.class.getName() + ".Cleanup");
+      LoggerFactory.getLogger("cleanup." + HBaseKijiRowScanner.class.getName());
 
   /** The HBase result scanner. */
   private final ResultScanner mResultScanner;
@@ -53,9 +55,6 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
 
   /** The table being scanned. */
   private final HBaseKijiTable mTable;
-
-  /** Cell decoder factory. */
-  private final KijiCellDecoderFactory mCellDecoderFactory;
 
   /** Whether the writer is open. */
   private boolean mIsOpen;
@@ -69,7 +68,6 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     private ResultScanner mHBaseResultScanner;
     private KijiDataRequest mDataRequest;
     private HBaseKijiTable mTable;
-    private KijiCellDecoderFactory mCellDecoderFactory;
 
     /**
      * Sets the HBase result scanner the KijiRowScanner will wrap.
@@ -105,17 +103,6 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     }
 
     /**
-     * Sets the cell decoder factory to use when reading cells from the scanner.
-     *
-     * @param cellDecoderFactory A cell decoder factory.
-     * @return This options instance.
-     */
-    public Options withCellDecoderFactory(KijiCellDecoderFactory cellDecoderFactory) {
-      mCellDecoderFactory = cellDecoderFactory;
-      return this;
-    }
-
-    /**
      * Gets the HBase result scanner.
      *
      * @return The HBase result scanner.
@@ -141,15 +128,6 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     public HBaseKijiTable getTable() {
       return mTable;
     }
-
-    /**
-     * Gets the cell decoder factory.
-     *
-     * @return The cell decoder factory.
-     */
-    public KijiCellDecoderFactory getCellDecoderFactory() {
-      return mCellDecoderFactory;
-    }
   }
 
   /**
@@ -166,7 +144,6 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     mResultScanner = options.getHBaseResultScanner();
     mKijiDataRequest = options.getDataRequest();
     mTable = options.getTable();
-    mCellDecoderFactory = options.getCellDecoderFactory();
   }
 
   /** {@inheritDoc} */
@@ -184,7 +161,7 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
 
     mIsOpen = false;
 
-    mResultScanner.close();
+    ResourceUtils.closeOrLog(mResultScanner);
   }
 
   /** {@inheritDoc} */

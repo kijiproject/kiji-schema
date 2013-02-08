@@ -38,6 +38,7 @@ import org.kiji.schema.filter.TestKijiPaginationFilter;
 import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.util.ResourceUtils;
 
 public class TestKijiPager extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestKijiPaginationFilter.class);
@@ -59,8 +60,8 @@ public class TestKijiPager extends KijiClientTest {
 
   @After
   public void teardown() throws IOException {
-    mReader.close();
-    mTable.close();
+    ResourceUtils.closeOrLog(mReader);
+    ResourceUtils.releaseOrLog(mTable);
   }
 
   @Test(expected=KijiColumnPagingNotEnabledException.class)
@@ -72,7 +73,7 @@ public class TestKijiPager extends KijiClientTest {
     assertTrue(!dataRequest.isPagingEnabled());
     EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);
-    KijiPager pager = myRowData.getPager("info", "name");
+    myRowData.getPager("info", "name");
   }
 
   /* Test that a pager retrieved for a group type column family acts as expected. */
@@ -85,7 +86,7 @@ public class TestKijiPager extends KijiClientTest {
     writer.put(id, "info", "name", 3L, "me-three");
     writer.put(id, "info", "name", 4L, "me-four");
     writer.put(id, "info", "name", 5L, "me-five");
-    writer.close();
+    ResourceUtils.closeOrLog(writer);
 
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
@@ -113,32 +114,31 @@ public class TestKijiPager extends KijiClientTest {
     final NavigableMap<Long, CharSequence> resultMap3 = pager.next().getValues("info", "name");
     assertEquals("The number of returned values is incorrect: ", 1 , resultMap3.size());
     assertEquals("Incorrect first value of second page:", "me", resultMap3.get(1L).toString());
-    pager.close();
+    ResourceUtils.closeOrLog(pager);
   }
 
   /* Test that a pager retrieved for a group type column family acts as expected. */
   @Test
   public void testGroupTypeColumnPagingFromScan() throws IOException {
-    EntityId id = mTable.getEntityId("me");
+    final EntityId id = mTable.getEntityId("me");
     final KijiTableWriter writer = mTable.openTableWriter();
-      writer.put(id, "info", "name", 1L, "me");
-      writer.put(id, "info", "name", 2L, "me-too");
-      writer.put(id, "info", "name", 3L, "me-three");
-      writer.put(id, "info", "name", 4L, "me-four");
-      writer.put(id, "info", "name", 5L, "me-five");
-      writer.close();
+    writer.put(id, "info", "name", 1L, "me");
+    writer.put(id, "info", "name", 2L, "me-too");
+    writer.put(id, "info", "name", 3L, "me-three");
+    writer.put(id, "info", "name", 4L, "me-four");
+    writer.put(id, "info", "name", 5L, "me-five");
+    ResourceUtils.closeOrLog(writer);
 
-    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
     assertTrue(!dataRequest.isEmpty());
     assertTrue(dataRequest.isPagingEnabled());
     assertTrue(dataRequest.getColumn("info", "name").isPagingEnabled());
-    EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
-    Iterator<KijiRowData> scanner = mReader.getScanner(dataRequest).iterator();
+    final Iterator<KijiRowData> scanner = mReader.getScanner(dataRequest).iterator();
     assertTrue(scanner.hasNext());
-    KijiRowData myRowData = scanner.next();
-    KijiPager pager = myRowData.getPager("info", "name");
+    final KijiRowData myRowData = scanner.next();
+    final KijiPager pager = myRowData.getPager("info", "name");
     assertTrue(pager.hasNext());
 
     final NavigableMap<Long, CharSequence> resultMap = pager.next().getValues("info", "name");
@@ -156,31 +156,31 @@ public class TestKijiPager extends KijiClientTest {
     final NavigableMap<Long, CharSequence> resultMap3 = pager.next().getValues("info", "name");
     assertEquals("The number of returned values is incorrect: ", 1 , resultMap3.size());
     assertEquals("Incorrect first value of second page:", "me", resultMap3.get(1L).toString());
-    pager.close();
+    ResourceUtils.closeOrLog(pager);
 
     assertTrue(!scanner.hasNext());
   }
 
   @Test
   public void testMapTypeColumnPaging() throws IOException {
-    EntityId id = mTable.getEntityId("me");
-   final KijiTableWriter writer = mTable.openTableWriter();
-      writer.put(id, "jobs", "e", 1L, "always coming in 5th");
-      writer.put(id, "jobs", "d", 2L, "always coming in 4th");
-      writer.put(id, "jobs", "c", 3L, "always coming in 3rd");
-      writer.put(id, "jobs", "b", 4L, "always coming in 2nd");
-      writer.put(id, "jobs", "a", 5L, "always coming in 1st");
-      writer.close();
+    final EntityId id = mTable.getEntityId("me");
+    final KijiTableWriter writer = mTable.openTableWriter();
+    writer.put(id, "jobs", "e", 1L, "always coming in 5th");
+    writer.put(id, "jobs", "d", 2L, "always coming in 4th");
+    writer.put(id, "jobs", "c", 3L, "always coming in 3rd");
+    writer.put(id, "jobs", "b", 4L, "always coming in 2nd");
+    writer.put(id, "jobs", "a", 5L, "always coming in 1st");
+    ResourceUtils.closeOrLog(writer);
 
-    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withPageSize(2).addFamily("jobs");
     final KijiDataRequest dataRequest = builder.build();
     assertTrue(!dataRequest.isEmpty());
     assertTrue(dataRequest.isPagingEnabled());
     assertTrue(dataRequest.getColumn("jobs", null).isPagingEnabled());
-    EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
-    KijiRowData myRowData = mReader.get(meId, dataRequest);
-    KijiPager pager = myRowData.getPager("jobs");
+    final EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
+    final KijiRowData myRowData = mReader.get(meId, dataRequest);
+    final KijiPager pager = myRowData.getPager("jobs");
     assertTrue(pager.hasNext());
 
     final NavigableMap<String, NavigableMap<Long, CharSequence>> resultMap
@@ -206,33 +206,33 @@ public class TestKijiPager extends KijiClientTest {
     assertEquals("Incorrect first value of second page:", "always coming in 5th",
         resultMap3.get("e").get(1L).toString());
     assertTrue(!pager.hasNext());
-    pager.close();
+    ResourceUtils.closeOrLog(pager);
   }
 
  /** Test that paging does not clobber user defined filters. */
   @Test
   public void testUserDefinedFilters() throws IOException {
-        EntityId id = mTable.getEntityId("me");
-   final KijiTableWriter writer = mTable.openTableWriter();
-      writer.put(id, "jobs", "b", 1L, "always coming in 5th");
-      writer.put(id, "jobs", "b", 2L, "always coming in 4th");
-      writer.put(id, "jobs", "b", 3L, "always coming in 3rd");
-      writer.put(id, "jobs", "a", 4L, "always coming in 2nd");
-      writer.put(id, "jobs", "a", 5L, "always coming in 1st");
-      writer.close();
+    final EntityId id = mTable.getEntityId("me");
+    final KijiTableWriter writer = mTable.openTableWriter();
+    writer.put(id, "jobs", "b", 1L, "always coming in 5th");
+    writer.put(id, "jobs", "b", 2L, "always coming in 4th");
+    writer.put(id, "jobs", "b", 3L, "always coming in 3rd");
+    writer.put(id, "jobs", "a", 4L, "always coming in 2nd");
+    writer.put(id, "jobs", "a", 5L, "always coming in 1st");
+    ResourceUtils.closeOrLog(writer);
 
-    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withPageSize(2)
-      .withFilter(new RegexQualifierColumnFilter("b")).addFamily("jobs");
+        .withFilter(new RegexQualifierColumnFilter("b")).addFamily("jobs");
     KijiPager pager = null;
     try {
       final KijiDataRequest dataRequest = builder.build();
       assertTrue(!dataRequest.isEmpty());
       assertTrue(dataRequest.isPagingEnabled());
       assertTrue(dataRequest.getColumn("jobs", null).isPagingEnabled());
-      EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
+      final EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
       LOG.debug("DataRequest is [{}]", dataRequest.toString());
-      KijiRowData myRowData = mReader.get(meId, dataRequest);
+      final KijiRowData myRowData = mReader.get(meId, dataRequest);
       pager = myRowData.getPager("jobs");
       assertTrue(pager.hasNext());
       final NavigableMap<String, NavigableMap<Long, CharSequence>> resultMap
@@ -252,10 +252,7 @@ public class TestKijiPager extends KijiClientTest {
           resultMap2.get("b").get(1L).toString());
       assertTrue(!pager.hasNext());
     } finally {
-      pager.close();
+      ResourceUtils.closeOrLog(pager);
     }
   }
-
-
-
 }

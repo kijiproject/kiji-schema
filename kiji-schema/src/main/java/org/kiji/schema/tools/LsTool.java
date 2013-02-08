@@ -273,7 +273,7 @@ public final class LsTool extends BaseTool {
         printRow(row, mapTypeFamilies, groupTypeColumns);
       }
     } finally {
-      scanner.close();
+      ResourceUtils.closeOrLog(scanner);
     }
     return 0;
   }
@@ -507,13 +507,13 @@ public final class LsTool extends BaseTool {
             return lookup(reader, request, entityId, mapTypeFamilies, groupTypeColumns);
           }
         } finally {
-          reader.close();
+          ResourceUtils.closeOrLog(reader);
         }
       } finally {
-        table.close();
+        ResourceUtils.releaseOrLog(table);
       }
     } finally {
-      kiji.release();
+      ResourceUtils.releaseOrLog(kiji);
     }
   }
 

@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -57,6 +56,7 @@ import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.layout.impl.HTableSchemaTranslator;
 import org.kiji.schema.util.LockFactory;
+import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 import org.kiji.schema.util.ZooKeeperLockFactory;
 
@@ -69,8 +69,10 @@ import org.kiji.schema.util.ZooKeeperLockFactory;
 @ApiAudience.Public
 public final class HBaseKiji implements Kiji {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKiji.class);
+  // private static final Logger CLEANUP_LOG =
+  //     LoggerFactory.getLogger(HBaseKiji.class.getName() + ".Cleanup");
   private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger(HBaseKiji.class.getName() + ".Cleanup");
+      LoggerFactory.getLogger("cleanup." + HBaseKiji.class.getName());
 
   /** The hadoop configuration. */
   private final Configuration mConf;
@@ -506,10 +508,10 @@ public final class HBaseKiji implements Kiji {
     }
 
     LOG.debug(String.format("Closing Kiji instance '%s'.", mURI));
-    IOUtils.closeQuietly(mMetaTable);
-    IOUtils.closeQuietly(mSystemTable);
-    IOUtils.closeQuietly(mSchemaTable);
-    IOUtils.closeQuietly(mAdmin);
+    ResourceUtils.closeOrLog(mMetaTable);
+    ResourceUtils.closeOrLog(mSystemTable);
+    ResourceUtils.closeOrLog(mSchemaTable);
+    ResourceUtils.closeOrLog(mAdmin);
     mSchemaTable = null;
     mMetaTable = null;
     mSystemTable = null;
@@ -534,14 +536,15 @@ public final class HBaseKiji implements Kiji {
 
   /** {@inheritDoc} */
   @Override
-  public synchronized Kiji retain() {
-    mRetainCount.incrementAndGet();
+  public Kiji retain() {
+    Preconditions.checkState(mRetainCount.incrementAndGet() >= 0,
+        "Cannot retain a closed Kiji.");
     return this;
   }
 
   /** {@inheritDoc} */
   @Override
-  public synchronized void release() throws IOException {
+  public void release() throws IOException {
     final int counter = mRetainCount.decrementAndGet();
     Preconditions.checkState(counter >= 0, "Cannot release resource: retain counter is 0.");
     if (counter == 0) {

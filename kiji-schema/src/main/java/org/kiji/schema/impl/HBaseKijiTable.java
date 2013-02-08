@@ -21,6 +21,9 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import com.google.common.base.Preconditions;
 
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
@@ -43,10 +46,12 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
@@ -57,8 +62,27 @@ import org.kiji.schema.util.ResourceUtils;
  * have access to should be added to org.kiji.schema.KijiTable.</p>
  */
 @ApiAudience.Private
-public class HBaseKijiTable extends AbstractKijiTable {
+public class HBaseKijiTable implements KijiTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTable.class);
+  // private static final Logger CLEANUP_LOG =
+  //     LoggerFactory.getLogger(HBaseKijiTable.class.getName() + ".Cleanup");
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger("cleanup." + HBaseKijiTable.class.getName());
+
+  /** The kiji instance this table belongs to. */
+  private final HBaseKiji mKiji;
+
+  /** The name of this table (the Kiji name, not the HBase name). */
+  private final String mName;
+
+  /** URI of this table. */
+  private final KijiURI mTableURI;
+
+  /** Whether the table is open. */
+  private boolean mIsOpen;
+
+  /** String representation of the call stack at the time this object is constructed. */
+  private String mConstructorStack;
 
   /** The underlying HTable that stores this Kiji table's data. */
   private final HTableInterface mHTable;
@@ -69,6 +93,9 @@ public class HBaseKijiTable extends AbstractKijiTable {
   /** The factory for EntityIds. */
   private final EntityIdFactory mEntityIdFactory;
 
+  /** Retain counter. When decreased to 0, the HBase KijiTable may be closed and disposed of. */
+  private AtomicInteger mRetainCount = new AtomicInteger(1);
+
   /**
    * Construct an opened Kiji table stored in HBase.
    *
@@ -78,7 +105,7 @@ public class HBaseKijiTable extends AbstractKijiTable {
    *
    * @throws IOException On an HBase error.
    */
-  HBaseKijiTable(Kiji kiji, String name, Configuration conf) throws IOException {
+  HBaseKijiTable(HBaseKiji kiji, String name, Configuration conf) throws IOException {
     this(kiji, name, conf, DefaultHTableInterfaceFactory.get());
   }
 
@@ -92,17 +119,21 @@ public class HBaseKijiTable extends AbstractKijiTable {
    *
    * @throws IOException On an HBase error.
    */
-  HBaseKijiTable(Kiji kiji, String name, Configuration conf, HTableInterfaceFactory htableFactory)
-      throws IOException {
-    super(kiji, name);
+  HBaseKijiTable(HBaseKiji kiji, String name, Configuration conf,
+      HTableInterfaceFactory htableFactory) throws IOException {
+    mKiji = kiji;
+    mKiji.retain();
+    mName = name;
+    mTableURI = KijiURI.newBuilder(mKiji.getURI()).withTableName(mName).build();
+    mTableLayout = mKiji.getMetaTable().getTableLayout(name);
     try {
       mHTable = htableFactory.create(conf,
           KijiManagedHBaseTableName.getKijiTableName(kiji.getURI().getInstance(), name).toString());
     } catch (TableNotFoundException e) {
-      super.close();
+      close();
       throw new KijiTableNotFoundException(name);
     }
-    mTableLayout = kiji.getMetaTable().getTableLayout(name);
+
     if (mTableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat) {
       mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat) mTableLayout.getDesc()
           .getKeysFormat());
@@ -112,6 +143,11 @@ public class HBaseKijiTable extends AbstractKijiTable {
     } else {
       throw new RuntimeException("Invalid Row Key format found in Kiji Table");
     }
+
+    mIsOpen = true;
+    if (CLEANUP_LOG.isDebugEnabled()) {
+      mConstructorStack = Debug.getStackTrace();
+    }
   }
 
   /** {@inheritDoc} **/
@@ -120,27 +156,22 @@ public class HBaseKijiTable extends AbstractKijiTable {
     return mEntityIdFactory.getEntityId(kijiRowKey);
   }
 
-  /**
-   * We know that all KijiTables are really HBaseKijiTables
-   * instances.  This is a convenience method for downcasting, which
-   * is common within the internals of Kiji code.
-   *
-   * @param kijiTable The Kiji table to downcast to an HBaseKijiTable.
-   * @return The given Kiji table as an HBaseKijiTable.
-   */
-  public static HBaseKijiTable downcast(KijiTable kijiTable) {
-    if (!(kijiTable instanceof HBaseKijiTable)) {
-      // This should really never happen.  Something is seriously
-      // wrong with Kiji code if we get here.
-      throw new InternalKijiError(
-          "Found a KijiTable object that was not an instance of HBaseKijiTable.");
-    }
-    return (HBaseKijiTable) kijiTable;
+  /** {@inheritDoc} */
+  @Override
+  public Kiji getKiji() {
+    return mKiji;
   }
 
-  /** @return The underlying HTable instance. */
-  public HTableInterface getHTable() {
-    return mHTable;
+  /** {@inheritDoc} */
+  @Override
+  public String getName() {
+    return mName;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiURI getURI() {
+    return mTableURI;
   }
 
   /** {@inheritDoc} */
@@ -157,7 +188,7 @@ public class HBaseKijiTable extends AbstractKijiTable {
 
   /** {@inheritDoc} */
   @Override
-  public KijiTableWriter openTableWriter() throws IOException {
+  public KijiTableWriter openTableWriter() {
     return new HBaseKijiTableWriter(this);
   }
 
@@ -202,10 +233,110 @@ public class HBaseKijiTable extends AbstractKijiTable {
     return result;
   }
 
+  /** @return The underlying HTable instance. */
+  public HTableInterface getHTable() {
+    return mHTable;
+  }
+
+  /**
+   * Releases all the resources used by this Kiji instance.
+   *
+   * @throws IOException on I/O error.
+   */
+  private void close() throws IOException {
+    synchronized (this) {
+      if (!mIsOpen) {
+        LOG.warn("close() called on an KijiTable that was already closed.");
+        return;
+      }
+      mIsOpen = false;
+    }
+
+    LOG.debug(String.format("Closing KijiTable '%s'.", mTableURI));
+    if (null != mHTable) {
+      mHTable.close();
+    }
+    mKiji.release();
+  }
+
   /** {@inheritDoc} */
   @Override
-  public void close() throws IOException {
-    mHTable.close();
-    super.close();
+  public KijiTable retain() {
+    Preconditions.checkState(mRetainCount.incrementAndGet() >= 0,
+        "Cannot retain a closed KijiTable.");
+    return this;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void release() throws IOException {
+    final int counter = mRetainCount.decrementAndGet();
+    Preconditions.checkState(counter >= 0, "Cannot release resource: retain counter is 0.");
+    if (counter == 0) {
+      close();
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean equals(Object obj) {
+    if (null == obj) {
+      return false;
+    }
+    if (obj == this) {
+      return true;
+    }
+    if (!getClass().equals(obj.getClass())) {
+      return false;
+    }
+    final KijiTable other = (KijiTable) obj;
+
+    // Equal if the two tables have the same URI:
+    return mTableURI.equals(other.getURI());
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    return mTableURI.hashCode();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void finalize() throws Throwable {
+    if (mIsOpen) {
+      CLEANUP_LOG.warn(
+          "Closing HBaseKijiTable {} in finalize(). You should close it explicitly",
+          mTableURI);
+      CLEANUP_LOG.warn(
+          "HBaseKijiTable {} still has {} retained references.",
+          mTableURI,
+          mRetainCount.get());
+      if (CLEANUP_LOG.isDebugEnabled()) {
+        CLEANUP_LOG.debug(
+            "Call stack when this HBaseKijiTable was constructed:\n{}",
+            mConstructorStack);
+      }
+      close();
+    }
+    super.finalize();
+  }
+
+  /**
+   * We know that all KijiTables are really HBaseKijiTables
+   * instances.  This is a convenience method for downcasting, which
+   * is common within the internals of Kiji code.
+   *
+   * @param kijiTable The Kiji table to downcast to an HBaseKijiTable.
+   * @return The given Kiji table as an HBaseKijiTable.
+   */
+  public static HBaseKijiTable downcast(KijiTable kijiTable) {
+    if (!(kijiTable instanceof HBaseKijiTable)) {
+      // This should really never happen.  Something is seriously
+      // wrong with Kiji code if we get here.
+      throw new InternalKijiError(
+          "Found a KijiTable object that was not an instance of HBaseKijiTable.");
+    }
+    return (HBaseKijiTable) kijiTable;
   }
 }

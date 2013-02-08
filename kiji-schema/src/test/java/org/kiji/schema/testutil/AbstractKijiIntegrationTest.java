@@ -35,7 +35,6 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
-import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -48,6 +47,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.tools.BaseTool;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * A base class for all Kiji integration tests.
@@ -106,9 +106,6 @@ public abstract class AbstractKijiIntegrationTest {
   /** Mini HBase cluster instance. */
   private static MiniHBaseCluster mCluster;
 
-  /** Mini ZooKeeper cluster instance. */
-  private static MiniZooKeeperCluster mZooKeeperCluster;
-
   private static void startHBaseMiniCluster() throws Exception {
     LOG.info("Starting MiniCluster");
 
@@ -118,7 +115,7 @@ public abstract class AbstractKijiIntegrationTest {
     /** HBase configuration. */
     mStandaloneConf = mHBaseUtil.getConfiguration();
 
-    mZooKeeperCluster = mHBaseUtil.startMiniZKCluster();
+    mHBaseUtil.startMiniZKCluster();
     int zkClientPort = mHBaseUtil.getConfiguration().getInt(
         "hbase.zookeeper.property.clientPort", 0);
     LOG.info(String.format("Mini ZooKeeper cluster quorum: localhost:%d",
@@ -391,7 +388,7 @@ public abstract class AbstractKijiIntegrationTest {
     final StringWriter writer = new StringWriter();
     final PrintWriter printWriter = new PrintWriter(writer);
     exn.printStackTrace(printWriter);
-    printWriter.close();
+    ResourceUtils.closeOrLog(printWriter);
     return writer.toString();
   }
 

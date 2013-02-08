@@ -68,6 +68,7 @@ import org.kiji.schema.util.Hasher;
 import org.kiji.schema.util.JavaIdentifiers;
 import org.kiji.schema.util.KijiNameValidator;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.ToJson;
 
 /**
@@ -1532,7 +1533,7 @@ public final class KijiTableLayout {
       final KijiTableLayout layout = new KijiTableLayout(desc, null);
       return layout;
     } finally {
-      IOUtils.closeQuietly(istream);
+      ResourceUtils.closeOrLog(istream);
     }
   }
 

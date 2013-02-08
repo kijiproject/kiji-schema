@@ -122,9 +122,12 @@ public abstract class AbstractKijiTable implements KijiTable {
     return mTableURI.hashCode();
   }
 
-  /** {@inheritDoc} */
-  @Override
-  public void close() throws IOException {
+  /**
+   * Releases all the resources used by this Kiji instance.
+   *
+   * @throws IOException on I/O error.
+   */
+  protected void close() throws IOException {
     if (!mIsOpen) {
       LOG.warn("close() called on an KijiTable that was already closed.");
       return;

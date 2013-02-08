@@ -26,7 +26,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.GregorianCalendar;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -38,27 +37,24 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
+import org.kiji.schema.util.ResourceUtils;
 
 //TODO: Merge with TestKijiPager
 public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(IntegrationTestKijiPager.class);
 
-  private Kiji mKiji;
-  private KijiTable mUserTable;
   private KijiTableReader mTableReader;
   private EntityId mGarrettId;
-  private EntityId mJulietId;
 
   @Before
   public final void setup() throws Exception {
-    mKiji = Kiji.Factory.open(getKijiURI());
-    mKiji.createTable("user", KijiTableLayouts.getTableLayout(KijiTableLayouts.PAGING_TEST));
-    mUserTable = mKiji.openTable("user");
-    mTableReader = mUserTable.openTableReader();
-    mGarrettId =  mUserTable.getEntityId("garrett");
-    mJulietId =  mUserTable.getEntityId("juliet");
+    final Kiji kiji = Kiji.Factory.open(getKijiURI());
+    kiji.createTable("user", KijiTableLayouts.getTableLayout(KijiTableLayouts.PAGING_TEST));
+    final KijiTable userTable = kiji.openTable("user");
+    mTableReader = userTable.openTableReader();
+    mGarrettId = userTable.getEntityId("garrett");
 
-    final KijiTableWriter writer = mUserTable.openTableWriter();
+    final KijiTableWriter writer = userTable.openTableWriter();
     try {
       writer.put(mGarrettId, "info", "name", "garrett");
 
@@ -91,127 +87,58 @@ public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
           new GregorianCalendar(2010, 10, 4).getTime().getTime(),
           "MTS");
     } finally {
-      writer.close();
+      ResourceUtils.closeOrLog(writer);
+      ResourceUtils.releaseOrLog(userTable);
+      ResourceUtils.releaseOrLog(kiji);
     }
   }
 
   @After
   public void teardown() throws Exception {
-    mTableReader.close();
-    mUserTable.close();
-    mKiji.release();
+    ResourceUtils.closeOrLog(mTableReader);
   }
 
 
   @Test
   public void testGet() throws IOException {
-      KijiDataRequestBuilder builder = KijiDataRequest.builder();
-      builder.newColumnsDef().withMaxVersions(5).withPageSize(2)
-          .add("info", "name")
-          .add("info", "location");
-      builder.newColumnsDef().withPageSize(2).addFamily("jobs");
-      KijiDataRequest dataRequest = builder.build();
-      KijiRowData input = mTableReader.get(mGarrettId, dataRequest);
-
-      // Read the user name.
-      if (!input.containsColumn("info", "name")) {
-        return;
-      }
-      CharSequence name = input.getMostRecentValue("info", "name");
-
-      // Page over location column.
-      List<CharSequence> locations = new ArrayList<CharSequence>();
-      KijiPager locationPager = input.getPager("info", "location");
-      assertTrue("Our pager always has a first page.", locationPager.hasNext());
-      for (CharSequence location : locationPager.next().<CharSequence>getValues("info", "location")
-          .values()) {
-        locations.add(location);
-      }
-      LOG.debug("This size of our locations list is [{}].", locations.size());
-      assertEquals(2, locations.size());
-
-      // Read the second page of locations (2 cells).
-      assertTrue("Our pager should have a second page.", locationPager.hasNext());
-      for (CharSequence location : locationPager.next().<CharSequence>getValues("info", "location")
-          .values()) {
-        locations.add(location);
-      }
-      LOG.debug("This size of our locations list is [{}].", locations.size());
-      assertEquals(4, locations.size());
-
-      // Read the last page of locations (1 cell).
-      assertTrue("Our pager should have a third page", locationPager.hasNext());
-      for (CharSequence location : locationPager.next().<CharSequence>getValues("info", "location")
-          .values()) {
-        locations.add(location);
-      }
-      LOG.debug("This size of our locations list is [{}].", locations.size());
-      assertEquals(5, locations.size());
-
-      assertFalse("Our page should not have a fifth page.", locationPager.hasNext());
-
-      // Page over jobs column.
-      KijiPager jobsPager = input.getPager("jobs");
-      assertTrue("Our pagers always have a first page.", jobsPager.hasNext());
-      List<CharSequence> jobs = new ArrayList<CharSequence>();
-      for (Map.Entry<String, CharSequence> employment
-               : jobsPager.next().<CharSequence>getMostRecentValues("jobs").entrySet()) {
-        jobs.add(employment.getValue().toString() + " @ " + employment.getKey());
-      }
-      assertEquals(2, jobs.size());
-
-      // Read the second page of jobs.
-      assertTrue(jobsPager.hasNext());
-      for (Map.Entry<String, CharSequence> employment
-               : jobsPager.next().<CharSequence>getMostRecentValues("jobs").entrySet()) {
-        jobs.add(employment.getValue().toString() + " @ " + employment.getKey());
-      }
-      assertEquals(4, jobs.size());
-      // We should try to get the next page
-      assertTrue(jobsPager.hasNext());
-      //But it should be empty.
-      assertTrue(jobsPager.next().getValues("jobs").isEmpty());
-  }
-
-  @Test
-  public void testScan() throws IOException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().withMaxVersions(5).add("info", "name");
     builder.newColumnsDef().withMaxVersions(5).withPageSize(2)
-        .add("info", "location").addFamily("jobs");
+        .add("info", "name")
+        .add("info", "location");
+    builder.newColumnsDef().withPageSize(2).addFamily("jobs");
     KijiDataRequest dataRequest = builder.build();
-    KijiRowScanner scanner = mTableReader.getScanner(dataRequest);
-    try {
-    Iterator<KijiRowData> rowDataIterator = scanner.iterator();
-    assertTrue(rowDataIterator.hasNext());
-    KijiRowData garrettInput = rowDataIterator.next();
-    CharSequence name = garrettInput.getMostRecentValue("info", "name");
+    KijiRowData input = mTableReader.get(mGarrettId, dataRequest);
+
+    // Read the user name.
+    if (!input.containsColumn("info", "name")) {
+      return;
+    }
+    CharSequence name = input.getMostRecentValue("info", "name");
 
     // Page over location column.
     List<CharSequence> locations = new ArrayList<CharSequence>();
-    KijiPager locationPager = garrettInput.getPager("info", "location");
+    KijiPager locationPager = input.getPager("info", "location");
     assertTrue("Our pager always has a first page.", locationPager.hasNext());
-    for (CharSequence location : locationPager.next()
-      .<CharSequence>getValues("info", "location").values()) {
+    for (CharSequence location : locationPager.next().<CharSequence>getValues("info", "location")
+        .values()) {
       locations.add(location);
     }
-    LOG.debug("The size of our locations list is [{}].", locations.size());
+    LOG.debug("This size of our locations list is [{}].", locations.size());
     assertEquals(2, locations.size());
 
     // Read the second page of locations (2 cells).
     assertTrue("Our pager should have a second page.", locationPager.hasNext());
-    for (CharSequence location : locationPager.next()
-      .<CharSequence>getValues("info", "location").values()) {
-      LOG.debug("Adding location [{}].", location);
+    for (CharSequence location : locationPager.next().<CharSequence>getValues("info", "location")
+        .values()) {
       locations.add(location);
     }
-    LOG.debug("The size of our locations list is [{}].", locations.size());
+    LOG.debug("This size of our locations list is [{}].", locations.size());
     assertEquals(4, locations.size());
 
     // Read the last page of locations (1 cell).
     assertTrue("Our pager should have a third page", locationPager.hasNext());
-    for (CharSequence location : locationPager.next()
-      .<CharSequence>getValues("info", "location").values()) {
+    for (CharSequence location : locationPager.next().<CharSequence>getValues("info", "location")
+        .values()) {
       locations.add(location);
     }
     LOG.debug("This size of our locations list is [{}].", locations.size());
@@ -220,19 +147,19 @@ public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
     assertFalse("Our page should not have a fifth page.", locationPager.hasNext());
 
     // Page over jobs column.
-    KijiPager jobsPager = garrettInput.getPager("jobs");
+    KijiPager jobsPager = input.getPager("jobs");
     assertTrue("Our pagers always have a first page.", jobsPager.hasNext());
     List<CharSequence> jobs = new ArrayList<CharSequence>();
-    for (Map.Entry<String, CharSequence> employment : jobsPager.next()
-      .<CharSequence>getMostRecentValues("jobs").entrySet()) {
+    for (Map.Entry<String, CharSequence> employment
+             : jobsPager.next().<CharSequence>getMostRecentValues("jobs").entrySet()) {
       jobs.add(employment.getValue().toString() + " @ " + employment.getKey());
     }
     assertEquals(2, jobs.size());
 
     // Read the second page of jobs.
     assertTrue(jobsPager.hasNext());
-    for (Map.Entry<String, CharSequence> employment : jobsPager.next()
-      .<CharSequence>getMostRecentValues("jobs").entrySet()) {
+    for (Map.Entry<String, CharSequence> employment
+             : jobsPager.next().<CharSequence>getMostRecentValues("jobs").entrySet()) {
       jobs.add(employment.getValue().toString() + " @ " + employment.getKey());
     }
     assertEquals(4, jobs.size());
@@ -240,8 +167,82 @@ public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
     assertTrue(jobsPager.hasNext());
     //But it should be empty.
     assertTrue(jobsPager.next().getValues("jobs").isEmpty());
-    } finally {
-      scanner.close();
+
+    ResourceUtils.closeOrLog(locationPager);
+    ResourceUtils.closeOrLog(jobsPager);
+  }
+
+  @Test
+  public void testScan() throws IOException {
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.newColumnsDef().withMaxVersions(5)
+        .add("info", "name");
+    builder.newColumnsDef().withMaxVersions(5).withPageSize(2)
+        .add("info", "location")
+        .addFamily("jobs");
+    KijiDataRequest dataRequest = builder.build();
+    KijiRowData input = mTableReader.get(mGarrettId, dataRequest);
+
+    // Read the user name.
+    if (!input.containsColumn("info", "name")) {
+      return;
     }
+    CharSequence name = input.getMostRecentValue("info", "name");
+
+    // Page over location column.
+    List<CharSequence> locations = new ArrayList<CharSequence>();
+    final KijiPager locationPager = input.getPager("info", "location");
+    assertTrue("Our pager always has a first page.", locationPager.hasNext());
+    for (CharSequence location : locationPager.next().<CharSequence>getValues("info", "location")
+        .values()) {
+      locations.add(location);
+    }
+    LOG.debug("This size of our locations list is [{}].", locations.size());
+    assertEquals(2, locations.size());
+
+    // Read the second page of locations (2 cells).
+    assertTrue("Our pager should have a second page.", locationPager.hasNext());
+    for (CharSequence location : locationPager.next().<CharSequence>getValues("info", "location")
+        .values()) {
+      locations.add(location);
+    }
+    LOG.debug("This size of our locations list is [{}].", locations.size());
+    assertEquals(4, locations.size());
+
+    // Read the last page of locations (1 cell).
+    assertTrue("Our pager should have a third page", locationPager.hasNext());
+    for (CharSequence location : locationPager.next().<CharSequence>getValues("info", "location")
+        .values()) {
+      locations.add(location);
+    }
+    LOG.debug("This size of our locations list is [{}].", locations.size());
+    assertEquals(5, locations.size());
+
+    assertFalse("Our page should not have a fifth page.", locationPager.hasNext());
+
+    // Page over jobs column.
+    final KijiPager jobsPager = input.getPager("jobs");
+    assertTrue("Our pagers always have a first page.", jobsPager.hasNext());
+    List<CharSequence> jobs = new ArrayList<CharSequence>();
+    for (Map.Entry<String, CharSequence> employment
+             : jobsPager.next().<CharSequence>getMostRecentValues("jobs").entrySet()) {
+      jobs.add(employment.getValue().toString() + " @ " + employment.getKey());
+    }
+    assertEquals(2, jobs.size());
+
+    // Read the second page of jobs.
+    assertTrue(jobsPager.hasNext());
+    for (Map.Entry<String, CharSequence> employment
+             : jobsPager.next().<CharSequence>getMostRecentValues("jobs").entrySet()) {
+      jobs.add(employment.getValue().toString() + " @ " + employment.getKey());
+    }
+    assertEquals(4, jobs.size());
+    // We should try to get the next page
+    assertTrue(jobsPager.hasNext());
+    //But it should be empty.
+    assertTrue(jobsPager.next().getValues("jobs").isEmpty());
+
+    ResourceUtils.closeOrLog(locationPager);
+    ResourceUtils.closeOrLog(jobsPager);
   }
 }

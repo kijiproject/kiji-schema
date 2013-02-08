@@ -24,6 +24,7 @@ import org.junit.Before;
 
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * An integration test that sets up the Kiji table "foo" before tests.
@@ -73,11 +74,7 @@ public class FooTableIntegrationTest extends AbstractKijiIntegrationTest {
   @After
   public void teardownFooTable() throws Exception {
     deleteFooTable();
-    if (null != mKijiTable) {
-      mKijiTable.close();
-    }
-    if (null != mKiji) {
-      mKiji.release();
-    }
+    ResourceUtils.releaseOrLog(mKijiTable);
+    ResourceUtils.releaseOrLog(mKiji);
   }
 }

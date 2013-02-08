@@ -33,6 +33,7 @@ import java.io.IOException;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.util.ResourceUtils;
 
 public class TestKijiTablePool extends KijiClientTest {
   private KijiTableFactory mTableFactory;
@@ -53,7 +54,7 @@ public class TestKijiTablePool extends KijiClientTest {
     try {
       pool.get("table doesn't exist");
     } finally {
-      pool.close();
+      ResourceUtils.closeOrLog(pool);
     }
   }
 
@@ -71,9 +72,9 @@ public class TestKijiTablePool extends KijiClientTest {
     expect(mTableFactory.openTable("foo")).andReturn(foo2);
     expect(mTableFactory.openTable("bar")).andReturn(bar1);
 
-    foo1.close();
-    foo2.close();
-    bar1.close();
+    ResourceUtils.releaseOrLog(foo1);
+    ResourceUtils.releaseOrLog(foo2);
+    ResourceUtils.releaseOrLog(bar1);
 
     replay(foo1);
     replay(foo2);
@@ -91,7 +92,7 @@ public class TestKijiTablePool extends KijiClientTest {
     pool.release(fooTable2);
     pool.release(barTable1);
 
-    pool.close();
+    ResourceUtils.closeOrLog(pool);
 
     verify(mTableFactory);
   }
@@ -163,11 +164,11 @@ public class TestKijiTablePool extends KijiClientTest {
     KijiTable foo1 = createMock(KijiTable.class);
     expect(foo1.getName()).andReturn("foo").anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo1);
-    foo1.close();
+    ResourceUtils.releaseOrLog(foo1);
     KijiTable foo2 = createMock(KijiTable.class);
     expect(foo2.getName()).andReturn("foo").anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo2);
-    foo2.close();
+    ResourceUtils.releaseOrLog(foo2);
 
     replay(foo1);
     replay(foo2);
@@ -191,8 +192,5 @@ public class TestKijiTablePool extends KijiClientTest {
 
     assertFalse("Released table should not be reused, since it was idle and closed.",
         first == second);
-
-    pool.release(second);
-    pool.close();
   }
 }

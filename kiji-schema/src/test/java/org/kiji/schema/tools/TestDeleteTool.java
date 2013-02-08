@@ -46,6 +46,7 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
+import org.kiji.schema.util.ResourceUtils;
 
 public class TestDeleteTool extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestDeleteTool.class);
@@ -59,9 +60,6 @@ public class TestDeleteTool extends KijiClientTest {
 
   /** Output of the CLI tool, as a single string. */
   private String mToolOutputStr;
-
-  /** Output of the CLI tool, as an array of lines. */
-  private String[] mToolOutputLines;
 
   private int runTool(BaseTool tool, String...arguments) throws Exception {
     mToolOutputBytes.reset();
@@ -78,7 +76,6 @@ public class TestDeleteTool extends KijiClientTest {
       LOG.info("Captured output for tool: '{}' with parameters {}:\n{}\n{}{}\n",
           tool.getName(), arguments,
           RULER, mToolOutputStr, RULER);
-      mToolOutputLines = mToolOutputStr.split("\n");
     }
   }
 
@@ -106,8 +103,8 @@ public class TestDeleteTool extends KijiClientTest {
 
   @After
   public final void teardownTestDeleteTool() throws Exception {
-    mReader.close();
-    mTable.close();
+    ResourceUtils.closeOrLog(mReader);
+    ResourceUtils.releaseOrLog(mTable);
     mReader = null;
     mTable = null;
   }

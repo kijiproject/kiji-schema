@@ -45,6 +45,7 @@ import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.tools.BaseTool;
 import org.kiji.schema.tools.KijiToolLauncher;
 import org.kiji.schema.util.InstanceBuilder;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * IntegrationHelper provides methods for installing and managing a Kiji instance during a test.
@@ -164,7 +165,7 @@ public class IntegrationHelper extends Configured {
       IOUtils.copy(inStream, outStream);
     } finally {
       if (null != outStream) {
-        outStream.close();
+        ResourceUtils.closeOrLog(outStream);
       }
     }
   }
@@ -187,10 +188,10 @@ public class IntegrationHelper extends Configured {
       writeTempFile(formatFile, formatStream);
     } finally {
       if (null != dataStream) {
-        dataStream.close();
+        ResourceUtils.closeOrLog(dataStream);
       }
       if (null != formatStream) {
-        formatStream.close();
+        ResourceUtils.closeOrLog(formatStream);
       }
     }
   }

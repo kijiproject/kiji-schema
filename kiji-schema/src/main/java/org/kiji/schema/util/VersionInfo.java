@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.TableNotFoundException;
 
 import org.kiji.annotations.ApiAudience;
@@ -75,7 +74,7 @@ public final class VersionInfo {
       properties.load(istream);
       return properties;
     } finally {
-      IOUtils.closeQuietly(istream);
+      ResourceUtils.closeOrLog(istream);
     }
   }
 

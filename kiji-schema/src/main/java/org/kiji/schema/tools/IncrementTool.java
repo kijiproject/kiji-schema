@@ -36,6 +36,7 @@ import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Command-line tool to increment a counter in a cell of a kiji table.
@@ -113,13 +114,13 @@ public final class IncrementTool extends BaseTool {
           return SUCCESS;
 
         } finally {
-          writer.close();
+          ResourceUtils.closeOrLog(writer);
         }
       } finally {
-        table.close();
+        ResourceUtils.releaseOrLog(table);
       }
     } finally {
-      kiji.release();
+      ResourceUtils.releaseOrLog(kiji);
     }
   }
 

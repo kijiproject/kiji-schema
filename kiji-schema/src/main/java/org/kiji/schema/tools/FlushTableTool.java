@@ -24,7 +24,6 @@ import java.util.List;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -36,6 +35,7 @@ import org.kiji.common.flags.Flag;
 import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Command-line tool for flushing Kiji meta and user tables in HBase.
@@ -161,7 +161,7 @@ public final class FlushTableTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
-    IOUtils.closeQuietly(mHBaseAdmin);
+    ResourceUtils.closeOrLog(mHBaseAdmin);
     super.cleanup();
   }
 

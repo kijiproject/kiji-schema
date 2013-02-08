@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Integration test for formatted row keys.
@@ -156,9 +156,9 @@ public class IntegrationTestFormattedRowKeys
 
   @After
   public void teardown() throws IOException {
-    IOUtils.closeQuietly(mReader);
-    IOUtils.closeQuietly(mWriter);
-    IOUtils.closeQuietly(mTable);
-    mKiji.release();
+    ResourceUtils.closeOrLog(mReader);
+    ResourceUtils.closeOrLog(mWriter);
+    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.releaseOrLog(mKiji);
   }
 }

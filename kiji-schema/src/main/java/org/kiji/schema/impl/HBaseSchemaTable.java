@@ -75,6 +75,7 @@ import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.Hasher;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.LockFactory;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * <p>
@@ -93,8 +94,10 @@ import org.kiji.schema.util.LockFactory;
 @ApiAudience.Private
 public class HBaseSchemaTable extends KijiSchemaTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseSchemaTable.class);
+  // private static final Logger CLEANUP_LOG =
+  //     LoggerFactory.getLogger(HBaseSchemaTable.class.getName() + ".Cleanup");
   private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger(HBaseSchemaTable.class.getName() + ".Cleanup");
+      LoggerFactory.getLogger("cleanup." + HBaseSchemaTable.class.getName());
 
   /** The column family in HBase used to store schema entries. */
   public static final String SCHEMA_COLUMN_FAMILY = "schema";
@@ -574,7 +577,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
     flush();
     mSchemaHashTable.close();
     mSchemaIdTable.close();
-    mZKLock.close();
+    ResourceUtils.closeOrLog(mZKLock);
     mIsOpen = false;
   }
 
@@ -648,7 +651,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
       schemaTable.setSchemaIdCounter(0L);
       schemaTable.registerPrimitiveSchemas();
     } finally {
-      schemaTable.close();
+      ResourceUtils.closeOrLog(schemaTable);
     }
   }
 

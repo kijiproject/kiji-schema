@@ -40,6 +40,7 @@ import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Command-line tool for putting an Avro value into a kiji cell. The value is specified by the
@@ -180,10 +181,17 @@ public final class PutTool extends BaseTool {
       }
 
     } finally {
-      writer.close();
+      ResourceUtils.closeOrLog(writer);
     }
 
     return SUCCESS;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void cleanup() {
+    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.releaseOrLog(mKiji);
   }
 
   /**

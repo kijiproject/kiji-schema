@@ -44,6 +44,7 @@ import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Metadata restorer backups up meta info to MetadataBackup records and can restore metadata to the
@@ -86,7 +87,7 @@ public class MetadataRestorer {
       fileWriter.create(backupRec.getSchema(), file);
       fileWriter.append(backupRec);
     } finally {
-      fileWriter.close();
+      ResourceUtils.closeOrLog(fileWriter);
     }
   }
 
@@ -162,7 +163,7 @@ public class MetadataRestorer {
         restoreTable(tableName, tableBackup, metaTable, kiji);
       }
     } finally {
-      hbaseAdmin.close();
+      ResourceUtils.closeOrLog(hbaseAdmin);
     }
   }
 

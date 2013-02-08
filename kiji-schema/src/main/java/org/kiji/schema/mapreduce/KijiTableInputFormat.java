@@ -27,7 +27,6 @@ import java.util.List;
 
 import com.google.common.collect.Lists;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.SerializationUtils;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
@@ -40,8 +39,6 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.EntityId;
 import org.kiji.schema.Kiji;
@@ -57,14 +54,13 @@ import org.kiji.schema.KijiURIException;
 import org.kiji.schema.impl.HBaseEntityId;
 import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.HBaseKijiTable;
+import org.kiji.schema.util.ResourceUtils;
 
 /** InputFormat for Hadoop MapReduce jobs reading from a Kiji table. */
 @Deprecated
 public class KijiTableInputFormat
     extends InputFormat<EntityId, KijiRowData>
     implements Configurable {
-  private static final Logger LOG = LoggerFactory.getLogger(KijiTableInputFormat.class);
-
   /** Configuration of this input format. */
   private Configuration mConf;
 
@@ -132,8 +128,8 @@ public class KijiTableInputFormat
     // As a precaution, be sure the table exists and can be opened.
     final Kiji kiji = Kiji.Factory.open(tableURI, conf);
     final KijiTable table = kiji.openTable(tableURI.getTable());
-    IOUtils.closeQuietly(table);
-    kiji.release();
+    ResourceUtils.releaseOrLog(table);
+    ResourceUtils.releaseOrLog(kiji);
 
     // TODO: Check for jars config:
     // GenericTableMapReduceUtil.initTableInput(hbaseTableName, scan, job);
@@ -238,10 +234,10 @@ public class KijiTableInputFormat
     /** {@inheritDoc} */
     @Override
     public void close() throws IOException {
-      IOUtils.closeQuietly(mScanner);
-      IOUtils.closeQuietly(mReader);
-      IOUtils.closeQuietly(mTable);
-      mKiji.release();
+      ResourceUtils.closeOrLog(mScanner);
+      ResourceUtils.closeOrLog(mReader);
+      ResourceUtils.releaseOrLog(mTable);
+      ResourceUtils.releaseOrLog(mKiji);
       mIterator = null;
       mScanner = null;
       mReader = null;

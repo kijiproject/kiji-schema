@@ -32,6 +32,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.common.flags.FlagParser;
 import org.kiji.delegation.Lookups;
+import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.Resources;
 
 /**
@@ -148,7 +149,7 @@ public final class HelpTool extends Configured implements KijiTool {
     try {
       IOUtils.copy(envHelp, System.out);
     } finally {
-      IOUtils.closeQuietly(envHelp);
+      ResourceUtils.closeOrLog(envHelp);
     }
   }
 }
