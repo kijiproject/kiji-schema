@@ -67,6 +67,7 @@ import org.kiji.schema.util.FromJson;
 import org.kiji.schema.util.Hasher;
 import org.kiji.schema.util.JavaIdentifiers;
 import org.kiji.schema.util.KijiNameValidator;
+import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.ToJson;
 
 /**
@@ -254,6 +255,20 @@ import org.kiji.schema.util.ToJson;
 @ApiAudience.Public
 public final class KijiTableLayout {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTableLayout.class);
+
+  // ProtocolVersions specifying when different features were added to layout functionality.
+
+  /** Maximum layout version we can recognize. */
+  private static final ProtocolVersion MAX_LAYOUT_VER = ProtocolVersion.parse("kiji-1.1.0");
+
+  /** First version where {@link RowKeyFormat2} was supported. */
+  private static final ProtocolVersion RKF2_LAYOUT_VER = ProtocolVersion.parse("kiji-1.1.0");
+
+  /** Minimum layout version we can recognize. */
+  private static final ProtocolVersion MIN_LAYOUT_VER = ProtocolVersion.parse("kiji-1.0.0");
+
+  /** All layout versions must use the format 'kiji-x.y' to specify what version they use. */
+  private static final String LAYOUT_PROTOCOL_NAME = "kiji";
 
   /** Concrete layout of a locality group. */
   @ApiAudience.Public
@@ -962,8 +977,29 @@ public final class KijiTableLayout {
     // Ensure the array of locality groups is mutable:
     mDesc.setLocalityGroups(Lists.newArrayList(mDesc.getLocalityGroups()));
 
-    // TODO Check version of layout matches the features used.
-    // https://jira.kiji.org/browse/SCHEMA-151
+    // Check that the version specified in the layout matches the features used.
+    final ProtocolVersion layoutVersion = ProtocolVersion.parse(mDesc.getVersion());
+    if (!LAYOUT_PROTOCOL_NAME.equals(layoutVersion.getProtocolName())) {
+      throw new InvalidLayoutException(String.format("Invalid version protocol: '%s'.",
+          layoutVersion.getProtocolName()));
+    }
+
+    if (MAX_LAYOUT_VER.compareTo(layoutVersion) < 0) {
+      throw new InvalidLayoutException("The maximum layout version we support is "
+          + MAX_LAYOUT_VER + "; this layout requires " + layoutVersion);
+    } else if (MIN_LAYOUT_VER.compareTo(layoutVersion) > 0) {
+      throw new InvalidLayoutException("The minimum layout version we support is "
+          + MIN_LAYOUT_VER + "; this layout requires " + layoutVersion);
+    }
+
+    // Composite keys and RowKeyFormat2 was introduced in version 1.1.
+    if (RKF2_LAYOUT_VER.compareTo(layoutVersion) > 0
+         && mDesc.getKeysFormat() instanceof RowKeyFormat2) {
+      // Cannot use RowKeyFormat2 if this is the case.
+      throw new InvalidLayoutException(
+          "Support for specifying keys_format as a RowKeyFormat2 begins with layout version "
+          + RKF2_LAYOUT_VER.toString());
+    }
 
     if (!isValidName(getName())) {
       throw new InvalidLayoutException(String.format("Invalid table name: '%s'.", getName()));

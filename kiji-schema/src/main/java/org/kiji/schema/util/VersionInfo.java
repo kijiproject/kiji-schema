@@ -88,9 +88,9 @@ public final class VersionInfo {
   /**
    * Gets the version of the Kiji data format assumed by the client.
    *
-   * @return The version string.
+   * @return A parsed version of the storage format protocol version string.
    */
-  public static String getClientDataVersion() {
+  public static ProtocolVersion getClientDataVersion() {
     final Properties defaults = new Properties();
     try {
       InputStream defaultsFileStream = VersionInfo.class.getClassLoader()
@@ -103,20 +103,20 @@ public final class VersionInfo {
     } catch (IOException ioe) {
       throw new RuntimeException(ioe);
     }
-    return defaults.get("data-version").toString();
+    return ProtocolVersion.parse(defaults.get("data-version").toString());
   }
 
   /**
    * Gets the version of the Kiji data format installed in the instance of the HBase cluster.
    *
    * @param kiji The kiji instance.
-   * @return The version string.
+   * @return A parsed version of the storage format protocol version string.
    * @throws IOException on I/O error.
    */
-  public static String getClusterDataVersion(Kiji kiji) throws IOException {
+  public static ProtocolVersion getClusterDataVersion(Kiji kiji) throws IOException {
     try {
       final KijiSystemTable systemTable = kiji.getSystemTable();
-      final String dataVersion = systemTable.getDataVersion();
+      final ProtocolVersion dataVersion = systemTable.getDataVersion();
       return dataVersion;
     } catch (TableNotFoundException e) {
       final String instance = kiji.getURI().getInstance();
@@ -127,23 +127,47 @@ public final class VersionInfo {
   }
 
   /**
-   * Validates that the client data version matches the data version installed on a Kiji instance.
+   * Validates that the client data version is compatible with the data version
+   * installed on a Kiji instance. Throws IncompatibleKijiVersionException if not.
+   * "Compatible" versions have the same major version digit.
    *
    * @param kiji The kiji instance.
-   * @throws IOException on I/O error, and in particular IncompatibleKijiVersionException
-   *     if the versions are incompatible.
+   * @throws IOException on I/O error reading the data version from the cluster,
+   *     or throws IncompatibleKijiVersionException if the installed data version
+   *     is incompatible with the version supported by the client.
    */
   public static void validateVersion(Kiji kiji) throws IOException {
-    final String clientVersion = VersionInfo.getClientDataVersion();
-    final String clusterVersion = VersionInfo.getClusterDataVersion(kiji);
-
-    final String[] clientSplit = clientVersion.split("\\.");
-    final String[] clusterSplit = clusterVersion.split("\\.");
-
-    if (!clusterSplit[0].equals(clientSplit[0])) {
+    if (isKijiVersionCompatible(kiji)) {
+      return; // valid.
+    } else {
+      final ProtocolVersion clientVersion = VersionInfo.getClientDataVersion();
+      final ProtocolVersion clusterVersion = VersionInfo.getClusterDataVersion(kiji);
       throw new IncompatibleKijiVersionException(String.format(
-          "Data format of Kiji instance (%s) does not match client (%s)",
+          "Data format of Kiji instance (%s) cannot operate with client (%s)",
           clusterVersion, clientVersion));
     }
+  }
+
+  /**
+   * Validates that the client data version is compatible with the data version
+   * installed on a Kiji instance. Returns true if they are compatible, false otherwise.
+   * "Compatible" versions have the same major version digit.
+   *
+   * @param kiji the kiji instance.
+   * @throws IOException on I/O error reading the Kiji version from the system.
+   * @return true if the installed data version is compatible with this client, false otherwise.
+   */
+  public static boolean isKijiVersionCompatible(Kiji kiji) throws IOException {
+    final ProtocolVersion clientVersion = VersionInfo.getClientDataVersion();
+    final ProtocolVersion clusterVersion = VersionInfo.getClusterDataVersion(kiji);
+
+    if (!clientVersion.getProtocolName().equals(clusterVersion.getProtocolName())) {
+      // This should really never happen unless something gets really weird.
+      throw new RuntimeException(String.format(
+          "Unexpected error: Client uses protocol (%s), but the Kiji instance uses (%s)",
+          clientVersion.getProtocolName(), clusterVersion.getProtocolName()));
+    }
+
+    return clientVersion.getMajorVersion() == clusterVersion.getMajorVersion();
   }
 }

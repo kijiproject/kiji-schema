@@ -58,7 +58,7 @@ public class TestKijiMetaTable extends KijiClientTest {
     assertArrayEquals(BYTES_VALUE, metaTable.getValue("foo", "key"));
     // write to backupBuilder
     final MetadataBackup.Builder backupBuilder = MetadataBackup.newBuilder()
-        .setLayoutVersion(kiji.getSystemTable().getDataVersion())
+        .setLayoutVersion(kiji.getSystemTable().getDataVersion().toString())
         .setMetaTable(new HashMap<String, TableBackup>())
         .setSchemaTable(new ArrayList<SchemaTableEntry>());
     final Map<String, TableBackup> metadata = metaTable.toBackup();

@@ -33,6 +33,7 @@ import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.impl.MetadataRestorer;
+import org.kiji.schema.util.ProtocolVersion;
 
 /**
  * A tool to backup and restore Metadata.
@@ -110,10 +111,10 @@ public class MetadataTool extends VersionValidatedTool {
 
       // Check that the dataVersion is compatible with this Kiji instance.
       final KijiSystemTable statusTable = kiji.getSystemTable();
-      final String curDataVersion = statusTable.getDataVersion();
+      final ProtocolVersion curDataVersion = statusTable.getDataVersion();
       LOG.debug("Metadata backup data version: " + backup.getLayoutVersion());
       LOG.debug("Current data version: " + curDataVersion);
-      if (!curDataVersion.equals(backup.getLayoutVersion())) {
+      if (!curDataVersion.equals(ProtocolVersion.parse(backup.getLayoutVersion()))) {
         throw new IOException(String.format(
           "Cannot restore: backup layout version '%s' does not match Kiji instance version '%s'.",
           backup.getLayoutVersion(), curDataVersion));

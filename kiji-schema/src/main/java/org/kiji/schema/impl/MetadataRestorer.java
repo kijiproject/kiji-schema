@@ -69,7 +69,7 @@ public class MetadataRestorer {
     }
 
     final MetadataBackup.Builder backup = MetadataBackup.newBuilder()
-        .setLayoutVersion(kiji.getSystemTable().getDataVersion())
+        .setLayoutVersion(kiji.getSystemTable().getDataVersion().toString())
         .setMetaTable(new HashMap<String, TableBackup>());
 
     Map<String, TableBackup> metaBackup = kiji.getMetaTable().toBackup();

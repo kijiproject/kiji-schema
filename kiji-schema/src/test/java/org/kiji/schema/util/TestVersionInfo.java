@@ -42,20 +42,22 @@ public class TestVersionInfo {
 
   @Test
   public void testGetClientDataVersion() {
-    assertEquals("kiji-1.0", VersionInfo.getClientDataVersion());
+    // This is the actual version we expect to be in there right now.
+    assertEquals(ProtocolVersion.parse("kiji-1.0"), VersionInfo.getClientDataVersion());
   }
 
   @Test
   public void testGetClusterDataVersion() throws Exception {
     final KijiSystemTable systemTable = createMock(KijiSystemTable.class);
-    expect(systemTable.getDataVersion()).andReturn("someVersion").anyTimes();
+    // This version number for this test was picked out of a hat.
+    expect(systemTable.getDataVersion()).andReturn(ProtocolVersion.parse("kiji-1.1")).anyTimes();
 
     final Kiji kiji = createMock(Kiji.class);
     expect(kiji.getSystemTable()).andReturn(systemTable).anyTimes();
 
     replay(systemTable);
     replay(kiji);
-    assertEquals("someVersion", VersionInfo.getClusterDataVersion(kiji));
+    assertEquals(ProtocolVersion.parse("kiji-1.1"), VersionInfo.getClusterDataVersion(kiji));
     verify(systemTable);
     verify(kiji);
   }
@@ -81,7 +83,7 @@ public class TestVersionInfo {
   @Test(expected = IncompatibleKijiVersionException.class)
   public void testValidateVersionFail() throws Exception {
     final KijiSystemTable systemTable = createMock(KijiSystemTable.class);
-    expect(systemTable.getDataVersion()).andReturn("an-incompatible-version").anyTimes();
+    expect(systemTable.getDataVersion()).andReturn(ProtocolVersion.parse("kiji-0.9")).anyTimes();
 
     final Kiji kiji = createMock(Kiji.class);
     expect(kiji.getSystemTable()).andReturn(systemTable).anyTimes();

@@ -3,6 +3,9 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
+  * SCHEMA-151. Stricter checking of layout "version" fields for compatibility
+      with supported layout features. VersionInfo.get(Client/Cluster)DataVersion()
+      now return a ProtocolVersion, not a string.
   * SCHEMA-3. Add support for composite entity ids. You can now create
       compound keys containing a mix of hashed, string, integer, and null
       components.
