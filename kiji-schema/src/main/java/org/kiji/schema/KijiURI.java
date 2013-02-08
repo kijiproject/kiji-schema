@@ -134,7 +134,7 @@ public final class KijiURI {
       throw new KijiURIException(uri.toString(), "URI scheme must be '" + KIJI_SCHEME + "'");
     }
 
-    final AuthorityParser parser = new AuthorityParser(uri.getAuthority());
+    final AuthorityParser parser = new AuthorityParser(uri);
     mZookeeperQuorum = parser.getZookeeperQuorum();
     mZookeeperQuorumNormalized = ImmutableSortedSet.copyOf(mZookeeperQuorum).asList();
     mZookeeperClientPort = parser.getZookeeperClientPort();
@@ -356,10 +356,15 @@ public final class KijiURI {
     /**
      * Constructs an AuthorityParser.
      *
-     * @param authority The authority to parse.
+     * @param uri The uri whose authority is to be parsed.
      * @throws KijiURIException If the authority is invalid.
      */
-    public AuthorityParser(String authority) throws KijiURIException {
+    public AuthorityParser(URI uri) throws KijiURIException {
+      String authority = uri.getAuthority();
+      if (null == authority) {
+        throw new KijiURIException(uri.toString(), "HBase address missing.");
+      }
+
       if (authority.equals(ENV_URI_STRING)) {
         final Configuration conf = HBaseConfiguration.create();
         mZookeeperQuorum = ImmutableList.copyOf(conf.get(HConstants.ZOOKEEPER_QUORUM).split(","));
@@ -381,7 +386,7 @@ public final class KijiURI {
             break;
           case 2:
             if (splits[0].contains(",")) {
-              throw new KijiURIException(authority,
+              throw new KijiURIException(uri.toString(),
                   "Multiple zookeeper hosts must be parenthesized.");
             } else {
               mZookeeperQuorum = ImmutableList.of(splits[0]);
@@ -389,8 +394,8 @@ public final class KijiURI {
             mZookeeperClientPort = Integer.parseInt(splits[1]);
             break;
           default:
-            throw new KijiURIException(authority,
-                "Invalid authority, expecting 'zookeeper-quorum[:zookeeper-client-port]'");
+            throw new KijiURIException(uri.toString(),
+                "Invalid address, expecting 'zookeeper-quorum[:zookeeper-client-port]'");
         }
       }
     }
@@ -466,7 +471,12 @@ public final class KijiURI {
       URI uri = new URI(toString()).resolve(String.format("./%s", path));
       return new KijiURI(uri);
     } catch (URISyntaxException e) {
-      throw new KijiURIException("Invalid uri.", e.toString());
+      throw new RuntimeException(
+          String.format("KijiURI was incorrectly constructed (should never happen): %s",
+              this.toString()));
+    } catch (IllegalArgumentException e) {
+      throw new KijiURIException(this.toString(),
+          String.format("Path can not be resolved: %s", path));
     }
   }
 
