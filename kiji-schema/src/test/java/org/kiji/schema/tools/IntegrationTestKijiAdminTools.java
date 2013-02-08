@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
@@ -451,7 +452,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     KijiTable testTable = testKiji.openTable("foo");
     KijiTableWriter testWriter = testTable.openTableWriter();
     testWriter.put(testTable.getEntityId("gwu@usermail.example.com"), "info", "email",
-      Long.MAX_VALUE - 1, "gwu@usermail.example.com");
+      KConstants.END_OF_TIME - 1, "gwu@usermail.example.com");
     IOUtils.closeQuietly(testWriter);
     IOUtils.closeQuietly(testTable);
     testKiji.release();
@@ -461,7 +462,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       "--row=gwu@usermail.example.com",
       "--family=info",
       "--qualifier=email",
-      "--exact-timestamp=" + (Long.MAX_VALUE - 1),
+      "--exact-timestamp=" + (KConstants.END_OF_TIME - 1),
       "--interactive=false",
     });
     assertEquals(0, deleteExactResult.getReturnCode());
@@ -486,7 +487,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
     KijiTable testTable = testKiji.openTable("foo");
     KijiTableWriter testWriter = testTable.openTableWriter();
     testWriter.put(testTable.getEntityId("gwu@usermail.example.com"), "info", "email",
-      Long.MAX_VALUE - 1, "gwu@usermail.example.com");
+            KConstants.END_OF_TIME - 1, "gwu@usermail.example.com");
     IOUtils.closeQuietly(testWriter);
     IOUtils.closeQuietly(testTable);
     testKiji.release();
@@ -496,7 +497,7 @@ public class IntegrationTestKijiAdminTools extends AbstractKijiIntegrationTest {
       "--row=gwu@usermail.example.com",
       "--family=info",
       "--qualifier=email",
-      "--upto-timestamp=" + (Long.MAX_VALUE - 1),
+      "--upto-timestamp=" + (KConstants.END_OF_TIME - 1),
       "--interactive=false",
     });
     assertEquals(0, deleteUpToResult.getReturnCode());

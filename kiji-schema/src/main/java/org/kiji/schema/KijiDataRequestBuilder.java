@@ -334,8 +334,8 @@ public final class KijiDataRequestBuilder {
     mFamilies = Sets.newHashSet();
     mFamiliesFromQualifiers = Sets.newHashSet();
 
-    mMinTimestamp = 0;
-    mMaxTimestamp = Long.MAX_VALUE;
+    mMinTimestamp = KConstants.BEGINNING_OF_TIME;
+    mMaxTimestamp = KConstants.END_OF_TIME;
   }
 
   /**

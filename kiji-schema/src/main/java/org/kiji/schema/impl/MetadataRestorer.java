@@ -33,6 +33,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiMetaTable;
@@ -111,7 +112,7 @@ public class MetadataRestorer {
     LOG.info("Creating table '{}'.", tableName);
 
     // The initial entry is the entry with the lowest timestamp.
-    long lowestTimestamp = Long.MAX_VALUE;
+    long lowestTimestamp = KConstants.END_OF_TIME;
     TableLayoutBackupEntry initialEntry = null;
     for (TableLayoutBackupEntry entry : tableBackup.getLayouts()) {
       if (entry.getTimestamp() < lowestTimestamp) {
