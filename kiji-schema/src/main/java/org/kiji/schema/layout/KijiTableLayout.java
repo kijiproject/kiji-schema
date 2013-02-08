@@ -1516,4 +1516,20 @@ public final class KijiTableLayout {
       throw new RuntimeException("Unsupported Row Key Format");
     }
   }
+
+  /**
+   * Get the hash size for a given row key format.
+   *
+   * @param rowKeyFormat Format of row keys of type RowKeyFormat or RowKeyFormat2.
+   * @return The size of the hash prefix.
+   */
+  public static int getHashSize(Object rowKeyFormat) {
+    if (rowKeyFormat instanceof RowKeyFormat) {
+      return ((RowKeyFormat) rowKeyFormat).getHashSize();
+    } else if (rowKeyFormat instanceof RowKeyFormat2) {
+      return ((RowKeyFormat2) rowKeyFormat).getSalt().getHashSize();
+    } else {
+      throw new RuntimeException("Unsupported Row Key Format");
+    }
+  }
 }

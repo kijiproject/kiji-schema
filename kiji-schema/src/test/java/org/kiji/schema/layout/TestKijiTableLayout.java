@@ -1014,6 +1014,14 @@ public class TestKijiTableLayout {
         layout.getCellSchema(new KijiColumnName("family_name", "column_name")).getStorage());
   }
 
+  @Test
+  public void testKijiTableHashSize() throws Exception {
+    // default hash size for RowKeyFormat2 is 16
+    assertEquals(16, KijiTableLayout.getHashSize(makeHashPrefixedRowKeyFormat()));
+    // default hash size for RowKeyFormat is 0
+    assertEquals(0, KijiTableLayout.getHashSize(makeHashPrefixedRKF1()));
+  }
+
   @Test(expected=InvalidLayoutException.class)
   public void testNoComponentsRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
