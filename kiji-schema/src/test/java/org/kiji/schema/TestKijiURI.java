@@ -126,6 +126,11 @@ public class TestKijiURI {
   }
 
   @Test(expected = KijiURIException.class)
+  public void testNoAuthority() throws KijiURIException {
+    KijiURI.newBuilder("kiji:///");
+  }
+
+  @Test(expected = KijiURIException.class)
   public void testMultipleHostsNoParen() throws KijiURIException {
     KijiURI.newBuilder("kiji://zkhost1,zkhost2:1234/instance/table/col");
   }
