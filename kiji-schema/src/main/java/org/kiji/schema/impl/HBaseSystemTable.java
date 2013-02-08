@@ -44,6 +44,7 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.TableKeyNotFoundException;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.util.Debug;
+import org.kiji.schema.util.ProtocolVersion;
 
 /**
  * <p>The Kiji system table that is stored in HBase.</p>
@@ -134,15 +135,15 @@ public class HBaseSystemTable extends KijiSystemTable {
 
   /** {@inheritDoc} */
   @Override
-  public synchronized String getDataVersion() throws IOException {
+  public synchronized ProtocolVersion getDataVersion() throws IOException {
     byte[] result = getValue(KEY_DATA_VERSION);
-    return result == null ? null : Bytes.toString(result);
+    return result == null ? null : ProtocolVersion.parse(Bytes.toString(result));
   }
 
   /** {@inheritDoc} */
   @Override
-  public synchronized void setDataVersion(String version) throws IOException {
-    putValue(KEY_DATA_VERSION, Bytes.toBytes(version));
+  public synchronized void setDataVersion(ProtocolVersion version) throws IOException {
+    putValue(KEY_DATA_VERSION, Bytes.toBytes(version.toString()));
   }
 
   /** {@inheritDoc} */

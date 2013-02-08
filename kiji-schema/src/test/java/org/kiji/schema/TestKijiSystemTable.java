@@ -28,6 +28,8 @@ import java.io.IOException;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
+import org.kiji.schema.util.ProtocolVersion;
+
 /** Tests for KijiSystemTable. */
 public class TestKijiSystemTable extends KijiClientTest {
   private static final String KEY = "some.system.property";
@@ -38,10 +40,10 @@ public class TestKijiSystemTable extends KijiClientTest {
   public void testStoreVersion() throws IOException {
     final Kiji kiji = getKiji();
     final KijiSystemTable systemTable = kiji.getSystemTable();
-    final String originalDataVersion = systemTable.getDataVersion();
-    systemTable.setDataVersion("99");
+    final ProtocolVersion originalDataVersion = systemTable.getDataVersion();
+    systemTable.setDataVersion(ProtocolVersion.parse("kiji-99"));
 
-    assertEquals("99", systemTable.getDataVersion());
+    assertEquals(ProtocolVersion.parse("kiji-99"), systemTable.getDataVersion());
     systemTable.setDataVersion(originalDataVersion);
   }
 

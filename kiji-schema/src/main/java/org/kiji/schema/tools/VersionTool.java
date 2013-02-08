@@ -22,6 +22,7 @@ package org.kiji.schema.tools;
 import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.VersionInfo;
 
 
@@ -55,10 +56,10 @@ public final class VersionTool extends OpenedKijiTool {
     String clientSoftwareVersion = VersionInfo.getSoftwareVersion();
     getPrintStream().println("kiji client software version: " + clientSoftwareVersion);
 
-    String clientDataVersion = VersionInfo.getClientDataVersion();
+    ProtocolVersion clientDataVersion = VersionInfo.getClientDataVersion();
     getPrintStream().println("kiji client data version: " + clientDataVersion);
 
-    String clusterDataVersion = VersionInfo.getClusterDataVersion(getKiji());
+    ProtocolVersion clusterDataVersion = VersionInfo.getClusterDataVersion(getKiji());
     getPrintStream().println("kiji cluster data version: " + clusterDataVersion);
 
     return 0;

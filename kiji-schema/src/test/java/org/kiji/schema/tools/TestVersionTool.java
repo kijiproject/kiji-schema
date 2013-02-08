@@ -29,12 +29,13 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.VersionInfo;
 
 public class TestVersionTool extends KijiClientTest {
   @Test
   public void testVersionTool() throws Exception {
-    final String clientVersion = VersionInfo.getClientDataVersion();
+    final ProtocolVersion clientVersion = VersionInfo.getClientDataVersion();
     final VersionTool tool = new VersionTool();
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final PrintStream ps = new PrintStream(baos);

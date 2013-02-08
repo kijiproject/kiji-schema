@@ -281,7 +281,7 @@ public class TestKijiTableLayout {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(makeRawRKF1())
-        .setVersion("kiji-6.0")
+        .setVersion("kiji-1.0")
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals("1", layout.getDesc().getLayoutId());

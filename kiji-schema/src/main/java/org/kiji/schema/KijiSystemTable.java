@@ -24,6 +24,7 @@ import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
+import org.kiji.schema.util.ProtocolVersion;
 
 /**
  * The Kiji system table, which stores system information such as the version, ready state, and
@@ -43,7 +44,7 @@ public abstract class KijiSystemTable implements Closeable {
    * @return the version string.
    * @throws IOException If there is an error.
    */
-  public abstract String getDataVersion() throws IOException;
+  public abstract ProtocolVersion getDataVersion() throws IOException;
 
   /**
    * Sets the version of kiji installed.  This refers to the version of
@@ -53,7 +54,7 @@ public abstract class KijiSystemTable implements Closeable {
    * @param version the version string.
    * @throws IOException If there is an error.
    */
-  public abstract void setDataVersion(String version) throws IOException;
+  public abstract void setDataVersion(ProtocolVersion version) throws IOException;
 
   /**
    * Gets the value associated with a property key.
