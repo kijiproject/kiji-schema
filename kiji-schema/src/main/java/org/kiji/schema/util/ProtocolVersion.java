@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -36,23 +36,24 @@ import org.kiji.annotations.ApiAudience;
  * </p>
  *
  * <p>You can parse a string into a ProtocolVersion using the static {@link #parse}
- * method.</p>
+ * method. Its javadoc specifies further what strings constitute valid ProtocolVersions.</p>
  *
  * <p>Version numbers are compared numerically starting at the major version number
  * and moving to the right; each field is treated as a separate integer, not a
  * decimal value. If minor or revision numbers are omitted, they are treated as zero.</p>
  *
- * <p>The {@link #compareTo()} function treats identical version numbers with different protocol
- * names as different; <code>foo-1.0</code> and <code>bar-1.0</code> are not the same version
- * number. ProtocolVersion instances will be sorted first by protocol name (alphabetically),
- * then by version number.</p>
+ * <p>The {@link #compareTo(ProtocolVersion)} function treats identical version numbers
+ * with different protocol names as different; <code>foo-1.0</code> and
+ * <code>bar-1.0</code> are not the same version number. ProtocolVersion instances will be
+ * sorted first by protocol name (alphabetically), then by version number.</p>
  *
- * <p>The {@link #compareTo()}, {@link #hashCode()}, and {@link #equals(Object)} methods
- * will regard versions omitting trailing <code>.0</code>'s as equal. For example,
- * <code>foo-1</code>, <code>foo-1.0</code>, and <code>foo-1.0.0</code> are all equal.
- * The {@link #toString()} method will return the exact string that was parsed; so equal
- * objects may have unequal toString() representations. Use {@link #toCanonicalString()}
- * to get the same string representation out of each.</p>
+ * <p>The {@link #compareTo(ProtocolVersion)}, {@link #hashCode()}, and {@link
+ * #equals(Object)} methods will regard versions omitting trailing <code>.0</code>'s as
+ * equal. For example, <code>foo-1</code>, <code>foo-1.0</code>, and
+ * <code>foo-1.0.0</code> are all equal.  The {@link #toString()} method will return the
+ * exact string that was parsed; so equal objects may have unequal toString()
+ * representations. Use {@link #toCanonicalString()} to get the same string representation
+ * out of each.</p>
  *
  * <p>ProtocolVersion instances are immutable.</p>
  */
@@ -114,18 +115,18 @@ public final class ProtocolVersion implements Comparable<ProtocolVersion> {
    *
    * <p>The following are illegal:</p>
    * <ul>
-   *   <li>"foo"</li>
-   *   <li>"foo1.2"</li>
-   *   <li>"-foo-1.2"</li>
-   *   <li>"1.2.3.4"</li>
-   *   <li>"bar-1.2.3.4"</li>
-   *   <li>"-1.2.3<li>
-   *   <li>"1.-2"</li>
-   *   <li>"1.x"</li>
-   *   <li>"foo-1.x"</li>
-   *   <li>"2foo-1.3"</li>
-   *   <li>"foo-bar-1.x"</li>
-   *   <li>"" (the empty string)</li>
+   *   <li>"foo" (no version number)</li>
+   *   <li>"foo1.2" (no dash after the protocol name)</li>
+   *   <li>"-foo-1.2" (protocol may not start with a dash)</li>
+   *   <li>"1.2.3.4" (only 3-component version numbers are supported)</li>
+   *   <li>"bar-1.2.3.4" (only 3-component version numbers are supported)</li>
+   *   <li>"-1.2.3" (version numbers may not be negative)</li>
+   *   <li>"1.-2" (version numbers may not be negative)</li>
+   *   <li>"1.x" (version numbers must be integers)</li>
+   *   <li>"foo-1.x" (version numbers must be integers)</li>
+   *   <li>"2foo-1.3" (protocol names may not start with a digit)</li>
+   *   <li>"foo-bar-1.x" (protocol names may not contain a dash)</li>
+   *   <li>"" (the empty string is not allowed as a version)</li>
    *   <li>null</li>
    * </ul>
    *
@@ -150,7 +151,8 @@ public final class ProtocolVersion implements Comparable<ProtocolVersion> {
       // Start by parsing a protocol name. Scan forward to the '-'.
       String[] nameParts = verString.split("-");
       if (nameParts.length != 2) {
-        throw new IllegalArgumentException("verString must contain at most one dash character.");
+        throw new IllegalArgumentException("verString may contain at most one dash character, "
+            + "separating the protocol name from the version number.");
       }
 
       proto = nameParts[0];
@@ -288,10 +290,10 @@ public final class ProtocolVersion implements Comparable<ProtocolVersion> {
   @Override
   public int hashCode() {
     int hash = 23;
-    hash = (hash << 1) ^ ((null != mProtocol) ? mProtocol.hashCode() : 0);
-    hash = (hash << 1) ^ mMajorVer;
-    hash = (hash << 1) ^ mMinorVer;
-    hash = (hash << 1) ^ mRevision;
+    hash = hash * 31 + ((null != mProtocol) ? mProtocol.hashCode() : 0);
+    hash = hash * 31 + mMajorVer;
+    hash = hash * 31 + mMinorVer;
+    hash = hash * 31 + mRevision;
     return hash;
   }
 
@@ -302,6 +304,10 @@ public final class ProtocolVersion implements Comparable<ProtocolVersion> {
       // null protocol sorts ahead of any alphabetic protocol.
       return -1;
     } else if (mProtocol != null) {
+      if (null == other.mProtocol) {
+        return 1; // they sort as 'less than' us since their protocol name is null.
+      }
+
       int protoCmp = mProtocol.compareTo(other.mProtocol);
       if (0 != protoCmp) {
         return protoCmp;

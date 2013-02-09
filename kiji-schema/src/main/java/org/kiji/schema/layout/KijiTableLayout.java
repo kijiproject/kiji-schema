@@ -261,7 +261,7 @@ public final class KijiTableLayout {
   /** Maximum layout version we can recognize. */
   private static final ProtocolVersion MAX_LAYOUT_VER = ProtocolVersion.parse("kiji-1.1.0");
 
-  /** First version where RowKeyFormat2 was supported. */
+  /** First version where {@link RowKeyFormat2} was supported. */
   private static final ProtocolVersion RKF2_LAYOUT_VER = ProtocolVersion.parse("kiji-1.1.0");
 
   /** Minimum layout version we can recognize. */
