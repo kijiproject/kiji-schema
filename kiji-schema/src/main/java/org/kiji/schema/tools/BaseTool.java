@@ -81,6 +81,12 @@ public abstract class BaseTool extends Configured implements KijiTool {
   /** The print stream to write to. */
   private PrintStream mPrintStream;
 
+  /** Success tool exit code. */
+  public static final int SUCCESS = 0;
+
+  /** Failure tool exit code. */
+  public static final int FAILURE = 1;
+
   /**
    * Prompts the user for a yes or no answer to the specified question until they provide a valid
    * response (y/n/yes/no case insensitive) and reports the result. If yesNoPrompt is called in
@@ -131,7 +137,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
       List<String> nonFlagArgs = FlagParser.init(this, args.toArray(new String[args.size()]));
       if (null == nonFlagArgs) {
         // There was a problem parsing the flags.
-        return 1;
+        return FAILURE;
       }
 
       // Execute custom functionality implemented in subclasses.
@@ -145,7 +151,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
     } catch (KijiNotInstalledException knie) {
       getPrintStream().println(knie.getMessage());
       getPrintStream().println("Try: kiji install --kiji=kiji://.env/" + knie.getInstanceName());
-      return 2;
+      return FAILURE;
     } catch (Exception exn) {
       if (mDebugFlag) {
         throw exn; // Debug mode enabled; throw error back to the user.
@@ -156,7 +162,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
           getPrintStream().println("Error: " + thr.getMessage());
           thr = thr.getCause();
         }
-        return 3;
+        return FAILURE;
       }
     }
   }
@@ -196,7 +202,9 @@ public abstract class BaseTool extends Configured implements KijiTool {
    *
    * @param uri String of uri to parse into KijiURI.
    * @return KijiURI from uri or null if invalid
+   * @deprecated Use KijiURI builders directly.
   */
+  @Deprecated
   protected KijiURI parseURI(String uri) {
     try {
       return KijiURI.newBuilder(uri).build();

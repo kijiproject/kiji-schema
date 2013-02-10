@@ -22,15 +22,11 @@ package org.kiji.schema.tools;
 import java.io.IOException;
 import java.util.List;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.io.DecoderFactory;
-import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,9 +39,7 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.CellSchema;
-import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.SchemaType;
-import org.kiji.schema.layout.KijiTableLayout;
 
 /**
  * Command-line tool for putting an Avro value into a kiji cell. The value is specified by the
@@ -56,30 +50,33 @@ import org.kiji.schema.layout.KijiTableLayout;
 public final class PutTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(PutTool.class.getName());
 
-  @Flag(name="kiji", usage="KijiURI of the target column")
-  private String mColumnURIString;
+  @Flag(name="target", usage="Kiji URI of the target column.")
+  private String mColumnURIFlag;
 
-  @Flag(name="entity-id", usage="(Unhashed) row entity id")
+  @Flag(name="entity-id", usage="Row entity ID specification.")
   private String mEntityId;
-
-  @Flag(name="entity-hash", usage="Already-hashed row entity id")
-  private String mEntityHash;
 
   /** Defaults to -1 to indicate that no timestamp has been specified. */
   @Flag(name="timestamp", usage="Cell timestamp")
   private long mTimestamp = -1;
 
   @Flag(name="schema", usage="Avro writer schema")
-  private String mSchemaStr;
+  private String mSchemaFlag;
+
+  /** Avro schema parsed from the command-line flag. */
   private Schema mSchema;
 
   @Flag(name="value", usage="JSON-encoded Avro value")
   private String mJsonValue;
 
-  /** Opened Kiji instance used by the tool. */
-  private Kiji mKiji;
-  /** KijiURI of the column into which to put the value. */
-  private KijiURI mURI;
+  /** URI of the column into which to put the value. */
+  private KijiURI mColumnURI = null;
+
+  /** Kiji instance where the target table lives. */
+  private Kiji mKiji = null;
+
+  /** Kiji table to write to. */
+  private KijiTable mTable = null;
 
   /** {@inheritDoc} */
   @Override
@@ -99,151 +96,95 @@ public final class PutTool extends BaseTool {
     return "Data";
   }
 
-  /**
-   * Opens a kiji instance.
-   *
-   * @return The opened kiji.
-   * @throws IOException if there is an error.
-   */
-  private Kiji openKiji() throws IOException {
-    return Kiji.Factory.open(getURI(), getConf());
-  }
-
-  /**
-   * Retrieves the kiji instance used by this tool. On the first call to this method,
-   * the kiji instance will be opened and will remain open until {@link #cleanup()} is called.
-   *
-   * @return The kiji instance.
-   * @throws IOException if there is an error loading the kiji.
-   */
-
-  protected synchronized Kiji getKiji() throws IOException {
-    if (null == mKiji) {
-      mKiji = openKiji();
-    }
-    return mKiji;
-  }
-  /**
-   * Returns the kiji URI of the target this tool operates on.
-   *
-   * @return The kiji URI of the target this tool operates on.
-   */
-  protected KijiURI getURI() {
-    if (null == mURI) {
-      getPrintStream().println("No URI specified.");
-    }
-    return mURI;
-  }
-
-  /**
-   * Sets the kiji URI of the target this tool operates on.
-   *
-   * @param uri The kiji URI of the target this tool should operate on.
-   */
-  protected void setURI(KijiURI uri) {
-    if (null == mURI) {
-      mURI = uri;
-    } else {
-      getPrintStream().printf("URI is already set to: %s", mURI.toString());
-    }
-  }
-
   /** {@inheritDoc} */
   @Override
-  protected void setup() {
-    setURI(parseURI(mColumnURIString));
-    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
-    getConf().set(HConstants.ZOOKEEPER_QUORUM,
-        Joiner.on(",").join(mURI.getZookeeperQuorumOrdered()));
-    setConf(HBaseConfiguration.addHbaseResources(getConf()));
+  protected void setup() throws IOException {
+    Preconditions.checkArgument((mColumnURIFlag != null) && !mColumnURIFlag.isEmpty(),
+        "Specify a target table to write synthesized data to with "
+        + "--table=kiji://hbase-address/kiji-instance/table");
+
+    mColumnURI = parseURI(mColumnURIFlag);
+    Preconditions.checkArgument(mColumnURI.getTable() != null,
+        "No table specified in target URI '{}'. "
+        + "Specify a target table to write synthesized data to with "
+        + "--table=kiji://hbase-address/kiji-instance/table",
+        mColumnURI);
+    Preconditions.checkArgument(mColumnURI.getColumns().size() == 1,
+        "Invalid target column '{}', specify exactly one column in URI with "
+        + "--target=kiji://hbase-address/kiji-instance/table/family:qualifier",
+        mColumnURI);
+    Preconditions.checkArgument(mColumnURI.getColumns().get(0).isFullyQualified(),
+        "Missing column qualifier in '{}', specify exactly one column in URI with "
+        + "--target=kiji://hbase-address/kiji-instance/table/family:qualifier",
+        mColumnURI);
+
+    mKiji = Kiji.Factory.open(mColumnURI);
+    mTable = mKiji.openTable(mColumnURI.getTable());
   }
+
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final KijiTableLayout tableLayout =
-        getKiji().getMetaTable().getTableLayout(getURI().getTable());
-    if (null == tableLayout) {
-      LOG.error("No such table: " + getURI().getTable());
-      return 1;
-    }
+    final KijiColumnName column = mColumnURI.getColumns().get(0);
+    final CellSchema cellSchema = mTable.getLayout().getCellSchema(column);
 
-    if (getURI().getColumns().size() != 1) {
-      LOG.error("specify exaclty one column");
-      return 1;
-    }
+    final EntityId entityId =
+        ToolUtils.createEntityIdFromUserInputs(mEntityId, mTable.getLayout());
 
-    final KijiColumnName column = getURI().getColumns().get(0);
-    if (null == column.getQualifier()) {
-      LOG.error("Column name must be in the format 'family:qualifier'.");
-      return 1;
-    }
-
-    final KijiTable table = getKiji().openTable(getURI().getTable());
+    final KijiTableWriter writer = mTable.openTableWriter();
     try {
-      final KijiTableLayout tableLayout = table.getLayout();
-      final CellSchema cellSchema = tableLayout.getCellSchema(column);
-
-      final EntityId entityId = ToolUtils.createEntityIdFromUserInputs(
-          mEntityId, mEntityHash, (RowKeyFormat)tableLayout.getDesc().getKeysFormat());
-
-      final KijiTableWriter writer = table.openTableWriter();
-      try {
-        if (cellSchema.getType() == SchemaType.COUNTER) {
-          if (-1 == mTimestamp) {
-            try {
-              long value = Long.parseLong(mJsonValue);
-              writer.put(entityId, column.getFamily(), column.getQualifier(), value);
-            } catch (NumberFormatException nfe) {
-              LOG.error("Could not parse value flag to a long: " + nfe.getMessage());
-              return 1;
-            }
-          } else {
-            LOG.error("Counters do not support writing to a specific timestamp."
-                + "  Remove the \"timestamp\" flag.");
+      if (cellSchema.getType() == SchemaType.COUNTER) {
+        if (-1 == mTimestamp) {
+          try {
+            long value = Long.parseLong(mJsonValue);
+            writer.put(entityId, column.getFamily(), column.getQualifier(), value);
+          } catch (NumberFormatException nfe) {
+            LOG.error("Could not parse value flag to a long: " + nfe.getMessage());
             return 1;
           }
         } else {
-          // Get writer schema.
-          // Otherwise, set writer Schema in mSchema in preparation to write an Avro record.
-          if (null != mSchemaStr) {
-            try {
-              LOG.debug("Schema is " + mSchemaStr);
-              mSchema = new Schema.Parser().parse(mSchemaStr);
-            } catch (AvroRuntimeException are) {
-              LOG.error("Could not parse writer schema: " + are.toString());
-              return 1;
-            }
-          } else {
-            try {
-              mSchema = tableLayout.getSchema(column);
-            } catch (Exception e) {
-              LOG.error(e.getMessage());
-              return 1;
-            }
+          LOG.error("Counters do not support writing to a specific timestamp."
+              + "  Remove the \"timestamp\" flag.");
+          return 1;
+        }
+      } else {
+        // Get writer schema.
+        // Otherwise, set writer Schema in mSchema in preparation to write an Avro record.
+        if (null != mSchemaFlag) {
+          try {
+            LOG.debug("Schema is " + mSchemaFlag);
+            mSchema = new Schema.Parser().parse(mSchemaFlag);
+          } catch (AvroRuntimeException are) {
+            LOG.error("Could not parse writer schema: " + are.toString());
+            return 1;
           }
-          assert null != mSchema;
-
-          // Create the Avro record to write.
-          GenericDatumReader<Object> reader =
-              new GenericDatumReader<Object>(mSchema);
-          Object datum = reader.read(null,
-              new DecoderFactory().jsonDecoder(mSchema, mJsonValue));
-
-          // Write the put.
-          if (-1 == mTimestamp) {
-            writer.put(entityId, column.getFamily(), column.getQualifier(), datum);
-          } else {
-            writer.put(entityId, column.getFamily(), column.getQualifier(), mTimestamp, datum);
+        } else {
+          try {
+            mSchema = mTable.getLayout().getSchema(column);
+          } catch (Exception e) {
+            LOG.error(e.getMessage());
+            return 1;
           }
         }
+        Preconditions.checkNotNull(mSchema);
 
-      } finally {
-        writer.close();
+        // Create the Avro record to write.
+        GenericDatumReader<Object> reader = new GenericDatumReader<Object>(mSchema);
+        Object datum = reader.read(null, new DecoderFactory().jsonDecoder(mSchema, mJsonValue));
+
+        // Write the put.
+        if (-1 == mTimestamp) {
+          writer.put(entityId, column.getFamily(), column.getQualifier(), datum);
+        } else {
+          writer.put(entityId, column.getFamily(), column.getQualifier(), mTimestamp, datum);
+        }
       }
+
     } finally {
-      table.close();
+      writer.close();
     }
-    return 0;
+
+    return 0;  // success
   }
 
   /**

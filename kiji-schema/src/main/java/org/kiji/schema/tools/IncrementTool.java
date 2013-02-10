@@ -24,7 +24,6 @@ import java.util.List;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.slf4j.Logger;
@@ -39,10 +38,7 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.CellSchema;
-import org.kiji.schema.avro.RowKeyFormat;
-import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaType;
-import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
@@ -55,11 +51,8 @@ public final class IncrementTool extends BaseTool {
   @Flag(name="column", usage="KijiURI of the column(s) to increment in.")
   private String mColumnsURIString;
 
-  @Flag(name="entity-id", usage="(Unhashed) row entity id")
+  @Flag(name="entity-id", usage="Row entity ID specification.")
   private String mEntityId;
-
-  @Flag(name="entity-hash", usage="Already-hashed row entity id")
-  private String mEntityHash;
 
   @Flag(name="value", usage="Integer value to add to the counter(s).")
   private int mValue = 1;
@@ -90,9 +83,8 @@ public final class IncrementTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
-    Preconditions.checkArgument(null != mEntityId || null != mEntityHash,
-        "must specify an entity");
-    Preconditions.checkArgument(null != mColumnsURIString, "must specify a column or columns");
+    Preconditions.checkArgument(null != mEntityId, "Specify an entity ID with --entity-id=...");
+    Preconditions.checkArgument(null != mColumnsURIString, "Specify a column with --column=...");
   }
 
   /**
@@ -163,38 +155,34 @@ public final class IncrementTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final KijiTableLayout tableLayout =
-        getKiji().getMetaTable().getTableLayout(getURI().getTable());
-    if (null == tableLayout) {
-      LOG.error("No such table: {}", getURI());
-      return 1;
-    }
-
-    // TODO Fix CLI with formatted row key format (https://jira.kiji.org/browse/SCHEMA-171)
-    if (tableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat2) {
-      throw new RuntimeException("CLI does not support Formatted Row Key format as yet");
-    }
-
     final KijiTable table = getKiji().openTable(getURI().getTable());
-    final KijiTableWriter writer = table.openTableWriter();
-    for (KijiColumnName column : getURI().getColumns()) {
+    try {
+      final KijiTableWriter writer = table.openTableWriter();
       try {
-        final CellSchema cellSchema = tableLayout.getCellSchema(column);
-        if (cellSchema.getType() != SchemaType.COUNTER) {
-          LOG.error("Can't increment non counter-type column: " + column);
-        return 1;
+        for (KijiColumnName column : getURI().getColumns()) {
+          try {
+            final CellSchema cellSchema = table.getLayout().getCellSchema(column);
+            if (cellSchema.getType() != SchemaType.COUNTER) {
+              LOG.error("Can't increment non counter-type column: " + column);
+              return 1;
+            }
+            final EntityId entityId =
+                ToolUtils.createEntityIdFromUserInputs(mEntityId, table.getLayout());
+            writer.increment(entityId, column.getFamily(), column.getQualifier(), mValue);
+
+          } catch (IOException ioe) {
+            LOG.error("Error while incrementing column: " + column);
+            return 1;
+          }
         }
-        final EntityId entityId = ToolUtils.createEntityIdFromUserInputs(
-            mEntityId, mEntityHash, tableLayout.getDesc().getKeysFormat());
-        writer.increment(entityId, column.getFamily(), column.getQualifier(), mValue);
-      } catch (IOException ioe) {
-      LOG.error("Error while incrementing column: " + column);
-      return 1;
       } finally {
-        ResourceUtils.closeOrLog(writer);
-        ResourceUtils.closeOrLog(table);
+        writer.close();
       }
+    } finally {
+      table.close();
     }
+
+    return 0;  // Success
   }
 
   /**

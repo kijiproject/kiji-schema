@@ -21,12 +21,13 @@ package org.kiji.schema.tools;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
-import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.hbase.HBaseConfiguration;
+import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.thrift.generated.IllegalArgument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,11 +36,10 @@ import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Command-line tool to delete kiji tables, rows, and cells.
@@ -59,46 +59,39 @@ import org.kiji.schema.util.ResourceUtils;
 @ApiAudience.Private
 public final class DeleteTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(DeleteTool.class);
-  private static final long UNSPECIFIED_TIMESTAMP = Long.MIN_VALUE;
 
-  @Flag(name="kiji", usage="The KijiURI of the element(s) to delete.\n"
-      + "Can specify a table, family or families, column or columns")
-  private String mKijiURIString;
+  @Flag(name="target", usage="URI of the element(s) to delete. Valid scopes are: "
+      + "entire Kiji instance, entire Kiji table, entire family/column or set of families/columns.")
+  private String mTargetURIFlag = null;
 
-  @Flag(name="entity-id", usage="The unhashed entity-id from which to delete."
+  @Flag(name="entity-id", usage="Optional entity ID of a row to delete or to delete from."
       + " (requires a specified table in --kiji)")
-  private String mUnhashedEntityId;
+  private String mEntityIdFlag = null;
 
-  @Flag(name="entity-hash", usage="The hashed entity-id from which to delete."
-      + " (requires a specified table in --kiji)")
-  private String mHashedEntityId;
+  @Flag(name="timestamp", usage = "Timestamp specification, one of: "
+      + "'<timestamp>' to delete cells with exactly this timestamp; "
+      + "'latest' to delete the most recent cell only; "
+      + "'upto:<timestamp>' to delete all cells with a timestamp older than this timestamp; "
+      + "'all' to delete all cells."
+      + "Timestamp are expressed in milliseconds since the Epoch.")
+  private String mTimestampFlag = "all";
 
-  @Flag(name="upto-timestamp", usage="Delete all values with timestamp lower than or equal to "
-      + "specified timestamp. (requires --entity-id or --entity-hash)")
-  private long mUpToTimestamp = UNSPECIFIED_TIMESTAMP;
+  /** URI of the element to delete. */
+  private KijiURI mTargetURI = null;
 
-  @Flag(name="exact-timestamp", usage="Delete all values with the specified timestamp.\n"
-      + "(requires --entity-id or --entity-hash and at least one family:column"
-      + " specified in --kiji)")
-  private long mExactTimestamp = UNSPECIFIED_TIMESTAMP;
+  /** Timestamp selector mode. */
+  private static enum TimestampMode {
+    EXACT, LATEST, UPTO, ALL
+  }
 
-  @Flag(name="most-recent", usage="If true, delete the most recent value in the specified column(s)"
-      + " and entity-id. (requires --entity-id or entity-hash and at least one family:column"
-      + " specified in --kiji)")
-  private boolean mMostRecent = false;
+  /**
+   * Timestamp, in milliseconds since the Epoch, combined with mTimestampMode to select cells.
+   * Unused when mode is LATEST or ALL.
+   */
+  private Long mTimestamp = null;
 
-  /** Kiji table from which to delete cells. */
-  private KijiTable mTable;
-  /** Kiji table writer used to perform deletes. */
-  private KijiTableWriter mWriter;
-  /** Opened Kiji to use. */
-  private Kiji mKiji;
-  /** KijiURI of the delete target(s). */
-  private KijiURI mURI;
-  /** name of target row for printing tool feedbacik. */
-  private String mRowName = "";
-  /** EntityId of target row. */
-  private EntityId mRowId = null;
+  /** Mode according to which mTimestamp is applied. */
+  private TimestampMode mTimestampMode = TimestampMode.LATEST;
 
   /** {@inheritDoc} */
   @Override
@@ -118,330 +111,285 @@ public final class DeleteTool extends BaseTool {
     return "Data";
   }
 
+  /** Prefix used when specifying timestamps up-to a given time. */
+  private static final String TIMESTAMP_UPTO_PREFIX = "upto:";
+
   /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
-    setURI(parseURI(mKijiURIString));
-    Preconditions.checkArgument(!getURI().getTable().isEmpty(), "--kiji must include a table");
-    if (mUnhashedEntityId == null && mHashedEntityId == null) {
-      Preconditions.checkArgument(getURI().getColumns().isEmpty(), "--kiji may not include columns"
-          + " without --entity-id or --entity-hash");
-      Preconditions.checkArgument(mUpToTimestamp == UNSPECIFIED_TIMESTAMP, "--upto-timestamp "
-        + "requires --entity-id or --entity-hash");
-      Preconditions.checkArgument(mExactTimestamp == UNSPECIFIED_TIMESTAMP, "--exact-timestamp "
-        + "requires --entity-id or --entity-hash");
-      Preconditions.checkArgument(!mMostRecent, "--most-recent requires"
-          + " --entity-id or --entity-hash");
-    }
-    if (getURI().getColumns().isEmpty()) {
-      Preconditions.checkArgument(mExactTimestamp == UNSPECIFIED_TIMESTAMP, "--exact-timestamp "
-        + "requires at least one family:column specified in --kiji");
-      Preconditions.checkArgument(!mMostRecent, "--most-recent requires"
-         + " at least one family:column specified in --kiji");
-    }
-  }
+    Preconditions.checkArgument((mTargetURIFlag != null) && !mTargetURIFlag.isEmpty(),
+        "Specify a target element to delete or to delete from with "
+        + "--table=kiji://hbase-address/kiji-instance[/table[/family[:qualifier]]]");
+    mTargetURI = KijiURI.newBuilder(mTargetURIFlag).build();
+    Preconditions.checkArgument(mTargetURI.getInstance() != null,
+        "Invalid target '{}': cannot delete HBase cluster. "
+        + "Specify a Kiji instance with --target=kiji://hbase-address/kiji-instance",
+        mTargetURI);
 
-  /**
-   * Delete the most recent value in specified column or columns.
-   *
-   * @return return code
-   * @throws Exception if there is an exception
-   */
-  private int deleteMostRecent() throws Exception {
-    if (mExactTimestamp != UNSPECIFIED_TIMESTAMP || mUpToTimestamp != UNSPECIFIED_TIMESTAMP) {
-      getPrintStream().println("--most-recent overrides timestamp arguments.");
-      }
-    if (isInteractive()) {
-      if (!yesNoPrompt("Are you sure you want to delete the most recent value(s) at:\n"
-          + mRowName + " - " + getURI().getColumns().toString() + " ?")) {
-        getPrintStream().println("Delete aborted.");
-        return 0;
-      }
-    }
-    for (KijiColumnName column : getURI().getColumns()) {
-      if (column.getQualifier().isEmpty()) {
-        getPrintStream().println("the most recent value in an entire family cannot be"
-            + "deleted.\nPlease specify family:column.");
+    if (mTimestampFlag != null) {
+      if (mTimestampFlag.equals("latest")) {
+        mTimestampMode = TimestampMode.LATEST;
+      } else if (mTimestampFlag.startsWith(TIMESTAMP_UPTO_PREFIX)) {
+        mTimestampMode = TimestampMode.UPTO;
+        mTimestamp = Long.parseLong(mTimestampFlag.substring(TIMESTAMP_UPTO_PREFIX.length()));
+      } else if (mTimestampFlag.equals("all")) {
+        mTimestampMode = TimestampMode.ALL;
       } else {
-        mWriter.deleteCell(mRowId, column.getFamily(), column.getQualifier());
-        getPrintStream().printf("Value at %s deleted.", column);
+        mTimestampMode = TimestampMode.EXACT;
+        mTimestamp = Long.parseLong(mTimestampFlag);
       }
     }
-    return 0;
   }
 
   /**
-   * Delete the most recent value in specified column or columns.
+   * Checks with the user whether the specified operation may proceed.
    *
-   * @return return code
+   * @param format String format with a question describing the operation about to be executed.
+   * @param arguments String format arguments.
+   * @return whether the operation may proceed, or not.
+   * @throws IOException on I/O error.
+   */
+  private boolean mayProceed(String format, Object...arguments) throws IOException {
+    if (!isInteractive()) {
+      return true;
+    }
+    if (yesNoPrompt(String.format(format, arguments))) {
+      return true;
+    }
+    getPrintStream().println("Aborted.");
+    return false;
+  }
+
+  /**
+   * Delete cells from a given row.
+   *
+   * @param table Table containing the row to delete from.
+   * @param entityId Entity ID of the row to delete from.
+   * @param columns Set of columns to delete. Empty means "all columns".
+   * @param tsMode Timestamp mode describing how to understand the parameter "timestamp".
+   * @param timestamp Optional timestamp, in milliseconds since the Epoch.
+   * @return tool exit code.
    * @throws Exception if there is an exception
    */
-  private int deleteExact() throws Exception {
-    if (isInteractive()) {
-      if (!yesNoPrompt("Are you sure you want to delete the value(s) at:\n"
-        + mRowName + " [" + mExactTimestamp + "] " + getURI().getColumns().toString() + " ?")) {
-        getPrintStream().println("Delete aborted.");
-        return 0;
-      }
-    }
-    for (KijiColumnName column : getURI().getColumns()) {
-      if (column.getQualifier().isEmpty()) {
-        getPrintStream().println("values with an exact timestamp cannot be deleted from an"
-            + " entire family at once.");
+  private int deleteFromRow(
+      KijiTable table,
+      EntityId entityId,
+      List<KijiColumnName> columns,
+      TimestampMode tsMode,
+      Long timestamp)
+      throws Exception {
+
+    final KijiTableWriter writer = table.openTableWriter();
+    try {
+      if (columns.isEmpty()) {
+        // Row wide delete:
+        switch (tsMode) {
+        case UPTO: {
+          if (mayProceed("Are you sure you want to delete all cells with timestamp <= %d"
+              + " from row '%s' in table '%s'?",
+              timestamp, entityId, table.getURI())) {
+            writer.deleteRow(entityId, timestamp);
+          }
+          return SUCCESS;
+        }
+        case ALL: {
+          if (mayProceed("Are you sure you want to delete row '%s' from table '%s'?",
+              entityId, table.getURI())) {
+            writer.deleteRow(entityId);
+          }
+          return SUCCESS;
+        }
+        case EXACT:
+        case LATEST:
+          throw new IllegalArgument(
+              "Row-wide delete with exact or latest timestamp are not implemented.");
+        default:
+          throw new RuntimeException("Unhandled timestamp mode: " + tsMode);
+        }
+
       } else {
-        mWriter.deleteCell(mRowId, column.getFamily(), column.getQualifier(), mExactTimestamp);
-        getPrintStream().printf("Value at %s deleted.", column);
+        // Targeting a set of columns:
+        // Normalize the columns, and partition families vs individual columns.
+        final Set<String> families = Sets.newTreeSet();
+        for (KijiColumnName column : columns) {
+          if (!column.isFullyQualified()) {
+            families.add(column.getFamily());
+          }
+        }
+
+        final Set<KijiColumnName> groupColumns = Sets.newTreeSet();
+        for (KijiColumnName column : columns) {
+          // Do not include columns whose family is already specified for deletion:
+          if (column.isFullyQualified() && !families.contains(column.getFamily())) {
+            groupColumns.add(column);
+          }
+        }
+
+        Preconditions.checkArgument(families.isEmpty()
+            || ((tsMode != TimestampMode.EXACT) && (tsMode != TimestampMode.LATEST)),
+            "Family-wide delete with exact or latest timestamp are not implemented.");
+
+        switch (tsMode) {
+        case EXACT: {
+          Preconditions.checkState(families.isEmpty());
+          if (!mayProceed("Are you sure you want to delete cell with timestamp %d of columns %s "
+              + "from row '%s' in table '%s'?",
+              timestamp, Joiner.on(",").join(columns), entityId, table.getURI())) {
+            return SUCCESS;
+          }
+          for (KijiColumnName column : groupColumns) {
+            writer.deleteCell(entityId, column.getFamily(), column.getQualifier(), timestamp);
+          }
+          break;
+        }
+        case LATEST: {
+          Preconditions.checkState(families.isEmpty());
+          if (!mayProceed("Are you sure you want to delete the most recent cells of columns %s "
+              + "from row '%s' in table '%s'?",
+              timestamp, Joiner.on(",").join(columns), entityId, table.getURI())) {
+            return SUCCESS;
+          }
+          for (KijiColumnName column : groupColumns) {
+            writer.deleteCell(
+                entityId, column.getFamily(), column.getQualifier(), HConstants.LATEST_TIMESTAMP);
+          }
+          break;
+        }
+        case UPTO: {
+          if (!mayProceed("Are you sure you want to delete all cells of columns %s "
+              + "with timestamp <= %d from row '%s' in table '%s'?",
+              Joiner.on(",").join(columns), timestamp, entityId, table.getURI())) {
+            return SUCCESS;
+          }
+          for (String family : families) {
+            writer.deleteFamily(entityId, family, timestamp);
+          }
+          for (KijiColumnName column : groupColumns) {
+            writer.deleteColumn(entityId, column.getFamily(), column.getQualifier(), timestamp);
+          }
+          break;
+        }
+        case ALL: {
+          if (!mayProceed("Are you sure you want to delete columns %s from row '%s' in table '%s'?",
+              Joiner.on(",").join(columns), timestamp, entityId, table.getURI())) {
+            return SUCCESS;
+          }
+          for (String family : families) {
+            writer.deleteFamily(entityId, family);
+          }
+          for (KijiColumnName column : groupColumns) {
+            writer.deleteColumn(entityId, column.getFamily(), column.getQualifier());
+          }
+          break;
+        }
+        default:
+          throw new RuntimeException("Unhandled timestamp mode: " + tsMode);
+        }
+
+        return SUCCESS;
       }
+
+    } finally {
+      writer.close();
     }
-    return 0;
   }
 
   /**
-   * Delete the most recent value in specified column or columns.
+   * Deletes an entire row of data.
    *
-   * @return return code
-   * @throws Exception if there is an exception
+   * @param table Kiji table to delete from.
+   * @param writer Table writer to write
+   * @param entityId ID of the entity to delete.
+   * @return tool exit code.
+   * @throws Exception on error.
    */
-  private int deleteRow() throws Exception {
-    if (isInteractive()) {
-      if (!yesNoPrompt("Are you sure you want to delete all cells in row:\n"
-        + mRowName + " ?")) {
-        getPrintStream().println("Delete aborted.");
-        return 0;
-      }
+  private int deleteRow(KijiTable table, KijiTableWriter writer, EntityId entityId)
+      throws Exception {
+    if (isInteractive() && !yesNoPrompt(String.format(
+        "Are you sure you want to delete row %s from Kiji table '%s'?", table.getURI()))) {
+      getPrintStream().println("Delete aborted.");
+      return SUCCESS;
     }
-    mWriter.deleteRow(mRowId);
-    getPrintStream().printf("Row %s deleted.", mRowName);
-    return 0;
+    writer.deleteRow(entityId);
+    return SUCCESS;
   }
 
   /**
-   * Delete the most recent value in specified column or columns.
+   * Delete an entire table.
    *
-   * @return return code
-   * @throws Exception if there is an exception
+   * @param kiji Kiji instance where the table to delete lives.
+   * @param tableURI URI of the table to delete.
+   * @return tool exit code.
+   * @throws Exception on error.
    */
-  private int deleteRowUpTo() throws Exception {
-    if (isInteractive()) {
-      if (!yesNoPrompt("Are you sure you want to delete all values in row:\n"
-          + mRowName + " older than or equal to: " + mUpToTimestamp + " ?")) {
-        getPrintStream().println("Delete aborted.");
-        return 0;
-      }
+  private int deleteTable(Kiji kiji, KijiURI tableURI) throws Exception {
+    if (isInteractive() && !yesNoPrompt(String.format(
+        "Are you sure you want to delete Kiji table '%s'?", tableURI))) {
+      getPrintStream().println("Delete aborted.");
+      return SUCCESS;
     }
-    mWriter.deleteRow(mRowId, mUpToTimestamp);
-    getPrintStream().println("Values deleted.");
-    return 0;
+    kiji.deleteTable(tableURI.getTable());
+    getPrintStream().println(String.format("Kiji table '%s' deleted.", tableURI));
+    return SUCCESS;
   }
 
   /**
-   * Delete the most recent value in specified column or columns.
+   * Deletes an entire Kiji instance.
    *
-   * @return return code
-   * @throws Exception if there is an exception
+   * @param instanceURI URI of the Kiji instance to delete.
+   * @return tool exit code.
+   * @throws Exception on error.
    */
-  private int deleteCells() throws Exception {
-    if (isInteractive()) {
-      if (!yesNoPrompt(String.format("Are you sure you want to delete all values in row:\n"
-          + mRowName + " in %s", getURI().getColumns()))) {
-        getPrintStream().println("Delete aborted.");
-        return 0;
-      }
+  private int deleteInstance(KijiURI instanceURI) throws Exception {
+    if (isInteractive() && !yesNoPrompt(String.format(
+        "Are you sure you want to delete Kiji instance '%s'?", instanceURI))) {
+      getPrintStream().println("Delete aborted.");
+      return SUCCESS;
     }
-    for (KijiColumnName column : getURI().getColumns()) {
-      if (!column.isFullyQualified()) {
-        mWriter.deleteFamily(mRowId, column.getFamily());
-        getPrintStream().printf("Cells in %s deleted.", column.getFamily());
-      } else {
-        mWriter.deleteColumn(mRowId, column.getFamily(), column.getQualifier());
-        getPrintStream().printf("Cells in %s deleted.", column);
-      }
-    }
-    return 0;
+    KijiInstaller.get().uninstall(instanceURI, getConf());
+    getPrintStream().println(String.format("Kiji instance '%s' deleted.", instanceURI));
+    return SUCCESS;
   }
-
-  /**
-   * Delete the most recent value in specified column or columns.
-   *
-   * @return return code
-   * @throws Exception if there is an exception
-   */
-  private int deleteCellsUpTo() throws Exception {
-    if (isInteractive()) {
-      if (!yesNoPrompt("Are you sure you want to delete all cells on row:\n"
-          + mRowName + " in: " + getURI().getColumns() + " older than or equal to: "
-          + mUpToTimestamp + " ?")) {
-        getPrintStream().println("Delete aborted.");
-        return 0;
-      }
-    }
-    for (KijiColumnName column : getURI().getColumns()) {
-      if (column.getQualifier().isEmpty()) {
-        mWriter.deleteFamily(mRowId, column.getFamily(), mUpToTimestamp);
-        getPrintStream().printf("Values in %s deleted.", column.getFamily());
-      } else {
-        mWriter.deleteColumn(
-            mRowId, column.getFamily(), column.getQualifier(), mUpToTimestamp);
-        getPrintStream().printf("Values in %s deleted.", column);
-      }
-    }
-    return 0;
-  }
-
-  /**
-   * Delete the most recent value in specified column or columns.
-   *
-   * @return return code
-   * @throws Exception if there is an exception
-   */
-  private int deleteTable() throws Exception {
-    if (isInteractive()) {
-      if (!yesNoPrompt("Are you sure you want to delete kiji table: " + getURI().getTable()
-        + " ?")) {
-        getPrintStream().println("Delete aborted.");
-        return 0;
-      }
-    }
-    getKiji().deleteTable(getURI().getTable());
-    getPrintStream().println("Kiji table deleted.");
-    return 0;
-  }
-
 
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    if (null != mHashedEntityId) {
-      mRowName = mHashedEntityId;
-    }
-    if (null != mUnhashedEntityId) {
-      mRowName = mUnhashedEntityId;
-    }
-    final KijiTableLayout tableLayout =
-        getKiji().getMetaTable().getTableLayout(getURI().getTable());
-    if (null == tableLayout) {
-      getPrintStream().println("No such table: " + getURI().getTable());
-      return 1;
+    if (mTargetURI.getTable() == null) {
+      // No table specified: delete Kiji instance:
+      return deleteInstance(mTargetURI);
     }
 
-    // Set EntityId if supplied
-    if (mHashedEntityId != null || mUnhashedEntityId != null) {
-      mRowId = ToolUtils.createEntityIdFromUserInputs(
-          mUnhashedEntityId, mHashedEntityId, tableLayout.getDesc().getKeysFormat());
+    final Kiji kiji = Kiji.Factory.open(mTargetURI);
+    try {
+      final List<KijiColumnName> columns = mTargetURI.getColumns();  // never null
+
+      if (null == mEntityIdFlag) {
+        // No specific row to delete or to delete from:
+
+        if (columns.isEmpty()) {
+          // No specific column targeted, delete the entire table:
+          return deleteTable(kiji, mTargetURI);
+        } else {
+          // Delete entire families/columns in the table:
+          throw new RuntimeException(
+              "Deleting entire families/columns across all rows is not implemented");
+        }
+
+      } else {
+        // Delete is targeting one specific row:
+        final KijiTable table = kiji.openTable(mTargetURI.getTable());
+        try {
+          final EntityId entityId =
+              ToolUtils.createEntityIdFromUserInputs(mEntityIdFlag, table.getLayout());
+          return deleteFromRow(table, entityId, columns, mTimestampMode, mTimestamp);
+        } finally {
+          table.close();
+        }
+      }
+
+    } finally {
+      kiji.release();
     }
-
-    // Delete the most recent value from a cell or cells
-    if (mMostRecent) {
-      return deleteMostRecent();
-    }
-
-    // Delete a value from a cell or cells specified by timestamp
-    if (mExactTimestamp != UNSPECIFIED_TIMESTAMP) {
-      return deleteExact();
-    }
-
-    // Delete all cells in a row
-    if (!(mUnhashedEntityId == null && mHashedEntityId == null) && getURI().getColumns().isEmpty()
-        && mUpToTimestamp == UNSPECIFIED_TIMESTAMP) {
-      return deleteRow();
-    }
-
-    // Delete all values in a row older than or equal to a given timestamp
-    if (!(mUnhashedEntityId == null && mHashedEntityId == null) && getURI().getColumns().isEmpty()
-        && mUpToTimestamp != UNSPECIFIED_TIMESTAMP) {
-      return deleteRowUpTo();
-    }
-
-    // Delete all cells on a row in listed families and columns
-    if (!getURI().getColumns().isEmpty() && mUpToTimestamp == UNSPECIFIED_TIMESTAMP
-        && mExactTimestamp == UNSPECIFIED_TIMESTAMP && !mMostRecent) {
-      return deleteCells();
-    }
-
-    // Delete all values on a row in listed families and columns
-    // older than or equal to a given timestamp
-    if (!getURI().getColumns().isEmpty() && mUpToTimestamp != UNSPECIFIED_TIMESTAMP) {
-      return deleteCellsUpTo();
-    }
-
-    // Delete a kiji table
-    if (null == mHashedEntityId && null == mUnhashedEntityId) {
-      return deleteTable();
-    }
-
-    // should be unreachable
-    return 5;
-  }
-
-  /**
-   * Opens a kiji instance.
-   *
-   * @return The opened kiji.
-   * @throws IOException if there is an error.
-   */
-  private Kiji openKiji() throws IOException {
-    return Kiji.Factory.open(getURI(), getConf());
-  }
-
-  /**
-   * Retrieves the kiji instance used by this tool. On the first call to this method,
-   * the kiji instance will be opened and will remain open until {@link #cleanup()} is called.
-   *
-   * @return The kiji instance.
-   * @throws IOException if there is an error loading the kiji.
-   */
-  protected synchronized Kiji getKiji() throws IOException {
-    if (null == mKiji) {
-      mKiji = openKiji();
-    }
-    return mKiji;
-  }
-
-  /**
-   * Returns the kiji URI of the target this tool operates on.
-   *
-   * @return The kiji URI of the target this tool operates on.
-   */
-  protected KijiURI getURI() {
-    if (null == mURI) {
-      getPrintStream().println("No URI specified.");
-    }
-    return mURI;
-  }
-
-  /**
-   * Sets the kiji URI of the target this tool operates on.
-   *
-   * @param uri The kiji URI of the target this tool should operate on.
-   */
-  protected void setURI(KijiURI uri) {
-    if (null == mURI) {
-      mURI = uri;
-    } else {
-      getPrintStream().printf("URI is already set to: %s", mURI.toString());
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void setup() throws Exception {
-    super.setup();
-    setURI(parseURI(mKijiURIString));
-    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
-    getConf().set(HConstants.ZOOKEEPER_QUORUM,
-        Joiner.on(",").join(getURI().getZookeeperQuorumOrdered()));
-    setConf(HBaseConfiguration.addHbaseResources(getConf()));
-    mTable = getKiji().openTable(getURI().getTable());
-    mWriter = mTable.openTableWriter();
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void cleanup() throws IOException {
-    IOUtils.closeQuietly(mWriter);
-    IOUtils.closeQuietly(mTable);
-    ResourceUtils.releaseOrLog(mKiji);
-    super.cleanup();
   }
 
   /**

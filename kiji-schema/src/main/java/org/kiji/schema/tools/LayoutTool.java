@@ -26,13 +26,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +54,7 @@ public final class LayoutTool extends BaseTool {
   private String mDo = "dump";
 
   @Flag(name="table", usage="The KijiURI of the table to use.")
-  private String mTableURIString;
+  private String mTableURIFlag = null;
 
   @Flag(name="layout",
       usage="Path to the file containing the layout update, in JSON.")
@@ -77,8 +74,8 @@ public final class LayoutTool extends BaseTool {
           + "A '.json' extension is appended to this parameter.")
   private String mWriteTo = "";
 
-  /** The KijiURI of the table to use. */
-  private KijiURI mURI;
+  /** URI of the table to edit or print the layout of. */
+  private KijiURI mTableURI;
 
   /** The Kiji to use to set layouts. */
   private Kiji mKiji;
@@ -104,8 +101,15 @@ public final class LayoutTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected void validateFlags() throws Exception {
-    Preconditions.checkArgument(mTableURIString.isEmpty(), "Requires --table flag");
-    Preconditions.checkArgument(mMaxVersions >= 1, "--max-versions must be >= 1");
+    Preconditions.checkArgument((mTableURIFlag != null) && !mTableURIFlag.isEmpty(),
+        "Specify a table with --table=kiji://hbase-address/kiji-instance/table");
+    mTableURI = KijiURI.newBuilder(mTableURIFlag).build();
+    Preconditions.checkArgument(mTableURI.getTable() != null,
+        "Specify a table with --table=kiji://hbase-address/kiji-instance/table");
+
+    Preconditions.checkArgument(mMaxVersions >= 1,
+        "Invalid maximum number of versions: {}, --max-versions must be >= 1",
+        mMaxVersions);
   }
 
   /**
@@ -114,7 +118,7 @@ public final class LayoutTool extends BaseTool {
    * @throws Exception on error.
    */
   private void dumpLayout() throws Exception {
-    final KijiTableLayout layout = getKiji().getMetaTable().getTableLayout(getURI().getTable());
+    final KijiTableLayout layout = mKiji.getMetaTable().getTableLayout(mTableURI.getTable());
     final String json = ToJson.toJsonString(layout.getDesc());
     if (mWriteTo.isEmpty()) {
       System.out.println(json);
@@ -157,11 +161,9 @@ public final class LayoutTool extends BaseTool {
    */
   private void setLayout(Kiji kiji) throws Exception {
     final TableLayoutDesc layoutDesc = loadJsonTableLayoutDesc(mLayout);
-    Preconditions.checkArgument(
-        (getURI().getTable() == null)
-        || getURI().getTable().equals(layoutDesc.getName()),
-        String.format("Descriptor table name '%s' does not match URI %s.",
-            layoutDesc.getName(), getURI()));
+    Preconditions.checkArgument(mTableURI.getTable().equals(layoutDesc.getName()),
+        "Descriptor table name '%s' does not match URI %s.",
+        layoutDesc.getName(), mTableURI);
     kiji.modifyTableLayout(layoutDesc.getName(), layoutDesc, mDryRun, getPrintStream());
   }
 
@@ -173,9 +175,9 @@ public final class LayoutTool extends BaseTool {
   private void history() throws Exception {
     // Gather all of the layouts stored in the metaTable.
     final NavigableMap<Long, KijiTableLayout> timedLayouts =
-        getKiji().getMetaTable().getTimedTableLayoutVersions(getURI().getTable(), mMaxVersions);
+        mKiji.getMetaTable().getTimedTableLayoutVersions(mTableURI.getTable(), mMaxVersions);
     if (timedLayouts.isEmpty()) {
-        throw new RuntimeException("No such table: " + getURI().getTable());
+        throw new RuntimeException("No such table: " + mTableURI.getTable());
     }
     for (Map.Entry<Long, KijiTableLayout> entry: timedLayouts.entrySet()) {
       final long timestamp = entry.getKey();
@@ -196,63 +198,19 @@ public final class LayoutTool extends BaseTool {
     }
   }
 
-  /**
-   * Opens a kiji instance.
-   *
-   * @return The opened kiji.
-   * @throws IOException if there is an error.
-   */
-  private Kiji openKiji() throws IOException {
-    return Kiji.Factory.open(getURI(), getConf());
-  }
-
-  /**
-   * Retrieves the kiji instance used by this tool. On the first call to this method,
-   * the kiji instance will be opened and will remain open until {@link #cleanup()} is called.
-   *
-   * @return The kiji instance.
-   * @throws IOException if there is an error loading the kiji.
-   */
-  protected synchronized Kiji getKiji() throws IOException {
-    if (null == mKiji) {
-      mKiji = openKiji();
-    }
-    return mKiji;
-  }
-
-  /**
-   * Returns the KijiURI of the table to use.
-   *
-   * @return The kiji URI of the target this tool operates on.
-   */
-  protected KijiURI getURI() {
-    if (null == mURI) {
-      getPrintStream().println("No URI specified.");
-    }
-    return mURI;
-  }
-
-  /**
-   * Sets the kiji URI of the table to use.
-   *
-   * @param uri The kiji URI of the target this tool should operate on.
-   */
-  protected void setURI(KijiURI uri) {
-    if (null == mURI) {
-      mURI = uri;
-    } else {
-      getPrintStream().printf("URI is already set to: %s", mURI.toString());
-    }
+  /** {@inheritDoc} */
+  @Override
+  protected void setup() throws Exception {
+    super.setup();
+    mKiji = Kiji.Factory.open(mTableURI);
   }
 
   /** {@inheritDoc} */
   @Override
-  protected void setup() {
-    setURI(parseURI(mTableURIString));
-    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
-    getConf().set(HConstants.ZOOKEEPER_QUORUM,
-        Joiner.on(",").join(mURI.getZookeeperQuorumOrdered()));
-    setConf(HBaseConfiguration.addHbaseResources(getConf()));
+  protected void cleanup() throws IOException {
+    mKiji.release();
+    mKiji = null;
+    super.cleanup();
   }
 
   /** {@inheritDoc} */
@@ -263,15 +221,15 @@ public final class LayoutTool extends BaseTool {
     } else if (mDo.equals("set")) {
       Preconditions.checkArgument(!mLayout.isEmpty(),
           "Specify the layout with --layout=path/to/layout.json");
-      setLayout(getKiji());
+      setLayout(mKiji);
     } else if (mDo.equals("history")) {
       history();
     } else {
       System.err.println("Unknown layout action: " + mDo);
       System.err.println("Specify the action to perform with --do=(dump|set|history)");
-      return 1;
+      return FAILURE;
     }
-    return 0;
+    return SUCCESS;
   }
 
   /**
