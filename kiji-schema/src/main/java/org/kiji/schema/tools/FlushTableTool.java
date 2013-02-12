@@ -83,8 +83,8 @@ public final class FlushTableTool extends BaseTool {
     mTargetURI = KijiURI.newBuilder(mTargetURIFlag).build();
 
     Preconditions.checkArgument(mFlushMeta || (mTargetURI.getTable() != null),
-        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table" +
-        " and/or specify a flush of metadata with --meta.");
+        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table"
+        + " and/or specify a flush of metadata with --meta.");
   }
 
   /**
