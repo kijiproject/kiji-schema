@@ -28,8 +28,10 @@ import com.google.common.base.Preconditions;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.tools.synth.DictionaryLoader;
 import org.kiji.schema.tools.synth.EmailSynthesizer;
 import org.kiji.schema.tools.synth.NGramSynthesizer;
@@ -39,12 +41,25 @@ import org.kiji.schema.tools.synth.WordSynthesizer;
  * Synthesize some user data into a kiji table.
  */
 @ApiAudience.Private
-public final class SynthesizeUserDataTool extends VersionValidatedTool {
+public final class SynthesizeUserDataTool extends BaseTool {
   @Flag(name="name-dict", usage="File that contains people names, one per line")
   private String mNameDictionaryFilename = "org/kiji/schema/tools/synth/top_names.txt";
 
   @Flag(name="num-users", usage="Number of users to synthesize")
   private int mNumUsers = 100;
+
+  @Flag(name="table", usage="URI of the Kiji table data should be written to.")
+  private String mTableURIFlag = null;
+
+  /** URI of the target table to write to. */
+  private KijiURI mTableURI = null;
+
+  /** Kiji instance where the target table lives. */
+  private Kiji mKiji= null;
+
+  /** Kiji table to write to. */
+  private KijiTable mTable = null;
+
 
   /** {@inheritDoc} */
   @Override
@@ -81,44 +96,69 @@ public final class SynthesizeUserDataTool extends VersionValidatedTool {
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
-    Preconditions.checkArgument(getURI().getTable() != null,
-        "Specify a table with --kiji=kiji://hbase-cluster/kiji-instance/table");
+    Preconditions.checkArgument((mTableURIFlag != null) && !mTableURIFlag.isEmpty(),
+        "Specify a target table to write synthesized data to with "
+        + "--table=kiji://hbase-address/kiji-instance/table");
+    mTableURI = KijiURI.newBuilder(mTableURIFlag).build();
+    Preconditions.checkArgument(mTableURI.getTable() != null,
+        "No table specified in target URI '%s'. "
+        + "Specify a target table to write synthesized data to with "
+        + "--table=kiji://hbase-address/kiji-instance/table",
+        mTableURI);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void setup() throws IOException {
+    mKiji = Kiji.Factory.open(mTableURI, getConf());
+    mTable = mKiji.openTable(mTableURI.getTable());
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void cleanup() throws IOException {
+    mTable.close();
+    mKiji.release();
+
+    mTableURI = null;
+    mTable = null;
+    mKiji = null;
   }
 
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     // Generate a bunch of user rows with names and email addresses.
-    Random random = new Random(System.currentTimeMillis());
-    List<String> nameDictionary = loadNameDictionary(mNameDictionaryFilename);
-    WordSynthesizer nameSynth = new WordSynthesizer(random, nameDictionary);
-    NGramSynthesizer fullNameSynth = new NGramSynthesizer(nameSynth, 2);
-    EmailSynthesizer emailSynth = new EmailSynthesizer(random, nameDictionary);
+    final Random random = new Random(System.currentTimeMillis());
+    final List<String> nameDictionary = loadNameDictionary(mNameDictionaryFilename);
+    final WordSynthesizer nameSynth = new WordSynthesizer(random, nameDictionary);
+    final NGramSynthesizer fullNameSynth = new NGramSynthesizer(nameSynth, 2);
+    final EmailSynthesizer emailSynth = new EmailSynthesizer(random, nameDictionary);
 
-    getPrintStream().printf("Generating %d users on kiji table '%s'...%n", mNumUsers, getURI());
-    final KijiTable kijiTable = getKiji().openTable(getURI().getTable());
+    getPrintStream().printf("Generating %d users on kiji table '%s'...%n", mNumUsers, mTableURI);
+    final KijiTableWriter tableWriter = mTable.openTableWriter();
+    try {
+      for (int iuser = 0; iuser < mNumUsers; iuser++) {
+        final String fullName = fullNameSynth.synthesize();
+        final String email =
+            EmailSynthesizer.formatEmail(fullName.replace(" ", "."), emailSynth.synthesizeDomain());
+        final EntityId entityId = mTable.getEntityId(email);
+        tableWriter.put(entityId, "info", "name", fullName);
+        tableWriter.put(entityId, "info", "email", email);
 
-    KijiTableWriter tableWriter = kijiTable.openTableWriter();
-    for (int i = 0; i < mNumUsers; i++) {
-      String fullName = fullNameSynth.synthesize();
-      String email = EmailSynthesizer.formatEmail(fullName.replace(" ", "."),
-          emailSynth.synthesizeDomain());
-      EntityId entityId = kijiTable.getEntityId(email);
-      tableWriter.put(entityId, "info", "name", fullName);
-      tableWriter.put(entityId, "info", "email", email);
-
-      // Print some status so the user knows it's working.
-      if (i % 1000 == 0) {
-        getPrintStream().printf("%d rows synthesized...%n", i);
+        // Print some status so the user knows it's working.
+        if (iuser % 1000 == 0) {
+          getPrintStream().printf("%d rows synthesized...%n", iuser);
+        }
       }
+    } finally {
+      tableWriter.close();
     }
-    tableWriter.close();
-    kijiTable.close();
 
     getPrintStream().printf("%d rows synthesized...%n", mNumUsers);
     getPrintStream().println("Done.");
 
-    return 0;
+    return SUCCESS;
   }
 
   /**

@@ -25,8 +25,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.common.flags.Flag;
 import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiInstaller;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.HBaseFactory;
 
 /**
@@ -35,6 +37,12 @@ import org.kiji.schema.hbase.HBaseFactory;
 @ApiAudience.Private
 public final class InstallTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(InstallTool.class);
+
+  @Flag(name="kiji", usage="KijiURI of the instance to install.")
+  private String mKijiURIString;
+
+  /** The KijiURI of the instance to install. */
+  private KijiURI mURI;
 
   /** {@inheritDoc} */
   @Override
@@ -67,6 +75,36 @@ public final class InstallTool extends BaseTool {
       getPrintStream().printf("Kiji instance '%s' already exists.%n", getURI());
       return 1;
     }
+  }
+
+  /** Sets the KijiURI of the instance to install.
+   *
+   * @param uri The KijiURI to set for this tool
+   */
+  protected void setURI(KijiURI uri) {
+    if (null == mURI) {
+      mURI = uri;
+    } else {
+      getPrintStream().println("URI is already set.");
+    }
+  }
+
+  /** Gets the KijiURI of the instance to install.
+   *
+   * @return The KijiURI of the instance to install.
+   */
+  protected KijiURI getURI() {
+    if (null == mURI) {
+      getPrintStream().println("No URI set.");
+    }
+    return mURI;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void setup() throws Exception {
+    super.setup();
+    setURI(parseURI(mKijiURIString));
   }
 
   /**

@@ -19,11 +19,13 @@
 
 package org.kiji.schema.impl;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
@@ -117,14 +119,26 @@ public final class HashPrefixedEntityId extends EntityId {
   @SuppressWarnings("unchecked")
   public <T> T getComponentByIndex(int idx) {
     Preconditions.checkArgument(idx == 0);
-    return (T)mKijiRowKey.clone();
+    return (T) mKijiRowKey.clone();
   }
 
   /** {@inheritDoc} **/
   @Override
   public List<Object> getComponents() {
-    List<Object> resp = new ArrayList<Object>();
-    resp.add(mKijiRowKey);
-    return resp;
+    return Lists.<Object>newArrayList(mKijiRowKey);
+  }
+
+  /** @return the Kiji row key, or null. */
+  public byte[] getKijiRowKey() {
+    return (mKijiRowKey != null) ? mKijiRowKey.clone() : null;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HashPrefixedEntityId.class)
+        .add("kiji", Bytes.toStringBinary(mKijiRowKey))
+        .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
+        .toString();
   }
 }

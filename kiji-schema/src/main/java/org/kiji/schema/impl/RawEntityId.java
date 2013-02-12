@@ -22,7 +22,9 @@ package org.kiji.schema.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
@@ -76,7 +78,7 @@ public final class RawEntityId extends EntityId {
   @SuppressWarnings("unchecked")
   public <T> T getComponentByIndex(int idx) {
     Preconditions.checkArgument(idx == 0);
-    return (T)mBytes.clone();
+    return (T) mBytes.clone();
   }
 
   /** {@inheritDoc} **/
@@ -85,5 +87,13 @@ public final class RawEntityId extends EntityId {
     List<Object> resp = new ArrayList<Object>();
     resp.add(mBytes);
     return resp;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(RawEntityId.class)
+        .add("hbase", Bytes.toStringBinary(mBytes))
+        .toString();
   }
 }

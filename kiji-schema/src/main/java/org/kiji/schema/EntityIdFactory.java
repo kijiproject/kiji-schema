@@ -19,12 +19,11 @@
 
 package org.kiji.schema;
 
-import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
@@ -63,8 +62,12 @@ public abstract class EntityIdFactory {
       return new HashedEntityIdFactory(format);
     case HASH_PREFIX:
       return new HashPrefixedEntityIdFactory(format);
+    case FORMATTED:
+      throw new RuntimeException(
+          "Row key format encoding FORMATTED is not supported with RowKeyFormat specifications. "
+          + "Use RowKeyFormat2 instead.");
     default:
-      throw new RuntimeException(String.format("Unknown row key format: '%s'.", format));
+      throw new RuntimeException(String.format("Unhandled row key format: '%s'.", format));
     }
   }
 
@@ -83,8 +86,13 @@ public abstract class EntityIdFactory {
         return new RawEntityIdFactory(format);
       case FORMATTED:
         return new FormattedEntityIdFactory(format);
+      case HASH:
+      case HASH_PREFIX:
+        throw new RuntimeException(
+            "Row key format encodings HASH and HASH_PREFIX are not supported with RowKeyFormat2"
+            + " specifications. Use FORMATTED instead.");
       default:
-        throw new RuntimeException(String.format("Unknown row key format: '%s'.", format));
+        throw new RuntimeException(String.format("Unhandled row key format: '%s'.", format));
     }
   }
 
@@ -104,6 +112,25 @@ public abstract class EntityIdFactory {
     } else {
       throw new RuntimeException("Kiji Table has unknown RowKeyFormat"
           + rowKeyFormat.getClass().getName());
+    }
+  }
+
+  /**
+   * Extract a row key component as a byte[].
+   *
+   * @param keyComponent a row key component expected to be either byte[] or String.
+   * @return the row key component as a byte[].
+   * @throws EntityIdException if the key component is invalid.
+   *     Key components must be String or byte[].
+   */
+  private static byte[] getBytesKeyComponent(Object keyComponent) {
+    if (keyComponent instanceof byte[]) {
+      return (byte[]) keyComponent;
+    } else if (keyComponent instanceof String) {
+      return Bytes.toBytes((String) keyComponent);
+    } else {
+      throw new EntityIdException(String.format(
+          "Invalid row key component: '%s', expecting byte[] or String", keyComponent));
     }
   }
 
@@ -131,20 +158,28 @@ public abstract class EntityIdFactory {
 
     /** {@inheritDoc} */
     @Override
-    public EntityId getEntityId(Object... kijiRowKey) {
-      Preconditions.checkNotNull(kijiRowKey);
-      Preconditions.checkArgument(kijiRowKey.length == 1);
-      if (kijiRowKey[0] instanceof byte[]) {
-        return RawEntityId.getEntityId((byte[]) kijiRowKey[0]);
-      } else if (kijiRowKey[0] instanceof String) {
-        try {
-          return RawEntityId.getEntityId(((String) kijiRowKey[0]).getBytes("UTF-8"));
-        } catch (UnsupportedEncodingException e) {
-          throw new EntityIdException("Unable to convert string to UTF-8 byte array");
-        }
-      } else {
-        throw new EntityIdException("Invalid RAW kiji Row Key");
-      }
+    public EntityId getEntityId(Object... components) {
+      Preconditions.checkNotNull(components);
+      Preconditions.checkArgument(components.length == 1);
+      return getEntityId(components[0]);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public EntityId getEntityId(List<Object> components) {
+      Preconditions.checkNotNull(components);
+      Preconditions.checkArgument(components.size() == 1);
+      return getEntityId(components.get(0));
+    }
+
+    /**
+     * Creates a raw entity ID from a single component, either String or byte[].
+     *
+     * @param rowKey Raw entity ID specification as a String or byte[].
+     * @return the specified raw entity ID.
+     */
+    private EntityId getEntityId(Object rowKey) {
+      return RawEntityId.getEntityId(getBytesKeyComponent(rowKey));
     }
 
     /** {@inheritDoc} */
@@ -171,21 +206,21 @@ public abstract class EntityIdFactory {
 
     /** {@inheritDoc} */
     @Override
-    @SuppressWarnings("unchecked")
-    public EntityId getEntityId(Object... componentValues) {
-      // The user specified the row key in terms of a map of component values.
-      Preconditions.checkNotNull(componentValues);
-      Preconditions.checkArgument(componentValues.length > 0);
-      Preconditions.checkNotNull(componentValues[0]);
-      // user provided kiji row key as a List
-      if (componentValues.length == 1 && componentValues[0] instanceof List) {
-          Preconditions.checkArgument(((List) componentValues[0]).size() > 0);
-          return FormattedEntityId.getEntityId((List<Object>) componentValues[0],
-              mRowKeyFormat);
-      } else {
-        return FormattedEntityId.getEntityId(new ArrayList(Arrays.asList(componentValues)),
-            mRowKeyFormat);
-      }
+    public EntityId getEntityId(Object... components) {
+      Preconditions.checkNotNull(components);
+      Preconditions.checkArgument(components.length > 0);
+      Preconditions.checkNotNull(components[0]);
+      // TODO: Eliminate the need to convert to a list:
+      return FormattedEntityId.getEntityId(Lists.newArrayList(components), mRowKeyFormat);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public EntityId getEntityId(List<Object> componentList) {
+      Preconditions.checkNotNull(componentList);
+      Preconditions.checkArgument(componentList.size() > 0);
+      Preconditions.checkNotNull(componentList.get(0));
+      return FormattedEntityId.getEntityId(componentList, mRowKeyFormat);
     }
 
     /** {@inheritDoc} */
@@ -212,22 +247,28 @@ public abstract class EntityIdFactory {
 
     /** {@inheritDoc} */
     @Override
-    public EntityId getEntityId(Object... kijiRowKey) {
-      Preconditions.checkNotNull(kijiRowKey);
-      Preconditions.checkArgument(kijiRowKey.length == 1);
-      if (kijiRowKey[0] instanceof byte[]) {
-        return HashedEntityId.getEntityId((byte[]) kijiRowKey[0], mRowKeyFormat);
-      } else if (kijiRowKey[0] instanceof String) {
-        try {
-          return HashedEntityId.getEntityId(((String)kijiRowKey[0]).getBytes("UTF-8"),
-              mRowKeyFormat);
-        } catch (UnsupportedEncodingException e) {
-          throw new EntityIdException("Unable to convert string to UTF-8 byte array");
-        }
-      } else {
-        throw new EntityIdException("Invalid components for HashedEntityId. "
-            + "Expected a single string or byte array.");
-      }
+    public EntityId getEntityId(Object... components) {
+      Preconditions.checkNotNull(components);
+      Preconditions.checkArgument(components.length == 1);
+      return getEntityId(components[0]);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public EntityId getEntityId(List<Object> componentList) {
+      Preconditions.checkNotNull(componentList);
+      Preconditions.checkArgument(componentList.size() == 1);
+      return getEntityId(componentList.get(0));
+    }
+
+    /**
+     * Creates a hashed entity ID from a single component, either String or byte[].
+     *
+     * @param rowKey Hashed entity ID specification as a String or byte[].
+     * @return the specified hashed entity ID.
+     */
+    private EntityId getEntityId(Object rowKey) {
+      return HashedEntityId.getEntityId(getBytesKeyComponent(rowKey), mRowKeyFormat);
     }
 
     /** {@inheritDoc} */
@@ -253,21 +294,28 @@ public abstract class EntityIdFactory {
 
     /** {@inheritDoc} */
     @Override
-    public EntityId getEntityId(Object... kijiRowKey) {
-      Preconditions.checkNotNull(kijiRowKey);
-      Preconditions.checkArgument(kijiRowKey.length == 1);
-      if (kijiRowKey[0] instanceof byte[]) {
-        return HashPrefixedEntityId.getEntityId((byte[]) kijiRowKey[0], mRowKeyFormat);
-      } else if (kijiRowKey[0] instanceof String) {
-        try {
-          return HashPrefixedEntityId.getEntityId(((String)kijiRowKey[0]).getBytes("UTF-8"),
-              mRowKeyFormat);
-        } catch (UnsupportedEncodingException e) {
-          throw new EntityIdException("Unable to convert string to UTF-8 byte array");
-        }
-      } else {
-        throw new EntityIdException("Invalid components for HashPrefixedEntityId");
-      }
+    public EntityId getEntityId(Object... components) {
+      Preconditions.checkNotNull(components);
+      Preconditions.checkArgument(components.length == 1);
+      return getEntityId(components[0]);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public EntityId getEntityId(List<Object> components) {
+      Preconditions.checkNotNull(components);
+      Preconditions.checkArgument(components.size() == 1);
+      return getEntityId(components.get(0));
+    }
+
+    /**
+     * Creates a hash-prefixed entity ID from a single component, either String or byte[].
+     *
+     * @param rowKey Hash-prefixed entity ID specification as a String or byte[].
+     * @return the specified hash-prefixed entity ID.
+     */
+    private EntityId getEntityId(Object rowKey) {
+      return HashPrefixedEntityId.getEntityId(getBytesKeyComponent(rowKey), mRowKeyFormat);
     }
 
     /** {@inheritDoc} */
@@ -280,21 +328,30 @@ public abstract class EntityIdFactory {
   /**
    * Creates an entity ID from a list of key components.
    *
-   * @param componentList This can be one of the following depending on row key encoding:
-   *                   <ul>
-   *                      <li>
-   *                      Raw, Hash, Hash-Prefix EntityId: A single String or byte array
-   *                      component.
-   *                      </li>
-   *                      <li>
-   *                      Formatted EntityId: The primitive row key components (string, int,
-   *                      long) either passed in their expected order in the key or as an ordered
-   *                      list of components.
-   *                      </li>
-   *                   </ul>
+   * @param components This can be one of the following depending on row key encoding:
+   *     <ul>
+   *       <li> Raw, Hash, Hash-Prefix EntityId: A single String or byte array component. </li>
+   *       <li> Formatted EntityId: The primitive row key components (string, int, long)
+   *            in their expected order in the key. </li>
+   *     </ul>
    * @return a new EntityId with the specified Kiji row key.
    */
-  public abstract EntityId getEntityId(Object... componentList);
+  public abstract EntityId getEntityId(Object... components);
+
+  /**
+   * Creates an entity ID from a list of key components.
+   *
+   * @param componentList This can be one of the following depending on row key encoding:
+   *     <ul>
+   *       <li> Raw, Hash, Hash-Prefix EntityId: A single String or byte array component. </li>
+   *       <li> Formatted EntityId: The primitive row key components (string, int, long)
+   *            in their expected order in the key. </li>
+   *     </ul>
+   * @return a new EntityId with the specified Kiji row key.
+   */
+  public EntityId getEntityId(List<Object> componentList) {
+    return getEntityId(componentList.toArray());
+  }
 
   /**
    * Creates an entity ID from an HBase row key.

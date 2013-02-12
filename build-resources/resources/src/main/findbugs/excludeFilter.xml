@@ -72,20 +72,26 @@
     <Class name="org.kiji.schema.impl.InMemoryTableKeyValueDatabase" />
     <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
   </Match>
+
+  <!-- Do not conflate null and the empty byte array: -->
   <Match>
-    <!--
-       When decoding a cell, the cell may contain an empty byte array,
-       thus null is used to indicate a missing cell.
-    -->
-    <Class name="org.kiji.schema.impl.HBaseKijiRowData" />
+    <Or>
+      <Class name="~org[.]kiji[.]schema[.]impl[.]HashedEntityId" />
+      <Class name="~org[.]kiji[.]schema[.]impl[.]HashPrefixedEntityId" />
+      <!-- null indicates a missing cell and is different from a cell with no bytes -->
+      <Class name="~org[.]kiji[.]schema[.]impl[.]HBaseKijiRowData" />
+    </Or>
     <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
   </Match>
+
   <Match>
-    <!--
-       When decoding a cell, the cell may contain an empty byte array,
-       thus null is used to indicate a missing cell.
-    -->
+    <!-- This is used to create an immutable array -->
     <Class name="org.kiji.schema.impl.HBaseKiji" />
     <Bug pattern="ITA_INEFFICIENT_TO_ARRAY" />
+  </Match>
+  <Match>
+    <!-- mTableURI is initialized through flags with FlagParser.parse() -->
+    <Class name="org.kiji.schema.tools.SynthesizeUserDataTool" />
+    <Bug pattern="UWF_NULL_FIELD" />
   </Match>
 </FindBugsFilter>

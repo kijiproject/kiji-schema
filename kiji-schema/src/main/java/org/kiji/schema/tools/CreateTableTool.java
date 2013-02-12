@@ -19,8 +19,10 @@
 
 package org.kiji.schema.tools;
 
+import java.io.IOException;
 import java.util.List;
 
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -30,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.SplitKeyFile;
@@ -39,22 +42,37 @@ import org.kiji.schema.util.SplitKeyFile;
  * Command-line tool for creating kiji tables in kiji instances.
  */
 @ApiAudience.Private
-public final class CreateTableTool extends VersionValidatedTool {
+public final class CreateTableTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(CreateTableTool.class);
 
-  @Flag(name="layout", usage="Path to a file containing a JSON table layout.")
-  private String mLayout = "";
+  @Flag(name="table", usage="URI of the Kiji table to create,"
+      + " eg. --table=kiji://hbase-address/kiji-instance/table.")
+  private String mTableURIFlag = null;
 
-  // The following two flags are used to specify the initial number of regions in the table.
-  // Only one of them may be specified -- if your layout has key format encoding HASH or
-  // HASH_PREFIX, then you may only use --num-regions.  Otherwise, you must specify the split key
-  // file with --split-key-file.
-  @Flag(name="num-regions", usage="The number of initial regions to create in the table")
-  private int mNumRegions = 1;
+  @Flag(name="layout", usage="Path to a file containing a JSON table layout description.")
+  private String mLayout = null;
+
+  @Flag(name="num-regions",
+      usage="Number (>= 1) of initial regions to create in the table. "
+          + "Do not use if specifying regions explicitly with --split-key-file=...")
+  private String mNumRegionsFlag = null;
 
   @Flag(name="split-key-file",
-      usage="Path to a file of row keys to use as boundaries between regions")
-  private String mSplitKeyFilePath = "";
+      usage="Path to a file of row keys to use as boundaries between regions. "
+          + "Do not use if specifying a number of regions with --num-regions=N.")
+  private String mSplitKeyFilePath = null;
+
+  /**
+   * Initialized from --num-regions=N flag (N >= 1) if flag is provided.
+   * Defaults to 1 if neither --num-regions nor --split-key-file is specified.
+   */
+  private int mNumRegions = -1;
+
+  /** Opened Kiji to use. */
+  private Kiji mKiji;
+
+  /** KijiURI of the table to create. */
+  private KijiURI mTableURI;
 
   /** {@inheritDoc} */
   @Override
@@ -78,15 +96,36 @@ public final class CreateTableTool extends VersionValidatedTool {
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
-    if (mLayout.isEmpty()) {
-      throw new RequiredFlagException("layout");
+    Preconditions.checkArgument((mTableURIFlag != null) && !mTableURIFlag.isEmpty(),
+        "Specify the table to create with --table=kiji://hbase-address/kiji-instance/table");
+    mTableURI = KijiURI.newBuilder(mTableURIFlag).build();
+
+    Preconditions.checkArgument((mLayout != null) && !mLayout.isEmpty(),
+        "Specify the table layout with --layout=/path/to/table-layout.json");
+
+    if ((mNumRegionsFlag != null) && !mNumRegionsFlag.isEmpty()) {
+      mNumRegions = Integer.parseInt(mNumRegionsFlag);
+      Preconditions.checkArgument(mNumRegions >= 1,
+          "Invalid initial number of regions {}, must be >= 1.", mNumRegions);
+    } else  if ((mSplitKeyFilePath == null) || mSplitKeyFilePath.isEmpty()) {
+      // No region split specified, defaults to 1:
+      mNumRegions = 1;
     }
-    if (mNumRegions != 1 && !mSplitKeyFilePath.isEmpty()) {
-      throw new RuntimeException("Only one of --num-regions and --split-key-file may be specified");
-    }
-    if (mNumRegions < 1) {
-      throw new RuntimeException("--num-regions must be positive");
-    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void setup() throws Exception {
+    super.setup();
+    mKiji = Kiji.Factory.open(mTableURI);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void cleanup() throws IOException {
+    mKiji.release();
+    mKiji = null;
+    super.cleanup();
   }
 
   /** {@inheritDoc} */
@@ -99,10 +138,9 @@ public final class CreateTableTool extends VersionValidatedTool {
     final FSDataInputStream inputStream = fs.open(path);
     final KijiTableLayout tableLayout = KijiTableLayout.createFromEffectiveJson(inputStream);
     final String tableName = tableLayout.getName();
-    if ((getURI().getTable() != null) && !tableName.equals(getURI().getTable())) {
-      throw new IllegalArgumentException(
-          String.format("Table name '%s' does not match URI %s", tableName, getURI()));
-    }
+    Preconditions.checkArgument(
+        (mTableURI.getTable() == null) || tableName.equals(mTableURI.getTable()),
+        "Table name '%s' does not match URI %s", tableName, mTableURI);
 
     // For large numbers of initial regions, table creation may take a long time as we wait for
     // the new regions to come online. Increase the hbase RPC timeout to compensate.
@@ -110,17 +148,17 @@ public final class CreateTableTool extends VersionValidatedTool {
     hbaseTimeout = hbaseTimeout * 10;
     getConf().setInt("hbase.rpc.timeout", hbaseTimeout);
 
-    setURI(KijiURI.newBuilder(getURI()).withTableName(tableName).build());
-    getPrintStream().println("Creating kiji table: " + getURI().toString() + "...");
+    getPrintStream().println("Creating Kiji table " + mTableURI);
     if (mNumRegions > 1) {
       // Create a table with an initial number of evenly split regions.
-      getKiji().createTable(tableName, tableLayout, mNumRegions);
+      mKiji.createTable(tableName, tableLayout, mNumRegions);
+
     } else if (!mSplitKeyFilePath.isEmpty()) {
       switch (KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat())) {
       case HASH:
       case HASH_PREFIX:
-        throw new RuntimeException(
-            "Row key hashing is enabled for the table.  Use --num-regions instead.");
+        throw new IllegalArgumentException(
+            "Row key hashing is enabled for the table. Use --num-regions=N instead.");
       case RAW:
         break;
       case FORMATTED:
@@ -133,26 +171,28 @@ public final class CreateTableTool extends VersionValidatedTool {
                 + KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat()));
       }
       // Open the split key file.
-      Path splitKeyFilePath = new Path(mSplitKeyFilePath);
-      FileSystem splitKeyPathFs = fileSystemSpecified(splitKeyFilePath)
-          ? splitKeyFilePath.getFileSystem(getConf()) : FileSystem.getLocal(getConf());
-      FSDataInputStream splitKeyFileInputStream = splitKeyPathFs.open(splitKeyFilePath);
+      final Path splitKeyFilePath = new Path(mSplitKeyFilePath);
+      final FileSystem splitKeyPathFs = fileSystemSpecified(splitKeyFilePath)
+          ? splitKeyFilePath.getFileSystem(getConf())
+          : FileSystem.getLocal(getConf());
+      final FSDataInputStream splitKeyFileInputStream = splitKeyPathFs.open(splitKeyFilePath);
 
       // Read the split keys.
-      List<byte[]> splitKeys = SplitKeyFile.decodeRegionSplitList(splitKeyFileInputStream);
-      for (byte[] splitKey : splitKeys) {
-        LOG.debug("Read split key from file: " + Bytes.toString(splitKey));
+      final List<byte[]> splitKeys = SplitKeyFile.decodeRegionSplitList(splitKeyFileInputStream);
+      LOG.debug("Read {} keys from split-key-file '{}':", splitKeys.size(), splitKeyFilePath);
+      for (int i = 0; i < splitKeys.size(); ++i) {
+        LOG.debug("Split key #{}: {}", i, Bytes.toStringBinary(splitKeys.get(i)));
       }
 
       // Create the table with the given split keys.
-      getKiji().createTable(tableName, tableLayout,
-          splitKeys.toArray(new byte[splitKeys.size()][]));
+      mKiji.createTable(tableName, tableLayout, splitKeys.toArray(new byte[splitKeys.size()][]));
+
     } else {
-      // Create a table with the default initial region.
-      getKiji().createTable(tableName, tableLayout);
+      // Create a table with a single initial region:
+      mKiji.createTable(tableName, tableLayout);
     }
 
-    return 0;
+    return SUCCESS;
   }
 
   /**

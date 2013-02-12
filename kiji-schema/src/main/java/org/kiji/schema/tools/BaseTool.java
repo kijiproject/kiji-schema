@@ -26,35 +26,27 @@ import java.io.PrintStream;
 import java.util.List;
 import java.util.regex.Pattern;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configured;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HConstants;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 import org.kiji.common.flags.Flag;
 import org.kiji.common.flags.FlagParser;
-import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiURIException;
 
 /**
  * Base class for all command line tools. A kiji command line tool operates on a kiji instance,
- * specified through a {@link KijiURI} via the command-line (with a default value pointing to the
- * default kiji instance found in the hbase cluster specified by whatever hbase configuration is
- * on the classpath). If the kiji URI for the instance specifies more elements than the zookeeper
- * connection information and instance name they will be ignored.
+ * specified through a {@link KijiURI} via the command-line.
  *
  * A command line tool, executed via {@link KijiToolLauncher}, will perform these steps when run:
  * <ol>
  *   <li>Parse command-line flags to the tool and set the appropriate fields. Subclasses
  *   wishing to add flags to a tool should use the {@link Flag} annotation.</li>
- *   <li>Use the kiji URI specified via the command line (or using the default
- *   <code>kiji://.env/default</code> to initialize the instance's configuration with
- *   hbase connection parameters and hbase resources.</li>
+ *   <li>Use the kiji URI specified via the command line to initialize the instance's
+ *   configuration with hbase connection parameters and hbase resources.</li>
  *   <li>Run the {@link #validateFlags()} method. Subclasses wishing to validate custom
  *   command-line arguments should override this method
  *   but take care to call <code>super.validateFlags()</code></li>
@@ -79,10 +71,6 @@ public abstract class BaseTool extends Configured implements KijiTool {
   private static final Pattern YES_PATTERN = Pattern.compile("y|yes", Pattern.CASE_INSENSITIVE);
   private static final Pattern NO_PATTERN = Pattern.compile("n|no", Pattern.CASE_INSENSITIVE);
 
-  @Flag(name="kiji", usage="A kiji URI identifying the kiji instance to use.")
-  private String mInstanceURIStr = String.format("kiji://.env/%s",
-      KConstants.DEFAULT_INSTANCE_NAME);
-
   @Flag(name="debug", usage="Print stacktraces if the command terminates with an error.")
   private boolean mDebugFlag = false;
 
@@ -90,15 +78,14 @@ public abstract class BaseTool extends Configured implements KijiTool {
       + "The default value is true.")
   private boolean mInteractiveFlag = true;
 
-  /**
-   * A URI used to track what element in kiji a tool is operating on.
-   */
-  private KijiURI mURI;
+  /** The print stream to write to. */
+  private PrintStream mPrintStream;
 
-  /**
-   * The print stream to write to.
-   */
-  private PrintStream mPrintStream = System.out;
+  /** Success tool exit code. */
+  public static final int SUCCESS = 0;
+
+  /** Failure tool exit code. */
+  public static final int FAILURE = 1;
 
   /**
    * Prompts the user for a yes or no answer to the specified question until they provide a valid
@@ -150,23 +137,8 @@ public abstract class BaseTool extends Configured implements KijiTool {
       List<String> nonFlagArgs = FlagParser.init(this, args.toArray(new String[args.size()]));
       if (null == nonFlagArgs) {
         // There was a problem parsing the flags.
-        return 1;
+        return FAILURE;
       }
-
-      // Create a kiji URI from the string specified by the user, ignoring everything except
-      // zookeeper connection information and the instance name.
-      // Then use the URI to retrieve connection settings for the zookeeper quorum, which should be
-      // enough to talk to an HBase instance.
-      try {
-        setURI(KijiURI.newBuilder(mInstanceURIStr).build());
-      } catch (KijiURIException kue) {
-        throw new IllegalArgumentException(
-            String.format("Invalid kiji URI '--kiji=%s'.", mInstanceURIStr), kue);
-      }
-      getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
-      getConf().set(HConstants.ZOOKEEPER_QUORUM,
-          Joiner.on(",").join(mURI.getZookeeperQuorumOrdered()));
-      setConf(HBaseConfiguration.addHbaseResources(getConf()));
 
       // Execute custom functionality implemented in subclasses.
       validateFlags();
@@ -179,7 +151,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
     } catch (KijiNotInstalledException knie) {
       getPrintStream().println(knie.getMessage());
       getPrintStream().println("Try: kiji install --kiji=kiji://.env/" + knie.getInstanceName());
-      return 2;
+      return FAILURE;
     } catch (Exception exn) {
       if (mDebugFlag) {
         throw exn; // Debug mode enabled; throw error back to the user.
@@ -190,7 +162,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
           getPrintStream().println("Error: " + thr.getMessage());
           thr = thr.getCause();
         }
-        return 3;
+        return FAILURE;
       }
     }
   }
@@ -211,6 +183,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
 
   /**
    * Cleans up any open file handles, connections, etc.
+   * Note: all subclasses of BaseTool should call super.cleanup()
    *
    * @throws IOException If there is an error.
    */
@@ -225,22 +198,34 @@ public abstract class BaseTool extends Configured implements KijiTool {
    */
   protected abstract int run(List<String> nonFlagArgs) throws Exception;
 
-  /**
-   * Returns the kiji URI of the target this tool operates on.
+  /** Parse a URI String to a KijiURI.
    *
-   * @return The kiji URI of the target this tool operates on.
+   * @param uri String of uri to parse into KijiURI.
+   * @return KijiURI from uri or null if invalid
+   * @deprecated Use KijiURI builders directly.
    */
-  protected KijiURI getURI() {
-    return mURI;
+  @Deprecated
+  protected KijiURI parseURI(String uri) {
+    try {
+      return KijiURI.newBuilder(uri).build();
+    } catch (KijiURIException kue) {
+      getPrintStream().println(
+          String.format("Invalid KijiURI: %s%n%s", uri, kue.getMessage()));
+    }
+    return null;
   }
 
   /**
-   * Sets the kiji URI of the target this tool operates on.
+   * The output print stream the tool should be writing to.
+   * If no print stream is set, returns System.out
    *
-   * @param uri The kiji URI of the target this tool should operate on.
+   * @return The print stream the tool should write to.
    */
-  protected void setURI(KijiURI uri) {
-    mURI = uri;
+  public PrintStream getPrintStream() {
+    if (null == mPrintStream) {
+      mPrintStream = System.out;
+    }
+    return mPrintStream;
   }
 
   /**
@@ -250,16 +235,11 @@ public abstract class BaseTool extends Configured implements KijiTool {
    * @param printStream The output print stream to use.
    */
   public void setPrintStream(PrintStream printStream) {
-    mPrintStream = printStream;
-  }
-
-  /**
-   * The output print stream the tool should be writing to.
-   *
-   * @return The print stream the tool should write to.
-   */
-  public PrintStream getPrintStream() {
-    return mPrintStream;
+    if (null == mPrintStream) {
+      mPrintStream = printStream;
+    } else {
+      getPrintStream().println("Printstream is already set.");
+    }
   }
 
   /**
