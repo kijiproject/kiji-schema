@@ -25,6 +25,7 @@ import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
@@ -43,21 +44,21 @@ public class TestVersionInfo {
   @Test
   public void testGetClientDataVersion() {
     // This is the actual version we expect to be in there right now.
-    assertEquals(ProtocolVersion.parse("kiji-1.0"), VersionInfo.getClientDataVersion());
+    assertEquals(ProtocolVersion.parse("system-1.0"), VersionInfo.getClientDataVersion());
   }
 
   @Test
   public void testGetClusterDataVersion() throws Exception {
     final KijiSystemTable systemTable = createMock(KijiSystemTable.class);
     // This version number for this test was picked out of a hat.
-    expect(systemTable.getDataVersion()).andReturn(ProtocolVersion.parse("kiji-1.1")).anyTimes();
+    expect(systemTable.getDataVersion()).andReturn(ProtocolVersion.parse("system-1.1")).anyTimes();
 
     final Kiji kiji = createMock(Kiji.class);
     expect(kiji.getSystemTable()).andReturn(systemTable).anyTimes();
 
     replay(systemTable);
     replay(kiji);
-    assertEquals(ProtocolVersion.parse("kiji-1.1"), VersionInfo.getClusterDataVersion(kiji));
+    assertEquals(ProtocolVersion.parse("system-1.1"), VersionInfo.getClusterDataVersion(kiji));
     verify(systemTable);
     verify(kiji);
   }
@@ -80,7 +81,7 @@ public class TestVersionInfo {
     verify(kiji);
   }
 
-  @Test(expected = IncompatibleKijiVersionException.class)
+  @Test(expected=IncompatibleKijiVersionException.class)
   public void testValidateVersionFail() throws Exception {
     final KijiSystemTable systemTable = createMock(KijiSystemTable.class);
     expect(systemTable.getDataVersion()).andReturn(ProtocolVersion.parse("kiji-0.9")).anyTimes();
@@ -94,4 +95,55 @@ public class TestVersionInfo {
     // This should throw an invalid version exception.
     VersionInfo.validateVersion(kiji);
   }
+
+  @Test
+  public void testKijiVsSystemProtocol() {
+    // New client (1.0.0-rc4 or higher) interacting with a table installed via 1.0.0-rc3.
+    final ProtocolVersion clientVersion = ProtocolVersion.parse("system-1.0");
+    final ProtocolVersion clusterVersion = ProtocolVersion.parse("kiji-1.0");
+
+    assertTrue(VersionInfo.areInstanceVersionsCompatible(clientVersion, clusterVersion));
+  }
+
+  @Test
+  public void testOldKijiRefusesToReadNewSystemProtocol() {
+    // The old 1.0.0-rc3 client should refuse to interop with a new instance created by
+    // 1.0.0-rc4 or higher due to the data version protocol namespace change. Forwards
+    // compatibility is not supported by the release candidates, even though we honor
+    // backwards compatibility.
+    final ProtocolVersion clientVersion = ProtocolVersion.parse("kiji-1.0");
+    final ProtocolVersion clusterVersion = ProtocolVersion.parse("system-1.0");
+
+    assertFalse(VersionInfo.areInstanceVersionsCompatible(clientVersion, clusterVersion));
+  }
+
+  @Test
+  public void testKijiVsNewerSystemProtocol() {
+    // An even newer client (not yet defined as of 1.0.0-rc4) that uses a 'system-1.1'
+    // protocol should still be compatible with a table installed via 1.0.0-rc3.
+    // kiji-1.0 => system-1.0, and all system-1.x versions should be compatible.
+    final ProtocolVersion clientVersion = ProtocolVersion.parse("system-1.1");
+    final ProtocolVersion clusterVersion = ProtocolVersion.parse("kiji-1.0");
+
+    assertTrue(VersionInfo.areInstanceVersionsCompatible(clientVersion, clusterVersion));
+  }
+
+  @Test
+  public void testDifferentSystemProtocols() {
+    // In the future, when we release it, system-1.1 should be compatible with system-1.0.
+    final ProtocolVersion clientVersion = ProtocolVersion.parse("system-1.1");
+    final ProtocolVersion clusterVersion = ProtocolVersion.parse("system-1.0");
+
+    assertTrue(VersionInfo.areInstanceVersionsCompatible(clientVersion, clusterVersion));
+  }
+
+  @Test
+  public void testSystemProtocolName() {
+    // A client (1.0.0-rc4 or higher) interacting with a table installed via 1.0.0-rc4.
+    final ProtocolVersion clientVersion = ProtocolVersion.parse("system-1.0");
+    final ProtocolVersion clusterVersion = ProtocolVersion.parse("system-1.0");
+
+    assertTrue(VersionInfo.areInstanceVersionsCompatible(clientVersion, clusterVersion));
+  }
+
 }
