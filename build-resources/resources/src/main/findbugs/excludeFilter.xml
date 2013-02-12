@@ -75,16 +75,12 @@
 
   <!-- Do not conflate null and the empty byte array: -->
   <Match>
-    <Class name="org.kiji.schema.impl.HashedEntityId" />
-    <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
-  </Match>
-  <Match>
-    <Class name="org.kiji.schema.impl.HashPrefixedEntityId" />
-    <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
-  </Match>
-  <Match>
-    <!-- null indicates a missing cell and is different from a cell with no bytes -->
-    <Class name="org.kiji.schema.impl.HBaseKijiRowData" />
+    <Or>
+      <Class name="~org[.]kiji[.]schema[.]impl[.]HashedEntityId" />
+      <Class name="~org[.]kiji[.]schema[.]impl[.]HashPrefixedEntityId" />
+      <!-- null indicates a missing cell and is different from a cell with no bytes -->
+      <Class name="~org[.]kiji[.]schema[.]impl[.]HBaseKijiRowData" />
+    </Or>
     <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
   </Match>
 
