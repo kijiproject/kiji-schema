@@ -203,7 +203,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
    * @param uri String of uri to parse into KijiURI.
    * @return KijiURI from uri or null if invalid
    * @deprecated Use KijiURI builders directly.
-  */
+   */
   @Deprecated
   protected KijiURI parseURI(String uri) {
     try {

@@ -158,7 +158,7 @@ public final class SynthesizeUserDataTool extends BaseTool {
     getPrintStream().printf("%d rows synthesized...%n", mNumUsers);
     getPrintStream().println("Done.");
 
-    return 0;  // success
+    return SUCCESS;
   }
 
   /**
