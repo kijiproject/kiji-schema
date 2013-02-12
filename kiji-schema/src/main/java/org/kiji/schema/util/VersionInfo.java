@@ -34,7 +34,8 @@ import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.impl.HBaseSystemTable;
 
 /**
- * Reads the version info from the jar manifest for this version of Kiji.
+ * Reports on the version numbers associated with this software bundle
+ * as well as the installed format versions in used in a Kiji instance.
  */
 @ApiAudience.Public
 public final class VersionInfo {
@@ -48,6 +49,17 @@ public final class VersionInfo {
       "org/kiji/schema/kiji-schema.properties";
 
   private static final String KIJI_SCHEMA_VERSION_PROP_NAME = "kiji-schema-version";
+
+  /**
+   * Deprecated version string. Old 1.0.0-rc releases used 'kiji-1.0' as the instance format
+   * version; this is now the same as 'system-1.0'.
+   */
+  private static final ProtocolVersion DEPRECATED_INSTANCE_VERSION =
+      ProtocolVersion.parse("kiji-1.0");
+
+  /** Version string that represents the first version of the instance format. */
+  private static final ProtocolVersion MIN_INSTANCE_VERSION =
+      ProtocolVersion.parse("system-1.0");
 
   /**
    * Loads kiji schema properties.
@@ -86,9 +98,14 @@ public final class VersionInfo {
   }
 
   /**
-   * Gets the version of the Kiji data format assumed by the client.
+   * Gets the version of the Kiji instance format assumed by the client.
    *
-   * @return A parsed version of the storage format protocol version string.
+   * <p>The instance format describes the layout of the global metadata state of
+   * a Kiji instance. This version number specifies which Kiji instances it would
+   * be compatible with. See {@link #isKijiVersionCompatible} to determine whether
+   * a deployment is compatible with this version.
+   *
+   * @return A parsed version of the instance format protocol version string.
    */
   public static ProtocolVersion getClientDataVersion() {
     final Properties defaults = new Properties();
@@ -107,7 +124,10 @@ public final class VersionInfo {
   }
 
   /**
-   * Gets the version of the Kiji data format installed in the instance of the HBase cluster.
+   * Gets the version of the Kiji instance format installed on the HBase cluster.
+   *
+   * <p>The instance format describes the layout of the global metadata state of
+   * a Kiji instance.</p>
    *
    * @param kiji The kiji instance.
    * @return A parsed version of the storage format protocol version string.
@@ -127,13 +147,16 @@ public final class VersionInfo {
   }
 
   /**
-   * Validates that the client data version is compatible with the data version
-   * installed on a Kiji instance. Throws IncompatibleKijiVersionException if not.
-   * "Compatible" versions have the same major version digit.
+   * Validates that the client instance format version is compatible with the instance
+   * format version installed on a Kiji instance.
+   * Throws IncompatibleKijiVersionException if not.
+   *
+   * <p>For the definition of compatibility used in this method, see {@link
+   * #isKijiVersionCompatible}</p>
    *
    * @param kiji The kiji instance.
    * @throws IOException on I/O error reading the data version from the cluster,
-   *     or throws IncompatibleKijiVersionException if the installed data version
+   *     or throws IncompatibleKijiVersionException if the installed instance format version
    *     is incompatible with the version supported by the client.
    */
   public static void validateVersion(Kiji kiji) throws IOException {
@@ -149,25 +172,47 @@ public final class VersionInfo {
   }
 
   /**
-   * Validates that the client data version is compatible with the data version
-   * installed on a Kiji instance. Returns true if they are compatible, false otherwise.
-   * "Compatible" versions have the same major version digit.
+   * Validates that the client instance format version is compatible with the instance
+   * format version installed on a Kiji instance.
+   * Returns true if they are compatible, false otherwise.
+   * "Compatible" versions have the same major version digit (e.g., <tt>system-1.1</tt>
+   * and <tt>system-1.0</tt> are compatible; <tt>system-2.5</tt> and <tt>system-1.0</tt> are not).
+   *
+   * <p>Older instances (installed with KijiSchema 1.0.0-rc3 and prior) will use an instance
+   * format version of <tt>kiji-1.0</tt>. This is treated as an alias for <tt>system-1.0</tt>.
+   * No other versions associated with the <tt>"kiji"</tt> protocol are supported.</p>
    *
    * @param kiji the kiji instance.
    * @throws IOException on I/O error reading the Kiji version from the system.
-   * @return true if the installed data version is compatible with this client, false otherwise.
+   * @return true if the installed instance format
+   *     version is compatible with this client, false otherwise.
    */
   public static boolean isKijiVersionCompatible(Kiji kiji) throws IOException {
     final ProtocolVersion clientVersion = VersionInfo.getClientDataVersion();
     final ProtocolVersion clusterVersion = VersionInfo.getClusterDataVersion(kiji);
+    return areInstanceVersionsCompatible(clientVersion, clusterVersion);
+  }
 
-    if (!clientVersion.getProtocolName().equals(clusterVersion.getProtocolName())) {
-      // This should really never happen unless something gets really weird.
-      throw new RuntimeException(String.format(
-          "Unexpected error: Client uses protocol (%s), but the Kiji instance uses (%s)",
-          clientVersion.getProtocolName(), clusterVersion.getProtocolName()));
+  /**
+   * Actual comparison logic that validates client/cluster data compatibility according to
+   * the rules defined in {@link #isKijiVersionCompatible(Kiji)}.
+   *
+   * <p>package-level visibility for unit testing.</p>
+   *
+   * @param clientVersion the client software's instance version.
+   * @param clusterVersion the cluster's installed instance version.
+   * @return true if the installed instance format
+   *     version is compatible with this client, false otherwise.
+   */
+  static boolean areInstanceVersionsCompatible(
+      ProtocolVersion clientVersion, ProtocolVersion clusterVersion) {
+
+    if (clusterVersion.equals(DEPRECATED_INSTANCE_VERSION)) {
+      // The "kiji-1.0" version is equivalent to "system-1.0" in compatibility tests.
+      clusterVersion = MIN_INSTANCE_VERSION;
     }
 
-    return clientVersion.getMajorVersion() == clusterVersion.getMajorVersion();
+    return clientVersion.getProtocolName().equals(clusterVersion.getProtocolName())
+        && clientVersion.getMajorVersion() == clusterVersion.getMajorVersion();
   }
 }

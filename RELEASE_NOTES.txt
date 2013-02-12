@@ -3,6 +3,13 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
+  * SCHEMA-196. Instance format should not use "kiji" protocol namespace.
+      Changes the instance format installed via 'kiji install' to
+      'system-1.0', rather than 'kiji-1.0'. This avoids a namespace collision
+      with layouts, etc.  Existing deployments with a 'kiji-1.0' instance
+      format are still supported.
+  * SCHEMA-151. Add org.kiji.schema.util.ProtocolVersion to manage
+      format/protocol version compatibility.
   * SCHEMA-150. Update CLI tools to support composite entity IDs.
       Entity IDs can now be specified as:
         --entity-id=hbase=hex:deadc0de as hexadecimal HBase keys
