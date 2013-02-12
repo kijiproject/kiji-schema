@@ -210,7 +210,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
       return KijiURI.newBuilder(uri).build();
     } catch (KijiURIException kue) {
       getPrintStream().println(
-          String.format("Invalid KijiURI: %s%\n%s", uri, kue.getMessage()));
+          String.format("Invalid KijiURI: %s%n%s", uri, kue.getMessage()));
     }
     return null;
   }

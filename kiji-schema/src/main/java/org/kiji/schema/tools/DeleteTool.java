@@ -295,26 +295,6 @@ public final class DeleteTool extends BaseTool {
   }
 
   /**
-   * Deletes an entire row of data.
-   *
-   * @param table Kiji table to delete from.
-   * @param writer Table writer to write
-   * @param entityId ID of the entity to delete.
-   * @return tool exit code.
-   * @throws Exception on error.
-   */
-  private int deleteRow(KijiTable table, KijiTableWriter writer, EntityId entityId)
-      throws Exception {
-    if (isInteractive() && !yesNoPrompt(String.format(
-        "Are you sure you want to delete row %s from Kiji table '%s'?", table.getURI()))) {
-      getPrintStream().println("Delete aborted.");
-      return SUCCESS;
-    }
-    writer.deleteRow(entityId);
-    return SUCCESS;
-  }
-
-  /**
    * Delete an entire table.
    *
    * @param kiji Kiji instance where the table to delete lives.

@@ -144,7 +144,7 @@ public final class LsTool extends BaseTool {
   private long mMaxTimestamp = Long.MAX_VALUE;
 
   /** URI of the element being inspected. */
-  private KijiURI mURI;
+  private KijiURI mURI = null;
 
   /** {@inheritDoc} */
   @Override
@@ -483,10 +483,9 @@ public final class LsTool extends BaseTool {
         final KijiDataRequest request = getDataRequest(
             mapTypeFamilies, groupTypeColumns, mMaxVersions, mMinTimestamp, mMaxTimestamp);
 
-        KijiTableReader reader = null;
+        final KijiTableReader reader = table.openTableReader();
         try {
           final EntityIdFactory eidFactory = EntityIdFactory.getFactory(table.getLayout());
-          reader = table.openTableReader();
           if (mEntityIdFlag == null) {
             // Scan from startRow to limitRow.
             final EntityId startRow = (mStartRowFlag != null)

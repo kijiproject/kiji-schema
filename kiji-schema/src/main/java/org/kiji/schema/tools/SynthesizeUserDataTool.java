@@ -52,13 +52,13 @@ public final class SynthesizeUserDataTool extends BaseTool {
   private String mTableURIFlag = null;
 
   /** URI of the target table to write to. */
-  private KijiURI mTableURI;
+  private KijiURI mTableURI = null;
 
   /** Kiji instance where the target table lives. */
-  private Kiji mKiji;
+  private Kiji mKiji= null;
 
   /** Kiji table to write to. */
-  private KijiTable mTable;
+  private KijiTable mTable = null;
 
 
   /** {@inheritDoc} */
@@ -96,25 +96,20 @@ public final class SynthesizeUserDataTool extends BaseTool {
   @Override
   protected void validateFlags() throws Exception {
     super.validateFlags();
-    if (mTableURIFlag.isEmpty()) {
-      throw new RequiredFlagException("table");
-    }
+    Preconditions.checkArgument((mTableURIFlag != null) && !mTableURIFlag.isEmpty(),
+        "Specify a target table to write synthesized data to with "
+        + "--table=kiji://hbase-address/kiji-instance/table");
+    mTableURI = KijiURI.newBuilder(mTableURIFlag).build();
+    Preconditions.checkArgument(mTableURI.getTable() != null,
+        "No table specified in target URI '%s'. "
+        + "Specify a target table to write synthesized data to with "
+        + "--table=kiji://hbase-address/kiji-instance/table",
+        mTableURI);
   }
 
   /** {@inheritDoc} */
   @Override
   protected void setup() throws IOException {
-    Preconditions.checkArgument((mTableURIFlag != null) && !mTableURIFlag.isEmpty(),
-        "Specify a target table to write synthesized data to with "
-        + "--table=kiji://hbase-address/kiji-instance/table");
-
-    mTableURI = parseURI(mTableURIFlag);
-    Preconditions.checkArgument(mTableURI.getTable() != null,
-        "No table specified in target URI '{}'. "
-        + "Specify a target table to write synthesized data to with "
-        + "--table=kiji://hbase-address/kiji-instance/table",
-        mTableURI);
-
     mKiji = Kiji.Factory.open(mTableURI, getConf());
     mTable = mKiji.openTable(mTableURI.getTable());
   }
