@@ -26,6 +26,8 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 
+import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
+
 public class TestKijiDataRequestBuilder {
   @Test
   public void testBuild() {
@@ -90,43 +92,49 @@ public class TestKijiDataRequestBuilder {
         req1, req2);
   }
 
-  @Test(expected=IllegalArgumentException.class)
   public void testNoRedundantColumn() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().add("info", "foo").add("info", "foo");
+    final KijiDataRequest kdr = builder.build();
+    assertEquals(1, kdr.getColumns().size());
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumnIn2ColBuilders() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().add("info", "foo");
     builder.addColumns().add("info", "foo");
+    builder.build();
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumnWithFamily() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().add("info", "foo").addFamily("info");
+    builder.build();
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumnWithFamilyIn2ColBuilders() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().add("info", "foo");
     builder.addColumns().addFamily("info");
+    builder.build();
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumnWithFamilyReversed() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().addFamily("info").add("info", "foo");
+    builder.build();
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumnWithFamilyIn2ColBuildersReversed() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().addFamily("info");
     builder.addColumns().add("info", "foo");
+    builder.build();
   }
 
   @Test(expected=IllegalArgumentException.class)
@@ -207,5 +215,14 @@ public class TestKijiDataRequestBuilder {
     columns.add("info", "foo").withMaxVersions(5);
     builder.build();
     builder.build(); // This should explode.
+  }
+
+  @Test
+  public void testChaining() {
+    final KijiDataRequest kdr = KijiDataRequest.builder()
+        .addColumns(ColumnsDef.create().withMaxVersions(10).addFamily("info"))
+        .addColumns(ColumnsDef.create().add("users", "details"))
+        .build();
+    assertEquals(2, kdr.getColumns().size());
   }
 }

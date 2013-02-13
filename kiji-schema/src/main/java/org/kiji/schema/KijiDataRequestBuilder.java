@@ -19,12 +19,11 @@
 
 package org.kiji.schema;
 
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import org.kiji.annotations.ApiAudience;
@@ -95,28 +94,19 @@ import org.kiji.schema.filter.KijiColumnFilter;
 public final class KijiDataRequestBuilder {
 
   /** Column builders associated with this data request builder. */
-  private Set<ColumnsDef> mColBuilders;
-
-  /** Set of fully-qualified column names attached to the data request builder. */
-  private Set<KijiColumnName> mQualifiers;
-
-  /** Set of map-type families explicitly attached to the data request builder. */
-  private Set<KijiColumnName> mFamilies;
-
-  /** Set of families represented by columns in mQualifiers. */
-  private Set<KijiColumnName> mFamiliesFromQualifiers;
+  private Set<ColumnsDef> mColumnsDefs = Sets.newHashSet();
 
   /** The minimum timestamp of cells to be read (inclusive). */
-  private long mMinTimestamp;
+  private long mMinTimestamp = KConstants.BEGINNING_OF_TIME;
 
   /** The maximum timestamp of cells to be read (exclusive). */
-  private long mMaxTimestamp;
+  private long mMaxTimestamp = KConstants.END_OF_TIME;
 
   /** True if the user already set timestamp range. */
   private boolean mIsTimeRangeSet;
 
   /** True if we already built an object. */
-  private boolean mIsBuilt;
+  private boolean mIsBuilt = false;
 
   /**
    * Defines properties associated with one or more columns in a request for Kiji table columns.
@@ -138,36 +128,43 @@ public final class KijiDataRequestBuilder {
    * KijiDataRequest.</p>
    */
   @ApiAudience.Public
-  public final class ColumnsDef {
+  public static final class ColumnsDef {
+    /** Becomes true when the columns are built. */
+    private boolean mBuilt = false;
 
     /** The maximum number of versions from the column to read (of the most recent). */
-    private Integer mMaxVersions;
+    private Integer mMaxVersions = null;
 
     /** A column filter (may be null). */
-    private KijiColumnFilter mFilter;
-    private boolean mFilterInitialized;
+    private KijiColumnFilter mFilter = null;
+
+    /** Becomes true once the filter is set. */
+    private boolean mFilterInitialized = false;
 
     /** The number of cells per page (zero means no paging). */
     private Integer mPageSize;
 
-    /** Columns in the KijiDataRequest to create from this column builder. */
-    private Set<KijiColumnName> mMyColumns;
+    /** Columns in this definition. */
+    private List<KijiColumnName> mColumns = Lists.newArrayList();
 
-    /**
-     * Creates a new requested <code>ColumnsDef</code> builder.
-     */
+    /** Creates a new requested <code>ColumnsDef</code> builder. */
     private ColumnsDef() {
-      mMyColumns = new HashSet<KijiColumnName>();
+    }
+
+    /** @return a new builder for column definitions. */
+    public static ColumnsDef create() {
+      return new ColumnsDef();
     }
 
     /** @return true if the user has already started assigning columns to this builder. */
     private boolean assignedColumns() {
-      return !mMyColumns.isEmpty();
+      return !mColumns.isEmpty();
     }
 
     /** If the user has assigned columns to this builder, throw IllegalStateException. */
     private void checkNoCols() {
-      checkNotBuilt();
+      Preconditions.checkState(!mBuilt,
+          "ColumnsDef cannot be used once buildColumns() had been called.");
       Preconditions.checkState(!assignedColumns(),
           "Properties of the columns builder cannot be changed once columns are assigned to it.");
     }
@@ -238,7 +235,6 @@ public final class KijiDataRequestBuilder {
       Preconditions.checkNotNull(family);
       Preconditions.checkArgument(!family.contains(":"),
           "Family name cannot contain ':', but got '%s'.", family);
-
       return add(new KijiColumnName(family, null));
     }
 
@@ -260,39 +256,13 @@ public final class KijiDataRequestBuilder {
      * KijiDataRequestBuilder.ColumnsDef object. Once you call this method, you may not
      * call property-setting methods like withPageSize() on this same object.
      *
-     * @param colName the column name to retrieve.
+     * @param column the column name to retrieve.
      * @return this column request builder instance.
      */
-    public ColumnsDef add(KijiColumnName colName) {
-      checkNotBuilt();
-
-      if (colName.isFullyQualified()) {
-        // Handle the info:foo case.
-        KijiColumnName associatedFamily = new KijiColumnName(colName.getFamily());
-        if (mQualifiers.contains(colName)) {
-          throw new IllegalArgumentException("You cannot specify the same column multiple "
-              + "times in the same KijiDataRequest.");
-        } else if (mFamilies.contains(associatedFamily)) {
-          throw new IllegalArgumentException("You cannot specify a column individually "
-              + "after requesting the entire column family in the same KijiDataRequest");
-        }
-
-        mQualifiers.add(colName);
-        mFamiliesFromQualifiers.add(associatedFamily);
-      } else {
-        // Handle the info:* case.
-        if (mFamiliesFromQualifiers.contains(colName)) {
-          throw new IllegalArgumentException("You cannot specify a map-type column family "
-              + "after requesting individual columns from that family in the same KijiDataRequest");
-        } else if (mFamilies.contains(colName)) {
-          throw new IllegalArgumentException("You cannot specify the same map-type column family "
-              + "more than once in the same KijiDataRequest");
-        }
-
-        mFamilies.add(colName);
-      }
-
-      mMyColumns.add(colName);
+    public ColumnsDef add(KijiColumnName column) {
+      Preconditions.checkState(!mBuilt,
+          "Cannot add more columns to this ColumnsDef after build() has been called.");
+      mColumns.add(column);
       return this;
     }
 
@@ -313,13 +283,12 @@ public final class KijiDataRequestBuilder {
         mMaxVersions = 1;
       }
 
-      List<KijiDataRequest.Column> cols = new ArrayList<KijiDataRequest.Column>();
-      for (KijiColumnName name : mMyColumns) {
-        cols.add(new KijiDataRequest.Column(name.getFamily(),
-            name.getQualifier(), mMaxVersions, mFilter, mPageSize));
+      final List<KijiDataRequest.Column> columns = Lists.newArrayListWithCapacity(mColumns.size());
+      for (KijiColumnName column: mColumns) {
+        columns.add(new KijiDataRequest.Column(
+            column.getFamily(), column.getQualifier(), mMaxVersions, mFilter, mPageSize));
       }
-
-      return cols;
+      return columns;
     }
   }
 
@@ -328,14 +297,6 @@ public final class KijiDataRequestBuilder {
    * instance of this.
    */
   KijiDataRequestBuilder() {
-    mColBuilders = Sets.newHashSet();
-
-    mQualifiers = Sets.newHashSet();
-    mFamilies = Sets.newHashSet();
-    mFamiliesFromQualifiers = Sets.newHashSet();
-
-    mMinTimestamp = KConstants.BEGINNING_OF_TIME;
-    mMaxTimestamp = KConstants.END_OF_TIME;
   }
 
   /**
@@ -374,7 +335,7 @@ public final class KijiDataRequestBuilder {
   public ColumnsDef addColumns() {
     checkNotBuilt();
     final ColumnsDef c = new ColumnsDef();
-    mColBuilders.add(c);
+    mColumnsDefs.add(c);
     return c;
   }
 
@@ -404,6 +365,17 @@ public final class KijiDataRequestBuilder {
   }
 
   /**
+   * Defines another set of columns in the KijiDataRequest.
+   *
+   * @param def A columns definition using ColumnsDef.
+   * @return this KijiDataRequest builder.
+   */
+  public KijiDataRequestBuilder addColumns(ColumnsDef def) {
+    mColumnsDefs.add(def);
+    return this;
+  }
+
+  /**
    * Construct a new KijiDataRequest based on the configuration specified in this builder
    * and its associated column builders.
    *
@@ -415,11 +387,38 @@ public final class KijiDataRequestBuilder {
   public KijiDataRequest build() {
     checkNotBuilt();
     mIsBuilt = true;
-    final List<KijiDataRequest.Column> outColumns = new ArrayList<KijiDataRequest.Column>();
-    for (ColumnsDef colBuilder : mColBuilders) {
-      outColumns.addAll(colBuilder.buildColumns());
+
+    // Entire families:
+    final Set<String> families = Sets.newHashSet();
+
+    // Fully qualified columns:
+    final Set<KijiColumnName> columns = Sets.newHashSet();
+    final Set<String> familiesOfColumns = Sets.newHashSet();
+
+    final List<KijiDataRequest.Column> requestedColumns = Lists.newArrayList();
+    for (ColumnsDef columnsDef : mColumnsDefs) {
+      for (KijiDataRequest.Column column : columnsDef.buildColumns()) {
+        if (column.getQualifier() == null) {
+          Preconditions.checkState(families.add(column.getFamily()),
+              "Duplicate definition for family '%s'.", column.getFamily());
+          Preconditions.checkState(!familiesOfColumns.contains(column.getFamily()),
+              "KijiDataRequest may not simultaneously contain definitions for family '%s' "
+              + "and definitions for fully qualified columns in family '%s'.",
+              column.getFamily(), column.getFamily());
+
+        } else {
+          Preconditions.checkState(!families.contains(column.getFamily()),
+              "KijiDataRequest may not simultaneously contain definitions for family '%s' "
+              + "and definitions for fully qualified columns '%s'.",
+              column.getFamily(), column.getColumnName());
+          Preconditions.checkState(columns.add(column.getColumnName()),
+              "Duplicate definition for column '%s'.", column);
+          familiesOfColumns.add(column.getFamily());
+        }
+        requestedColumns.add(column);
+      }
     }
-    return new KijiDataRequest(outColumns, mMinTimestamp, mMaxTimestamp);
+    return new KijiDataRequest(requestedColumns, mMinTimestamp, mMaxTimestamp);
   }
 
   /**
