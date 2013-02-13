@@ -92,6 +92,7 @@ public class TestKijiDataRequestBuilder {
         req1, req2);
   }
 
+  @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumn() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.addColumns().add("info", "foo").add("info", "foo");
@@ -224,5 +225,18 @@ public class TestKijiDataRequestBuilder {
         .addColumns(ColumnsDef.create().add("users", "details"))
         .build();
     assertEquals(2, kdr.getColumns().size());
+    final KijiDataRequest.Column infoCol = kdr.getColumn("info", null);
+    assertEquals("info", infoCol.getFamily());
+    assertEquals(null, infoCol.getQualifier());
+    final KijiDataRequest.Column usersDetailsCol = kdr.getColumn("users", "details");
+    assertEquals("users", usersDetailsCol.getFamily());
+    assertEquals("details", usersDetailsCol.getQualifier());
+  }
+
+  @Test(expected=IllegalStateException.class)
+  public void testNoColumnsDefReuse() {
+    final ColumnsDef cols = ColumnsDef.create().withMaxVersions(10).addFamily("info");
+    KijiDataRequest.builder().addColumns(cols).build();  // seals cols
+    KijiDataRequest.builder().addColumns(cols).build();  // fails as cols is already sealed.
   }
 }

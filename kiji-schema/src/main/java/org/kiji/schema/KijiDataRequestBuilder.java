@@ -80,6 +80,18 @@ import org.kiji.schema.filter.KijiColumnFilter;
  * KijiDataRequest req = builder.build();
  * </pre>
  *
+ * This can also be written as:
+ * <pre>
+ * final KijiDataRequest req = KijiDataRequest.build()
+ *     .addColumns(KijiDataRequestBuilder.ColumnsDef.create()
+ *         .withMaxVerions(42)
+ *         .add("info", "foo")
+ *         .add("info", "bar")
+ *         .add("info", "baz")
+ *         .addFamily("products"))
+ *     .build();
+ * </pre>
+ *
  * <p>To add <tt>fam1:col1</tt>, <tt>fam1:col2</tt>, and <tt>fam2:*</tt>, each with
  * different retrieval properties to the same request, do the following:</p>
  * <pre>
@@ -129,8 +141,8 @@ public final class KijiDataRequestBuilder {
    */
   @ApiAudience.Public
   public static final class ColumnsDef {
-    /** Becomes true when the columns are built. */
-    private boolean mBuilt = false;
+    /** Becomes true when the columns definition is sealed. */
+    private boolean mSealed = false;
 
     /** The maximum number of versions from the column to read (of the most recent). */
     private Integer mMaxVersions = null;
@@ -163,8 +175,8 @@ public final class KijiDataRequestBuilder {
 
     /** If the user has assigned columns to this builder, throw IllegalStateException. */
     private void checkNoCols() {
-      Preconditions.checkState(!mBuilt,
-          "ColumnsDef cannot be used once buildColumns() had been called.");
+      Preconditions.checkState(!mSealed,
+          "ColumnsDef cannot be used once KijiDataRequestBuilder.build() had been called.");
       Preconditions.checkState(!assignedColumns(),
           "Properties of the columns builder cannot be changed once columns are assigned to it.");
     }
@@ -260,10 +272,20 @@ public final class KijiDataRequestBuilder {
      * @return this column request builder instance.
      */
     public ColumnsDef add(KijiColumnName column) {
-      Preconditions.checkState(!mBuilt,
+      Preconditions.checkState(!mSealed,
           "Cannot add more columns to this ColumnsDef after build() has been called.");
       mColumns.add(column);
       return this;
+    }
+
+    /**
+     * Seals this columns definition.
+     *
+     * The definition becomes immutable, and the only method call allowed from there on is build().
+     */
+    private void seal() {
+      Preconditions.checkState(!mSealed);
+      mSealed = true;
     }
 
     /**
@@ -273,6 +295,10 @@ public final class KijiDataRequestBuilder {
      *     output KijiDataRequest instance.
      */
     private List<KijiDataRequest.Column> buildColumns() {
+      if (!mSealed) {
+        mSealed = true;
+      }
+
       // Values not previously initialized are now set to default values.
       // This builder is immutable after this method is called, so this is ok.
       if (mPageSize == null) {
@@ -365,12 +391,18 @@ public final class KijiDataRequestBuilder {
   }
 
   /**
-   * Defines another set of columns in the KijiDataRequest.
+   * Adds another set of column definitions to this KijiDataRequest builder.
    *
-   * @param def A columns definition using ColumnsDef.
+   * <p>Columns added in this manner must not redefine any column definitions already included in
+   * the KijiDataRequestBuilder. It is an error to add a ColumnsDef instance to multiple
+   * KijiDataRequestBuilders.
+   *
+   * @param def A set of column definitions contained in a {@link KijiDataRequest.ColumnsDef}
+   *     instance.
    * @return this KijiDataRequest builder.
    */
   public KijiDataRequestBuilder addColumns(ColumnsDef def) {
+    def.seal();
     mColumnsDefs.add(def);
     return this;
   }
@@ -388,31 +420,36 @@ public final class KijiDataRequestBuilder {
     checkNotBuilt();
     mIsBuilt = true;
 
-    // Entire families:
+    // Entire families for which a definition has been recorded:
     final Set<String> families = Sets.newHashSet();
 
-    // Fully qualified columns:
+    // Fully-qualified columns for which a definition has been recorded:
     final Set<KijiColumnName> columns = Sets.newHashSet();
+
+    // Families of fully-qualified columns for which definitions have been recorded:
     final Set<String> familiesOfColumns = Sets.newHashSet();
 
     final List<KijiDataRequest.Column> requestedColumns = Lists.newArrayList();
     for (ColumnsDef columnsDef : mColumnsDefs) {
       for (KijiDataRequest.Column column : columnsDef.buildColumns()) {
         if (column.getQualifier() == null) {
-          Preconditions.checkState(families.add(column.getFamily()),
+          final boolean isNotDuplicate = families.add(column.getFamily());
+          Preconditions.checkState(isNotDuplicate,
               "Duplicate definition for family '%s'.", column.getFamily());
+
           Preconditions.checkState(!familiesOfColumns.contains(column.getFamily()),
               "KijiDataRequest may not simultaneously contain definitions for family '%s' "
               + "and definitions for fully qualified columns in family '%s'.",
               column.getFamily(), column.getFamily());
 
         } else {
+          final boolean isNotDuplicate = columns.add(column.getColumnName());
+          Preconditions.checkState(isNotDuplicate, "Duplicate definition for column '%s'.", column);
+
           Preconditions.checkState(!families.contains(column.getFamily()),
               "KijiDataRequest may not simultaneously contain definitions for family '%s' "
               + "and definitions for fully qualified columns '%s'.",
               column.getFamily(), column.getColumnName());
-          Preconditions.checkState(columns.add(column.getColumnName()),
-              "Duplicate definition for column '%s'.", column);
           familiesOfColumns.add(column.getFamily());
         }
         requestedColumns.add(column);
