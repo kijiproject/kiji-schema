@@ -19,15 +19,16 @@
 
 package org.kiji.schema.tools;
 
-import java.io.IOException;
 import java.util.List;
+
+import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
+import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.util.ProtocolVersion;
-import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 
 
@@ -38,11 +39,10 @@ import org.kiji.schema.util.VersionInfo;
 @ApiAudience.Private
 public final class VersionTool extends BaseTool {
 
-  @Flag(name="kiji", usage="The KijiURI of the instance from which to get a version.")
-  private String mKijiURIString;
+  @Flag(name="kiji", usage="URI of the Kiji instance to print the version of.")
+  private String mKijiURIFlag = KConstants.DEFAULT_URI;
 
-  private Kiji mKiji;
-  private KijiURI mURI;
+  private KijiURI mKijiURI = null;
 
   /** {@inheritDoc} */
   @Override
@@ -62,80 +62,34 @@ public final class VersionTool extends BaseTool {
     return "Help";
   }
 
-  /**
-   * Opens a kiji instance.
-   *
-   * @return The opened kiji.
-   * @throws IOException if there is an error.
-   */
-  private Kiji openKiji() throws IOException {
-    return Kiji.Factory.open(getURI(), getConf());
-  }
-
-  /**
-   * Retrieves the kiji instance used by this tool. On the first call to this method,
-   * the kiji instance will be opened and will remain open until {@link #cleanup()} is called.
-   *
-   * @return The kiji instance.
-   * @throws IOException if there is an error loading the kiji.
-   */
-  protected synchronized Kiji getKiji() throws IOException {
-    if (null == mKiji) {
-      mKiji = openKiji();
-    }
-    return mKiji;
-  }
-
-  /**
-   * Returns the kiji URI of the target this tool operates on.
-   *
-   * @return The kiji URI of the target this tool operates on.
-   */
-  protected KijiURI getURI() {
-    if (null == mURI) {
-      getPrintStream().println("No URI specified.");
-    }
-    return mURI;
-  }
-
-  /**
-   * Sets the kiji URI of the target this tool operates on.
-   *
-   * @param uri The kiji URI of the target this tool should operate on.
-   */
-  protected void setURI(KijiURI uri) {
-    if (null == mURI) {
-      mURI = uri;
-    } else {
-      getPrintStream().printf("URI is already set to: %s", mURI.toString());
-    }
-  }
-
   /** {@inheritDoc} */
   @Override
-  protected void setup() {
-    setURI(parseURI(mKijiURIString));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void cleanup() {
-    ResourceUtils.releaseOrLog(mKiji);
+  protected void setup() throws Exception {
+    Preconditions.checkArgument((mKijiURIFlag != null) && !mKijiURIFlag.isEmpty(),
+        "Specify the Kiji instance to uninstall with --kiji=kiji://hbase-address/kiji-instance");
+    mKijiURI = KijiURI.newBuilder(mKijiURIFlag).build();
+    Preconditions.checkArgument(mKijiURI.getInstance() != null,
+        "Specify the Kiji instance to uninstall with --kiji=kiji://hbase-address/kiji-instance");
   }
 
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    String clientSoftwareVersion = VersionInfo.getSoftwareVersion();
+    final String clientSoftwareVersion = VersionInfo.getSoftwareVersion();
     getPrintStream().println("kiji client software version: " + clientSoftwareVersion);
 
-    ProtocolVersion clientDataVersion = VersionInfo.getClientDataVersion();
+    final ProtocolVersion clientDataVersion = VersionInfo.getClientDataVersion();
     getPrintStream().println("kiji client data version: " + clientDataVersion);
 
-    ProtocolVersion clusterDataVersion = VersionInfo.getClusterDataVersion(getKiji());
-    getPrintStream().println("kiji cluster data version: " + clusterDataVersion);
+    final Kiji kiji = Kiji.Factory.open(mKijiURI);
+    try {
+      final ProtocolVersion clusterDataVersion = VersionInfo.getClusterDataVersion(kiji);
+      getPrintStream().println("kiji cluster data version: " + clusterDataVersion);
+    } finally {
+      kiji.release();
+    }
 
-    return 0;
+    return SUCCESS;
   }
 
   /**

@@ -102,8 +102,7 @@ public final class PutTool extends BaseTool {
     Preconditions.checkArgument((mColumnURIFlag != null) && !mColumnURIFlag.isEmpty(),
         "Specify a target table to write synthesized data to with "
         + "--table=kiji://hbase-address/kiji-instance/table");
-
-    mColumnURI = parseURI(mColumnURIFlag);
+    mColumnURI = KijiURI.newBuilder(mColumnURIFlag).build();
     Preconditions.checkArgument(mColumnURI.getTable() != null,
         "No table specified in target URI '{}'. "
         + "Specify a target table to write synthesized data to with "
@@ -140,12 +139,12 @@ public final class PutTool extends BaseTool {
             writer.put(entityId, column.getFamily(), column.getQualifier(), value);
           } catch (NumberFormatException nfe) {
             LOG.error("Could not parse value flag to a long: " + nfe.getMessage());
-            return 1;
+            return FAILURE;
           }
         } else {
           LOG.error("Counters do not support writing to a specific timestamp."
               + "  Remove the \"timestamp\" flag.");
-          return 1;
+          return FAILURE;
         }
       } else {
         // Get writer schema.
@@ -156,14 +155,14 @@ public final class PutTool extends BaseTool {
             mSchema = new Schema.Parser().parse(mSchemaFlag);
           } catch (AvroRuntimeException are) {
             LOG.error("Could not parse writer schema: " + are.toString());
-            return 1;
+            return FAILURE;
           }
         } else {
           try {
             mSchema = mTable.getLayout().getSchema(column);
           } catch (Exception e) {
             LOG.error(e.getMessage());
-            return 1;
+            return FAILURE;
           }
         }
         Preconditions.checkNotNull(mSchema);
@@ -184,7 +183,7 @@ public final class PutTool extends BaseTool {
       writer.close();
     }
 
-    return 0;  // success
+    return SUCCESS;
   }
 
   /**

@@ -22,12 +22,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
+
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.specific.SpecificDatumReader;
-import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hbase.HConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,7 +38,6 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.impl.MetadataRestorer;
 import org.kiji.schema.util.ProtocolVersion;
-import org.kiji.schema.util.ResourceUtils;
 
 /**
  * A tool to backup and restore Metadata.
@@ -48,23 +46,24 @@ public class MetadataTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(MetadataTool.class);
   private MetadataRestorer mRestorer = new MetadataRestorer();
 
-  @Flag(name="kiji", usage="The KijiURI of the instance to use.")
-  private String mKijiURIString = String.format("kiji://.env/%s",
-      KConstants.DEFAULT_INSTANCE_NAME);
+  @Flag(name="kiji", usage="URI of the Kiji instance to use.")
+  private String mKijiURIFlag = KConstants.DEFAULT_URI;
+
   @Flag(name = "backup", usage = "Output filename for Kiji metadata")
-  private String mOutFile = "";
+  private String mOutFile = null;
+
   @Flag(name = "restore", usage = "Input filename to restore Kiji metadata from")
-  private String mInFile = "";
+  private String mInFile = null;
+
   // The following flags specify whether only certain parts of the backup should be restored.
   @Flag(name = "tables", usage = "Restore table definitions")
-  private boolean mAllTables;
-  @Flag(name = "schemas", usage = "Restore schema definitions")
-  private boolean mSchemas;
+  private boolean mAllTables = false;
 
-  /** Opened Kiji to use. */
-  private Kiji mKiji;
-  /** KijiURI of the target instance. */
-  private KijiURI mURI;
+  @Flag(name = "schemas", usage = "Restore schema definitions")
+  private boolean mSchemas = false;
+
+  /** URI of the Kiji instance. */
+  private KijiURI mKijiURI = null;
 
   /** {@inheritDoc} */
   @Override
@@ -102,8 +101,7 @@ public class MetadataTool extends BaseTool {
    * @param kiji the Kiji instance to restore to.
    * @throws IOException when an error communicating with HBase or the file system occurs.
    */
-  private void restoreMetadata(String inputFile, Kiji kiji)
-    throws IOException {
+  private void restoreMetadata(String inputFile, Kiji kiji) throws IOException {
     LOG.debug("Restoring metadata...");
     final File file = new File(inputFile);
     if (!file.exists()) {
@@ -151,119 +149,67 @@ public class MetadataTool extends BaseTool {
     getPrintStream().println("Restore complete.");
   }
 
-  /**
-   * Opens a kiji instance.
-   *
-   * @return The opened kiji.
-   * @throws IOException if there is an error.
-   */
-  private Kiji openKiji() throws IOException {
-    return Kiji.Factory.open(getURI(), getConf());
-  }
-
-  /**
-   * Retrieves the kiji instance used by this tool. On the first call to this method,
-   * the kiji instance will be opened and will remain open until {@link #cleanup()} is called.
-   *
-   * @return The kiji instance.
-   * @throws IOException if there is an error loading the kiji.
-   */
-  protected synchronized Kiji getKiji() throws IOException {
-    if (null == mKiji) {
-      mKiji = openKiji();
-    }
-    return mKiji;
-  }
-
-  /**
-   * Returns the kiji URI of the target this tool operates on.
-   *
-   * @return The kiji URI of the target this tool operates on.
-   */
-  protected KijiURI getURI() {
-    if (null == mURI) {
-      getPrintStream().println("No URI specified.");
-    }
-    return mURI;
-  }
-
-  /**
-   * Sets the kiji URI of the target this tool operates on.
-   *
-   * @param uri The kiji URI of the target this tool should operate on.
-   */
-  protected void setURI(KijiURI uri) {
-    if (null == mURI) {
-      mURI = uri;
-    } else {
-      getPrintStream().printf("URI is already set to: %s", mURI.toString());
-    }
-  }
-
   /** {@inheritDoc} */
   @Override
-  protected void setup() {
-    setURI(parseURI(mKijiURIString));
-    getConf().setInt(HConstants.ZOOKEEPER_CLIENT_PORT, mURI.getZookeeperClientPort());
-    getConf().set(HConstants.ZOOKEEPER_QUORUM,
-        Joiner.on(",").join(mURI.getZookeeperQuorumOrdered()));
-    setConf(HBaseConfiguration.addHbaseResources(getConf()));
-  }
+  protected void setup() throws Exception {
+    Preconditions.checkArgument((mKijiURIFlag != null) && !mKijiURIFlag.isEmpty(),
+        "Specify the Kiji instance to uninstall with --kiji=kiji://hbase-address/kiji-instance");
+    mKijiURI = KijiURI.newBuilder(mKijiURIFlag).build();
+    Preconditions.checkArgument(mKijiURI.getInstance() != null,
+        "Specify the Kiji instance to uninstall with --kiji=kiji://hbase-address/kiji-instance");
 
-  /** {@inheritDoc} */
-  @Override
-  protected void cleanup() {
-    ResourceUtils.releaseOrLog(mKiji);
+    final boolean isRestore = (mInFile != null) && !mInFile.isEmpty();
+    final boolean isBackup = (mOutFile != null) && !mOutFile.isEmpty();
+    Preconditions.checkArgument(!isRestore && !isBackup,
+        "Specify exactly one of --backup and --restore.");
+    Preconditions.checkArgument(isRestore && isBackup,
+        "Cannot specify both --backup and --restore simultaneously. "
+        + "Specify exactly one of --backup and --restore.");
   }
 
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    if (mOutFile.isEmpty() && mInFile.isEmpty()) {
-      getPrintStream().println(
-        "Must use one of --backup or --restore. See --help for details.");
-      return 1;
-    }
-
-    if (!mOutFile.isEmpty() && !mInFile.isEmpty()) {
-      getPrintStream().println("Cannot do both --backup and --restore. See --help for details.");
-      return 1;
-    }
-
-    Kiji kiji = getKiji();
-    if (!mOutFile.isEmpty()) {
-      try {
-        mRestorer.exportMetadata(mOutFile, kiji);
-      } catch (IOException ioe) {
-        getPrintStream().println("Error performing backup: " + ioe.getMessage());
-        getPrintStream().println("(Backup failed.)");
-        return 1;
-      }
-    } else {
-      assert !mInFile.isEmpty();
+    final Kiji kiji = Kiji.Factory.open(mKijiURI);
+    try {
+      if ((mOutFile != null) && !mOutFile.isEmpty()) {
+        try {
+          mRestorer.exportMetadata(mOutFile, kiji);
+        } catch (IOException ioe) {
+          getPrintStream().println("Error performing backup: " + ioe.getMessage());
+          getPrintStream().println("(Backup failed.)");
+          return FAILURE;
+        }
+      } else if ((mInFile != null) && !mInFile.isEmpty()) {
         if (isInteractive()) {
           if (!yesNoPrompt("Are you sure you want to restore metadata from backup? \n"
             + "This will delete your current metatable. ")) {
             getPrintStream().println("No metadata restore operation performed.");
-            return 1;
+            return FAILURE;
           }
         }
-      try {
-        getPrintStream().println("Restoring Metadata from backup.");
-        initRestoreOps();
-        restoreMetadata(mInFile, kiji);
-      } catch (IOException ioe) {
-        getPrintStream().println("Error performing restore: " + ioe.getMessage());
-        getPrintStream().println("(Restore failed.)");
-        return 1;
-      } catch (Exception re) {
-        getPrintStream().println(re.getMessage());
-        getPrintStream().println("(Restore failed.)");
-        return 1;
-      }
-    }
+        try {
+          getPrintStream().println("Restoring Metadata from backup.");
+          initRestoreOps();
+          restoreMetadata(mInFile, kiji);
 
-    return 0;
+        } catch (IOException ioe) {
+          getPrintStream().println("Error performing restore: " + ioe.getMessage());
+          getPrintStream().println("(Restore failed.)");
+          return FAILURE;
+
+        } catch (Exception re) {
+          getPrintStream().println(re.getMessage());
+          getPrintStream().println("(Restore failed.)");
+          return FAILURE;
+        }
+      } else {
+        throw new RuntimeException("Internal error: dead code.");
+      }
+    } finally {
+      kiji.release();
+    }
+    return SUCCESS;
   }
 
   /**

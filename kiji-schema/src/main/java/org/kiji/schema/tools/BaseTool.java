@@ -34,32 +34,27 @@ import org.kiji.annotations.Inheritance;
 import org.kiji.common.flags.Flag;
 import org.kiji.common.flags.FlagParser;
 import org.kiji.schema.KijiNotInstalledException;
-import org.kiji.schema.KijiURI;
-import org.kiji.schema.KijiURIException;
 
 /**
- * Base class for all command line tools. A kiji command line tool operates on a kiji instance,
- * specified through a {@link KijiURI} via the command-line.
+ * Base class for all Kiji command line tools.
  *
  * A command line tool, executed via {@link KijiToolLauncher}, will perform these steps when run:
  * <ol>
- *   <li>Parse command-line flags to the tool and set the appropriate fields. Subclasses
- *   wishing to add flags to a tool should use the {@link Flag} annotation.</li>
- *   <li>Use the kiji URI specified via the command line to initialize the instance's
- *   configuration with hbase connection parameters and hbase resources.</li>
- *   <li>Run the {@link #validateFlags()} method. Subclasses wishing to validate custom
- *   command-line arguments should override this method
- *   but take care to call <code>super.validateFlags()</code></li>
- *   <li>Run the {@link #setup()} method. Subclasses wishing to implement custom setup logic
- *   should override this method but take care to call <code>super.setup()</code></li>
- *   <li>Run the {@link #run(java.util.List)} method. Subclasses should implement their main
- *   command logic here. The argument to <code>run</code> is a {@link String} list of
- *   arguments passed that were not arguments to the Hadoop framework or flags specified via
- *   {@link Flag} annotations.</li>
- *   <li>Run the {@link #cleanup()} method. Subclasses wishing to implement custom cleanup
- *   logic should override this method but take care to call <code>super.cleanup</code>.
- *   <code>cleanup</code> will run even if there is an exception while executing <code>setup</code>
- *   or <code>run</code>.
+ *   <li> Parse command-line flags to the tool and set the appropriate fields. Subclasses
+ *     wishing to add flags to a tool should use the {@link Flag} annotation.</li>
+ *   <li> Run the {@link #validateFlags()} method. Subclasses wishing to validate custom
+ *     command-line arguments should override this method but take care to call
+ *     <code>super.validateFlags()</code></li>
+ *   <li> Run the {@link #setup()} method. Subclasses wishing to implement custom setup logic
+ *     should override this method but take care to call <code>super.setup()</code></li>
+ *   <li> Run the {@link #run(java.util.List)} method. Subclasses should implement their main
+ *     command logic here. The argument to <code>run</code> is a {@link String} list of
+ *     arguments passed that were not arguments to the Hadoop framework or flags specified via
+ *     {@link Flag} annotations.</li>
+ *   <li> Run the {@link #cleanup()} method. Subclasses wishing to implement custom cleanup
+ *     logic should override this method but take care to call <code>super.cleanup</code>.
+ *     <code>cleanup</code> will run even if there is an exception while executing
+ *     <code>setup</code> or <code>run</code>.
  * </ol>
  *
  * Tools needing to prompt the user for a yes/no answer should use the {@link #yesNoPrompt} method.
@@ -197,23 +192,6 @@ public abstract class BaseTool extends Configured implements KijiTool {
    * @throws Exception If there is an error.
    */
   protected abstract int run(List<String> nonFlagArgs) throws Exception;
-
-  /** Parse a URI String to a KijiURI.
-   *
-   * @param uri String of uri to parse into KijiURI.
-   * @return KijiURI from uri or null if invalid
-   * @deprecated Use KijiURI builders directly.
-   */
-  @Deprecated
-  protected KijiURI parseURI(String uri) {
-    try {
-      return KijiURI.newBuilder(uri).build();
-    } catch (KijiURIException kue) {
-      getPrintStream().println(
-          String.format("Invalid KijiURI: %s%n%s", uri, kue.getMessage()));
-    }
-    return null;
-  }
 
   /**
    * The output print stream the tool should be writing to.
