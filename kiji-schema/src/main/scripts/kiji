@@ -212,6 +212,21 @@ if [ -d "${HADOOP_HOME}/lib/native" ]; then
   fi
 fi
 
+# Before running the command, update the "last used" timestamp to use with the upgrade
+# check-in server, if we are running inside a Kiji BentoBox. We know we're running in
+# a Kiji BentoBox if the timestamp generation script exists.
+usage_timestamp_script="${bin}/record-usage-timestamp.sh"
+if [ -f "${usage_timestamp_script}" -a -x "${usage_timestamp_script}" ]; then
+  "${usage_timestamp_script}"
+fi
+
+# If we're running in a Kiji BentoBox, inform the user of any BentoBox upgrades that
+# are available.
+upgrade_informer_script="${bin}/upgrade-informer.sh"
+if [ -f "${upgrade_informer_script}" -a -x "${upgrade_informer_script}" ]; then
+  "${upgrade_informer_script}"
+fi
+
 command=$1
 foreground=true # Run command in the foreground.
 
