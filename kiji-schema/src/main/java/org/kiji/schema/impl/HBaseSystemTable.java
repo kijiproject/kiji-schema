@@ -20,6 +20,8 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.AbstractMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 
@@ -33,6 +35,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -43,8 +46,10 @@ import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.TableKeyNotFoundException;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
+import org.kiji.schema.util.CloseableIterable;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * <p>The Kiji system table that is stored in HBase.</p>
@@ -189,6 +194,12 @@ public class HBaseSystemTable extends KijiSystemTable {
     mTable.put(put);
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public CloseableIterable<AbstractMap.SimpleEntry<String, byte[]>> getAll() throws IOException {
+    return new HBaseSystemTableIterable(mTable.getScanner(Bytes.toBytes(VALUE_COLUMN_FAMILY)));
+  }
+
   /**
    * Load the system table with the key/value pairs from the properties file named by resource.
    *
@@ -255,5 +266,79 @@ public class HBaseSystemTable extends KijiSystemTable {
         KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString();
     admin.disableTable(tableName);
     admin.deleteTable(tableName);
+  }
+
+  /** Private class for providing a CloseableIterable over system table key, value pairs. */
+  private static class HBaseSystemTableIterable
+      implements CloseableIterable<AbstractMap.SimpleEntry<String, byte[]>> {
+
+    /** Uderlying source of system table parameters. */
+    private ResultScanner mResultScanner;
+
+    /** Iterator returned by iterator(). */
+    private Iterator<AbstractMap.SimpleEntry<String, byte[]>> mIterator;
+
+    /**
+     * Create a new HBaseSystemTableIterable across system table properties.
+     *
+     * @param resultScanner scanner across the target cells.
+     */
+    public HBaseSystemTableIterable(ResultScanner resultScanner) {
+      mIterator = new HBaseSystemTableIterator(resultScanner.iterator());
+      mResultScanner = resultScanner;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Iterator<AbstractMap.SimpleEntry<String, byte[]>> iterator() {
+      return mIterator;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void close() {
+      ResourceUtils.closeOrLog(mResultScanner);
+    }
+  }
+
+  /** Private calss for providing an Iterator to HBaseSystemTableIterable. */
+  private static class HBaseSystemTableIterator
+      implements Iterator<AbstractMap.SimpleEntry<String, byte[]>> {
+
+    /**
+     * Iterator across result scanner results.
+     * Used to build next() for HBaseSystemTableIterator
+     */
+    private Iterator<Result> mResultIterator;
+
+    /**
+     * Create an HBaseSystemTableIterator across the results of a ResultScanner.
+     *
+     * @param resultScannerIterator iterator across the scanned cells.
+     */
+    public HBaseSystemTableIterator(Iterator<Result> resultScannerIterator) {
+      mResultIterator = resultScannerIterator;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean hasNext() {
+      return mResultIterator.hasNext();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public AbstractMap.SimpleEntry<String, byte[]> next() {
+      Result next = mResultIterator.next();
+      String key = Bytes.toString(next.getRow());
+      byte[] value = next.getValue(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0]);
+      return new AbstractMap.SimpleEntry(key, value);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException();
+    }
   }
 }
