@@ -62,8 +62,7 @@ public final class KijiNameValidator {
    * @param name The string to validate as a layout name.
    * @throws KijiInvalidNameException If the name is invalid.
    */
-  public static void validateLayoutName(CharSequence name)
-      throws KijiInvalidNameException {
+  public static void validateLayoutName(CharSequence name) {
     if (!isValidLayoutName(name)) {
       throw new KijiInvalidNameException("Invalid layout name: " + name);
     }
@@ -85,7 +84,7 @@ public final class KijiNameValidator {
    * @param name The string to validate as a layout name alias.
    * @throws KijiInvalidNameException If the name is invalid.
    */
-  public static void validateAlias(CharSequence name) throws KijiInvalidNameException {
+  public static void validateAlias(CharSequence name) {
     if (!isValidAlias(name)) {
       throw new KijiInvalidNameException("Invalid alias: " + name);
     }
@@ -105,8 +104,7 @@ public final class KijiNameValidator {
    * @param name The string to validate as a Kiji instance name.
    * @throws KijiInvalidNameException If the name is invalid.
    */
-  public static void validateKijiName(CharSequence name)
-      throws KijiInvalidNameException {
+  public static void validateKijiName(CharSequence name) {
     if (!isValidKijiName(name)) {
       throw new KijiInvalidNameException("Invalid instance name: " + name);
     }
