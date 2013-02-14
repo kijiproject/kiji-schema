@@ -22,8 +22,11 @@ package org.kiji.schema.tools;
 import java.io.IOException;
 import java.util.List;
 
+import com.google.common.base.Preconditions;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
+import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiInvalidNameException;
 import org.kiji.schema.KijiNotInstalledException;
@@ -35,11 +38,11 @@ import org.kiji.schema.KijiURI;
 @ApiAudience.Private
 public final class UninstallTool extends BaseTool {
 
-  @Flag(name="kiji", usage="KijiURI of the instance to uninstall.")
-  private String mKijiURIString;
+  @Flag(name="kiji", usage="URI of the Kiji instance to uninstall.")
+  private String mKijiURIFlag = KConstants.DEFAULT_URI;
 
-  /** KijiURI of the instance to uninstall. */
-  private KijiURI mURI;
+  /** URI of the Kiji instance to uninstall. */
+  private KijiURI mKijiURI;
 
   /** {@inheritDoc} */
   @Override
@@ -61,62 +64,41 @@ public final class UninstallTool extends BaseTool {
 
   /** {@inheritDoc} */
   @Override
+  protected void setup() throws Exception {
+    super.setup();
+    Preconditions.checkArgument((mKijiURIFlag != null) && !mKijiURIFlag.isEmpty(),
+        "Specify the Kiji instance to uninstall with --kiji=kiji://hbase-address/kiji-instance");
+    mKijiURI = KijiURI.newBuilder(mKijiURIFlag).build();
+    Preconditions.checkArgument(mKijiURI.getInstance() != null,
+        "Specify the Kiji instance to uninstall with --kiji=kiji://hbase-address/kiji-instance");
+  }
+
+  /** {@inheritDoc} */
+  @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    getPrintStream().println("Deleting kiji instance: " + getURI().toString());
+    getPrintStream().println("Deleting kiji instance: " + mKijiURI.toString());
     if (isInteractive())  {
       getPrintStream().println();
       if (!yesNoPrompt("Are you sure? This action will delete all meta and user data "
           + "from hbase and cannot be undone!")) {
         getPrintStream().println("Delete aborted.");
-        return 0;
+        return SUCCESS;
       }
     }
     try {
-      KijiInstaller.get().uninstall(getURI(), getConf());
-      getPrintStream().println("Deleted kiji instance: " + getURI().toString());
-      return 0;
+      KijiInstaller.get().uninstall(mKijiURI, getConf());
+      getPrintStream().println("Deleted kiji instance: " + mKijiURI.toString());
+      return SUCCESS;
     } catch (IOException ioe) {
       getPrintStream().println("Error performing I/O during uninstall: " + ioe.getMessage());
-      return 1;
+      return FAILURE;
     } catch (KijiInvalidNameException kine) {
       getPrintStream().println("Invalid Kiji instance: " + kine.getMessage());
-      return 1;
+      return FAILURE;
     } catch (KijiNotInstalledException knie) {
-      getPrintStream().printf("Kiji instance '%s' is not installed.%n", getURI());
-      return 1;
+      getPrintStream().printf("Kiji instance '%s' is not installed.%n", mKijiURI);
+      return FAILURE;
     }
-  }
-
-  /**
-   * Returns the kiji URI of the target this tool operates on.
-   *
-   * @return The kiji URI of the target this tool operates on.
-   */
-  protected KijiURI getURI() {
-    if (null == mURI) {
-      getPrintStream().println("No URI specified.");
-    }
-    return mURI;
-  }
-
-  /**
-   * Sets the kiji URI of the target this tool operates on.
-   *
-   * @param uri The kiji URI of the target this tool should operate on.
-   */
-  protected void setURI(KijiURI uri) {
-    if (null == mURI) {
-      mURI = uri;
-    } else {
-      getPrintStream().printf("URI is already set to: %s", mURI.toString());
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void setup() throws Exception {
-    super.setup();
-    setURI(parseURI(mKijiURIString));
   }
 
   /**
