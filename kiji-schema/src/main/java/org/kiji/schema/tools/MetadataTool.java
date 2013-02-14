@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.common.flags.Flag;
+import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiSystemTable;
@@ -38,6 +39,7 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.impl.MetadataRestorer;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * A tool to backup and restore Metadata.
@@ -204,10 +206,11 @@ public class MetadataTool extends BaseTool {
           return FAILURE;
         }
       } else {
-        throw new RuntimeException("Internal error: dead code.");
+        // Should be unreachable because preconditions catch this case.
+        throw new InternalKijiError("Neither input nor output file specified.");
       }
     } finally {
-      kiji.release();
+      ResourceUtils.releaseOrLog(kiji);
     }
     return SUCCESS;
   }
