@@ -19,16 +19,17 @@
 
 package org.kiji.schema;
 
-import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.util.KijiNameValidator;
 
 /**
  * A Kiji column name is composed of one or two parts: a family and a qualifier.
- * The qualifier is sometimes also referred to as the key.
- * If the column is of type map, the qualifier is null.
- * If the column is of type group, then the qualifier is required but may be empty.
+ * The qualifier is sometimes also referred to as the key and can be either of 
+ * map type or group type. If the column is of type group, the qualifier should 
+ * ideally match VALID_LAYOUT_PATTERN. Empty qualifiers are normalized to null.
+ * All qualifiers must match VALID_PRINTABLE_ASCII.
  */
 @ApiAudience.Public
 public final class KijiColumnName implements Comparable<KijiColumnName> {
@@ -52,12 +53,20 @@ public final class KijiColumnName implements Comparable<KijiColumnName> {
   private byte[] mQualifierBytes;
 
   /**
-   * Constructs a column name from a string "family" or "family:qualifier".
+   * Constructs a column name from a string "family" or "family:qualifier". 
+   * Empty string qualifiers are normalized to null.
    *
    * @param fullName The name of a kiji column "family:qualifier".
    */
   public KijiColumnName(String fullName) {
-    this(new Parser(Preconditions.checkNotNull(fullName)));
+    if (null == fullName) {
+      throw new NullPointerException("Column name may not be null.");
+    }
+    int colon = fullName.indexOf(":");
+    mFamily = colon < 0 ? fullName : fullName.substring(0, colon);
+    mQualifier = colon < 0 || fullName.length() == colon + 1 ? null : fullName.substring(colon + 1);
+    mFullName = fullName;
+    validateNames();
   }
 
   /**
@@ -67,85 +76,31 @@ public final class KijiColumnName implements Comparable<KijiColumnName> {
    * @param qualifier The kiji column qualifier: null means unqualified.
    */
   public KijiColumnName(String family, String qualifier) {
-    this(makeFullName(Preconditions.checkNotNull(family), qualifier), family, qualifier);
-  }
-
-  /**
-   * Formats a column full name, given a family name and an optional qualifier.
-   *
-   * @param family Family name.
-   * @param qualifier Optional qualifier (null means unqualified).
-   * @return the column full name.
-   */
-  private static String makeFullName(String family, String qualifier) {
-    Preconditions.checkNotNull(family);
-    if (qualifier == null) {
-      return family;
-    } else {
-      return String.format("%s:%s", family, qualifier);
+    if (null == family) {
+      throw new NullPointerException("Family name may not be null.");
     }
-  }
-
-  /**
-   * Constructs a column name from a parser.
-   *
-   * @param parser A parsed column name.
-   */
-  private KijiColumnName(Parser parser) {
-    this(parser.getFullName(), parser.getFamily(), parser.getQualifier());
-  }
-
-  /**
-   * Constructs a column name from the three parts: full name, family, qualifier.
-   *
-   * @param fullName The full column name.
-   * @param family The family.
-   * @param qualifier The qualifier (may be null).
-   */
-  private KijiColumnName(String fullName, String family, String qualifier) {
-    mFullName = fullName;
     mFamily = family;
     mQualifier = qualifier;
+    mFullName = (qualifier == null ? family : String.format("%s:%s", family, qualifier));
+    validateNames();
   }
+
 
   /**
-   * Parses a column name into parts.
+   * Validates family and column names.
    */
-  private static class Parser {
-    private final String mFullName;
-    private final String mFamily;
-    private final String mQualifier;
-
-    /**
-     * Constructs a parser over an input column name.
-     *
-     * @param input The column name.
-     */
-    public Parser(String input) {
-      if (null == input) {
-        throw new NullPointerException("Column name may not be null");
-      }
-      int colon = input.indexOf(":");
-      mFullName = input;
-      mFamily = colon < 0 ? input : input.substring(0, colon);
-      mQualifier = colon < 0 ? null : input.substring(colon + 1);
+  private void validateNames() {
+    // Validate qualifier to check if valid printable ASCII.
+    if ((mQualifier != null) && !KijiNameValidator.isValidPrintableASCII(mQualifier)) {
+      throw new KijiInvalidNameException(
+        String.format("Qualifier name not valid printable ASCII): " + mQualifier));
     }
-
-    /** @return The full column name. */
-    public String getFullName() {
-      return mFullName;
-    }
-
-    /** @return The family name. */
-    public String getFamily() {
-      return mFamily;
-    }
-
-    /** @return The qualifier name. */
-    public String getQualifier() {
-      return mQualifier;
+    // Validate family name.
+    if ((mFamily != null) && !KijiNameValidator.isValidLayoutName(mFamily)) {
+      throw new KijiInvalidNameException(String.format("Invalid family name: " + mFamily));
     }
   }
+
 
   /**
    * Gets the full name of the column.
