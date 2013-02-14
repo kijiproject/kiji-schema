@@ -48,10 +48,10 @@ import org.kiji.schema.filter.KijiColumnFilter;
  * the family <code>foo</code> within the time range [123, 456):
  *
  * <pre>
- * KijiDataRequestBuilder builder = KijiDataRequest.builder();
- * builder.withTimeRange(123L, 456L)
- *     .column().withMaxVersions(3).add("foo", "bar");
- * KijiDataRequest dataRequest = builder.build();
+ * KijiDataRequest dataRequest = KijiDataRequest.builder()
+ *     .withTimeRange(123L, 456L)
+ *     .addColumns(KijiDataRequestBuilder.ColumnsDef.create().withMaxVersions(3).add("foo", "bar"))
+ *     .build();
  * </pre>
  * </p>
  *
