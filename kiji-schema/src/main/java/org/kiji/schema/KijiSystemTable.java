@@ -21,9 +21,11 @@ package org.kiji.schema;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.AbstractMap.SimpleEntry;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
+import org.kiji.schema.util.CloseableIterable;
 import org.kiji.schema.util.ProtocolVersion;
 
 /**
@@ -74,4 +76,12 @@ public abstract class KijiSystemTable implements Closeable {
    */
   public abstract void putValue(String key, byte[] value) throws IOException;
 
+  /**
+   * Gets an iterator across all key value pairs in the table.
+   *
+   * @return an iterator of key, value pairs.
+   * @throws IOException If there is an error.
+   */
+  public abstract CloseableIterable<SimpleEntry<String, byte[]>> getAll()
+      throws IOException;
 }

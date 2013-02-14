@@ -9,5 +9,6 @@ org.kiji.schema.tools.LsTool
 org.kiji.schema.tools.MetadataTool
 org.kiji.schema.tools.PutTool
 org.kiji.schema.tools.SynthesizeUserDataTool
+org.kiji.schema.tools.SystemTableTool
 org.kiji.schema.tools.UninstallTool
 org.kiji.schema.tools.VersionTool
