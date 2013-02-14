@@ -21,15 +21,16 @@ package org.kiji.schema.tools;
 
 import java.util.List;
 
+import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
+import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.hbase.HBaseFactory;
 
 /**
  * A command-line tool for installing kiji instances on hbase clusters.
@@ -38,11 +39,11 @@ import org.kiji.schema.hbase.HBaseFactory;
 public final class InstallTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(InstallTool.class);
 
-  @Flag(name="kiji", usage="KijiURI of the instance to install.")
-  private String mKijiURIString;
+  @Flag(name="kiji", usage="URI of the Kiji instance to install.")
+  private String mKijiURIFlag = KConstants.DEFAULT_URI;
 
-  /** The KijiURI of the instance to install. */
-  private KijiURI mURI;
+  /** URI of the Kiji instance to install. */
+  private KijiURI mKijiURI = null;
 
   /** {@inheritDoc} */
   @Override
@@ -64,47 +65,28 @@ public final class InstallTool extends BaseTool {
 
   /** {@inheritDoc} */
   @Override
-  protected int run(List<String> nonFlagArgs) throws Exception {
-    getPrintStream().println("Creating kiji instance: " + getURI());
-    getPrintStream().println("Creating meta tables for kiji instance in hbase...");
-    try {
-      KijiInstaller.get().install(getURI(), HBaseFactory.Provider.get(), getConf());
-      getPrintStream().println("Successfully created kiji instance: " + getURI());
-      return 0;
-    } catch (KijiAlreadyExistsException kaee) {
-      getPrintStream().printf("Kiji instance '%s' already exists.%n", getURI());
-      return 1;
-    }
-  }
-
-  /** Sets the KijiURI of the instance to install.
-   *
-   * @param uri The KijiURI to set for this tool
-   */
-  protected void setURI(KijiURI uri) {
-    if (null == mURI) {
-      mURI = uri;
-    } else {
-      getPrintStream().println("URI is already set.");
-    }
-  }
-
-  /** Gets the KijiURI of the instance to install.
-   *
-   * @return The KijiURI of the instance to install.
-   */
-  protected KijiURI getURI() {
-    if (null == mURI) {
-      getPrintStream().println("No URI set.");
-    }
-    return mURI;
+  protected void setup() throws Exception {
+    super.setup();
+    Preconditions.checkArgument((mKijiURIFlag != null) && !mKijiURIFlag.isEmpty(),
+        "Specify the Kiji instance to install with --kiji=kiji://hbase-address/kiji-instance");
+    mKijiURI = KijiURI.newBuilder(mKijiURIFlag).build();
+    Preconditions.checkArgument(mKijiURI.getInstance() != null,
+        "Specify the Kiji instance to install with --kiji=kiji://hbase-address/kiji-instance");
   }
 
   /** {@inheritDoc} */
   @Override
-  public void setup() throws Exception {
-    super.setup();
-    setURI(parseURI(mKijiURIString));
+  protected int run(List<String> nonFlagArgs) throws Exception {
+    getPrintStream().println("Creating kiji instance: " + mKijiURI);
+    getPrintStream().println("Creating meta tables for kiji instance in hbase...");
+    try {
+      KijiInstaller.get().install(mKijiURI, getConf());
+      getPrintStream().println("Successfully created kiji instance: " + mKijiURI);
+      return SUCCESS;
+    } catch (KijiAlreadyExistsException kaee) {
+      getPrintStream().printf("Kiji instance '%s' already exists.%n", mKijiURI);
+      return FAILURE;
+    }
   }
 
   /**
