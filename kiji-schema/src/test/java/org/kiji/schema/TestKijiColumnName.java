@@ -29,9 +29,14 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 public class TestKijiColumnName {
-  @Test(expected=NullPointerException.class)
+  @Test(expected=IllegalArgumentException.class)
   public void testNull() {
     new KijiColumnName(null);
+  }
+
+  @Test(expected=IllegalArgumentException.class)
+  public void testNullFamily() {
+    new KijiColumnName(null, "qualifier");
   }
 
   @Test
@@ -47,9 +52,20 @@ public class TestKijiColumnName {
   public void testEmptyQualifier() {
     KijiColumnName columnName = new KijiColumnName("family:");
     assertEquals("family", columnName.getFamily());
+    assertNull(columnName.getQualifier());
     assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
-    assertTrue(columnName.getQualifier().isEmpty());
-    assertTrue(columnName.isFullyQualified());
+    assertNull(columnName.getQualifierBytes());
+    assertFalse(columnName.isFullyQualified());
+  }
+
+  @Test
+  public void testEmptyQualifierTwo() {
+    KijiColumnName columnName = new KijiColumnName("family", "");
+    assertEquals("family", columnName.getFamily());
+    assertNull(columnName.getQualifier());
+    assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
+    assertNull(columnName.getQualifierBytes());
+    assertFalse(columnName.isFullyQualified());
   }
 
   @Test
@@ -60,5 +76,48 @@ public class TestKijiColumnName {
     assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
     assertArrayEquals(Bytes.toBytes("qualifier"), columnName.getQualifierBytes());
     assertTrue(columnName.isFullyQualified());
+  }
+
+  @Test
+  public void testNullQualifier() {
+    KijiColumnName columnName = new KijiColumnName("family", null);
+    assertEquals("family", columnName.getFamily());
+    assertNull(columnName.getQualifier());
+    assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
+    assertNull(columnName.getQualifierBytes());
+    assertFalse(columnName.isFullyQualified());
+  }
+
+  @Test(expected=KijiInvalidNameException.class)
+  public void testInvalidFamilyName() {
+    new KijiColumnName("1:qualifier");
+  }
+
+  @Test
+  public void testEquals() {
+    KijiColumnName columnA = new KijiColumnName("family", "qualifier1");
+    KijiColumnName columnC = new KijiColumnName("family", null);
+    KijiColumnName columnD = new KijiColumnName("family", "qualifier2");
+    assertTrue(columnA.equals(columnA)); // reflexive
+    assertFalse(columnA.equals(columnC) || columnC.equals(columnA));
+    assertFalse(columnA.equals(columnD) || columnD.equals(columnA));
+  }
+
+  @Test
+  public void testHashCode() {
+    KijiColumnName columnA = new KijiColumnName("family", "qualifier");
+    KijiColumnName columnB = new KijiColumnName("family:qualifier");
+    assertEquals(columnA.hashCode(), columnB.hashCode());
+  }
+
+  @Test
+  public void testCompareTo() {
+    KijiColumnName columnA = new KijiColumnName("family");
+    KijiColumnName columnB = new KijiColumnName("familyTwo");
+    KijiColumnName columnC = new KijiColumnName("family:qualifier");
+    assertTrue(0 == columnA.compareTo(columnA));
+    assertTrue(0 > columnA.compareTo(columnB) && 0 < columnB.compareTo(columnA));
+    assertTrue(0 > columnA.compareTo(columnC) && 0 < columnC.compareTo(columnA));
+    assertTrue(0 < columnB.compareTo(columnC) && 0 > columnC.compareTo(columnB));
   }
 }
