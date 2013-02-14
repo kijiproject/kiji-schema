@@ -59,8 +59,7 @@ public final class KijiInstaller {
    * @throws IOException on I/O error.
    * @throws KijiInvalidNameException if the Kiji instance name is invalid or already exists.
    */
-  public void install(KijiURI uri, Configuration conf)
-      throws IOException, KijiInvalidNameException {
+  public void install(KijiURI uri, Configuration conf) throws IOException {
     install(uri, HBaseFactory.Provider.get(), conf);
   }
 
@@ -72,8 +71,7 @@ public final class KijiInstaller {
    * @throws IOException on I/O error.
    * @throws KijiInvalidNameException if the instance name is invalid or already exists.
    */
-  public void uninstall(KijiURI uri, Configuration conf)
-      throws IOException, KijiInvalidNameException {
+  public void uninstall(KijiURI uri, Configuration conf) throws IOException {
     uninstall(uri, HBaseFactory.Provider.get(), conf);
   }
 
@@ -87,7 +85,7 @@ public final class KijiInstaller {
    * @throws KijiInvalidNameException if the instance name is invalid or already exists.
    */
   public void install(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
-      throws IOException, KijiInvalidNameException {
+      throws IOException {
     if (uri.getInstance() == null) {
       throw new KijiInvalidNameException(String.format(
           "Kiji URI '%s' does not specify a Kiji instance name", uri));
@@ -130,7 +128,7 @@ public final class KijiInstaller {
    * @throws KijiNotInstalledException if the specified instance does not exist.
    */
   public void uninstall(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
-      throws IOException, KijiInvalidNameException {
+      throws IOException {
     if (uri.getInstance() == null) {
       throw new KijiInvalidNameException(String.format(
           "Kiji URI '%s' does not specify a Kiji instance name", uri));

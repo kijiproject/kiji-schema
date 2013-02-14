@@ -215,7 +215,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         RawEntityId.getEntityId(Bytes.toBytes("row-key")), dataRequest,
         mCellDecoderFactory, tableLayout, result, getKiji().getSchemaTable());
 
-    input.getReaderSchema("this-family", "does-not-exist");
+    input.getReaderSchema("this_family", "does_not_exist");
   }
 
   /**

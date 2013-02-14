@@ -35,6 +35,9 @@ public final class KijiNameValidator {
   /** Unused private constructor since this is a utility class. */
   private KijiNameValidator() {}
 
+  /** Regular expression that defined valid printable ASCII. */
+  public static final Pattern VALID_PRINTABLE_ASCII = Pattern.compile("[\\u0020-\\u007E]*");
+
   /** Regular expression that defines a valid instance name. */
   public static final Pattern VALID_INSTANCE_PATTERN = Pattern.compile("[a-zA-Z0-9_]*");
 
@@ -45,6 +48,15 @@ public final class KijiNameValidator {
   /** Regular expression that defines a valid alias for a layout name. */
   public static final Pattern VALID_ALIAS_PATTERN =
       Pattern.compile("[a-zA-Z0-9_-]+");
+
+  /**
+   * @return true if name is a valid printable ASCII therefore appropriate for 
+   *     map names, and false otherwise. 
+   * @param name the name to check.
+   */
+  public static boolean isValidPrintableASCII(CharSequence name) {
+    return VALID_PRINTABLE_ASCII.matcher(name).matches();
+  }
 
   /**
    * @return true if name is a valid name for a table, locality group, family,
@@ -62,8 +74,7 @@ public final class KijiNameValidator {
    * @param name The string to validate as a layout name.
    * @throws KijiInvalidNameException If the name is invalid.
    */
-  public static void validateLayoutName(CharSequence name)
-      throws KijiInvalidNameException {
+  public static void validateLayoutName(CharSequence name) {
     if (!isValidLayoutName(name)) {
       throw new KijiInvalidNameException("Invalid layout name: " + name);
     }
@@ -85,7 +96,7 @@ public final class KijiNameValidator {
    * @param name The string to validate as a layout name alias.
    * @throws KijiInvalidNameException If the name is invalid.
    */
-  public static void validateAlias(CharSequence name) throws KijiInvalidNameException {
+  public static void validateAlias(CharSequence name) {
     if (!isValidAlias(name)) {
       throw new KijiInvalidNameException("Invalid alias: " + name);
     }
@@ -105,8 +116,7 @@ public final class KijiNameValidator {
    * @param name The string to validate as a Kiji instance name.
    * @throws KijiInvalidNameException If the name is invalid.
    */
-  public static void validateKijiName(CharSequence name)
-      throws KijiInvalidNameException {
+  public static void validateKijiName(CharSequence name) {
     if (!isValidKijiName(name)) {
       throw new KijiInvalidNameException("Invalid instance name: " + name);
     }

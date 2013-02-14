@@ -48,8 +48,8 @@ public class TestKijiColumnName {
     KijiColumnName columnName = new KijiColumnName("family:");
     assertEquals("family", columnName.getFamily());
     assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
-    assertTrue(columnName.getQualifier().isEmpty());
-    assertTrue(columnName.isFullyQualified());
+    assertNull(columnName.getQualifier());
+    assertFalse(columnName.isFullyQualified());
   }
 
   @Test
@@ -60,5 +60,34 @@ public class TestKijiColumnName {
     assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
     assertArrayEquals(Bytes.toBytes("qualifier"), columnName.getQualifierBytes());
     assertTrue(columnName.isFullyQualified());
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testNullFamily() {
+    new KijiColumnName(null, "qualifier");
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testNullColumnName() {
+    new KijiColumnName(null);
+  }
+
+  @Test
+  public void testNullQualifier() {
+    KijiColumnName columnName = new KijiColumnName("family", null);
+    assertEquals("family", columnName.getFamily());
+    assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
+    assertNull(columnName.getQualifier());
+    assertFalse(columnName.isFullyQualified());
+  }
+
+  @Test (expected = KijiInvalidNameException.class)
+  public void testInvalidFamilyName() {
+    new KijiColumnName("1:qualifier");
+  }
+
+  @Test (expected = KijiInvalidNameException.class)
+  public void testInvalidQualifier() {
+    new KijiColumnName("1:mäuse");
   }
 }
