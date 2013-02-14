@@ -42,7 +42,7 @@ public final class UninstallTool extends BaseTool {
   private String mKijiURIFlag = KConstants.DEFAULT_URI;
 
   /** URI of the Kiji instance to uninstall. */
-  private KijiURI mKijiURI;
+  private KijiURI mKijiURI = null;
 
   /** {@inheritDoc} */
   @Override
