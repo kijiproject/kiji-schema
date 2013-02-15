@@ -46,5 +46,5 @@
     ttl_seconds : 2147483647,
     compression_type : "GZ"
   } ],
-  version : "kiji-1.0"
+  version : "layout-1.0"
 }

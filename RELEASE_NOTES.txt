@@ -5,12 +5,19 @@
 Version 1.0.0-rc5
 
 Version 1.0.0-rc4
+  * SCHEMA-197. Layout versions now use the "layout" namespace.
+      Changes the expected layout format version to "layout-1.0" or
+      "layout-1.1". This avoids a collision with instances, etc. All layouts
+      in resources have had their version numbers changed to "layout-1.0" or
+      "layout-1.1". Existing layouts with a 'kiji-1.0' version string are
+      supported. "kiji version" will now show the minimum and maximum layout
+      versions that this kiji version can recognize.
   * SCHEMA-211. Use "default" instance in default KijiURIBuilder.
   * SCHEMA-208. Make KijiURIException unchecked.
   * SCHEMA-196. Instance format should not use "kiji" protocol namespace.
       Changes the instance format installed via 'kiji install' to
       'system-1.0', rather than 'kiji-1.0'. This avoids a namespace collision
-      with layouts, etc.  Existing deployments with a 'kiji-1.0' instance
+      with layouts, etc. Existing deployments with a 'kiji-1.0' instance
       format are still supported.
   * SCHEMA-151. Add org.kiji.schema.util.ProtocolVersion to manage
       format/protocol version compatibility.

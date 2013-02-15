@@ -259,16 +259,38 @@ public final class KijiTableLayout {
   // ProtocolVersions specifying when different features were added to layout functionality.
 
   /** Maximum layout version we can recognize. */
-  private static final ProtocolVersion MAX_LAYOUT_VER = ProtocolVersion.parse("kiji-1.1.0");
+  private static final ProtocolVersion MAX_LAYOUT_VER = ProtocolVersion.parse("layout-1.1.0");
 
   /** First version where {@link RowKeyFormat2} was supported. */
-  private static final ProtocolVersion RKF2_LAYOUT_VER = ProtocolVersion.parse("kiji-1.1.0");
+  private static final ProtocolVersion RKF2_LAYOUT_VER = ProtocolVersion.parse("layout-1.1.0");
 
   /** Minimum layout version we can recognize. */
-  private static final ProtocolVersion MIN_LAYOUT_VER = ProtocolVersion.parse("kiji-1.0.0");
+  private static final ProtocolVersion MIN_LAYOUT_VER = ProtocolVersion.parse("layout-1.0.0");
 
   /** All layout versions must use the format 'kiji-x.y' to specify what version they use. */
-  private static final String LAYOUT_PROTOCOL_NAME = "kiji";
+  private static final String LAYOUT_PROTOCOL_NAME = "layout";
+
+  /** A simple mapping of deprecated layout versions. This remaps pre-rc4 layouts. */
+  private static final ProtocolVersion DEPRECATED_LAYOUT_VER =
+      ProtocolVersion.parse("kiji-1.0.0");
+
+  /**
+   * Returns the maximum layout version supported.
+   *
+   * @return the maximum layout version recognized by this version of Kiji.
+   */
+  public static ProtocolVersion getMaxSupportedLayoutVersion() {
+    return MAX_LAYOUT_VER;
+  }
+
+  /**
+   * Returns the minimum layout version supported.
+   *
+   * @return the minimum layout version recognized by this version of Kiji.
+   */
+  public static ProtocolVersion getMinSupportedLayoutVersion() {
+    return MIN_LAYOUT_VER;
+  }
 
   /** Concrete layout of a locality group. */
   @ApiAudience.Public
@@ -978,10 +1000,32 @@ public final class KijiTableLayout {
     mDesc.setLocalityGroups(Lists.newArrayList(mDesc.getLocalityGroups()));
 
     // Check that the version specified in the layout matches the features used.
-    final ProtocolVersion layoutVersion = ProtocolVersion.parse(mDesc.getVersion());
+    // Any compatibility checks belong in this section.
+    ProtocolVersion layoutVersion = ProtocolVersion.parse(mDesc.getVersion());
+    if (layoutVersion.equals(DEPRECATED_LAYOUT_VER)) {
+      // Deprecated "kiji-1.0" is compatible with "layout-1.0"
+      layoutVersion = ProtocolVersion.parse("layout-1.0.0");
+    }
+
     if (!LAYOUT_PROTOCOL_NAME.equals(layoutVersion.getProtocolName())) {
-      throw new InvalidLayoutException(String.format("Invalid version protocol: '%s'.",
-          layoutVersion.getProtocolName()));
+      final String exceptionMessage;
+      if (DEPRECATED_LAYOUT_VER.getProtocolName().equals(layoutVersion.getProtocolName())) {
+        // Warn the user if they tried a version number like 'kiji-0.9' or 'kiji-1.1'.
+        exceptionMessage =
+            String.format("Deprecated layout version protocol '%s' only valid for version '%s',"
+                + " but received version '%s'. You should specify a layout version protocol"
+                + " as '%s-x.y', not '%s-x.y'.",
+                DEPRECATED_LAYOUT_VER.getProtocolName(),
+                DEPRECATED_LAYOUT_VER.toString(),
+                layoutVersion.toString(),
+                LAYOUT_PROTOCOL_NAME,
+                DEPRECATED_LAYOUT_VER.getProtocolName());
+      } else {
+        exceptionMessage = String.format("Invalid version protocol: '%s'. Expected '%s'.",
+            layoutVersion.getProtocolName(),
+            LAYOUT_PROTOCOL_NAME);
+      }
+      throw new InvalidLayoutException(exceptionMessage);
     }
 
     if (MAX_LAYOUT_VER.compareTo(layoutVersion) < 0) {
