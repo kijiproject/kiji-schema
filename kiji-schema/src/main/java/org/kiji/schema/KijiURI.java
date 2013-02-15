@@ -111,7 +111,7 @@ public final class KijiURI {
       int zookeeperClientPort,
       String instanceName,
       String tableName,
-      Iterable<KijiColumnName> columnNames) throws KijiURIException {
+      Iterable<KijiColumnName> columnNames) {
     mZookeeperQuorum = ImmutableList.copyOf(zookeeperQuorum);
     mZookeeperQuorumNormalized = ImmutableSortedSet.copyOf(mZookeeperQuorum).asList();
     mZookeeperClientPort = zookeeperClientPort;
@@ -129,7 +129,7 @@ public final class KijiURI {
    * @param uri Kiji URI
    * @throws KijiURIException if the URI is invalid.
    */
-  private KijiURI(URI uri) throws KijiURIException {
+  private KijiURI(URI uri) {
     if (!uri.getScheme().equals(KIJI_SCHEME)) {
       throw new KijiURIException(uri.toString(), "URI scheme must be '" + KIJI_SCHEME + "'");
     }
@@ -223,12 +223,13 @@ public final class KijiURI {
 
     /**
      * Constructs a new builder for KijiURIs with default values.
+     * See {@link KijiURI#newBuilder()} for specific values.
      */
     private KijiURIBuilder() {
       ImmutableList.Builder<String> quorumBuilder = ImmutableList.builder();
       mZookeeperQuorum = quorumBuilder.build();
       mZookeeperClientPort = DEFAULT_ZOOKEEPER_CLIENT_PORT;
-      mInstanceName = UNSET_URI_STRING;
+      mInstanceName = KConstants.DEFAULT_INSTANCE_NAME;
       mTableName = UNSET_URI_STRING;
       ImmutableList.Builder<KijiColumnName> columnBuilder = ImmutableList.builder();
       mColumnNames = columnBuilder.build();
@@ -336,7 +337,7 @@ public final class KijiURI {
      * @return A KijiURI.
      * @throws KijiURIException If the KijiURI was configured improperly.
      */
-    public KijiURI build() throws KijiURIException {
+    public KijiURI build() {
       return new KijiURI(
           mZookeeperQuorum,
           mZookeeperClientPort,
@@ -359,7 +360,7 @@ public final class KijiURI {
      * @param uri The uri whose authority is to be parsed.
      * @throws KijiURIException If the authority is invalid.
      */
-    public AuthorityParser(URI uri) throws KijiURIException {
+    public AuthorityParser(URI uri) {
       String authority = uri.getAuthority();
       if (null == authority) {
         throw new KijiURIException(uri.toString(), "HBase address missing.");
@@ -422,6 +423,14 @@ public final class KijiURI {
   /**
    * Gets a builder configured with default Kiji URI fields.
    *
+   * More precisely, the following defaults are initialized:
+   * <ul>
+   *   <li>The Zookeeper quorum and client port is taken from the Hadoop <tt>Configuration</tt></li>
+   *   <li>The Kiji instance name is set to <tt>KConstants.DEFAULT_INSTANCE_NAME</tt>
+   *       (<tt>"default"</tt>).</li>
+   *   <li>The table name and column names are explicitly left unset.</li>
+   * </ul>
+   *
    * @return A builder configured with this Kiji URI.
    */
   public static KijiURIBuilder newBuilder() {
@@ -449,7 +458,7 @@ public final class KijiURI {
    * @return A builder configured with uri.
    * @throws KijiURIException If the uri is invalid.
    */
-  public static KijiURIBuilder newBuilder(String uri) throws KijiURIException {
+  public static KijiURIBuilder newBuilder(String uri) {
     try {
       return newBuilder(new KijiURI(new URI(uri)));
     } catch (URISyntaxException exn) {
@@ -464,7 +473,7 @@ public final class KijiURI {
    * @return The resolved KijiURI.
    * @throws KijiURIException If this KijiURI is malformed.
    */
-  public KijiURI resolve(String path) throws KijiURIException {
+  public KijiURI resolve(String path) {
     try {
       // Without the "./", URI will assume a path containing a colon
       // is a new URI, for example "family:column".
@@ -570,7 +579,7 @@ public final class KijiURI {
    *
    * @throws KijiURIException if there is an invalid name in this URI.
    */
-  private void validateNames() throws KijiURIException {
+  private void validateNames() {
     if ((mInstanceName != null) && !KijiNameValidator.isValidKijiName(mInstanceName)) {
       throw new KijiURIException(String.format(
           "Invalid Kiji URI: '%s' is not a valid Kiji instance name.", mInstanceName));

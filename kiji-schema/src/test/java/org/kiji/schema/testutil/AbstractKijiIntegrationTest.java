@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.KijiURIException;
 import org.kiji.schema.tools.BaseTool;
 
 /**
@@ -185,7 +184,7 @@ public abstract class AbstractKijiIntegrationTest {
    *
    * @return the URI for the HBase instance to use.
    */
-  protected static KijiURI getHBaseURI() throws KijiURIException {
+  protected static KijiURI getHBaseURI() {
    if (STANDALONE) {
      // We are running an embedded HBase and M/R mini-cluster in-process:
       final Configuration conf = HBaseConfiguration.create(mStandaloneConf);

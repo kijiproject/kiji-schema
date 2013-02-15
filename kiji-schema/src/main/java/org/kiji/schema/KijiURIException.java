@@ -19,13 +19,11 @@
 
 package org.kiji.schema;
 
-import java.io.IOException;
-
 import org.kiji.annotations.ApiAudience;
 
 /** Thrown when parsing a bogus Kiji URI. */
 @ApiAudience.Public
-public final class KijiURIException extends IOException {
+public final class KijiURIException extends RuntimeException {
   /**
    * Creates a new <code>KijiURIException</code>.
    *
