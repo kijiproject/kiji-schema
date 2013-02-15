@@ -38,7 +38,7 @@ import org.kiji.annotations.Inheritance;
  *
  * <pre>
  *  KijiDataRequestBuilder builder = KijiDataRequest.builder();
- *  builder.addColumns().withMaxVersions(5).withPageSize(2).add("info", "name");
+ *  builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
  *  final KijiDataRequest dataRequest = builder.build();
  * </pre>
  * </p>
