@@ -177,7 +177,7 @@ public class TestDeleteTool extends KijiClientTest {
   @Test
   public void testDeleteMostRecentCellInColumnFromRow() throws Exception {
     final KijiDataRequestBuilder kdrb = KijiDataRequest.builder();
-    kdrb.addColumns().withMaxVersions(HConstants.ALL_VERSIONS)
+    kdrb.newColumnsDef().withMaxVersions(HConstants.ALL_VERSIONS)
         .add("family", "column");
     final KijiDataRequest kdr = kdrb.build();
     final KijiRowData rowBefore =
@@ -207,7 +207,7 @@ public class TestDeleteTool extends KijiClientTest {
   @Test
   public void testDeleteExactTimestampCellInColumnFromRow() throws Exception {
     final KijiDataRequestBuilder kdrb = KijiDataRequest.builder();
-    kdrb.addColumns().withMaxVersions(HConstants.ALL_VERSIONS)
+    kdrb.newColumnsDef().withMaxVersions(HConstants.ALL_VERSIONS)
         .add("family", "column");
     final KijiDataRequest kdr = kdrb.build();
     final KijiRowData rowBefore =
@@ -238,7 +238,7 @@ public class TestDeleteTool extends KijiClientTest {
   @Test
   public void testDeleteUpToTimestampCellInColumnFromRow() throws Exception {
     final KijiDataRequestBuilder kdrb = KijiDataRequest.builder();
-    kdrb.addColumns().withMaxVersions(HConstants.ALL_VERSIONS)
+    kdrb.newColumnsDef().withMaxVersions(HConstants.ALL_VERSIONS)
         .add("family", "column");
     final KijiDataRequest kdr = kdrb.build();
     final KijiRowData rowBefore =

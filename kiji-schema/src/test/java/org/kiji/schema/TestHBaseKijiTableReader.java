@@ -70,7 +70,7 @@ public class TestHBaseKijiTableReader {
   public void testGet() throws Exception {
     final EntityId entityId = mTable.getEntityId("foo");
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("info", "name");
+    builder.newColumnsDef().add("info", "name");
     final KijiDataRequest request = builder.build();
     final String actual = mReader.get(entityId, request).getValue("info", "name", 1L).toString();
     assertEquals("foo-val", actual);
@@ -90,7 +90,7 @@ public class TestHBaseKijiTableReader {
     final EntityId entityId1 = mTable.getEntityId("foo");
     final EntityId entityId2 = mTable.getEntityId("bar");
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("info", "name");
+    builder.newColumnsDef().add("info", "name");
     final KijiDataRequest request = builder.build();
     final String actual1 = mReader.get(entityId1, request).getValue("info", "name", 1L).toString();
     final String actual2 = mReader.get(entityId2, request).getValue("info", "name", 1L).toString();

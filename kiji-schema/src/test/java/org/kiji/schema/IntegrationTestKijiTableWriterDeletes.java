@@ -52,7 +52,7 @@ public class IntegrationTestKijiTableWriterDeletes extends AbstractKijiIntegrati
   @Before
   public final void setupIntegrationTestKijiTableWriterDeletes() throws Exception {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(Integer.MAX_VALUE)
+    builder.newColumnsDef().withMaxVersions(Integer.MAX_VALUE)
         .addFamily("group")
         .addFamily("map")
         .addFamily("memoryMap");

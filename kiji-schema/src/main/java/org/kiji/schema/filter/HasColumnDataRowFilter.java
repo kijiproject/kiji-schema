@@ -82,7 +82,7 @@ public final class HasColumnDataRowFilter extends KijiRowFilter {
   @Override
   public KijiDataRequest getDataRequest() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add(mFamily, mQualifier);
+    builder.newColumnsDef().add(mFamily, mQualifier);
     return builder.build();
   }
 

@@ -76,7 +76,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
       writer.close();
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 1);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
+    builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
     EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);
@@ -100,7 +100,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
       writer.close();
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 0);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
+    builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
     EntityId meId = HashedEntityId.getEntityId(
         Bytes.toBytes("me"), (RowKeyFormat)mTableLayout.getDesc().getKeysFormat());
@@ -125,7 +125,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
       writer.close();
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 1);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
+    builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
     final KijiDataRequest dataRequest = builder.build();
     EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);
@@ -151,7 +151,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 0,
         new RegexQualifierColumnFilter("b"));
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
+    builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
     final KijiDataRequest dataRequest = builder.build();
     EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);

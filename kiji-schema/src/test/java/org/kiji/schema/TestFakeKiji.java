@@ -68,7 +68,7 @@ public class TestFakeKiji {
     final KijiTable table = kiji.openTable("table");
     {
       final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-      builder.addColumns().addFamily("family");
+      builder.newColumnsDef().addFamily("family");
       final KijiDataRequest dataRequest = builder.build();
       final KijiRowScanner scanner =
           table.openTableReader().getScanner(dataRequest);
@@ -85,7 +85,7 @@ public class TestFakeKiji {
     {
       final KijiTableReader reader = table.openTableReader();
       final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-      builder.addColumns().addFamily("family");
+      builder.newColumnsDef().addFamily("family");
       final KijiDataRequest dataRequest = builder.build();
       final KijiRowScanner scanner =
           table.openTableReader().getScanner(dataRequest);

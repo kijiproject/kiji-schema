@@ -66,8 +66,8 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
   @Test
   public void testDataRequestToScan() throws IOException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(1).add("info", "name");
-    builder.addColumns().withMaxVersions(2).addFamily("purchases");
+    builder.newColumnsDef().withMaxVersions(1).add("info", "name");
+    builder.newColumnsDef().withMaxVersions(2).addFamily("purchases");
     builder.withTimeRange(1L, 3L);
     KijiDataRequest request = builder.build();
 
@@ -104,8 +104,8 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
   @Test
   public void testDataRequestToGet() throws IOException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(1).add("info", "name");
-    builder.addColumns().withMaxVersions(2).addFamily("purchases");
+    builder.newColumnsDef().withMaxVersions(1).add("info", "name");
+    builder.newColumnsDef().withMaxVersions(2).addFamily("purchases");
     builder.withTimeRange(1L, 3L);
     KijiDataRequest request = builder.build();
 

@@ -38,7 +38,7 @@ import org.kiji.schema.filter.KijiColumnFilter;
  * <p>{@link KijiDataRequest} objects are immutable; this object helps you construct
  * them. With a KijiDataRequest builder, you can set various properties that affect
  * the data request as a whole (for example, the timestamp interval to retrieve).
- * You can also use the {@link #addColumns()} method of this object to get instances of
+ * You can also use the {@link #newColumnsDef()} method of this object to get instances of
  * {@link KijiDataRequestBuilder.ColumnsDef}, which allow you to define a set of columns that
  * are part of a data request, and their retrieval properties.</p>
  *
@@ -72,18 +72,18 @@ import org.kiji.schema.filter.KijiColumnFilter;
  * <tt>info:baz</tt>, and <tt>products:*</tt>:</p>
  * <pre>
  * KijiDataRequestBuilder builder = KijiDataRequest.builder().withTimeRange(t1, t2);
- * builder.addColumns().withMaxVersions(42)
+ * builder.newColumnsDef().withMaxVersions(42)
  *     .add("info", "foo")
  *     .add("info", "bar")
  *     .add("info", "baz")
  *     .addFamily("products");
- * KijiDataRequest req = builder.build();
+ * KijiDataRequest request = builder.build();
  * </pre>
  *
  * This can also be written as:
  * <pre>
- * final KijiDataRequest req = KijiDataRequest.build()
- *     .addColumns(KijiDataRequestBuilder.ColumnsDef.create()
+ * final KijiDataRequest request = KijiDataRequest.build()
+ *     .addColumns(ColumnsDef.create()
  *         .withMaxVerions(42)
  *         .add("info", "foo")
  *         .add("info", "bar")
@@ -96,10 +96,10 @@ import org.kiji.schema.filter.KijiColumnFilter;
  * different retrieval properties to the same request, do the following:</p>
  * <pre>
  * KijiDataRequestBuilder builder = KijiDataRequest.builder().withTimeRange(t1, t2);
- * builder.addColumns().withMaxVersions(10).withPageSize(p).add("fam1", "col1");
- * builder.addColumns().add("fam1", "col2");
- * builder.addColumns().withMaxVersions(42).addFamily("fam2");
- * KijiDataRequest req = builder.build();
+ * builder.newColumnsDef().withMaxVersions(10).withPageSize(p).add("fam1", "col1");
+ * builder.newColumnsDef().add("fam1", "col2");
+ * builder.newColumnsDef().withMaxVersions(42).addFamily("fam2");
+ * KijiDataRequest request = builder.build();
  * </pre>
  */
 @ApiAudience.Public
@@ -126,7 +126,7 @@ public final class KijiDataRequestBuilder {
    * <p>See {@link KijiDataRequestBuilder} for a larger specification of how
    * {@link KijiDataRequest} objects are constructed.</p>
    *
-   * <p>Use the {@link KijiDataRequestBuilder#addColumns()} method to get an instance of
+   * <p>Use the {@link KijiDataRequestBuilder#newColumnsDef()} method to get an instance of
    * a column set definition. This object has no "build()" method; use the {@link
    * KijiDataRequestBuilder#build()} method to build the entire {@link
    * KijiDataRequest} at once.</p>
@@ -358,7 +358,7 @@ public final class KijiDataRequestBuilder {
    * @return a new KijiDataRequestBuilder.ColumnsDef builder object associated with this
    *     data request builder.
    */
-  public ColumnsDef addColumns() {
+  public ColumnsDef newColumnsDef() {
     checkNotBuilt();
     final ColumnsDef c = new ColumnsDef();
     mColumnsDefs.add(c);
@@ -382,8 +382,8 @@ public final class KijiDataRequestBuilder {
    * @return a new KijiDataRequestBuilder.ColumnsDef builder object associated with this
    *     data request builder.
    */
-  public ColumnsDef addColumns(KijiDataRequest.Column existingColumn) {
-    return addColumns()
+  public ColumnsDef newColumnsDef(KijiDataRequest.Column existingColumn) {
+    return newColumnsDef()
         .withFilter(existingColumn.getFilter())
         .withPageSize(existingColumn.getPageSize())
         .withMaxVersions(existingColumn.getMaxVersions())

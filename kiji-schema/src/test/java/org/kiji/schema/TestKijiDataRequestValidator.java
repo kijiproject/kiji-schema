@@ -40,7 +40,7 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
   @Test
   public void testValidate() throws InvalidLayoutException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder().withTimeRange(2, 3);
-    builder.addColumns().withMaxVersions(1).add("info", "name");
+    builder.newColumnsDef().withMaxVersions(1).add("info", "name");
     KijiDataRequest request = builder.build();
 
     KijiDataRequestValidator validator = new KijiDataRequestValidator(request);
@@ -50,7 +50,7 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
   @Test(expected=KijiDataRequestException.class)
   public void testValidateNoSuchFamily() throws InvalidLayoutException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder().withTimeRange(2, 3);
-    builder.addColumns().withMaxVersions(1).add("blahblah", "name");
+    builder.newColumnsDef().withMaxVersions(1).add("blahblah", "name");
     KijiDataRequest request = builder.build();
 
     KijiDataRequestValidator validator = new KijiDataRequestValidator(request);
@@ -60,7 +60,7 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
   @Test(expected=KijiDataRequestException.class)
   public void testValidateNoSuchColumn() throws InvalidLayoutException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder().withTimeRange(2, 3);
-    builder.addColumns().withMaxVersions(1)
+    builder.newColumnsDef().withMaxVersions(1)
         .add("info", "name")
         .add("info", "blahblah");
     KijiDataRequest request = builder.build();

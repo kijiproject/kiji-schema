@@ -63,7 +63,7 @@ public class TestStripValueRowFilter extends KijiClientTest {
 
     final KijiTableReader reader = table.openTableReader();
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(2).add("info", "name");
+    builder.newColumnsDef().withMaxVersions(2).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
     final KijiRowFilter rowFilter = new StripValueRowFilter();
     final KijiScannerOptions scannerOptions =
