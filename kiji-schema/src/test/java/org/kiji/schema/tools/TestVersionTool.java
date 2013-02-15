@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.VersionInfo;
 
@@ -50,7 +51,10 @@ public class TestVersionTool extends KijiClientTest {
     assertEquals(
         "kiji client software version: " + VersionInfo.getSoftwareVersion() + "\n"
         + "kiji client data version: " + clientVersion + "\n"
-        + "kiji cluster data version: " + clientVersion + "\n",
+        + "kiji cluster data version: " + clientVersion + "\n"
+        + "layout versions supported: "
+            + KijiTableLayout.getMinSupportedLayoutVersion()
+            + " to " + KijiTableLayout.getMaxSupportedLayoutVersion() + "\n",
         toolOutput);
 
     assertEquals(0, exitCode);

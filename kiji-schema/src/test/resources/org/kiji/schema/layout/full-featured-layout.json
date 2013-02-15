@@ -63,5 +63,5 @@
       map_schema : {type : "CLASS", value : "com.acme.purchase.Transaction"}
     } ]
   } ],
-  version : "kiji-1.0"
+  version : "layout-1.0"
 }
