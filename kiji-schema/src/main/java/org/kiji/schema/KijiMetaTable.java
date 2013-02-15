@@ -31,7 +31,7 @@ import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 
 /**
- * The kiji metadata table, which stores layouts and other user defined meta data on a per-table
+ * The kiji metadata table, which stores layouts and other user defined metadata on a per-table
  * basis.
  *
  * @see KijiSchemaTable

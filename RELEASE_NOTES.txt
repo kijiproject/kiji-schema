@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-135. Clean up API for table layout backups.
 
 Version 1.0.0-rc4
   * SCHEMA-197. Layout versions now use the "layout" namespace.

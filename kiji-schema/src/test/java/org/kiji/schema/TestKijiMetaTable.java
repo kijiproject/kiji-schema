@@ -26,16 +26,20 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
+import org.kiji.schema.avro.KeyValueBackupEntry;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.avro.TableBackup;
+import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.impl.MetadataRestorer;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 /** Tests backuping and restoring Kiji meta tables. */
@@ -49,7 +53,7 @@ public class TestKijiMetaTable extends KijiClientTest {
     final KijiMetaTable metaTable = kiji.getMetaTable();
 
     final TableLayoutDesc layout = KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST);
-    metaTable.updateTableLayout("foo", layout);
+    final KijiTableLayout updatedLayout = metaTable.updateTableLayout("foo", layout);
     metaTable.putValue("foo", "key", BYTES_VALUE);
 
     assertEquals(1, metaTable.listTables().size());
@@ -67,10 +71,18 @@ public class TestKijiMetaTable extends KijiClientTest {
     final MetadataBackup backup = backupBuilder.build();
 
     // make sure metadata key-value pairs are what we expect.
-    assertEquals(1, backup.getMetaTable().get("foo").getKeyValues().size());
-    assertEquals("key", backup.getMetaTable().get("foo").getKeyValues().get(0).getKey());
-    assertArrayEquals(BYTES_VALUE, backup.getMetaTable().get("foo").getKeyValues().get(0)
-        .getValue().array());
+    List<KeyValueBackupEntry> keyValues =
+        backup.getMetaTable().get("foo").getKeyValueBackup().getKeyValues();
+    assertEquals(1, keyValues.size());
+    assertEquals("key", keyValues.get(0).getKey());
+    assertArrayEquals(BYTES_VALUE, keyValues.get(0).getValue().array());
+
+    // make sure layouts are what we expect.
+    List<TableLayoutBackupEntry> layoutBackups =
+        backup.getMetaTable().get("foo").getTableLayoutsBackup().getLayouts();
+    assertEquals(1, layoutBackups.size());
+    assertEquals(updatedLayout.getDesc(), layoutBackups.get(0).getLayout());
+
     metaTable.deleteTable("foo");
     assertTrue(!metaTable.tableSet().contains("foo"));
     assertEquals(0, metaTable.listTables().size());

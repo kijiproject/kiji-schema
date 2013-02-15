@@ -25,8 +25,8 @@ import java.util.NavigableMap;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
-import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.avro.TableLayoutsBackup;
 
 /**
  * A database of Kiji table layouts.
@@ -85,15 +85,6 @@ public interface KijiTableLayoutDatabase {
       throws IOException;
 
   /**
-   * Gets a list of the TableLayoutBackupEntries which can be used to restore a table.
-   *
-   * @param table The name of the Kiji table.
-   * @return A list of TableLayoutBackupEntries.
-   * @throws IOException If there is an error.
-   */
-  List<TableLayoutBackupEntry> layoutsToBackup(String table) throws IOException;
-
-  /**
    * Removes all layout information for a particular table.
    *
    * @param table The name of the Kiji table.
@@ -111,12 +102,21 @@ public interface KijiTableLayoutDatabase {
   void removeRecentTableLayoutVersions(String table, int numVersions) throws IOException;
 
   /**
+   * Gets the TableLayoutsBackup which can be used to restore a table.
+   *
+   * @param table The name of the Kiji table.
+   * @return The backup information for the layouts of the table.
+   * @throws IOException If there is an error.
+   */
+  TableLayoutsBackup layoutsToBackup(String table) throws IOException;
+
+  /**
    * Restores a table layout history from a backup.
    *
    * @param tableName The name of the table to restore layouts for.
-   * @param tableBackup Table layout backup entries to restore.
+   * @param tableBackup Table layout backup to restore from.
    * @throws IOException on I/O error.
    */
-  void layoutsFromBackup(String tableName, List<TableLayoutBackupEntry> tableBackup) throws
+  void layoutsFromBackup(String tableName, TableLayoutsBackup tableBackup) throws
     IOException;
 }
