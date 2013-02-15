@@ -149,7 +149,7 @@ public final class CreateTableTool extends BaseTool {
     getConf().setInt("hbase.rpc.timeout", hbaseTimeout);
 
     getPrintStream().println("Creating Kiji table " + mTableURI);
-    if (mNumRegions > 1) {
+    if (mNumRegions >= 1) {
       // Create a table with an initial number of evenly split regions.
       mKiji.createTable(tableName, tableLayout, mNumRegions);
 
