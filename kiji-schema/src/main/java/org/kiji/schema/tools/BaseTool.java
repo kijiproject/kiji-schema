@@ -28,6 +28,8 @@ import java.util.regex.Pattern;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configured;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
@@ -62,6 +64,7 @@ import org.kiji.schema.KijiNotInstalledException;
 @ApiAudience.Framework
 @Inheritance.Extensible
 public abstract class BaseTool extends Configured implements KijiTool {
+  private static final Logger LOG = LoggerFactory.getLogger(BaseTool.class);
   /** Used when prompting the user for feedback. */
   private static final Pattern YES_PATTERN = Pattern.compile("y|yes", Pattern.CASE_INSENSITIVE);
   private static final Pattern NO_PATTERN = Pattern.compile("n|no", Pattern.CASE_INSENSITIVE);
@@ -118,6 +121,25 @@ public abstract class BaseTool extends Configured implements KijiTool {
   }
 
   /**
+   * Checks with the user whether the specified operation may proceed.
+   *
+   * @param format String format with a question describing the operation about to be executed.
+   * @param arguments String format arguments.
+   * @return whether the operation may proceed, or not.
+   * @throws IOException on I/O error.
+   */
+  protected boolean mayProceed(String format, Object...arguments) throws IOException {
+    if (!isInteractive()) {
+      return true;
+    }
+    if (yesNoPrompt(String.format(format, arguments))) {
+      return true;
+    }
+    getPrintStream().println("Aborted.");
+    return false;
+  }
+
+  /**
    * Invoke the functionality of this tool, as supplied through its
    * implementation of the abstract methods of this class.
    *
@@ -137,11 +159,25 @@ public abstract class BaseTool extends Configured implements KijiTool {
 
       // Execute custom functionality implemented in subclasses.
       validateFlags();
+      boolean exceptionThrown = false;
       try {
         setup();
         return run(nonFlagArgs);
+      } catch (Exception exn) {
+        exceptionThrown = true;
+        throw exn;
       } finally {
-        cleanup();
+        if (exceptionThrown) {
+          try {
+            cleanup();
+          } catch (Exception nestedExn) {
+            LOG.error("Nested error in tool cleanup(), "
+                + "likely caused by error in tool setup() or run(): {}",
+                nestedExn.getMessage());
+          }
+        } else {
+          cleanup();
+        }
       }
     } catch (KijiNotInstalledException knie) {
       getPrintStream().println(knie.getMessage());
