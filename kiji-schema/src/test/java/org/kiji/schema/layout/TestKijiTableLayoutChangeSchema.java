@@ -43,7 +43,7 @@ public class TestKijiTableLayoutChangeSchema {
   private static final Logger LOG =
       LoggerFactory.getLogger(TestKijiTableLayoutChangeSchema.class);
 
-  private static final String TABLE_LAYOUT_VERSION = "kiji-1.0";
+  private static final String TABLE_LAYOUT_VERSION = "layout-1.0";
 
   /** Reference layout descriptor with a single column: "family_name:column_name". */
   private final TableLayoutDesc mRefLayoutDesc = TableLayoutDesc.newBuilder()

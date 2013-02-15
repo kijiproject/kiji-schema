@@ -55,7 +55,7 @@ import org.kiji.schema.util.ToJson;
 public class TestKijiTableLayout {
   private static final Logger LOG = LoggerFactory.getLogger(TestKijiTableLayout.class);
 
-  private static final String TABLE_LAYOUT_VERSION = "kiji-1.1";
+  private static final String TABLE_LAYOUT_VERSION = "layout-1.1";
 
   private RowKeyFormat makeHashedRKF1() {
     return RowKeyFormat.newBuilder()
@@ -281,7 +281,7 @@ public class TestKijiTableLayout {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(makeRawRKF1())
-        .setVersion("kiji-1.0")
+        .setVersion("layout-1.0")
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals("1", layout.getDesc().getLayoutId());
@@ -291,6 +291,33 @@ public class TestKijiTableLayout {
         .build();
     final KijiTableLayout layoutV2 = KijiTableLayout.createUpdatedLayout(descV2, layout);
     assertEquals("2", layoutV2.getDesc().getLayoutId());
+  }
+
+  /** Test deprecated layout version. */
+  @Test
+  public void testDeprecatedVersion() throws Exception {
+    final TableLayoutDesc validDesc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(makeRawRKF1())
+        .setVersion("kiji-1.0")
+        .build();
+    try {
+      KijiTableLayout validLayout = KijiTableLayout.newLayout(validDesc);
+    } catch (InvalidLayoutException ile) {
+      fail("Deprecated version 'kiji-1.0' should be valid.");
+    }
+
+    final TableLayoutDesc invalidDesc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(makeRawRKF1())
+        .setVersion("kiji-1.1")
+        .build();
+    try {
+      KijiTableLayout invalidLayout = KijiTableLayout.newLayout(invalidDesc);
+      fail("Layout version kiji-1.1 should be invalid.");
+    } catch (InvalidLayoutException ile) {
+      // Expected.
+    }
   }
 
   /** Tests for a layout with a single locality group, and with no reference layout. */
