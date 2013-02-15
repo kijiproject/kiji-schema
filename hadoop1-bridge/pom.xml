@@ -21,13 +21,13 @@
 
   <groupId>org.kiji.schema</groupId>
   <artifactId>kiji-schema-hadoop1-bridge</artifactId>
-  <version>1.0.0-rc4-SNAPSHOT</version>
+  <version>1.0.0-rc5-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <parent>
     <groupId>org.kiji.schema</groupId>
     <artifactId>kiji-schema-root</artifactId>
-    <version>1.0.0-rc4-SNAPSHOT</version>
+    <version>1.0.0-rc5-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
 
