@@ -46,6 +46,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiTableKeyValueDatabase;
+import org.kiji.schema.avro.KeyValueBackup;
 import org.kiji.schema.avro.KeyValueBackupEntry;
 
 
@@ -209,29 +210,30 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
 
   /** {@inheritDoc} */
   @Override
-  public List<KeyValueBackupEntry> keyValuesToBackup(String table) throws IOException {
-    List<KeyValueBackupEntry> keyValueBackups = Lists.newArrayList();
+  public KeyValueBackup keyValuesToBackup(String table) throws IOException {
+    List<KeyValueBackupEntry> kvBackupEntries = Lists.newArrayList();
     final Set<String> keys = keySet(table);
     for (String key : keys) {
       NavigableMap<Long, byte[]> versionedValues = getTimedValues(table, key, Integer.MAX_VALUE);
       for (Long timestamp : versionedValues.descendingKeySet()) {
-        keyValueBackups.add(KeyValueBackupEntry.newBuilder()
+        kvBackupEntries.add(KeyValueBackupEntry.newBuilder()
             .setKey(key)
             .setValue(ByteBuffer.wrap(versionedValues.get(timestamp)))
             .setTimestamp(timestamp)
             .build());
       }
     }
-    return keyValueBackups;
+    KeyValueBackup kvBackup = KeyValueBackup.newBuilder().setKeyValues(kvBackupEntries).build();
+    return kvBackup;
   }
 
   /** {@inheritDoc} */
   @Override
-  public void keyValuesFromBackup(final String tableName, final List<KeyValueBackupEntry> keyValues)
+  public void keyValuesFromBackup(final String tableName, KeyValueBackup keyValueBackup)
       throws IOException {
     LOG.debug(String.format("Restoring '%s' key-value(s) from backup for table '%s'.",
-        keyValues.size(), tableName));
-    for (KeyValueBackupEntry kvRecord : keyValues) {
+        keyValueBackup.getKeyValues().size(), tableName));
+    for (KeyValueBackupEntry kvRecord : keyValueBackup.getKeyValues()) {
       final byte[] key = Bytes.toBytes(kvRecord.getKey());
       final ByteBuffer valueBuffer = kvRecord.getValue(); // Read in ByteBuffer of values
       byte[] value = new byte[valueBuffer.remaining()]; // Instantiate ByteArray

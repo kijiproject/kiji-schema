@@ -107,14 +107,17 @@ public class MetadataRestorer {
     Kiji kiji)
     throws IOException {
     Preconditions.checkNotNull(tableBackup);
-    Preconditions.checkArgument(!tableBackup.getLayouts().isEmpty(),
-      "Backup for table '%s' contains no layout.", tableName);
+    Preconditions.checkNotNull(tableBackup.getTableLayoutsBackup());
+
+    List<TableLayoutBackupEntry> layouts = tableBackup.getTableLayoutsBackup().getLayouts();
+    Preconditions.checkArgument(!layouts.isEmpty(),
+        "Backup for table '%s' contains no layout.", tableName);
     LOG.info("Creating table '{}'.", tableName);
 
     // The initial entry is the entry with the lowest timestamp.
     long lowestTimestamp = KConstants.END_OF_TIME;
     TableLayoutBackupEntry initialEntry = null;
-    for (TableLayoutBackupEntry entry : tableBackup.getLayouts()) {
+    for (TableLayoutBackupEntry entry : layouts) {
       if (entry.getTimestamp() < lowestTimestamp) {
         lowestTimestamp = entry.getTimestamp();
         initialEntry = entry;
@@ -129,9 +132,9 @@ public class MetadataRestorer {
     }
 
     LOG.info("Restoring layout history for table '%s' (%d layouts).", tableName,
-        tableBackup.getLayouts().size());
-    metaTable.layoutsFromBackup(tableName, tableBackup.getLayouts());
-    metaTable.keyValuesFromBackup(tableName, tableBackup.getKeyValues());
+        tableBackup.getTableLayoutsBackup().getLayouts().size());
+    metaTable.layoutsFromBackup(tableName, tableBackup.getTableLayoutsBackup());
+    metaTable.keyValuesFromBackup(tableName, tableBackup.getKeyValueBackup());
   }
 
 

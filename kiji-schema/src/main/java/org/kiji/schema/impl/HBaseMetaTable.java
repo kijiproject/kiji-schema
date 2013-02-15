@@ -40,10 +40,10 @@ import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.avro.KeyValueBackupEntry;
+import org.kiji.schema.avro.KeyValueBackup;
 import org.kiji.schema.avro.TableBackup;
-import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.avro.TableLayoutsBackup;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
@@ -276,12 +276,12 @@ public class HBaseMetaTable extends KijiMetaTable {
     Map<String, TableBackup> metadataBackup = new HashMap<String, TableBackup>();
     List<String> tables = listTables();
     for (String table : tables) {
-      List<TableLayoutBackupEntry> layouts = mTableLayoutDatabase.layoutsToBackup(table);
-      List<KeyValueBackupEntry> keyValues = mTableKeyValueDatabase.keyValuesToBackup(table);
+      TableLayoutsBackup layouts = mTableLayoutDatabase.layoutsToBackup(table);
+      KeyValueBackup keyValues = mTableKeyValueDatabase.keyValuesToBackup(table);
       final TableBackup tableBackup = TableBackup.newBuilder()
           .setName(table)
-          .setLayouts(layouts)
-          .setKeyValues(keyValues)
+          .setTableLayoutsBackup(layouts)
+          .setKeyValueBackup(keyValues)
           .build();
       metadataBackup.put(table, tableBackup);
     }
@@ -299,8 +299,8 @@ public class HBaseMetaTable extends KijiMetaTable {
       Preconditions.checkState(tableName.equals(tableBackup.getName()), String.format(
           "Inconsistent table backup: entry '%s' does not match table name '%s'.",
           tableName, tableBackup.getName()));
-      layoutsFromBackup(tableName, tableBackup.getLayouts());
-      keyValuesFromBackup(tableName, tableBackup.getKeyValues());
+      layoutsFromBackup(tableName, tableBackup.getTableLayoutsBackup());
+      keyValuesFromBackup(tableName, tableBackup.getKeyValueBackup());
     }
     mTable.flushCommits();
     LOG.info("Flushing commits to table '{}'", Bytes.toString(mTable.getTableName()));
@@ -308,7 +308,7 @@ public class HBaseMetaTable extends KijiMetaTable {
 
   /** {@inheritDoc} */
   @Override
-  public List<TableLayoutBackupEntry> layoutsToBackup(String table) throws IOException {
+  public TableLayoutsBackup layoutsToBackup(String table) throws IOException {
     return mTableLayoutDatabase.layoutsToBackup(table);
   }
 
@@ -327,19 +327,19 @@ public class HBaseMetaTable extends KijiMetaTable {
 
   /** {@inheritDoc} */
   @Override
-  public List<KeyValueBackupEntry> keyValuesToBackup(String table) throws IOException {
+  public KeyValueBackup keyValuesToBackup(String table) throws IOException {
     return mTableKeyValueDatabase.keyValuesToBackup(table);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void keyValuesFromBackup(String table, List<KeyValueBackupEntry> tableBackup) throws
+  public void keyValuesFromBackup(String table, KeyValueBackup tableBackup) throws
       IOException {
     mTableKeyValueDatabase.keyValuesFromBackup(table, tableBackup);
   }
 
   @Override
-  public void layoutsFromBackup(String tableName, List<TableLayoutBackupEntry> tableBackup) throws
+  public void layoutsFromBackup(String tableName, TableLayoutsBackup tableBackup) throws
       IOException {
     mTableLayoutDatabase.layoutsFromBackup(tableName, tableBackup);
   }

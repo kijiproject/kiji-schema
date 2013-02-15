@@ -53,6 +53,7 @@ import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.avro.TableLayoutsBackup;
 import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
@@ -325,7 +326,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
 
   /** {@inheritDoc} */
   @Override
-  public List<TableLayoutBackupEntry> layoutsToBackup(String table) throws IOException {
+  public TableLayoutsBackup layoutsToBackup(String table) throws IOException {
     Get get = new Get(Bytes.toBytes(table));
     get.addColumn(mFamilyBytes, QUALIFIER_UPDATE_BYTES)
         .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES);
@@ -359,15 +360,16 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
                .build());
          }
        }
-       return history;
+       TableLayoutsBackup backup = TableLayoutsBackup.newBuilder().setLayouts(history).build();
+       return backup;
   }
 
   /** {@inheritDoc} */
   @Override
-  public void layoutsFromBackup(String tableName, List<TableLayoutBackupEntry>  layoutBackup) throws
+  public void layoutsFromBackup(String tableName, TableLayoutsBackup layoutBackup) throws
       IOException {
     LOG.info(String.format("Restoring layout history for table '%s'.", tableName));
-    for (TableLayoutBackupEntry lbe : layoutBackup) {
+    for (TableLayoutBackupEntry lbe : layoutBackup.getLayouts()) {
       final byte[] layoutBytes = encodeTableLayoutDesc(lbe.getLayout());
       final Put put = new Put(Bytes.toBytes(tableName))
           .add(mFamilyBytes, QUALIFIER_LAYOUT_BYTES, layoutBytes);
