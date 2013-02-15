@@ -147,9 +147,9 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
     final KijiTableLayout layout3 =
         KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
 
-    layout1.getDesc().setVersion("kiji-1.0");
-    layout2.getDesc().setVersion("kiji-1.0.1");
-    layout3.getDesc().setVersion("kiji-1.1");
+    layout1.getDesc().setVersion("layout-1.0");
+    layout2.getDesc().setVersion("layout-1.0.1");
+    layout3.getDesc().setVersion("layout-1.1");
 
 
     final Get expectedGet =

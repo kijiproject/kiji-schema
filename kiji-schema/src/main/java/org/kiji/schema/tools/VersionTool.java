@@ -28,6 +28,7 @@ import org.kiji.common.flags.Flag;
 import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.VersionInfo;
 
@@ -88,6 +89,11 @@ public final class VersionTool extends BaseTool {
     } finally {
       kiji.release();
     }
+
+    ProtocolVersion minimumLayoutVersion = KijiTableLayout.getMinSupportedLayoutVersion();
+    ProtocolVersion maximumLayoutVersion = KijiTableLayout.getMaxSupportedLayoutVersion();
+    getPrintStream().println("layout versions supported: "
+        + minimumLayoutVersion + " to " + maximumLayoutVersion);
 
     return SUCCESS;
   }

@@ -54,7 +54,7 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 public class TestKijiTableLayoutRenaming {
   private static final Logger LOG = LoggerFactory.getLogger(TestKijiTableLayoutRenaming.class);
 
-  private static final String TABLE_LAYOUT_VERSION = "kiji-1.1";
+  private static final String TABLE_LAYOUT_VERSION = "layout-1.1";
 
   private RowKeyFormat2 makeHashPrefixedRowKeyFormat() {
     // components of the row key
