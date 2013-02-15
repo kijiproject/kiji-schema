@@ -142,25 +142,6 @@ public final class DeleteTool extends BaseTool {
   }
 
   /**
-   * Checks with the user whether the specified operation may proceed.
-   *
-   * @param format String format with a question describing the operation about to be executed.
-   * @param arguments String format arguments.
-   * @return whether the operation may proceed, or not.
-   * @throws IOException on I/O error.
-   */
-  private boolean mayProceed(String format, Object...arguments) throws IOException {
-    if (!isInteractive()) {
-      return true;
-    }
-    if (yesNoPrompt(String.format(format, arguments))) {
-      return true;
-    }
-    getPrintStream().println("Aborted.");
-    return false;
-  }
-
-  /**
    * Delete cells from a given row.
    *
    * @param table Table containing the row to delete from.
