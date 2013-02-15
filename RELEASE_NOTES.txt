@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc4
+  * SCHEMA-211. Use "default" instance in default KijiURIBuilder.
+  * SCHEMA-208. Make KijiURIException unchecked.
   * SCHEMA-196. Instance format should not use "kiji" protocol namespace.
       Changes the instance format installed via 'kiji install' to
       'system-1.0', rather than 'kiji-1.0'. This avoids a namespace collision
