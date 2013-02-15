@@ -106,10 +106,10 @@ public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
   @Test
   public void testGet() throws IOException {
       KijiDataRequestBuilder builder = KijiDataRequest.builder();
-      builder.addColumns().withMaxVersions(5).withPageSize(2)
+      builder.newColumnsDef().withMaxVersions(5).withPageSize(2)
           .add("info", "name")
           .add("info", "location");
-      builder.addColumns().withPageSize(2).addFamily("jobs");
+      builder.newColumnsDef().withPageSize(2).addFamily("jobs");
       KijiDataRequest dataRequest = builder.build();
       KijiRowData input = mTableReader.get(mGarrettId, dataRequest);
 
@@ -176,8 +176,8 @@ public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
   @Test
   public void testScan() throws IOException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(5).add("info", "name");
-    builder.addColumns().withMaxVersions(5).withPageSize(2)
+    builder.newColumnsDef().withMaxVersions(5).add("info", "name");
+    builder.newColumnsDef().withMaxVersions(5).withPageSize(2)
         .add("info", "location").addFamily("jobs");
     KijiDataRequest dataRequest = builder.build();
     KijiRowScanner scanner = mTableReader.getScanner(dataRequest);

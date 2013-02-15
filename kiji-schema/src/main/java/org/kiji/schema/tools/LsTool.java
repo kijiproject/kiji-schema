@@ -652,7 +652,7 @@ public final class LsTool extends BaseTool {
         .withTimeRange(minTimestamp, maxTimestamp);
 
     final KijiDataRequestBuilder.ColumnsDef colBuilder =
-        builder.addColumns().withMaxVersions(maxVersions);
+        builder.newColumnsDef().withMaxVersions(maxVersions);
 
     for (Entry<FamilyLayout, List<String>> entry : mapTypeFamilies.entrySet()) {
       String familyName = entry.getKey().getName();

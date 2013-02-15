@@ -87,7 +87,7 @@ public final class HBaseKijiPager implements KijiPager {
     // Construct a data request for only this column.
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.withTimeRange(dataRequest.getMinTimestamp(), dataRequest.getMaxTimestamp())
-      .addColumns(columnRequest);
+      .newColumnsDef(columnRequest);
     mColumnName = colName;
     mColumnDataRequest = builder.build();
     mDefaultPageSize = columnRequest.getPageSize();
@@ -116,7 +116,7 @@ public final class HBaseKijiPager implements KijiPager {
     // Initialize a data request builder from the paged column.
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
       builder.withTimeRange(mColumnDataRequest.getMinTimestamp(),
-        mColumnDataRequest.getMaxTimestamp()).addColumns()
+        mColumnDataRequest.getMaxTimestamp()).newColumnsDef()
       .withFilter(new KijiPaginationFilter(pageSize, mOffset, // Add a pagination filter.
         mColumnDataRequest.getColumn(mColumnName.getFamily(),
         mColumnName.getQualifier()).getFilter())) // Pass in user defined filters.

@@ -39,7 +39,7 @@ public class TestKijiDataRequest {
   @Test
   public void testSerializability() throws IOException, ClassNotFoundException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("foo", "bar1")
+    builder.newColumnsDef().add("foo", "bar1")
         .add("foo", "bar2")
         .add("foo", "bar3")
         .add("foo", "bar4");
@@ -59,11 +59,11 @@ public class TestKijiDataRequest {
   @Test
   public void testColumnRequestEquals() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("foo", "bar");
+    builder.newColumnsDef().add("foo", "bar");
     KijiDataRequest req0 = builder.build();
 
     builder = KijiDataRequest.builder();
-    builder.addColumns().add("foo", "bar");
+    builder.newColumnsDef().add("foo", "bar");
     KijiDataRequest req1 = builder.build();
     assertTrue(req0 != req1);
     assertEquals(req0, req0);
@@ -74,8 +74,8 @@ public class TestKijiDataRequest {
     assertEquals(foo1, foo0);
 
     builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(2).add("foo", "bar");
-    builder.addColumns().add("foo", "baz");
+    builder.newColumnsDef().withMaxVersions(2).add("foo", "bar");
+    builder.newColumnsDef().add("foo", "baz");
     KijiDataRequest req2 = builder.build();
     KijiDataRequest.Column foo2 = req2.getColumn("foo", "bar");
     assertThat(new Object(), is(not((Object) foo2)));
@@ -92,26 +92,26 @@ public class TestKijiDataRequest {
   public void testDataRequestEquals() {
     KijiDataRequestBuilder builder0 = KijiDataRequest.builder()
         .withTimeRange(3L, 4L);
-    builder0.addColumns().withMaxVersions(2).addFamily("foo");
-    builder0.addColumns().withMaxVersions(5).add("bar", "baz");
+    builder0.newColumnsDef().withMaxVersions(2).addFamily("foo");
+    builder0.newColumnsDef().withMaxVersions(5).add("bar", "baz");
     KijiDataRequest request0 = builder0.build();
 
     KijiDataRequestBuilder builder1 = KijiDataRequest.builder()
         .withTimeRange(3L, 4L);
-    builder1.addColumns().withMaxVersions(2).addFamily("foo");
-    builder1.addColumns().withMaxVersions(5).add("bar", "baz");
+    builder1.newColumnsDef().withMaxVersions(2).addFamily("foo");
+    builder1.newColumnsDef().withMaxVersions(5).add("bar", "baz");
     KijiDataRequest request1 = builder1.build();
 
     KijiDataRequestBuilder builder2 = KijiDataRequest.builder()
         .withTimeRange(3L, 4L);
-    builder2.addColumns().withMaxVersions(2).addFamily("foo");
-    builder2.addColumns().withMaxVersions(5).add("car", "bot");
+    builder2.newColumnsDef().withMaxVersions(2).addFamily("foo");
+    builder2.newColumnsDef().withMaxVersions(5).add("car", "bot");
     KijiDataRequest request2 = builder2.build();
 
     KijiDataRequestBuilder builder3 = KijiDataRequest.builder()
         .withTimeRange(3L, 4L);
-    builder3.addColumns().withMaxVersions(2).addFamily("foo");
-    builder3.addColumns().withMaxVersions(3).add("car", "bot");
+    builder3.newColumnsDef().withMaxVersions(2).addFamily("foo");
+    builder3.newColumnsDef().withMaxVersions(3).add("car", "bot");
     KijiDataRequest request3 = builder3.build();
 
     assertEquals(request0, request1);
@@ -123,12 +123,12 @@ public class TestKijiDataRequest {
   @Test
   public void testMerge() {
     KijiDataRequestBuilder builder1 = KijiDataRequest.builder().withTimeRange(3, 4);
-    builder1.addColumns().withMaxVersions(2).add("foo", "bar");
+    builder1.newColumnsDef().withMaxVersions(2).add("foo", "bar");
     KijiDataRequest first = builder1.build();
 
     KijiDataRequestBuilder builder2 = KijiDataRequest.builder().withTimeRange(2, 4);
-    builder2.addColumns().add("baz", "bot");
-    builder2.addColumns().withMaxVersions(6).add("foo", "bar");
+    builder2.newColumnsDef().add("baz", "bot");
+    builder2.newColumnsDef().withMaxVersions(6).add("foo", "bar");
     KijiDataRequest second = builder2.build();
 
     KijiDataRequest merged = first.merge(second);
@@ -151,17 +151,17 @@ public class TestKijiDataRequest {
   public void testInvalidColumnSpec() {
     // The user really wants 'builder.columns().add("family", "qualifier")'.
     // This will throw an exception.
-    KijiDataRequest.builder().addColumns().addFamily("family:qualifier");
+    KijiDataRequest.builder().newColumnsDef().addFamily("family:qualifier");
   }
 
   @Test
   public void testPageSize() {
     final KijiDataRequestBuilder builder1 = KijiDataRequest.builder();
-    builder1.addColumns().withPageSize(1).add("foo", "bar");
+    builder1.newColumnsDef().withPageSize(1).add("foo", "bar");
     final KijiDataRequest first = builder1.build();
 
     final KijiDataRequestBuilder builder2 = KijiDataRequest.builder();
-    builder2.addColumns().add("foo", "bar");
+    builder2.newColumnsDef().add("foo", "bar");
     final KijiDataRequest second = builder2.build();
 
     assertThat(first, is(not(second)));
@@ -174,11 +174,11 @@ public class TestKijiDataRequest {
     // Page size should merge to the smallest value.
 
     final KijiDataRequestBuilder builder1 = KijiDataRequest.builder();
-    builder1.addColumns().withPageSize(1).add("foo", "bar");
+    builder1.newColumnsDef().withPageSize(1).add("foo", "bar");
     final KijiDataRequest first = builder1.build();
 
     final KijiDataRequestBuilder builder2 = KijiDataRequest.builder();
-    builder2.addColumns().withPageSize(3).add("foo", "bar");
+    builder2.newColumnsDef().withPageSize(3).add("foo", "bar");
     final KijiDataRequest second = builder2.build();
 
     assertEquals("Unexpected page size for 'first'",
@@ -199,11 +199,11 @@ public class TestKijiDataRequest {
     // non-zero value.
 
     final KijiDataRequestBuilder builder1 = KijiDataRequest.builder();
-    builder1.addColumns().withPageSize(4).add("foo", "bar");
+    builder1.newColumnsDef().withPageSize(4).add("foo", "bar");
     final KijiDataRequest first = builder1.build();
 
     final KijiDataRequestBuilder builder2 = KijiDataRequest.builder();
-    builder2.addColumns().add("foo", "bar");
+    builder2.newColumnsDef().add("foo", "bar");
     final KijiDataRequest second = builder2.build();
 
     assertEquals("Unexpected page size for 'first'",

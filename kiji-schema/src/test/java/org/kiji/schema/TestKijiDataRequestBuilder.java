@@ -32,7 +32,7 @@ public class TestKijiDataRequestBuilder {
   @Test
   public void testBuild() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("info", "foo");
+    builder.newColumnsDef().add("info", "foo");
     KijiDataRequest request = builder.build();
 
     // We should be able to use KijiDataRequest's create() method to similar effect.
@@ -48,14 +48,14 @@ public class TestKijiDataRequestBuilder {
   @Test
   public void testBuildMore() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("info", "foo");
-    builder.addColumns().add("info", "bar");
-    builder.addColumns().addFamily("map");
+    builder.newColumnsDef().add("info", "foo");
+    builder.newColumnsDef().add("info", "bar");
+    builder.newColumnsDef().addFamily("map");
     KijiDataRequest request = builder.build();
 
     // Reuse the column builder.
     KijiDataRequestBuilder builder2 = KijiDataRequest.builder();
-    builder2.addColumns().add("info", "foo").add("info", "bar").addFamily("map");
+    builder2.newColumnsDef().add("info", "foo").add("info", "bar").addFamily("map");
     KijiDataRequest request2 = builder2.build();
 
     // These should have the same effect.
@@ -63,8 +63,8 @@ public class TestKijiDataRequestBuilder {
 
     KijiDataRequestBuilder builder3 = KijiDataRequest.builder();
     builder3.withTimeRange(3, 4);
-    builder3.addColumns().withMaxVersions(10).add("info", "foo");
-    builder3.addColumns().withPageSize(6).add("info", "bar");
+    builder3.newColumnsDef().withMaxVersions(10).add("info", "foo");
+    builder3.newColumnsDef().withPageSize(6).add("info", "bar");
     KijiDataRequest request3 = builder3.build();
 
     assertNotNull("missing the expected column", request3.getColumn("info", "foo"));
@@ -81,11 +81,11 @@ public class TestKijiDataRequestBuilder {
   @Test
   public void testBuildMapFamiliesTwoWays() {
     KijiDataRequestBuilder builder1 = KijiDataRequest.builder();
-    builder1.addColumns().addFamily("info");
+    builder1.newColumnsDef().addFamily("info");
     KijiDataRequest req1 = builder1.build();
 
     KijiDataRequestBuilder builder2 = KijiDataRequest.builder();
-    builder2.addColumns().add("info", null);
+    builder2.newColumnsDef().add("info", null);
     KijiDataRequest req2 = builder2.build();
 
     assertEquals("These are equivalent ways of specifying a KDR, with unequal results",
@@ -95,7 +95,7 @@ public class TestKijiDataRequestBuilder {
   @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumn() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("info", "foo").add("info", "foo");
+    builder.newColumnsDef().add("info", "foo").add("info", "foo");
     final KijiDataRequest kdr = builder.build();
     assertEquals(1, kdr.getColumns().size());
   }
@@ -103,63 +103,63 @@ public class TestKijiDataRequestBuilder {
   @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumnIn2ColBuilders() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("info", "foo");
-    builder.addColumns().add("info", "foo");
+    builder.newColumnsDef().add("info", "foo");
+    builder.newColumnsDef().add("info", "foo");
     builder.build();
   }
 
   @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumnWithFamily() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("info", "foo").addFamily("info");
+    builder.newColumnsDef().add("info", "foo").addFamily("info");
     builder.build();
   }
 
   @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumnWithFamilyIn2ColBuilders() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("info", "foo");
-    builder.addColumns().addFamily("info");
+    builder.newColumnsDef().add("info", "foo");
+    builder.newColumnsDef().addFamily("info");
     builder.build();
   }
 
   @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumnWithFamilyReversed() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().addFamily("info").add("info", "foo");
+    builder.newColumnsDef().addFamily("info").add("info", "foo");
     builder.build();
   }
 
   @Test(expected=IllegalStateException.class)
   public void testNoRedundantColumnWithFamilyIn2ColBuildersReversed() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().addFamily("info");
-    builder.addColumns().add("info", "foo");
+    builder.newColumnsDef().addFamily("info");
+    builder.newColumnsDef().add("info", "foo");
     builder.build();
   }
 
   @Test(expected=IllegalArgumentException.class)
   public void testNoNegativeMaxVer() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(-5).addFamily("info");
+    builder.newColumnsDef().withMaxVersions(-5).addFamily("info");
   }
 
   @Test(expected=IllegalArgumentException.class)
   public void testNoNegativePageSize() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withPageSize(-5).addFamily("info");
+    builder.newColumnsDef().withPageSize(-5).addFamily("info");
   }
 
   @Test(expected=IllegalArgumentException.class)
   public void testNoZeroMaxVersions() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(0).addFamily("info");
+    builder.newColumnsDef().withMaxVersions(0).addFamily("info");
   }
 
   @Test
   public void testZeroPageSizeOk() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withPageSize(0).addFamily("info");
+    builder.newColumnsDef().withPageSize(0).addFamily("info");
     builder.build();
   }
 
@@ -171,13 +171,13 @@ public class TestKijiDataRequestBuilder {
   @Test(expected=IllegalStateException.class)
   public void testNoSettingMaxVerTwice() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(2).withMaxVersions(3).addFamily("info");
+    builder.newColumnsDef().withMaxVersions(2).withMaxVersions(3).addFamily("info");
   }
 
   @Test(expected=IllegalStateException.class)
   public void testNoSettingPageSizeTwice() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withPageSize(2).withPageSize(3).addFamily("info");
+    builder.newColumnsDef().withPageSize(2).withPageSize(3).addFamily("info");
   }
 
   @Test(expected=IllegalStateException.class)
@@ -189,21 +189,21 @@ public class TestKijiDataRequestBuilder {
   @Test(expected=IllegalStateException.class)
   public void testNoPropertiesAfterAdd() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("info", "foo").withMaxVersions(5);
+    builder.newColumnsDef().add("info", "foo").withMaxVersions(5);
   }
 
   @Test(expected=IllegalStateException.class)
   public void testNoAddAfterBuild() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().add("info", "foo").withMaxVersions(5);
+    builder.newColumnsDef().add("info", "foo").withMaxVersions(5);
     builder.build();
-    builder.addColumns().add("info", "bar");
+    builder.newColumnsDef().add("info", "bar");
   }
 
   @Test(expected=IllegalStateException.class)
   public void testNoPropertiesAfterBuild() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    KijiDataRequestBuilder.ColumnsDef columns = builder.addColumns();
+    KijiDataRequestBuilder.ColumnsDef columns = builder.newColumnsDef();
     columns.add("info", "foo").withMaxVersions(5);
     builder.build();
     columns.add("info", "bar"); // This should explode.
@@ -212,7 +212,7 @@ public class TestKijiDataRequestBuilder {
   @Test(expected=IllegalStateException.class)
   public void testCannotBuildTwoTimes() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    KijiDataRequestBuilder.ColumnsDef columns = builder.addColumns();
+    KijiDataRequestBuilder.ColumnsDef columns = builder.newColumnsDef();
     columns.add("info", "foo").withMaxVersions(5);
     builder.build();
     builder.build(); // This should explode.

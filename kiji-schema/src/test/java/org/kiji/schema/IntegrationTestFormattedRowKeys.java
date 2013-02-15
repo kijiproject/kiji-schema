@@ -65,7 +65,7 @@ public class IntegrationTestFormattedRowKeys
     mTable = mKiji.openTable(TABLE_NAME);
     mWriter = mTable.openTableWriter();
     mReader = mTable.openTableReader();
-    mBuilder.addColumns().withMaxVersions(1).add("family", "column");
+    mBuilder.newColumnsDef().withMaxVersions(1).add("family", "column");
     mDataRequest = mBuilder.build();
   }
 

@@ -66,7 +66,7 @@ public class TestKijiPager extends KijiClientTest {
   @Test(expected=KijiColumnPagingNotEnabledException.class)
   public void testColumnPagingNotEnabled() throws IOException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(5).add("info", "name");
+    builder.newColumnsDef().withMaxVersions(5).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
     assertTrue(!dataRequest.isEmpty());
     assertTrue(!dataRequest.isPagingEnabled());
@@ -88,7 +88,7 @@ public class TestKijiPager extends KijiClientTest {
     writer.close();
 
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(5).withPageSize(2).add("info", "name");
+    builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
     assertTrue(!dataRequest.isEmpty());
     assertTrue(dataRequest.isPagingEnabled());
@@ -129,7 +129,7 @@ public class TestKijiPager extends KijiClientTest {
       writer.close();
 
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(5).withPageSize(2).add("info", "name");
+    builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
     assertTrue(!dataRequest.isEmpty());
     assertTrue(dataRequest.isPagingEnabled());
@@ -173,7 +173,7 @@ public class TestKijiPager extends KijiClientTest {
       writer.close();
 
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(5).withPageSize(2).addFamily("jobs");
+    builder.newColumnsDef().withMaxVersions(5).withPageSize(2).addFamily("jobs");
     final KijiDataRequest dataRequest = builder.build();
     assertTrue(!dataRequest.isEmpty());
     assertTrue(dataRequest.isPagingEnabled());
@@ -222,7 +222,7 @@ public class TestKijiPager extends KijiClientTest {
       writer.close();
 
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.addColumns().withMaxVersions(5).withPageSize(2)
+    builder.newColumnsDef().withMaxVersions(5).withPageSize(2)
       .withFilter(new RegexQualifierColumnFilter("b")).addFamily("jobs");
     KijiPager pager = null;
     try {
