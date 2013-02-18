@@ -132,7 +132,7 @@ public final class HelpTool extends Configured implements KijiTool {
       System.out.println("");
       System.out.println("  To add additional jars to the classpath when running a tool,");
       System.out.println("  specify them in the KIJI_CLASSPATH environmental variable.");
-      System.out.println("  For more about Kiji environmental variables, "
+      System.out.println("  For more about Kiji environment variables, "
           + "type 'kiji help --verbose'.");
     }
     return 0;
