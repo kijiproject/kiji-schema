@@ -183,18 +183,6 @@ public abstract class BaseTool extends Configured implements KijiTool {
       getPrintStream().println(knie.getMessage());
       getPrintStream().println("Try: kiji install --kiji=kiji://.env/" + knie.getInstanceName());
       return FAILURE;
-    } catch (Exception exn) {
-      if (mDebugFlag) {
-        throw exn; // Debug mode enabled; throw error back to the user.
-      } else {
-        // Just pretty-print the error for the user.
-        Throwable thr = exn;
-        while (thr != null) {
-          getPrintStream().println("Error: " + thr.getMessage());
-          thr = thr.getCause();
-        }
-        return FAILURE;
-      }
     }
   }
 
@@ -263,5 +251,14 @@ public abstract class BaseTool extends Configured implements KijiTool {
    */
   protected final boolean isInteractive() {
     return mInteractiveFlag;
+  }
+
+  /**
+   * Whether or not this tool is being run with verbose debug messages.
+   *
+   * @return Whether or not this tool is being run with verbose debug messages.
+   */
+  protected final boolean hasVerboseDebug() {
+    return mDebugFlag;
   }
 }
