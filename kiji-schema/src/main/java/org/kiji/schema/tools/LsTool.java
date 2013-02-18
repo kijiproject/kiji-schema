@@ -34,6 +34,7 @@ import com.google.common.collect.Sets;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -186,10 +187,14 @@ public final class LsTool extends BaseTool {
    * @throws IOException on I/O error.
    */
   protected static Set<String> getInstanceNames(KijiURI hbaseURI) throws IOException {
-    // TODO(SCHEMA-188): Move this logic in KijiInstaller
+    // TODO(SCHEMA-188): Consolidate this logic in a single central place:
     final Configuration conf = HBaseConfiguration.create();
+    conf.set(HConstants.ZOOKEEPER_QUORUM,
+        Joiner.on(",").join(hbaseURI.getZookeeperQuorumOrdered()));
+    conf.setInt(HConstants.ZOOKEEPER_CLIENT_PORT, hbaseURI.getZookeeperClientPort());
     final HBaseAdmin hbaseAdmin =
         HBaseFactory.Provider.get().getHBaseAdminFactory(hbaseURI).create(conf);
+
     try {
       final Set<String> instanceNames = Sets.newTreeSet();
       for (HTableDescriptor hTableDescriptor : hbaseAdmin.listTables()) {
