@@ -21,6 +21,7 @@ package org.kiji.schema.tools;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -38,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ToJson;
@@ -154,14 +156,17 @@ public class TestCreateTableTool extends KijiClientTest {
     final String splitKeyFile =
         getClass().getClassLoader().getResource(REGION_SPLIT_KEY_FILE).getPath();
 
-    assertEquals(BaseTool.FAILURE, runTool(new CreateTableTool(),
+    try {
+      runTool(new CreateTableTool(),
         "--table=" + tableURI,
         "--layout=" + layoutFile,
         "--split-key-file=file://" + splitKeyFile
-    ));
-    assertEquals(3, mToolOutputLines.length);
-    assertTrue(mToolOutputLines[2].startsWith(
-        "Error: Row key hashing is enabled for the table. Use --num-regions=N instead."));
+      );
+      fail("Should throw IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertTrue(iae.getMessage().startsWith(
+          "Row key hashing is enabled for the table. Use --num-regions=N instead."));
+    }
   }
 
   @Test
@@ -172,14 +177,17 @@ public class TestCreateTableTool extends KijiClientTest {
     final KijiURI tableURI =
         KijiURI.newBuilder(getKiji().getURI()).withTableName(layout.getName()).build();
 
-    assertEquals(BaseTool.FAILURE, runTool(new CreateTableTool(),
+    try {
+      runTool(new CreateTableTool(),
         "--table=" + tableURI,
         "--layout=" + layoutFile,
         "--num-regions=4"
-    ));
-    assertEquals(3, mToolOutputLines.length);
-    assertTrue(mToolOutputLines[2].startsWith(
-        "Error: May not use numRegions > 1 if row key hashing is disabled in the layout"));
+      );
+      fail("Should throw InvalidLayoutException");
+    } catch (IllegalArgumentException iae) {
+      assertTrue(iae.getMessage().startsWith(
+          "May not use numRegions > 1 if row key hashing is disabled in the layout"));
+    }
   }
 
   @Test
@@ -189,13 +197,15 @@ public class TestCreateTableTool extends KijiClientTest {
     final KijiURI tableURI =
         KijiURI.newBuilder(getKiji().getURI()).withTableName(layout.getName()).build();
 
-    assertEquals(BaseTool.FAILURE, runTool(new CreateTableTool(),
+    try {
+      runTool(new CreateTableTool(),
         "--table=" + tableURI,
         "--layout=" + layoutFile
-    ));
-    assertEquals(2, mToolOutputLines.length);
-    assertTrue(mToolOutputLines[1].startsWith(
-        "Error: Schema with type 'class' must be a valid Java identifier."));
+      );
+      fail("Should throw InvalidLayoutException");
+    } catch (InvalidLayoutException ile) {
+      assertTrue(ile.getMessage().startsWith(
+          "Schema with type 'class' must be a valid Java identifier."));
+    }
   }
-
 }
