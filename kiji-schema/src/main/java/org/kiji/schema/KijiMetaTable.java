@@ -20,14 +20,13 @@ package org.kiji.schema;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
-import org.kiji.schema.avro.TableBackup;
+import org.kiji.schema.avro.MetaTableBackup;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 
 /**
@@ -90,7 +89,7 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
    * @throws IOException If there is an error.
    * @return A map from table names to TableBackup records.
    */
-  public abstract Map<String, TableBackup> toBackup() throws IOException;
+  public abstract MetaTableBackup toBackup() throws IOException;
 
   /**
    * Restores metadata from a backup record. This consists of table layouts, schemas, and user
@@ -99,5 +98,5 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
    * @param backup A map from table name to table backup record.
    * @throws IOException on I/O error.
    */
-  public abstract void fromBackup(Map<String, TableBackup> backup) throws IOException;
+  public abstract void fromBackup(MetaTableBackup backup) throws IOException;
 }

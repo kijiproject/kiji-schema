@@ -41,6 +41,7 @@ import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.KeyValueBackup;
+import org.kiji.schema.avro.MetaTableBackup;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.avro.TableLayoutsBackup;
@@ -272,8 +273,8 @@ public class HBaseMetaTable extends KijiMetaTable {
 
   /** {@inheritDoc} */
   @Override
-  public Map<String, TableBackup> toBackup() throws IOException {
-    Map<String, TableBackup> metadataBackup = new HashMap<String, TableBackup>();
+  public MetaTableBackup toBackup() throws IOException {
+    Map<String, TableBackup> backupEntries = new HashMap<String, TableBackup>();
     List<String> tables = listTables();
     for (String table : tables) {
       TableLayoutsBackup layouts = mTableLayoutDatabase.layoutsToBackup(table);
@@ -283,17 +284,17 @@ public class HBaseMetaTable extends KijiMetaTable {
           .setTableLayoutsBackup(layouts)
           .setKeyValueBackup(keyValues)
           .build();
-      metadataBackup.put(table, tableBackup);
+      backupEntries.put(table, tableBackup);
     }
-    return metadataBackup;
+    return MetaTableBackup.newBuilder().setTables(backupEntries).build();
   }
 
   /** {@inheritDoc} */
   @Override
-  public void fromBackup(Map<String, TableBackup> backup) throws IOException {
+  public void fromBackup(MetaTableBackup backup) throws IOException {
     LOG.info(String.format("Restoring meta table from backup with %d entries.",
-        backup.size()));
-    for (Map.Entry<String, TableBackup> tableEntry: backup.entrySet()) {
+        backup.getTables().size()));
+    for (Map.Entry<String, TableBackup> tableEntry: backup.getTables().entrySet()) {
       final String tableName = tableEntry.getKey();
       final TableBackup tableBackup = tableEntry.getValue();
       Preconditions.checkState(tableName.equals(tableBackup.getName()), String.format(

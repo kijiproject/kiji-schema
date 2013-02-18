@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-140. Update API for metatable backups. This changes the
+      backup format. Please re-backup your tables using the new API.
   * SCHEMA-136. Make KijiRowKeySplitter a non-static class. Get an instance
       with the KijiRowKeySplitter.get() method.
   * SCHEMA-145. Change KijiColumnFilter.Context to abstract class.
@@ -11,7 +13,8 @@ Version 1.0.0-rc5
       supports putting and getting properties from the system table.
   * SCHEMA-198. KijiColumnName validates family names using
       KijiNameValidator. KijiInvalidNameException is unchecked.
-  * SCHEMA-135. Clean up API for table layout backups.
+  * SCHEMA-135. Clean up API for table layout backups. This changes the
+      backup format. Please re-backup your tables using the new API.
 
 Version 1.0.0-rc4
   * BENTO-15. When run within a BentoBox, the 'kiji' script will notify you

@@ -410,16 +410,24 @@ protocol KijiTableLayoutRecords {
     KeyValueBackup key_value_backup = [];
   }
 
+  record SchemaTableBackup {
+    array<SchemaTableEntry> entries = [];
+  }
+
+  record MetaTableBackup {
+    map<TableBackup> tables = {};
+  }
+
   /** Record that encapsulates all Kiji metadata, for backup purposes. */
   record MetadataBackup {
-    /** Layout version (eg. "kiji-1.0"). */
+    /** Layout version (eg. "layout-1.0"). */
     string layout_version;
 
-    /** Schema entries. */
-    array<SchemaTableEntry> schema_table = [];
+    /** Schema table backup. */
+    SchemaTableBackup schema_table;
 
-    /** Map from table names to table backup records. */
-    map<TableBackup> meta_table = {};
+    /** Meta table backup. */
+    MetaTableBackup meta_table;
   }
 
 }
