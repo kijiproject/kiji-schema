@@ -109,4 +109,11 @@
     <Class name="org.kiji.schema.tools.DeleteTool" />
     <Bug pattern="UWF_NULL_FIELD" />
   </Match>
+
+  <Match>
+    <!-- Reliance on default encoding is acceptable -->
+    <Class name="org.kiji.schema.tools.SchemaTableTool" />
+    <Bug pattern="DM_DEFAULT_ENCODING" />
+  </Match>
+
 </FindBugsFilter>

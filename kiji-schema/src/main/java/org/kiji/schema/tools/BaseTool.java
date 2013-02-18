@@ -85,6 +85,9 @@ public abstract class BaseTool extends Configured implements KijiTool {
   /** Failure tool exit code. */
   public static final int FAILURE = 1;
 
+  /** Aborted tool exit code. */
+  public static final int ABORTED = 2;
+
   /**
    * Prompts the user for a yes or no answer to the specified question until they provide a valid
    * response (y/n/yes/no case insensitive) and reports the result. If yesNoPrompt is called in
