@@ -39,6 +39,17 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 
 /**
  * Command-line tool for flushing kiji meta and user tables in hbase.
+ *
+ * <p>Examples:
+ * Flush a Kiji table:
+ * <pre>
+ *  kiji flush-table --target=kiji://my-hbase/my-instance/my-table/
+ * </pre>
+ * Flush all meta tables in an instance:
+ * <pre>
+ *  kiji flush-table --target=kiji://my-hbase/my-instance/ --meta=true
+ * </pre>
+ * </p>
  */
 @ApiAudience.Private
 public final class FlushTableTool extends BaseTool {
