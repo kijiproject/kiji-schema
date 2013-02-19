@@ -29,7 +29,19 @@ import org.kiji.annotations.Inheritance;
 /**
  * Interface for performing puts on a Kiji table.
  *
- * Instantiated via {@code KijiTable.openTableWriter()}
+ * <p> KijiPutter provides methods for putting values into cells given an entity id,
+ *  column family, column qualifier, and optional timestamp, along with the value to put.
+ *
+ * <pre>
+ *  final KijiPutter putter = myKijiTable.openTableWriter();
+ *  putter.put(entity id, column family, column qualifier, timestamp, value);
+ *  putter.put(entity id, column family, column qualifier, value);
+ * </pre>
+ *
+ * If a timestamp is not specified, the current system time should be used for the put.
+ * </p>
+ *
+ * Instantiated in Kiji Schema via {@link KijiTable#openTableWriter()}.
  */
 @ApiAudience.Framework
 @Inheritance.Sealed
