@@ -30,7 +30,7 @@ import org.kiji.annotations.Inheritance;
 import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
 
 /**
- * KijiRowData provides a way for programs to access data read from a Kiji table.
+ * KijiRowData provides a way for applications to access data read from a Kiji table.
  * KijiRowData objects contain a subset of the cells contained within a row in
  * a Kiji table. This subset is often determined by a {@link KijiDataRequest} object
  * that must be provided before a read operation.
@@ -38,13 +38,13 @@ import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
  * <p>
  *   KijiRowData objects should not be constructed directly, but rather should be
  *   obtained from a read operation. KijiRowData objects can be obtained by using a
- *   {@link KijiTableReader}, {@link KijiScanner}, or {@link KijiPager}.
+ *   {@link KijiTableReader}, {@link KijiRowScanner}, or {@link KijiPager}.
  * </p>
  *
  * <h2>Reading cells</h2>
  * <p>
- *   Rows read from a Kiji table may contain multiple columns. To read the value from a
- *   particular column:
+ *   Rows read from a Kiji table may contain multiple cells from multiple columns. To read the
+ *   value from a particular column:
  * </p>
  * <pre>
  *   <code>
@@ -71,6 +71,11 @@ import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
  *     if (row.containsColumn("info", "name")) {
  *       // Now that we know the cell exists, read the value.
  *       final String name = row.getMostRecentValue("info", "name");
+ *     }
+ *
+ *     if (row.containsCell("info", "name", 42L)) {
+ *       // Now that we know that this cell exists at the timestamp of 42.
+ *       final String name = row.getValue("info", "name", 42L);
  *     }
  *   </code>
  * </pre>
