@@ -43,7 +43,7 @@ import org.kiji.schema.KijiURI;
 /**
  * Command-line tool to delete kiji tables, rows, and cells.
  *
- * --kiji to specify the URI of the target(s) to delete.
+ * --target to specify the URI of the target(s) to delete.
  *
  * --entity-id to select a kiji row by unhashed ID.
  *  required if family or qualifier are specified in URI,
@@ -118,7 +118,7 @@ public final class DeleteTool extends BaseTool {
   protected void validateFlags() throws Exception {
     Preconditions.checkArgument((mTargetURIFlag != null) && !mTargetURIFlag.isEmpty(),
         "Specify a target element to delete or to delete from with "
-        + "--table=kiji://hbase-address/kiji-instance[/table[/family[:qualifier]]]");
+        + "--target=kiji://hbase-address/kiji-instance[/table[/family[:qualifier]]]");
     mTargetURI = KijiURI.newBuilder(mTargetURIFlag).build();
     Preconditions.checkArgument(mTargetURI.getInstance() != null,
         "Invalid target '{}': cannot delete HBase cluster. "
