@@ -29,7 +29,19 @@ import org.kiji.annotations.Inheritance;
 /**
  * Interface for performing increments on a Kiji table.
  *
- * Instantiated via {@code KijiTable.openTableWriter()}
+ * <p>
+ *   KijiIncrementer provides a method for modifying the value of a counter given
+ *   an entity id, column family, column qualifier, and a signed long amount by which
+ *   to modify the counter.  Increment does not support setting the timestamp of the
+ *   data to write, and returns the newly incremented cell.
+ * </p>
+ *
+ * <pre>
+ *   final KijiIncrementer incrementer = myKijiTable.openTableWriter();
+ *   incrementer.increment(entityId, columnFamily, columnQualifier, amount);
+ * </pre>
+ *
+ * This interface is not used alone but is bundled within {@link KijiTableWriter}.
  */
 @ApiAudience.Framework
 @Inheritance.Sealed

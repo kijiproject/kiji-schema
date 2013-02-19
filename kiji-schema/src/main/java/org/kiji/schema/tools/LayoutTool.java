@@ -45,6 +45,23 @@ import org.kiji.schema.util.ToJson;
 /**
  * Command-line tool for interacting with table layouts. Actions include reading a layout,
  * setting a table layout, and viewing a table's layout history.
+ *
+ * <h2>Examples:</h2>
+ * Write the recent layout history of a table to a file:
+ * <pre>
+ *   kiji layout --table=kiji://my-hbase/my-instance/my-table/ \
+ *       --do=history --max-version=3 --write-to=my-output-file
+ * </pre>
+ * Set a new layout for a table:
+ * <pre>
+ *   kiji layout --table=kiji://my-hbase/my-instance/my-table/ \
+ *       --do=set --layout=my-input-file
+ * </pre>
+ * Perform a dry run of setting a table layout:
+ * <pre>
+ *   kiji layout --table=kiji://my-hbase/my-instance/my-table/ \
+ *       --do=set --layout=my-input-file --dry-run=true
+ * </pre>
  */
 @ApiAudience.Private
 public final class LayoutTool extends BaseTool {

@@ -29,7 +29,21 @@ import org.kiji.annotations.Inheritance;
 /**
  * Interface for performing deletes on a Kiji table.
  *
- * Instantiated via {@code KijiTable.openTableWriter()}
+ * <p>KijiDeleter provides methods for deleting data from a Kiji table.</p>
+ *
+ * <p>Delete all data on the given row in the given column (column family:column qualifier).</p>
+ * <pre>
+ *   final KijiDeleter deleter = myKijiTable.openTableWriter();
+ *   deleter.deleteColumn(entityId, columnFamily, columnQualifier);
+ * </pre>
+ *
+ * <p>Delete the most recent data in a cell.</p>
+ * <pre>
+ *   final KijiDeleter deleter = myKijiTable.openTableWriter();
+ *   deleter.deleteCell(entityId, columnFamily, columnQualifier);
+ * </pre>
+ *
+ * This interface is bundled within the {@link KijiTableWriter} interface.
  */
 @ApiAudience.Framework
 @Inheritance.Sealed

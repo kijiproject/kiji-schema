@@ -41,19 +41,27 @@ import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
 
 /**
- * Command-line tool to delete kiji tables, rows, and cells.
+ * Command-line tool to delete Kiji tables, rows, and cells.
  *
- * --target to specify the URI of the target(s) to delete.
- *
- * --entity-id to select a kiji row by unhashed ID.
- *  required if family or qualifier are specified in URI,
- *  and for timestamp flags to operate.
- *
- * --upto-timestamp to select values with timestamp equal or lesser.
- *
- * --exact-timestamp to select a value with a specific timestamp.
- *
- * --most-recent to select the most recent value in a cell.
+ * <h2>Examples:</h2>
+ * Delete an entire table:
+ * <pre>
+ *   kiji delete --target=kiji://my-hbase/my-instance/my-table/
+ * </pre>
+ * Delete an entire row:
+ * <pre>
+ *   kiji delete --target=kiji://my-hbase/my-instance/my-table/ \
+ *       --entity-id=my-entity-id --timestamp=all
+ * </pre>
+ * Delete a single version of a cell:
+ * <pre>
+ *   kiji delete --target=kiji://my-hbase/my-instance/my-table/ \
+ *       my-column-family:my-column-qualifier/ --entity-id=my-entity-id \
+ *       --timestamp=123456789
+ *   kiji delete --target=kiji://my-hbase/my-instance/my-table/ \
+ *       my-column-family:my-column-qualifier/ --entity-id=my-entity-id \
+ *       --timestamp=latest
+ * </pre>
  */
 @ApiAudience.Private
 public final class DeleteTool extends BaseTool {

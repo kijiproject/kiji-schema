@@ -41,7 +41,7 @@ import org.kiji.schema.hbase.HBaseColumnName;
  * filters rows from a table.</p>
  *
  * @see org.kiji.schema.filter.KijiRowFilter
- * @see org.kiji.schema.KijiDataRequest.Column#withFilter(KijiColumnFilter)
+ * @see org.kiji.schema.KijiDataRequestBuilder.ColumnsDef#withFilter(KijiColumnFilter)
  */
 @ApiAudience.Public
 @Inheritance.Extensible

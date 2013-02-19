@@ -31,8 +31,6 @@
  * <ul>
  *   <li>{@link org.kiji.schema.Kiji Kiji} - Root class representing a Kiji instance which
  *       provides access to KijiTables.</li>
- *   <li>{@link org.kiji.schema.KijiAdmin KijiAdmin} - administration interface that permits
- *       the creation and deletion of tables.</li>
  *   <li>{@link org.kiji.schema.KijiTable KijiTable} - provides access to
  *       {@link org.kiji.schema.KijiTableReader KijiTableReader} and
  *       {@link org.kiji.schema.KijiTableWriter KijiTableWriter}</li>

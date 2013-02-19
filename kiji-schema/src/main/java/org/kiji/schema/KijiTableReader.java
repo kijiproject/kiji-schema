@@ -29,9 +29,44 @@ import org.kiji.schema.filter.KijiRowFilter;
 import org.kiji.schema.hbase.HBaseScanOptions;
 
 /**
- * Interface for reading data from a kiji table.
+ * Interface for reading data from a Kiji table.
  *
- * Instantiated from {@link org.kiji.schema.KijiTable#openTableReader()}
+ * <p>
+ *   Utilizes {@link org.kiji.schema.EntityId} and {@link org.kiji.schema.KijiDataRequest}
+ *   to return {@link org.kiji.schema.KijiRowData} or a {@link org.kiji.schema.KijiRowScanner}
+ *   to iterate across rows in a Kiji table.
+ * </p>
+ *
+ * <p>To get the three most recent versions of cell data from a column <code>bar</code> from
+ * the family <code>foo</code> within the time range (123, 456):
+ * <pre>
+ *   KijiDataRequestBuilder builder = KijiDataRequest.builder()
+ *     .withTimeRange(123L, 456L);
+ *     .newColumnsDef()
+ *     .withMaxVersions(3)
+ *     .add("foo", "bar");
+ *   final KijiDataRequest request = builder.build();
+ *
+ *   final KijiTableReader reader = myKijiTable.openTableReader();
+ *   final KijiRowData data = reader.get(myEntityId, request);
+ * </pre>
+ * </p>
+ *
+ * <p>To get a row scanner across many records using the same column and version restrictions
+ * from above:
+ * <pre>
+ *   final KijiRowScanner scanner = reader.getScanner(request);
+ *
+ *   final KijiScannerOptions options = new KijiScannerOptions();
+ *   options.setStartRow(myStartRow);
+ *   options.setStopRow(myStopRow);
+ *   final KijiRowScanner limitedScanner = reader.getScanner(request, options);
+ * </pre>
+ *   If a KijiScannerOptions is not set, the scanner will iterate over all rows
+ *   in the table (as in the case of <code>scanner</code>
+ * </p>
+ *
+ * Instantiated in Kiji Schema via {@link org.kiji.schema.KijiTable#openTableReader()}.
  */
 @ApiAudience.Public
 @Inheritance.Sealed

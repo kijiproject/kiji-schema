@@ -136,7 +136,7 @@ public abstract class AbstractKijiIntegrationTest {
 
     LOG.info("Mini Kiji instance is ready");
 
-    LOG.info("Starting mini map/reduce cluster");
+    LOG.info("Starting mini MapReduce cluster");
     mStandaloneConf.set("hadoop.log.dir", "/tmp/test_hadoop_log_dir");
     mHBaseUtil.startMiniMapReduceCluster();
 
