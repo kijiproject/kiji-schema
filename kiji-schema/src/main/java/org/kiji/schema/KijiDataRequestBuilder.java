@@ -397,7 +397,7 @@ public final class KijiDataRequestBuilder {
    * the KijiDataRequestBuilder. It is an error to add a ColumnsDef instance to multiple
    * KijiDataRequestBuilders.
    *
-   * @param def A set of column definitions contained in a {@link KijiDataRequest.ColumnsDef}
+   * @param def A set of column definitions contained in a {@link KijiDataRequestBuilder.ColumnsDef}
    *     instance.
    * @return this KijiDataRequest builder.
    */

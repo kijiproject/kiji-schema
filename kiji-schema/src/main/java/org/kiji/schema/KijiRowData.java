@@ -30,19 +30,70 @@ import org.kiji.annotations.Inheritance;
 import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
 
 /**
- * <p>KijiRowData objects represent information retrieved from a Kiji table, given a
- * {@link KijiDataRequest}.</p>
+ * KijiRowData provides a way for applications to access data read from a Kiji table.
+ * KijiRowData objects contain a subset of the cells contained within a row in
+ * a Kiji table. This subset is often determined by a {@link KijiDataRequest} object
+ * that must be provided before a read operation.
  *
- * <p> KijiRowDatas should not be constructed directly. KijiClient get access to a KijiRowData
- * returned {@link KijiTableReader}s, {@link KijiScanner}s, and {@link KijiPager}s. </p>
+ * <p>
+ *   KijiRowData objects should not be constructed directly, but rather should be
+ *   obtained from a read operation. KijiRowData objects can be obtained by using a
+ *   {@link KijiTableReader}, {@link KijiRowScanner}, or {@link KijiPager}.
+ * </p>
  *
- * Implementations should be thread-safe.
+ * <h2>Reading cells</h2>
+ * <p>
+ *   Rows read from a Kiji table may contain multiple cells from multiple columns. To read the
+ *   value from a particular column:
+ * </p>
+ * <pre>
+ *   <code>
+ *     final KijiRowData row = myTableReader.get(myEntityId, myDataRequest);
+ *
+ *     // Read the value stored in the column named 'info:name' with a timestamp of 42.
+ *     final String name = row.getValue("info", "name", 42L);
+ *   </code>
+ * </pre>
+ * <p>
+ *   We also provide additional methods for accessing data stored withing a row. See the
+ *   documentation below for methods with the name 'get*' for more information.
+ * </p>
+ *
+ * <h2>Checking for existence of cells</h2>
+ * <p>
+ *   Since rows within a Kiji table may not contain all the columns defined within a layout
+ *   we need a way to check this in code. KijiRowData contains several methods to help with
+ *   this:
+ * </p>
+ * <pre>
+ *   <code>
+ *     final KijiRowData row = myTableReader.get(myEntityId, myDataRequest);
+ *     if (row.containsColumn("info", "name")) {
+ *       // Now that we know the cell exists, read the value.
+ *       final String name = row.getMostRecentValue("info", "name");
+ *     }
+ *
+ *     if (row.containsCell("info", "name", 42L)) {
+ *       // Now that we know that this cell exists at the timestamp of 42.
+ *       final String name = row.getValue("info", "name", 42L);
+ *     }
+ *   </code>
+ * </pre>
+ *
+ * <h2>Dealing with large rows</h2>
+ * <p>
+ *   Rows in Kiji tables may contain large amounts of data. In some cases, this is caused by
+ *   storing many versions of a cell with different timestamps in a row. This can become a
+ *   problem when the size of a row/cell exceeds the amount of RAM available. To deal with
+ *   this, {@link KijiPager}s can be used. See the documentation for {@link KijiPager} for
+ *   more information.
+ * </p>
  */
 @ApiAudience.Public
 @Inheritance.Sealed
 public interface KijiRowData {
   /**
-   * Gets the entity id for this row of kiji data.
+   * Gets the entity id for this row.
    *
    * @return The row key.
    */
@@ -51,46 +102,49 @@ public interface KijiRowData {
   /**
    * Determines whether a particular column has data in this row.
    *
-   * @param family A column family.
-   * @param qualifier A column qualifier.
-   * @return Whether the column has data in this row.
+   * @param family Column family of the column to check for.
+   * @param qualifier Column qualifier of the column to check for.
+   * @return Whether the specified column has data in this row.
    */
   boolean containsColumn(String family, String qualifier);
 
   /**
-   * Determines whether a particular column family has any data in this row.
+   * Determines whether a particular column family has data in this row.
    *
-   * @param family A column family.
-   * @return Whether the family has data in this row.
+   * @param family Column family to check for.
+   * @return Whether the specified column family has data in this row.
    */
   boolean containsColumn(String family);
 
   /**
-   * Determines if a particular column has data in this row at a specific time.
+   * Determines whether a particular column has data in this row with the specified timestamp.
    *
-   * @param family A column fmaily.
-   * @param qualifier A column qualifier.
-   * @param timestamp A cell timestamp.
-   * @return Whether the column has data in this row at the specified time.
+   * @param family Column family of the column to check for.
+   * @param qualifier Column qualifier of the column to check for.
+   * @param timestamp Timestamp of the value to check for.
+   * @return Whether the specified column has data in this row with the specified timestamp.
    */
-  boolean containsCell(String family, String qualifier, Long timestamp);
+  boolean containsCell(String family, String qualifier, long timestamp);
 
   /**
-   * Gets the set of column qualifiers that exist in a family.
+   * Gets the set of column qualifiers that exist in a column family in this row.
    *
-   * @param family A column family name.
-   * @return The set of column qualifiers that exist in <code>family</code>.
+   * @param family Column family to get column qualifiers from.
+   * @return Set of column qualifiers that exist in the <code>family</code> column family.
    */
   NavigableSet<String> getQualifiers(String family);
 
   /**
    * Gets the set of timestamps on cells that exist in a column.
    *
-   * <p>If iterating over the set, you will get items in order of decreasing timestamp.</p>
+   * <p>
+   *   If iterating over the set, you will get timestamps in descending order.
+   * </p>
    *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The set of all timestamps of cells in the <code>family:qualifier</code> column.
+   * @param family Column family of the column to get timestamps from.
+   * @param qualifier Column qualifier of the column to get timestamps from.
+   * @return Set of all timestamps of cells in the <code>family:qualifier</code> column
+   *     in this row in descending order.
    */
   NavigableSet<Long> getTimestamps(String family, String qualifier);
 
@@ -98,147 +152,167 @@ public interface KijiRowData {
    * Gets the reader schema for a column as declared in the layout of the table this row
    * comes from.
    *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return The Avro reader schema for the column.
+   * @param family Column family of the desired column schema.
+   * @param qualifier Column qualifier of the desired column schema.
+   * @return Avro reader schema for the column.
    * @throws IOException If there is an error or the column does not exist.
+   * @see org.kiji.schema.layout.KijiTableLayout
    */
-  Schema getReaderSchema(String family, String qualifier) throws IOException;
+  Schema getReaderSchema(String family, String qualifier)
+      throws IOException;
 
   /**
-   * Gets the value stored within the specified cell.
+   * Gets the data stored within the specified column with the specified timestamp.
    *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @param <T> The type of the values stored at the specified coordinates.
-   * @return the value of the specified cell, or null if the cell does not exist.
-   *     Note: this method does not distinguish between Avro encoded nulls and non-existant
-   *     cells. Use {@link #containsColumn()} to distinguish between this scenarios.
+   * @param family Column family of the desired data.
+   * @param qualifier Column qualifier of the desired data.
+   * @param timestamp Timestamp of the desired data.
+   * @param <T> Type of the data stored at the specified coordinates.
+   * @return Data contained in the specified column with the specified timestamp, or null
+   *     if the column or timestamp does not exist in this row. Note: this method does not
+   *     distinguish between Avro encoded nulls and non-existant cells. Use
+   *     {@link #containsColumn(String, String)} to distinguish between these scenarios.
    * @throws IOException If there is an error.
    */
-  <T> T getValue(String family, String qualifier, long timestamp) throws IOException;
+  <T> T getValue(String family, String qualifier, long timestamp)
+      throws IOException;
 
   /**
-   * Gets the value with the latest timestamp stored within the specified cell.
+   * Gets the data stored within the specified column with the latest timestamp.
    *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param <T> The type of the values stored at the specified coordinates.
-   * @return the value of the specified cell, or null if the cell does not exist.
-   *     Note: this method does not distinguish between Avro encoded nulls and non-existant
-   *     cells.
+   * @param family Column family of the desired data.
+   * @param qualifier Column qualifier of the desired data.
+   * @param <T> Type of the data stored at the specified coordinates.
+   * @return Data contained in the specified column with the latest timestamp, or null
+   *     if the column does not exist in this row. Note: this method does not distinguish
+   *     between Avro encoded nulls and non-existant cells. Use
+   *     {@link #containsColumn(String, String)} to distinguish between these scenarios.
    * @throws IOException If there is an error.
    */
-  <T> T getMostRecentValue(String family, String qualifier) throws IOException;
+  <T> T getMostRecentValue(String family, String qualifier)
+      throws IOException;
 
   /**
-   * Gets the value with the latest timestamp stored within the specified cell.
+   * Gets all data stored within the specified column family flattened to contain only
+   * the data with the latest timestamps in each column.
    *
-   * @param family A column family name.
-   * @param <T> The type of the values stored at the specified coordinates.
-   * @return the value of the specified cell, or null if the cell does not exist.
-   *     Note: this method does not distinguish between Avro encoded nulls and non-existant
-   *     cells.
+   * @param family Column family of the desired data.
+   * @param <T> Type of the data stored at the specified coordinates.
+   * @return Data contained in the specified column family flattened to contain only the
+   *     data with the latest timestamps in each column. Note: this method does not distinguish
+   *     between Avro encoded nulls and non-existant cells. Use
+   *     {@link #containsColumn(String, String)} to distinguish between these scenarios.
    * @throws IOException If there is an error.
    */
   <T> NavigableMap<String, T> getMostRecentValues(String family)
       throws IOException;
 
   /**
-   * Gets all the timestamp-value pairs stored within the specified family.
+   * Gets all data stored within the specified column family.
    *
-   * @param family A column family name.
-   * @param <T> The type of the values stored at the specified coordinates.
-   * @return A sorted map containing the values stored in the specified cell.
+   * @param family Column family of the desired data.
+   * @param <T> Type of the data stored at the specified coordinates.
+   * @return A sorted map containing the data stored in the specified column family.
    * @throws IOException If there is an error.
    */
-  <T> NavigableMap<String, NavigableMap<Long, T>> getValues(String family) throws IOException;
+  <T> NavigableMap<String, NavigableMap<Long, T>> getValues(String family)
+      throws IOException;
 
   /**
-   * Gets all the timestamp-value pairs stored within the specified cell.
+   * Gets all data stored within the specified column.
    *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param <T> The type of the values stored at the specified coordinates.
-   * @return A sorted map containing the values stored in the specified cell.
+   * @param family Column family of the desired data.
+   * @param qualifier Column qualifier of the desired data.
+   * @param <T> Type of the data stored at the specified coordinates.
+   * @return A sorted map containing the data stored in the specified column.
    * @throws IOException If there is an error.
    */
-  <T> NavigableMap<Long, T> getValues(String family, String qualifier) throws IOException;
+  <T> NavigableMap<Long, T> getValues(String family, String qualifier)
+      throws IOException;
 
   /**
    * Gets the specified cell.
    *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param timestamp The timestamp of the cell.
-   * @param <T> The type of the values stored at the specified coordinates.
-   * @return the specified cell, or null if the cell does not exist.
+   * @param family Column family of the desired cell.
+   * @param qualifier Column qualifier of the desired cell.
+   * @param timestamp Timestamp of the desired cell.
+   * @param <T> Type of the cell stored at the specified coordinates.
+   * @return Specified cell, or null if the cell does not exist.
    * @throws IOException If there is an error.
    */
-  <T> KijiCell<T> getCell(String family, String qualifier, long timestamp) throws IOException;
+  <T> KijiCell<T> getCell(String family, String qualifier, long timestamp)
+      throws IOException;
 
   /**
-   * Gets the latest version of the specified cell.
+   * Gets the cell in the specified column with the latest timestamp.
    *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param <T> The type of the values stored at the specified coordinates.
-   * @return the most recent version of the specified cell, or null if the cell does not exist.
+   * @param family Column family of the desired cell.
+   * @param qualifier Column qualifier of the desired cell.
+   * @param <T> Type of the cell stored at the specified coordinates.
+   * @return Cell in the specified column with the latest timestamp, or null if the cell
+   *     does not exist.
    * @throws IOException If there is an error.
    */
-  <T> KijiCell<T> getMostRecentCell(String family, String qualifier) throws IOException;
+  <T> KijiCell<T> getMostRecentCell(String family, String qualifier)
+      throws IOException;
 
   /**
-   * Gets the latest version of the specified cell.
+   * Gets the cells in the specified column family flattened to contain only the cells with
+   * the latest timestamp in each column.
    *
-   * @param family A column family name.
-   * @param <T> The type of the values stored at the specified coordinates.
-   * @return a map from qualifier to the most recent versions of the cells.
+   * @param family Column family of the desired cells.
+   * @param <T> Type of the cells stored at the specified coordinates.
+   * @return Map from column qualifier to the most recent versions of the cells.
    * @throws IOException If there is an error.
    */
-  <T> NavigableMap<String, KijiCell<T>> getMostRecentCells(String family) throws IOException;
+  <T> NavigableMap<String, KijiCell<T>> getMostRecentCells(String family)
+      throws IOException;
 
   /**
-   * Gets all the timestamp-cell pairs stored within the specified family.
+   * Gets all cells stored within the specified column family.
    *
-   * @param family A column family name.
-   * @param <T> The type of the values stored at the specified coordinates.
-   * @return A sorted map versions of the specified cell.
+   * @param family Column family of the desired cells.
+   * @param <T> Type of the cells stored at the specified coordinates.
+   * @return Sorted map versions of the specified cell.
    * @throws IOException If there is an error.
    */
   <T> NavigableMap<String, NavigableMap<Long, KijiCell<T>>> getCells(String family)
       throws IOException;
 
   /**
-   * Gets all the timestamp-cell pairs stored within the specified cell.
+   * Gets all cells stored within the specified column.
    *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @param <T> The type of the values stored at the specified coordinates.
-   * @return A sorted map versions of the specified cell.
+   * @param family Column family of the desired cells.
+   * @param qualifier Column qualifier of the desired cells.
+   * @param <T> Type of the cells stored at the specified coordinates.
+   * @return A sorted map containing the cells stored in the specified column.
    * @throws IOException If there is an error.
    */
   <T> NavigableMap<Long, KijiCell<T>> getCells(String family, String qualifier)
       throws IOException;
-  /**
-   * Gets a KijiPager for the specified column, or throws a KijiColumnPagingNotEnabledException
-   * if the page size was not set in the dataRequest used to construct this rowData.
-   *
-   * @param family A column family name.
-   * @param qualifier A column qualifier name.
-   * @return A pager for the specified column.
-   * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the specified column.
-   */
-  KijiPager getPager(String family, String qualifier) throws KijiColumnPagingNotEnabledException;
 
   /**
-   * Gets a KijiPager for the specified column, or throws a KijiColumnPagingNotEnabledException
-   * if the page size was not set in the dataRequest used to construct this rowData.
+   * Gets a KijiPager for the specified column.
    *
-   * @param family A column family name.
+   * @param family Desired column family.
+   * @param qualifier Desired column qualifier.
    * @return A pager for the specified column.
-   * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the specified column.
+   * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the
+   *     specified column.
+   * @see KijiPager For more information about paging.
    */
-  KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException;
+  KijiPager getPager(String family, String qualifier)
+      throws KijiColumnPagingNotEnabledException;
+
+  /**
+   * Gets a KijiPager for the specified column family.
+   *
+   * @param family Desired column family.
+   * @return A pager for the specified column.
+   * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the
+   *     specified column family.
+   * @see KijiPager For more information about paging.
+   */
+  KijiPager getPager(String family)
+      throws KijiColumnPagingNotEnabledException;
 }

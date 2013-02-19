@@ -18,12 +18,11 @@
  */
 
 /**
- * Kiji map-reduce utilities.
+ * Kiji MapReduce utilities.
  *
- * <p>This package provides support for building map-reduce jobs that read from and/or write to
+ * <p>This package provides support for building MapReduce jobs that read from and/or write to
  * a Kiji table. For reading from Kiji, use {@link
- * org.kiji.schema.mapreduce.KijiTableInputFormat}. For writing to
- * kiji use {@link org.kiji.schema.mapreduce.KijiTableOutputFormat}.</p>
+ * org.kiji.schema.mapreduce.KijiTableInputFormat}.</p>
  *
  * <p>December 20, 2012: Note that this package is deprecated; the KijiMapReduce framework
  * (https://github.com/kijiproject/kiji-mapreduce) will contain revamped versions of these

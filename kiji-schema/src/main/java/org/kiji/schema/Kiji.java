@@ -33,18 +33,58 @@ import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ReferenceCountable;
 
 /**
- * <p>Provides a handle to a Kiji instance that contains configuration and
- * table information.</p>
+ * <p>Provides a handle to a Kiji instance that contains table information and access to
+ * Kiji administrative functionality.  Kiji instances are identified by a {@link KijiURI}.
+ * The default KijiURI is: <em>kiji://.env/default/</em></p>
  *
- * <p>An installed Kiji instance contains several tables:
- *   <ul>
- *     <li>System table: Kiji system and version information.</li>
- *     <li>Meta table: Metadata about the existing Kiji tables.</li>
- *     <li>Schema table: Avro Schemas of the cells in Kiji tables.</li>
- *     <li>User tables: The user-space Kiji tables that you create.</li>
- *   </ul>
+ * <h2>Kiji instance lifecycle:</h2>
+ * An instance to Kiji can be retrieved using {@link Kiji.Factory#open(KijiURI)}.  Cleanup is
+ * requested with the inherited {@link #release()} method.  Thus the lifecycle of a Kiji
+ * object looks like:
+ * <pre><code>
+ *   Kiji kiji = Kiji.Factory.open(kijiURI);
+ *   // Do some magic
+ *   kiji.release();
+ * </code></pre>
+ *
+ * <h2>Base Kiji tables within an instance:</h2>
+ * <p>
+ *   Upon installation, a Kiji instance contains a {@link KijiSystemTable}, {@link KijiMetaTable},
+ *   and {@link KijiSchemaTable} that each contain information relevant to the operation of Kiji.
  * </p>
- * <p>The default Kiji instance name is <em>default</em>.</p>
+ * <ul>
+ *   <li>System table: Kiji system and version information.</li>
+ *   <li>Meta table: Metadata about the existing Kiji tables.</li>
+ *   <li>Schema table: Avro Schemas of the cells in Kiji tables.</li>
+ * </ul>
+ * <p>
+ *   These tables can be accessed via the {@link #getSystemTable()}, {@link #getMetaTable()},
+ *   and {@link #getSchemaTable()} methods respectively.
+ * </p>
+ *
+ * <h2>User tables:</h2>
+ * <p>
+ *   User tables can be accessed using {@link #openTable(String)}.  Note that they must be closed
+ *   after they are no longer necessary.
+ * </p>
+ * <pre><code>
+ *   KijiTable kijiTable = kiji.openTable("myTable");
+ *   // Do some table operations
+ *   kijiTable.close();
+ * </code></pre>
+ *
+ * <h2>Administration of user tables:</h2>
+ * <p>
+ *   The Kiji administration interface contains methods to create, modify, and delete tables from a
+ *   Kiji instance:
+ * </p>
+ * <ul>
+ *   <li>{@link #createTable(String, KijiTableLayout)} - creates a Kiji table with a specified
+ *       layout.</li>
+ *   <li>{@link #modifyTableLayout(String, TableLayoutDesc)} - updates a Kiji table with a new
+ *       layout.</li>
+ *   <li>{@link #deleteTable(String)} - removes a Kiji table from HBase.</li>
+ * </ul>
  */
 @ApiAudience.Public
 @Inheritance.Sealed
@@ -187,8 +227,8 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
   /**
    * Sets the layout of a table.
    *
-   * @param name The name of the Kiji table to affect.
-   * @param update Layout update.
+   * @param name The name of the Kiji table to change the layout of.
+   * @param update The new layout for the table.
    * @return the updated layout.
    * @throws IOException If there is an error.
    */
@@ -199,7 +239,7 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    * dryRun is true.
    *
    * @param name The name of the Kiji table to affect.
-   * @param update Layout update.
+   * @param update The new layout for the table.
    * @param dryRun true if this is a 'dry run', false if changes should be made.
    * @param printStream the print stream to use for information if dryRun is true.
    *     If null, stdout will be used.
