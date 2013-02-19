@@ -49,11 +49,31 @@ import org.kiji.schema.KijiURI;
  *  required if family or qualifier are specified in URI,
  *  and for timestamp flags to operate.
  *
- * --upto-timestamp to select values with timestamp equal or lesser.
+ * --timestamp=[<timestamp>, latest, upto:<timestamp>, all]
+ *  '<timestamp>' to delete data with an exact timestamp value.
+ *  'latest' to delete the most recent data in a cell.
+ *  'upto:<timestamp>' to delete all data older than <timestamp>.
+ *  'all' to delete all data in a cell.
  *
- * --exact-timestamp to select a value with a specific timestamp.
- *
- * --most-recent to select the most recent value in a cell.
+ * <p>Examples:
+ * Delete an entire table:
+ * <pre>
+ *  kiji delete --target=kiji://my-hbase/my-instance/my-table/
+ * </pre>
+ * Delete an entire row:
+ * <pre>
+ *  kiji delete --target=kiji://my-hbase/my-instance/my-table/ \
+ *      --entity-id=my-entity-id --timestamp=all
+ * </pre>
+ * Delete a single version of a cell:
+ * <pre>
+ *  kiji delete --target=kiji://my-hbase/my-instance/my-table/ \
+ *      my-column-family:my-column-qualifier/ -- entity-id=my-entity-id \
+ *      --timestamp=123456789
+ *  kiji delete --target=kiji://my-hbase/my-instance/my-table/ \
+ *      my-column-family:my-column-qualifier/ -- entity-id=my-entity-id \
+ *      --timestamp=latest
+ * </pre>
  */
 @ApiAudience.Private
 public final class DeleteTool extends BaseTool {
