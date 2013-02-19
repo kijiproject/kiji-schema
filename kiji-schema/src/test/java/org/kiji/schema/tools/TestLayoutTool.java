@@ -20,6 +20,7 @@
 package org.kiji.schema.tools;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -114,6 +115,7 @@ public class TestLayoutTool extends KijiClientTest {
         "--do=set",
         "--layout=" + newLayoutFile
         );
+      fail("Should throw InvalidLayoutException");
     } catch (InvalidLayoutException ile) {
       assertTrue(ile.getMessage().startsWith(
           "Invalid layout update from reference row keys format"));

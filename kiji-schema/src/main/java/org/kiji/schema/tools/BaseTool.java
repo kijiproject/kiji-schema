@@ -69,7 +69,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
   private static final Pattern YES_PATTERN = Pattern.compile("y|yes", Pattern.CASE_INSENSITIVE);
   private static final Pattern NO_PATTERN = Pattern.compile("n|no", Pattern.CASE_INSENSITIVE);
 
-  @Flag(name="debug", usage="Print stacktraces if the command terminates with an error.")
+  @Flag(name="debug", usage="Enables more verbose error messages.")
   private boolean mDebugFlag = false;
 
   @Flag(name="interactive", usage="Whether the command is run in an interactive session or script."
