@@ -19,8 +19,8 @@
 
 package org.kiji.schema.tools;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ToJson;
@@ -108,13 +109,16 @@ public class TestLayoutTool extends KijiClientTest {
     final KijiURI tableURI =
         KijiURI.newBuilder(getKiji().getURI()).withTableName(layout.getName()).build();
 
-    assertEquals(BaseTool.FAILURE, runTool(new LayoutTool(),
+    try {
+      runTool(new LayoutTool(),
         "--table=" + tableURI,
         "--do=set",
         "--layout=" + newLayoutFile
-    ));
-    assertTrue(mToolOutputLines[0].startsWith(
-        "Error: Invalid layout update from reference row keys format"));
+        );
+      fail("Should throw InvalidLayoutException");
+    } catch (InvalidLayoutException ile) {
+      assertTrue(ile.getMessage().startsWith(
+          "Invalid layout update from reference row keys format"));
+    }
   }
-
 }
