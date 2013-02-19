@@ -40,7 +40,25 @@ import org.kiji.schema.util.KijiNameValidator;
 
 /**
  * URI that fully qualifies a Kiji instance/table/column.
- * Use "default" for the default Kiji instance.
+ * Use <em>kiji://.env/default/</em> for the default Kiji instance URI.
+ *
+ * <p>
+ *   KijiURI objects can be constructed directly from parsing a URI string:
+ * </p>
+ * <pre><code>
+ *   final KijiURI uri = KijiURI.newBuilder("kiji://.env/default/mytable/col").build();
+ * </code></pre>
+ *
+ * <p>
+ *   Alternately, KijiURI objects can be constructed from components by using the builder:
+ * </p>
+ * <pre><code>
+ *   final KijiURI uri = KijiURI.newBuilder()
+ *     .withInstanceName("default")
+ *     .withTableName("mytable")
+ *     .addColumnName(new KijiColumnName(col))
+ *     .build();
+ * </code></pre>
  *
  * Valid URI forms look like:
  * <li> "kiji://zkHost"
