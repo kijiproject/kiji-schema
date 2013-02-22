@@ -162,9 +162,9 @@ public class MetadataTool extends BaseTool {
 
     final boolean isRestore = (mInFile != null) && !mInFile.isEmpty();
     final boolean isBackup = (mOutFile != null) && !mOutFile.isEmpty();
-    Preconditions.checkArgument(!isRestore && !isBackup,
+    Preconditions.checkArgument(isRestore || isBackup, // Ensures that at least one is true
         "Specify exactly one of --backup and --restore.");
-    Preconditions.checkArgument(isRestore && isBackup,
+    Preconditions.checkArgument(!isRestore || !isBackup, // Ensures that at least one is false
         "Cannot specify both --backup and --restore simultaneously. "
         + "Specify exactly one of --backup and --restore.");
   }
