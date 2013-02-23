@@ -27,17 +27,16 @@
   <parent>
     <groupId>org.kiji.pom</groupId>
     <artifactId>root-pom</artifactId>
-    <version>1.0.3-SNAPSHOT</version>
+    <version>1.0.4-SNAPSHOT</version>
   </parent>
 
   <name>KijiSchema top-level project</name>
   <description>A schema management layer for Apache HBase</description>
   <inceptionYear>2012</inceptionYear>
 
-  <!-- TODO: Set these versions to 1.0.0-rc5-SNAPSHOT after release -->
   <properties>
-    <kiji-delegation.version>1.0.0-rc4-SNAPSHOT</kiji-delegation.version>
-    <kiji-platforms.version>1.0.0-rc4-SNAPSHOT</kiji-platforms.version>
+    <kiji-delegation.version>1.0.0-rc5-SNAPSHOT</kiji-delegation.version>
+    <kiji-platforms.version>1.0.0-rc5-SNAPSHOT</kiji-platforms.version>
   </properties>
 
   <modules>
