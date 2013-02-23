@@ -21,13 +21,13 @@
 
   <groupId>org.kiji.schema</groupId>
   <artifactId>kiji-schema-platform-api</artifactId>
-  <version>1.0.0-rc4</version>
+  <version>1.0.0-rc4.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <parent>
     <groupId>org.kiji.schema</groupId>
     <artifactId>kiji-schema-root</artifactId>
-    <version>1.0.0-rc4</version>
+    <version>1.0.0-rc4.1-SNAPSHOT</version>
     <relativePath>..</relativePath>
   </parent>
 
@@ -79,7 +79,7 @@
     <dependency>
       <groupId>org.kiji.annotations</groupId>
       <artifactId>annotations</artifactId>
-      <version>1.0.0-rc4</version>
+      <version>1.0.0-rc5-SNAPSHOT</version>
     </dependency>
   </dependencies>
 </project>
