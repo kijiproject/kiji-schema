@@ -6,6 +6,10 @@ Version 1.0.0-rc5
   * SCHEMA-135. Clean up API for table layout backups.
 
 Version 1.0.0-rc4
+  * BENTO-15. When run within a BentoBox, the 'kiji' script will notify you
+      of a new BentoBox version if one is available.
+  * SCHEMA-218. Fix instance-listing capability in 'kiji ls'.
+  * SCHEMA-67. Remove unused classes (CounterManager, NumberParser).
   * SCHEMA-197. Layout versions now use the "layout" namespace.
       Changes the expected layout format version to "layout-1.0" or
       "layout-1.1". This avoids a collision with instances, etc. All layouts
@@ -15,6 +19,7 @@ Version 1.0.0-rc4
       versions that this kiji version can recognize.
   * SCHEMA-211. Use "default" instance in default KijiURIBuilder.
   * SCHEMA-208. Make KijiURIException unchecked.
+  * SCHEMA-201. Fix NPE in 'kiji install'.
   * SCHEMA-196. Instance format should not use "kiji" protocol namespace.
       Changes the instance format installed via 'kiji install' to
       'system-1.0', rather than 'kiji-1.0'. This avoids a namespace collision
@@ -31,6 +36,10 @@ Version 1.0.0-rc4
   * SCHEMA-151. Stricter checking of layout "version" fields for compatibility
       with supported layout features. VersionInfo.get(Client/Cluster)DataVersion()
       now return a ProtocolVersion, not a string.
+  * SCHEMA-190. Removed KijiDataBuffer.
+  * SCHEMA-27. Add timestamp-related constants to KConstants:
+      KConstants.BEGINNING_OF_TIME = 0
+      KConstants.END_OF_TIME = Long.MAX_VALUE
   * SCHEMA-3. Add support for composite entity ids. You can now create
       compound keys containing a mix of hashed, string, integer, and null
       components.
@@ -50,19 +59,23 @@ Version 1.0.0-rc4
   * SCHEMA-10. CLI tools use KijiURIs:
       - "kiji ls" flags --instances and --table are remove and inferred
         from URI in --kiji=kiji://...
-      - flag --table is no longer; it is superseeded by the table component
-        from Kiji URIs.
+      - flag --table is no longer present; it is superseeded by the table
+        component from Kiji URIs.
   * SCHEMA-123. Removed spin-wait from deleteTable in HBaseKiji.
   * SCHEMA-169. Add KijiPager class that allows users to easily paginate and
       iterate over values from a column while reading from a KijiTable.
   * SCHEMA-99. KijiConfiguration removed. Use a KijiURI paired with a
-      hadoop Configuration object instead.
+      Hadoop Configuration object instead:
+
+      KijiURI uri = KijiURI.newBuilder().withInstanceName("default")
+          .withTableName("myTable").build();
   * SCHEMA-155. Merged methods in KijiAdmin into Kiji.
   * SCHEMA-133. Introduce KijiDataRequestBuilder class. KijiDataRequest
       objects are now immutable. Construct one with KijiDataRequest.create(),
       or call KijiDataRequest.builder() to get a KijiDataRequestBuilder.
   * SCHEMA-102. Removed overloaded variety of toHBaseFilter that accepted a
       ColumnNameTranslator.
+  * SCHEMA-131. Move HBase classes to org.kiji.schema.hbase.
   * SCHEMA-82. KijiCell is now the uniquely located cell in a table with
       family, qualifier, and timestamp.  KijiCounters no longer exist and
       are represented as KijiCell<Long> with no writer schema instead.
