@@ -426,7 +426,7 @@ protocol KijiTableLayoutRecords {
     /** Schema table backup. */
     SchemaTableBackup schema_table;
 
-    /** Map from table names to table backup records. */
+    /** Meta table backup. */
     MetaTableBackup meta_table;
   }
 
