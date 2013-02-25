@@ -65,14 +65,11 @@ public class MetadataRestorer {
     if (file.exists()) {
       throw new IOException("Output file '" + outputFile + "' already exists. Won't overwrite.");
     }
-    final MetadataBackup.Builder backup = MetadataBackup.newBuilder()
-        .setLayoutVersion(kiji.getSystemTable().getDataVersion().toString());
-
-    backup
+    final MetadataBackup backup = MetadataBackup.newBuilder()
+        .setLayoutVersion(kiji.getSystemTable().getDataVersion().toString())
         .setSchemaTable(kiji.getSchemaTable().toBackup())
-        .setMetaTable(kiji.getMetaTable().toBackup());
-
-    final MetadataBackup backupRec = backup.build();
+        .setMetaTable(kiji.getMetaTable().toBackup())
+        .build();
 
     // Now write out the file itself.
     final DatumWriter<MetadataBackup> datumWriter =
@@ -80,8 +77,8 @@ public class MetadataRestorer {
     final DataFileWriter<MetadataBackup> fileWriter =
       new DataFileWriter<MetadataBackup>(datumWriter);
     try {
-      fileWriter.create(backupRec.getSchema(), file);
-      fileWriter.append(backupRec);
+      fileWriter.create(backup.getSchema(), file);
+      fileWriter.append(backup);
     } finally {
       fileWriter.close();
     }

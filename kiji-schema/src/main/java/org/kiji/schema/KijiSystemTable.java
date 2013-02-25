@@ -31,7 +31,7 @@ import org.kiji.schema.util.ProtocolVersion;
  * locks.
  *
  * @see KijiMetaTable
- * @see KijiSystemTable
+ * @see KijiSchemaTable
  */
 @ApiAudience.Framework
 @Inheritance.Sealed

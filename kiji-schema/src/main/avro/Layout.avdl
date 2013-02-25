@@ -420,7 +420,7 @@ protocol KijiTableLayoutRecords {
 
   /** Record that encapsulates all Kiji metadata, for backup purposes. */
   record MetadataBackup {
-    /** Layout version (eg. "kiji-1.0"). */
+    /** Layout version (eg. "layout-1.0"). */
     string layout_version;
 
     /** Schema table backup. */

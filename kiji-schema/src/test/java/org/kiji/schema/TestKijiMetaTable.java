@@ -66,10 +66,12 @@ public class TestKijiMetaTable extends KijiClientTest {
         .setLayoutVersion(kiji.getSystemTable().getDataVersion().toString())
         .setMetaTable(
             MetaTableBackup.newBuilder()
-                .setTables(new HashMap<String, TableBackup>()).build())
+                .setTables(new HashMap<String, TableBackup>())
+                .build())
         .setSchemaTable(
             SchemaTableBackup.newBuilder()
-                .setEntries(new ArrayList<SchemaTableEntry>()).build());
+                .setEntries(new ArrayList<SchemaTableEntry>())
+                .build());
     final MetaTableBackup metadata = metaTable.toBackup();
     backupBuilder.setMetaTable(metadata);
     backupBuilder.setSchemaTable(kiji.getSchemaTable().toBackup());
