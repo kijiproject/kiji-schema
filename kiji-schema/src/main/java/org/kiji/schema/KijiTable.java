@@ -135,6 +135,14 @@ public interface KijiTable extends ReferenceCountable<KijiTable>, Closeable {
   KijiTableWriter openTableWriter();
 
   /**
+   * Gets the KijiWriterFactory from this table.
+   *
+   * @throws IOException in case of an error.
+   * @return A KijiWriterFactory.
+   */
+  KijiWriterFactory getWriterFactory() throws IOException;
+
+  /**
    * Return the regions in this table as an ordered list.
    *
    * @return An ordered list of the table regions.

@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-219. Adds KijiWriterFactory with access in KijiTable and
+      AtomicKijiPutter with access in KijiUtilityWriterFactory.
   * SCHEMA-103. Remove ColumnNameTranslator from public API.
   * SCHEMA-140. Update API for metatable backups. This changes the
       backup format. Please re-backup your tables using the new API.

@@ -48,6 +48,7 @@ import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.KijiWriterFactory;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
@@ -86,6 +87,9 @@ public final class HBaseKijiTable implements KijiTable {
   /** The underlying HTable that stores this Kiji table's data. */
   private final HTableInterface mHTable;
 
+  /** HTableInterfaceFactory for creating new HTables associated with this KijiTable. */
+  private final HTableInterfaceFactory mHTableFactory;
+
   /** The layout of the Kiji table. */
   private final KijiTableLayout mTableLayout;
 
@@ -94,6 +98,12 @@ public final class HBaseKijiTable implements KijiTable {
 
   /** Retain counter. When decreased to 0, the HBase KijiTable may be closed and disposed of. */
   private AtomicInteger mRetainCount = new AtomicInteger(1);
+
+  /** Configuration object for new HTables. */
+  private final Configuration mConf;
+
+  /** Writer factory for this table. */
+  private final KijiWriterFactory mWriterFactory;
 
   /**
    * Construct an opened Kiji table stored in HBase.
@@ -118,13 +128,20 @@ public final class HBaseKijiTable implements KijiTable {
    *
    * @throws IOException On an HBase error.
    */
-  HBaseKijiTable(HBaseKiji kiji, String name, Configuration conf,
-      HTableInterfaceFactory htableFactory) throws IOException {
+  HBaseKijiTable(
+      HBaseKiji kiji,
+      String name,
+      Configuration conf,
+      HTableInterfaceFactory htableFactory)
+      throws IOException {
     mKiji = kiji;
     mKiji.retain();
     mName = name;
     mTableURI = KijiURI.newBuilder(mKiji.getURI()).withTableName(mName).build();
     mTableLayout = mKiji.getMetaTable().getTableLayout(name);
+    mWriterFactory = new HBaseKijiWriterFactory(this);
+    mHTableFactory = htableFactory;
+    mConf = conf;
     try {
       mHTable = htableFactory.create(conf,
           KijiManagedHBaseTableName.getKijiTableName(kiji.getURI().getInstance(), name).toString());
@@ -149,7 +166,7 @@ public final class HBaseKijiTable implements KijiTable {
     }
   }
 
-  /** {@inheritDoc} **/
+  /** {@inheritDoc} */
   @Override
   public EntityId getEntityId(Object... kijiRowKey) {
     return mEntityIdFactory.getEntityId(kijiRowKey);
@@ -173,6 +190,19 @@ public final class HBaseKijiTable implements KijiTable {
     return mTableURI;
   }
 
+  /**
+   * Creates a new HTableInterface associated with a given HBaseKijiTable.
+   *
+   * @param table The HBaseKijiTable to get an HTableInterface for.
+   * @return A new HTable associated with this KijiTable.
+   * @throws IOException in case of an error.
+   */
+  public static HTableInterface createHTableInterface(HBaseKijiTable table) throws IOException {
+    final KijiManagedHBaseTableName tableName = KijiManagedHBaseTableName.getKijiTableName(
+        table.getKiji().getURI().getInstance(), table.getName());
+    return table.mHTableFactory.create(table.mConf, tableName.toString());
+  }
+
   /** {@inheritDoc} */
   @Override
   public KijiTableLayout getLayout() {
@@ -189,6 +219,12 @@ public final class HBaseKijiTable implements KijiTable {
   @Override
   public KijiTableWriter openTableWriter() {
     return new HBaseKijiTableWriter(this);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiWriterFactory getWriterFactory() throws IOException {
+    return mWriterFactory;
   }
 
   /**

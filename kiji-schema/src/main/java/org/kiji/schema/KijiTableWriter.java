@@ -23,10 +23,12 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 
 /**
+ * Interface for modifying a Kiji table.
+ *
  * <p>
- *   Interface for modifying a Kiji table.  Wraps methods from KijiPutter, KijiIncrementer,
- *   and KijiDeleter.  To get a KijiTableWriter call
- *   {@link org.kiji.schema.KijiTable#openTableWriter()}.
+ *   Wraps methods from KijiPutter, KijiIncrementer, and KijiDeleter.
+ *   To get a KijiTableWriter, use {@link org.kiji.schema.KijiTable#openTableWriter()}
+ *   or {@link org.kiji.schema.KijiTable#getWriterFactory()}.
  * </p>
  */
 @ApiAudience.Public
