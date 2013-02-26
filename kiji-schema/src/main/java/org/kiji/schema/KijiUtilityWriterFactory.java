@@ -19,17 +19,21 @@
 
 package org.kiji.schema;
 
-import org.kiji.annotations.ApiAudience;
-import org.kiji.annotations.Inheritance;
+import java.io.IOException;
 
-/**
- * <p>
- *   Interface for modifying a Kiji table.  Wraps methods from KijiPutter, KijiIncrementer,
- *   and KijiDeleter.  To get a KijiTableWriter, call
- *   {@link org.kiji.schema.KijiTable#openTableWriter()}.
- * </p>
- */
+import org.kiji.annotations.ApiAudience;
+
+/** Interface for utility table writer factories. */
 @ApiAudience.Public
-@Inheritance.Sealed
-public interface KijiTableWriter extends KijiPutter, KijiIncrementer, KijiDeleter {
+public interface KijiUtilityWriterFactory {
+
+  /**
+   * Opens a new AtomicKijiPutter for the KijiTable associated with WriterFactory.
+   * The caller of this method is responsible for closing the writer.
+   *
+   * @throws IOException in case of an error.
+   * @return A new AtomicKijiPutter.
+   */
+  AtomicKijiPutter openAtomicPutter() throws IOException;
+
 }
