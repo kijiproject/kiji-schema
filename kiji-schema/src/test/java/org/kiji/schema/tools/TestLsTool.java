@@ -154,7 +154,7 @@ public class TestLsTool extends KijiClientTest {
       assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), "--kiji=" + table.getURI()));
       assertEquals(3, mToolOutputLines.length);
       assertTrue(mToolOutputLines[0].startsWith("Scanning kiji table: "));
-      assertTrue(mToolOutputLines[1].startsWith("entity-id=hbase='"));
+      assertTrue(mToolOutputLines[1].startsWith("entity-id=hbase=hex:"));
 
     } finally {
       table.close();

@@ -66,6 +66,7 @@ import org.kiji.schema.impl.HashedEntityId;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
+import org.kiji.schema.util.ByteArrayFormatter;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
@@ -693,7 +694,6 @@ public final class LsTool extends BaseTool {
   private String formatEntityId(EntityId eid) {
     final String formattedHBaseRowKey =
         String.format("hbase='%s'", Bytes.toStringBinary(eid.getHBaseRowKey()));
-
     if (eid instanceof FormattedEntityId) {
       final FormattedEntityId feid = (FormattedEntityId) eid;
       final List<String> components = Lists.newArrayList();
@@ -716,6 +716,7 @@ public final class LsTool extends BaseTool {
       if (kijiRowKey != null) {
         return String.format("'%s'", Bytes.toString(kijiRowKey));
       }
+      return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(eid.getHBaseRowKey()));
 
     } else if (eid instanceof HBaseEntityId) {
       return formattedHBaseRowKey;
