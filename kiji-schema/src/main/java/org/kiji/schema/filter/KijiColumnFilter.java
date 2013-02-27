@@ -52,7 +52,7 @@ public abstract class KijiColumnFilter implements Serializable {
    */
   @ApiAudience.Public
   @Inheritance.Sealed
-  public interface Context {
+  public abstract static class Context {
     /**
      * Converts a Kiji column name to an HBase column name.
      *
@@ -60,7 +60,7 @@ public abstract class KijiColumnFilter implements Serializable {
      * @return The name of the HBase column that stores the kiji column data.
      * @throws NoSuchColumnException If there is no such column in the kiji table.
      */
-    HBaseColumnName getHBaseColumnName(KijiColumnName kijiColumnName)
+  public abstract  HBaseColumnName getHBaseColumnName(KijiColumnName kijiColumnName)
         throws NoSuchColumnException;
   }
 
