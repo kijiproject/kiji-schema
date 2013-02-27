@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-145. Change KijiColumnFilter.Context to abstract class.
   * SCHEMA-199. VALID_INSTANCE_NAME should not match the empty string.
   * SCHEMA-9. Add a CLI tool for KijiSchema System Table.
       supports putting and getting properties from the system table.
