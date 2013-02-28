@@ -80,7 +80,7 @@ public class TestKijiNameValidator {
 
   @Test
   public void testIsValidInstanceName() {
-    assertTrue(KijiNameValidator.isValidKijiName("")); // empty string is allowed here.
+    assertFalse(KijiNameValidator.isValidKijiName("")); // empty string is disallowed here.
     assertTrue(KijiNameValidator.isValidKijiName("0123")); // leading digits are okay.
     assertTrue(KijiNameValidator.isValidKijiName("0123abc")); // leading digits are okay.
     assertFalse(KijiNameValidator.isValidKijiName("-asdb"));
