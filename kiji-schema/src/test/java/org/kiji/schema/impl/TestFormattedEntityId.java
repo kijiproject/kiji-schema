@@ -164,6 +164,26 @@ public class TestFormattedEntityId {
     return format;
   }
 
+  private RowKeyFormat2 makeCompletelyHashedRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("astring").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("anint").setType(ComponentType.INTEGER).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("along").setType(ComponentType.LONG).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().build())
+        .setRangeScanStartIndex(components.size())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
   @Test
   public void testFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormat();
@@ -406,6 +426,89 @@ public class TestFormattedEntityId {
 
     assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
 
+  }
+
+  @Test
+  public void testNullValueInHash() {
+    RowKeyFormat2 format = makeCompletelyHashedRowKeyFormat();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    // set one component as null explicitly, do not include the next one at all
+    inputRowKey.add(null);
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+    byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
+    assertNotNull(hbaseRowKey);
+    System.out.println("Hbase Key is: ");
+    for (byte b: hbaseRowKey) {
+      System.out.format("%x ", b);
+    }
+    System.out.format("\n");
+
+    FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+    List<Object> actuals = testEntityId.getComponents();
+    assertEquals(format.getComponents().size(), actuals.size());
+    assertEquals(new String("one"), actuals.get(0));
+    assertNull(actuals.get(1));
+    assertNull(actuals.get(2));
+
+    assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
+  }
+
+  @Test
+  public void testExplicitNullValueInHash() {
+    RowKeyFormat2 format = makeCompletelyHashedRowKeyFormat();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(null);
+    inputRowKey.add(null);
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+    byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
+    assertNotNull(hbaseRowKey);
+    System.out.println("Hbase Key is: ");
+    for (byte b: hbaseRowKey) {
+      System.out.format("%x ", b);
+    }
+    System.out.format("\n");
+
+    FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+    List<Object> actuals = testEntityId.getComponents();
+    assertEquals(format.getComponents().size(), actuals.size());
+    assertEquals(new String("one"), actuals.get(0));
+    assertNull(actuals.get(1));
+    assertNull(actuals.get(2));
+
+    assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
+  }
+
+  @Test
+  public void testImplicitNullValueInHash() {
+    RowKeyFormat2 format = makeCompletelyHashedRowKeyFormat();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    // implicit nulls for remaining components
+    inputRowKey.add(new String("one"));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+    byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
+    assertNotNull(hbaseRowKey);
+    System.out.println("Hbase Key is: ");
+    for (byte b: hbaseRowKey) {
+      System.out.format("%x ", b);
+    }
+    System.out.format("\n");
+
+    FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+    List<Object> actuals = testEntityId.getComponents();
+    assertEquals(format.getComponents().size(), actuals.size());
+    assertEquals(new String("one"), actuals.get(0));
+    assertNull(actuals.get(1));
+    assertNull(actuals.get(2));
+
+    assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
   }
 
   @Test(expected=EntityIdException.class)
