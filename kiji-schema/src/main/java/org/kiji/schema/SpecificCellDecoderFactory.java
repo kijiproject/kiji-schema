@@ -28,7 +28,9 @@ import org.kiji.schema.impl.CounterCellDecoder;
 import org.kiji.schema.impl.SpecificCellDecoder;
 import org.kiji.schema.layout.impl.CellSpec;
 
-/** Factory for Kiji cell decoders using SpecificCellDecoder to handle record-based schemas. */
+/**
+ * Factory for Kiji cell decoders using SpecificCellDecoder to handle record-based schemas.
+ */
 @ApiAudience.Framework
 public final class SpecificCellDecoderFactory implements KijiCellDecoderFactory {
   /** Singleton instance. */
@@ -45,14 +47,15 @@ public final class SpecificCellDecoderFactory implements KijiCellDecoderFactory 
 
   /** {@inheritDoc} */
   @Override
-  public KijiCellDecoder<?> create(CellSpec cellSpec) throws IOException {
+  public <T> KijiCellDecoder<T> create(CellSpec cellSpec) throws IOException {
     Preconditions.checkNotNull(cellSpec);
     switch (cellSpec.getCellSchema().getType()) {
     case CLASS:
     case INLINE:
       return new SpecificCellDecoder(cellSpec);
     case COUNTER:
-      return CounterCellDecoder.get();
+      // purposefully forget the type (long) param of cell decoders for counters.
+      return (KijiCellDecoder<T>) CounterCellDecoder.get();
     default:
       throw new RuntimeException("Unhandled cell encoding: " + cellSpec.getCellSchema());
     }
