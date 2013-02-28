@@ -243,7 +243,8 @@ public class HBaseKijiTable implements KijiTable {
    *
    * @throws IOException on I/O error.
    */
-  private void close() throws IOException {
+  @Override
+  public void close() throws IOException {
     synchronized (this) {
       if (!mIsOpen) {
         LOG.warn("close() called on an KijiTable that was already closed.");

@@ -19,6 +19,7 @@
 
 package org.kiji.schema;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
@@ -85,7 +86,7 @@ import org.kiji.schema.util.ReferenceCountable;
  */
 @ApiAudience.Public
 @Inheritance.Sealed
-public interface KijiTable extends ReferenceCountable<KijiTable> {
+public interface KijiTable extends ReferenceCountable<KijiTable>, Closeable {
   /** @return the Kiji instance this table belongs to. */
   Kiji getKiji();
 
