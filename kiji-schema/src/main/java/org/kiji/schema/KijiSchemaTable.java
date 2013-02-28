@@ -22,7 +22,6 @@ package org.kiji.schema;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Objects;
@@ -32,7 +31,7 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
-import org.kiji.schema.avro.SchemaTableEntry;
+import org.kiji.schema.avro.SchemaTableBackup;
 import org.kiji.schema.util.BytesKey;
 import org.kiji.schema.util.Hasher;
 
@@ -238,7 +237,7 @@ public abstract class KijiSchemaTable implements Closeable {
    * @throws IOException on I/O error.
    * @return A list of schema table entries.
    */
-  public abstract List<SchemaTableEntry> toBackup() throws IOException;
+  public abstract SchemaTableBackup toBackup() throws IOException;
 
   /**
    * Restores the schema entries from the specified backup record.
@@ -247,5 +246,5 @@ public abstract class KijiSchemaTable implements Closeable {
    *     definition, schema id, and schema hash.
    * @throws IOException on I/O error.
    */
-  public abstract void fromBackup(List<SchemaTableEntry> backup) throws IOException;
+  public abstract void fromBackup(SchemaTableBackup backup) throws IOException;
 }

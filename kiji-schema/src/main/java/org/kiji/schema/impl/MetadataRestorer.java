@@ -21,7 +21,6 @@ package org.kiji.schema.impl;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,7 +38,6 @@ import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.avro.MetadataBackup;
-import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.hbase.HBaseFactory;
@@ -67,15 +65,11 @@ public class MetadataRestorer {
     if (file.exists()) {
       throw new IOException("Output file '" + outputFile + "' already exists. Won't overwrite.");
     }
-
-    final MetadataBackup.Builder backup = MetadataBackup.newBuilder()
+    final MetadataBackup backup = MetadataBackup.newBuilder()
         .setLayoutVersion(kiji.getSystemTable().getDataVersion().toString())
-        .setMetaTable(new HashMap<String, TableBackup>());
-
-    Map<String, TableBackup> metaBackup = kiji.getMetaTable().toBackup();
-    List<SchemaTableEntry> schemaEntries = kiji.getSchemaTable().toBackup();
-    backup.setSchemaTable(schemaEntries).setMetaTable(metaBackup);
-    final MetadataBackup backupRec = backup.build();
+        .setSchemaTable(kiji.getSchemaTable().toBackup())
+        .setMetaTable(kiji.getMetaTable().toBackup())
+        .build();
 
     // Now write out the file itself.
     final DatumWriter<MetadataBackup> datumWriter =
@@ -83,8 +77,8 @@ public class MetadataRestorer {
     final DataFileWriter<MetadataBackup> fileWriter =
       new DataFileWriter<MetadataBackup>(datumWriter);
     try {
-      fileWriter.create(backupRec.getSchema(), file);
-      fileWriter.append(backupRec);
+      fileWriter.create(backup.getSchema(), file);
+      fileWriter.append(backup);
     } finally {
       fileWriter.close();
     }
@@ -155,7 +149,8 @@ public class MetadataRestorer {
       HBaseMetaTable.uninstall(hbaseAdmin, kiji.getURI());
       HBaseMetaTable.install(hbaseAdmin, kiji.getURI());
 
-      for (Map.Entry<String, TableBackup> layoutEntry : backup.getMetaTable().entrySet()) {
+      final Map<String, TableBackup> tables = backup.getMetaTable().getTables();
+      for (Map.Entry<String, TableBackup> layoutEntry : tables.entrySet()) {
         final String tableName = layoutEntry.getKey();
         LOG.debug("Found table backup entry for " + tableName);
         final TableBackup tableBackup = layoutEntry.getValue();
@@ -178,6 +173,6 @@ public class MetadataRestorer {
     final KijiSchemaTable schemaTable = kiji.getSchemaTable();
     LOG.info("Restoring schema table entries...");
     schemaTable.fromBackup(backup.getSchemaTable());
-    LOG.info("Restored " + backup.getSchemaTable().size() + " entries.");
+    LOG.info("Restored " + backup.getSchemaTable().getEntries().size() + " entries.");
   }
 }

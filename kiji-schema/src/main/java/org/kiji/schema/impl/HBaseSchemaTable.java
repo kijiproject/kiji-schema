@@ -65,6 +65,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.MD5Hash;
+import org.kiji.schema.avro.SchemaTableBackup;
 import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.platform.SchemaPlatformBridge;
@@ -706,7 +707,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
 
   /** {@inheritDoc} */
   @Override
-  public List<SchemaTableEntry> toBackup() throws IOException {
+  public SchemaTableBackup toBackup() throws IOException {
     Preconditions.checkState(mIsOpen, "Schema tables are closed");
     mZKLock.lock();
     List<SchemaTableEntry> entries = Lists.newArrayList();
@@ -734,12 +735,12 @@ public class HBaseSchemaTable extends KijiSchemaTable {
     } finally {
       mZKLock.unlock();
     }
-    return entries;
+    return SchemaTableBackup.newBuilder().setEntries(entries).build();
   }
 
   /** {@inheritDoc} */
   @Override
-  public void fromBackup(final List<SchemaTableEntry> backup) throws IOException {
+  public void fromBackup(final SchemaTableBackup backup) throws IOException {
     Preconditions.checkState(mIsOpen, "Schema tables are closed");
     mZKLock.lock();
     try {
@@ -755,9 +756,10 @@ public class HBaseSchemaTable extends KijiSchemaTable {
         LOG.error("Merged schema hash and ID tables are inconsistent");
       }
 
+      final List<SchemaTableEntry> schemaTableEntries = backup.getEntries();
       final Set<SchemaEntry> backupEntries =
-          new HashSet<SchemaEntry>(backup.size());
-      for (SchemaTableEntry avroEntry : backup) {
+          new HashSet<SchemaEntry>(schemaTableEntries.size());
+      for (SchemaTableEntry avroEntry : schemaTableEntries) {
         backupEntries.add(fromAvroEntry(avroEntry));
       }
       if (!checkConsistency(backupEntries)) {
