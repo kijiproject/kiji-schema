@@ -36,7 +36,7 @@ public final class KijiNameValidator {
   private KijiNameValidator() {}
 
   /** Regular expression that defines a valid instance name. */
-  public static final Pattern VALID_INSTANCE_PATTERN = Pattern.compile("[a-zA-Z0-9_]*");
+  public static final Pattern VALID_INSTANCE_PATTERN = Pattern.compile("[a-zA-Z0-9_]+");
 
   /** Regular expression that defines a valid layout name (family, qualifier, table, etc). */
   public static final Pattern VALID_LAYOUT_NAME_PATTERN =
