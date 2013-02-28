@@ -35,30 +35,45 @@ import org.kiji.schema.util.ByteArrayFormatter;
 public final class KijiRowKeySplitter {
   private static final Logger LOG = LoggerFactory.getLogger(KijiRowKeySplitter.class);
 
-  /** Resolution (in number of bytes) when generating evenly spaced HBase row keys. */
-  public static final int HBASE_ROW_KEY_RESOLUTION = 16;
-
-  /** No constructor since this is a utility class. */
+  /** No public constructor since this is a factory class. */
   private KijiRowKeySplitter() {}
 
   /**
+   * Creates an instance of KijiRowKeySplitter for the default MD5 hash algorithm.
+   *
+   * @return a new splitter for Kiji row keys.
+   */
+  public static KijiRowKeySplitter get() {
+    return new KijiRowKeySplitter();
+  }
+
+  /**
+   * Resolution (in number of bytes) when generating evenly spaced HBase row keys.
+   *
+   * @return the number of bytes required by an md5 hash.
+   */
+  public int getRowKeyResolution() {
+    return 16;
+  }
+
+  /**
    * Returns the split keys for the given number of regions.  This assumes that the keys are
-   * byte strings of size HBASE_ROW_KEY_RESOLUTION.
+   * byte strings of default size 16 for MD5.
    *
    * @param numRegions The number of desired regions.
    * @return The row keys that serve as the boundaries between the regions.
    */
-  public static byte[][] getSplitKeys(int numRegions) {
+  public byte[][] getSplitKeys(int numRegions) {
     if (numRegions < 2) {
       throw new IllegalArgumentException("numRegions must be at least 2, but was " + numRegions);
     }
 
     // Create a byte array of all zeros.
-    byte[] startKey = new byte[HBASE_ROW_KEY_RESOLUTION];
+    byte[] startKey = new byte[getRowKeyResolution()];
     Arrays.fill(startKey, (byte) 0x00);
 
     // Create a byte array of all ones.
-    byte[] limitKey = new byte[HBASE_ROW_KEY_RESOLUTION];
+    byte[] limitKey = new byte[getRowKeyResolution()];
     Arrays.fill(limitKey, (byte) 0xFF);
 
     // This result includes numRegions + 1 keys in it (includes the startKey and limitKey).
