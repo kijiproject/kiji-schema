@@ -694,7 +694,6 @@ public final class LsTool extends BaseTool {
   private String formatEntityId(EntityId eid) {
     final String formattedHBaseRowKey =
         String.format("hbase='%s'", Bytes.toStringBinary(eid.getHBaseRowKey()));
-
     if (eid instanceof FormattedEntityId) {
       final FormattedEntityId feid = (FormattedEntityId) eid;
       final List<String> components = Lists.newArrayList();
