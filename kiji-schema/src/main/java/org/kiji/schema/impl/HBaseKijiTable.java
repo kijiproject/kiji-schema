@@ -263,7 +263,7 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public KijiTable retain() {
-    Preconditions.checkState(mRetainCount.incrementAndGet() >= 0,
+    Preconditions.checkState(mRetainCount.getAndIncrement() >= 0,
         "Cannot retain a closed KijiTable.");
     return this;
   }
