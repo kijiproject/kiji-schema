@@ -62,7 +62,7 @@ import org.kiji.schema.util.ResourceUtils;
  * have access to should be added to org.kiji.schema.KijiTable.</p>
  */
 @ApiAudience.Private
-public class HBaseKijiTable implements KijiTable {
+public final class HBaseKijiTable implements KijiTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTable.class);
   // private static final Logger CLEANUP_LOG =
   //     LoggerFactory.getLogger(HBaseKijiTable.class.getName() + ".Cleanup");
