@@ -34,7 +34,7 @@ public final class CounterCellDecoder implements KijiCellDecoder<Long> {
   private static final CounterCellDecoder SINGLETON = new CounterCellDecoder();
 
   /** @return the counter cell decoder singleton. */
-  public static CounterCellDecoder get() {
+  public static KijiCellDecoder<Long> get() {
     return SINGLETON;
   }
 
