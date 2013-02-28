@@ -756,18 +756,18 @@ public class HBaseSchemaTable extends KijiSchemaTable {
         LOG.error("Merged schema hash and ID tables are inconsistent");
       }
 
-      final List<SchemaTableEntry> schemaTableEntries = backup.getEntries();
-      final Set<SchemaEntry> backupEntries =
-          new HashSet<SchemaEntry>(schemaTableEntries.size());
-      for (SchemaTableEntry avroEntry : schemaTableEntries) {
-        backupEntries.add(fromAvroEntry(avroEntry));
+      final List<SchemaTableEntry> avroBackupEntries = backup.getEntries();
+      final Set<SchemaEntry> schemaTableEntries =
+          new HashSet<SchemaEntry>(avroBackupEntries.size());
+      for (SchemaTableEntry avroEntry : avroBackupEntries) {
+        schemaTableEntries.add(fromAvroEntry(avroEntry));
       }
-      if (!checkConsistency(backupEntries)) {
+      if (!checkConsistency(schemaTableEntries)) {
         LOG.error("Backup schema entries are inconsistent");
       }
 
-      mergedEntries.addAll(backupEntries);
-      if (!checkConsistency(backupEntries)) {
+      mergedEntries.addAll(schemaTableEntries);
+      if (!checkConsistency(schemaTableEntries)) {
         LOG.error("Backup schema entries are inconsistent with already existing schema entries");
       }
 
@@ -778,12 +778,12 @@ public class HBaseSchemaTable extends KijiSchemaTable {
       final long nextSchemaId = maxSchemaId + 1;
 
       flush();
-      SchemaPlatformBridge.get().setWriteBufferSize(mSchemaIdTable, backupEntries.size() + 1);
-      SchemaPlatformBridge.get().setWriteBufferSize(mSchemaHashTable, backupEntries.size());
+      SchemaPlatformBridge.get().setWriteBufferSize(mSchemaIdTable, schemaTableEntries.size() + 1);
+      SchemaPlatformBridge.get().setWriteBufferSize(mSchemaHashTable, schemaTableEntries.size());
 
       // Restored schema entries share the same timestamp:
       final long timestamp = System.currentTimeMillis();
-      for (SchemaEntry entry : backupEntries) {
+      for (SchemaEntry entry : schemaTableEntries) {
         storeInTable(toAvroEntry(entry), timestamp, false);  // do not flush
       }
       setSchemaIdCounter(nextSchemaId);
