@@ -294,7 +294,7 @@ protocol KijiTableLayoutRecords {
      * only components to the left of this will be included in the hash. IOW, you
      * are able to perform range scans over this component and components that follow.
      * It is invalid to make the first component of key support range scans.
-     * 0 indexed. Set to key_spec.length to hash over the entire key.
+     * 0 indexed. Set to components.size to hash over the entire key.
      */
     int range_scan_start_index = 1;
 
@@ -303,7 +303,9 @@ protocol KijiTableLayoutRecords {
      * A row key with a null component must ensure that all the components following it
      * are also null, in order to comply with ordering constraints. It is invalid to make
      * the first component of a key nullable.
-     * 0 indexed. Set to key_spec.length to disallow nulls.
+     * 0 indexed. Set to components.size to disallow nulls.
+     * nullable_start_index can be < range_scan_start_index, in which case the missing
+     * components will not be included in the hash calculation.
      */
     int nullable_start_index = 1;
 

@@ -221,7 +221,7 @@ public final class FormattedEntityId extends EntityId {
     int hashUpto = format.getRangeScanStartIndex() - 1;
     ByteArrayOutputStream tohash = new ByteArrayOutputStream();
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    for (pos = 0; pos <= hashUpto; pos++) {
+    for (pos = 0; pos <= hashUpto && pos < hbaseKey.size(); pos++) {
       tohash.write(hbaseKey.get(pos), 0, hbaseKey.get(pos).length);
     }
     byte[] hashed = Arrays.copyOfRange(Hasher.hash(tohash.toByteArray()), 0,
