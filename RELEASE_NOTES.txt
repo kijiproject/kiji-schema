@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-234. Extract kiji scan functionality out of kiji ls.
   * SCHEMA-219. Adds KijiWriterFactory with access in KijiTable and
       AtomicKijiPutter with access in KijiUtilityWriterFactory.
   * SCHEMA-103. Remove ColumnNameTranslator from public API.

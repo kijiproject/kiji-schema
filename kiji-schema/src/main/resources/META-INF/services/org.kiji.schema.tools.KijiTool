@@ -12,3 +12,4 @@ org.kiji.schema.tools.SynthesizeUserDataTool
 org.kiji.schema.tools.SystemTableTool
 org.kiji.schema.tools.UninstallTool
 org.kiji.schema.tools.VersionTool
+org.kiji.schema.tools.ScanTool
