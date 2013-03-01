@@ -52,7 +52,7 @@ public final class KijiTableLayouts {
       final String json = IOUtils.toString(istream);
       return (TableLayoutDesc) FromJson.fromJsonString(json, TableLayoutDesc.SCHEMA$);
     } finally {
-      ResourceUtils.closeOrLog(istream);
+      ResourceUtils.closeIfNotNull(istream);
     }
   }
 
@@ -207,7 +207,7 @@ public final class KijiTableLayouts {
     layoutFile.deleteOnExit();
     final OutputStream fos = new FileOutputStream(layoutFile);
     IOUtils.write(ToJson.toJsonString(desc), fos);
-    ResourceUtils.closeOrLog(fos);
+    ResourceUtils.closeIfNotNull(fos);
     return layoutFile;
   }
 

@@ -64,9 +64,9 @@ public class TestHBaseKijiTableWriter {
 
   @After
   public void cleanupEnvironment() throws IOException {
-    ResourceUtils.closeOrLog(mWriter);
-    ResourceUtils.closeOrLog(mReader);
-    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.closeIfNotNull(mWriter);
+    ResourceUtils.closeIfNotNull(mReader);
+    ResourceUtils.releaseIfNotNull(mTable);
     mKiji.release();
   }
 

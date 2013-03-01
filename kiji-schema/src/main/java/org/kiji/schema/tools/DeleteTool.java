@@ -348,12 +348,12 @@ public final class DeleteTool extends BaseTool {
               ToolUtils.createEntityIdFromUserInputs(mEntityIdFlag, table.getLayout());
           return deleteFromRow(table, entityId, columns, mTimestampMode, mTimestamp);
         } finally {
-          ResourceUtils.releaseOrLog(table);
+          ResourceUtils.releaseIfNotNull(table);
         }
       }
 
     } finally {
-      ResourceUtils.releaseOrLog(kiji);
+      ResourceUtils.releaseIfNotNull(kiji);
     }
   }
 

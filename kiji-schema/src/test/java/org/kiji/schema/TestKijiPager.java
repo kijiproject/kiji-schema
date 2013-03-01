@@ -60,8 +60,8 @@ public class TestKijiPager extends KijiClientTest {
 
   @After
   public void teardown() throws IOException {
-    ResourceUtils.closeOrLog(mReader);
-    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.closeIfNotNull(mReader);
+    ResourceUtils.releaseIfNotNull(mTable);
   }
 
   @Test(expected=KijiColumnPagingNotEnabledException.class)
@@ -86,7 +86,7 @@ public class TestKijiPager extends KijiClientTest {
     writer.put(id, "info", "name", 3L, "me-three");
     writer.put(id, "info", "name", 4L, "me-four");
     writer.put(id, "info", "name", 5L, "me-five");
-    ResourceUtils.closeOrLog(writer);
+    ResourceUtils.closeIfNotNull(writer);
 
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
@@ -114,7 +114,7 @@ public class TestKijiPager extends KijiClientTest {
     final NavigableMap<Long, CharSequence> resultMap3 = pager.next().getValues("info", "name");
     assertEquals("The number of returned values is incorrect: ", 1 , resultMap3.size());
     assertEquals("Incorrect first value of second page:", "me", resultMap3.get(1L).toString());
-    ResourceUtils.closeOrLog(pager);
+    ResourceUtils.closeIfNotNull(pager);
   }
 
   /* Test that a pager retrieved for a group type column family acts as expected. */
@@ -127,7 +127,7 @@ public class TestKijiPager extends KijiClientTest {
     writer.put(id, "info", "name", 3L, "me-three");
     writer.put(id, "info", "name", 4L, "me-four");
     writer.put(id, "info", "name", 5L, "me-five");
-    ResourceUtils.closeOrLog(writer);
+    ResourceUtils.closeIfNotNull(writer);
 
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
@@ -156,7 +156,7 @@ public class TestKijiPager extends KijiClientTest {
     final NavigableMap<Long, CharSequence> resultMap3 = pager.next().getValues("info", "name");
     assertEquals("The number of returned values is incorrect: ", 1 , resultMap3.size());
     assertEquals("Incorrect first value of second page:", "me", resultMap3.get(1L).toString());
-    ResourceUtils.closeOrLog(pager);
+    ResourceUtils.closeIfNotNull(pager);
 
     assertTrue(!scanner.hasNext());
   }
@@ -170,7 +170,7 @@ public class TestKijiPager extends KijiClientTest {
     writer.put(id, "jobs", "c", 3L, "always coming in 3rd");
     writer.put(id, "jobs", "b", 4L, "always coming in 2nd");
     writer.put(id, "jobs", "a", 5L, "always coming in 1st");
-    ResourceUtils.closeOrLog(writer);
+    ResourceUtils.closeIfNotNull(writer);
 
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withPageSize(2).addFamily("jobs");
@@ -206,7 +206,7 @@ public class TestKijiPager extends KijiClientTest {
     assertEquals("Incorrect first value of second page:", "always coming in 5th",
         resultMap3.get("e").get(1L).toString());
     assertTrue(!pager.hasNext());
-    ResourceUtils.closeOrLog(pager);
+    ResourceUtils.closeIfNotNull(pager);
   }
 
  /** Test that paging does not clobber user defined filters. */
@@ -219,7 +219,7 @@ public class TestKijiPager extends KijiClientTest {
     writer.put(id, "jobs", "b", 3L, "always coming in 3rd");
     writer.put(id, "jobs", "a", 4L, "always coming in 2nd");
     writer.put(id, "jobs", "a", 5L, "always coming in 1st");
-    ResourceUtils.closeOrLog(writer);
+    ResourceUtils.closeIfNotNull(writer);
 
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withPageSize(2)
@@ -252,7 +252,7 @@ public class TestKijiPager extends KijiClientTest {
           resultMap2.get("b").get(1L).toString());
       assertTrue(!pager.hasNext());
     } finally {
-      ResourceUtils.closeOrLog(pager);
+      ResourceUtils.closeIfNotNull(pager);
     }
   }
 }

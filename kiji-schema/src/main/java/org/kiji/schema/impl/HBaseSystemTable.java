@@ -249,7 +249,7 @@ public class HBaseSystemTable extends KijiSystemTable {
     try {
       systemTable.loadDefaults(DEFAULTS_PROPERTIES_FILE);
     } finally {
-      ResourceUtils.closeOrLog(systemTable);
+      ResourceUtils.closeIfNotNull(systemTable);
     }
   }
 

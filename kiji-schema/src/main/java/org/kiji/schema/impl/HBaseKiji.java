@@ -501,10 +501,10 @@ public final class HBaseKiji implements Kiji {
     }
 
     LOG.debug("Closing resource '{}'.", mURI);
-    ResourceUtils.closeOrLog(mMetaTable);
-    ResourceUtils.closeOrLog(mSystemTable);
-    ResourceUtils.closeOrLog(mSchemaTable);
-    ResourceUtils.closeOrLog(mAdmin);
+    ResourceUtils.closeIfNotNull(mMetaTable);
+    ResourceUtils.closeIfNotNull(mSystemTable);
+    ResourceUtils.closeIfNotNull(mSchemaTable);
+    ResourceUtils.closeIfNotNull(mAdmin);
     mSchemaTable = null;
     mMetaTable = null;
     mSystemTable = null;

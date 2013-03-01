@@ -578,7 +578,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
     flush();
     mSchemaHashTable.close();
     mSchemaIdTable.close();
-    ResourceUtils.closeOrLog(mZKLock);
+    ResourceUtils.closeIfNotNull(mZKLock);
     mIsOpen = false;
   }
 
@@ -652,7 +652,7 @@ public class HBaseSchemaTable extends KijiSchemaTable {
       schemaTable.setSchemaIdCounter(0L);
       schemaTable.registerPrimitiveSchemas();
     } finally {
-      ResourceUtils.closeOrLog(schemaTable);
+      ResourceUtils.closeIfNotNull(schemaTable);
     }
   }
 

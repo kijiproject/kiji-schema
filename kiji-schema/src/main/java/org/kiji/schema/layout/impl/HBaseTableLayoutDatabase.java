@@ -304,7 +304,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
     for (Result result : resultScanner) {
       tableNames.add(Bytes.toString(result.getRow()));
     }
-    ResourceUtils.closeOrLog(resultScanner);
+    ResourceUtils.closeIfNotNull(resultScanner);
     return tableNames;
   }
 

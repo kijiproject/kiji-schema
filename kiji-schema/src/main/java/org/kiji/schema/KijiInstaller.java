@@ -112,7 +112,7 @@ public final class KijiInstaller {
       HBaseSchemaTable.install(hbaseAdmin, uri, conf, tableFactory, lockFactory);
 
     } finally {
-      ResourceUtils.closeOrLog(hbaseAdmin);
+      ResourceUtils.closeIfNotNull(hbaseAdmin);
     }
     LOG.info(String.format("Installed kiji instance '%s'.", uri));
   }
@@ -158,7 +158,7 @@ public final class KijiInstaller {
         HBaseSchemaTable.uninstall(hbaseAdmin, uri);
 
       } finally {
-        ResourceUtils.closeOrLog(hbaseAdmin);
+        ResourceUtils.closeIfNotNull(hbaseAdmin);
       }
     } finally {
       kiji.release();

@@ -181,7 +181,7 @@ public final class PutTool extends BaseTool {
       }
 
     } finally {
-      ResourceUtils.closeOrLog(writer);
+      ResourceUtils.closeIfNotNull(writer);
     }
 
     return SUCCESS;
@@ -189,9 +189,9 @@ public final class PutTool extends BaseTool {
 
   /** {@inheritDoc} */
   @Override
-  protected void cleanup() {
-    ResourceUtils.releaseOrLog(mTable);
-    ResourceUtils.releaseOrLog(mKiji);
+  protected void cleanup() throws IOException {
+    ResourceUtils.releaseIfNotNull(mTable);
+    ResourceUtils.releaseIfNotNull(mKiji);
   }
 
   /**

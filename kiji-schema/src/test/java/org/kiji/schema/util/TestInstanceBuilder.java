@@ -60,8 +60,8 @@ public class TestInstanceBuilder {
     final KijiRowData row2 = reader.get(table.getEntityId("row2"), req);
     assertEquals("foo3", row2.getValue("family", "column", 100).toString());
 
-    ResourceUtils.closeOrLog(reader);
-    ResourceUtils.releaseOrLog(table);
-    ResourceUtils.releaseOrLog(kiji);
+    ResourceUtils.closeIfNotNull(reader);
+    ResourceUtils.releaseIfNotNull(table);
+    ResourceUtils.releaseIfNotNull(kiji);
   }
 }

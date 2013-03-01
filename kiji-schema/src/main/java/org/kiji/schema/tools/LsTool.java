@@ -192,7 +192,7 @@ public final class LsTool extends BaseTool {
       }
       return instanceNames;
     } finally {
-      ResourceUtils.closeOrLog(hbaseAdmin);
+      ResourceUtils.closeIfNotNull(hbaseAdmin);
     }
   }
 
@@ -260,7 +260,7 @@ public final class LsTool extends BaseTool {
         ToolUtils.printRow(row, mapTypeFamilies, groupTypeColumns, getPrintStream());
       }
     } finally {
-      ResourceUtils.closeOrLog(scanner);
+      ResourceUtils.closeIfNotNull(scanner);
     }
     return 0;
   }
@@ -371,13 +371,13 @@ public final class LsTool extends BaseTool {
             return lookup(reader, request, entityId, mapTypeFamilies, groupTypeColumns);
           }
         } finally {
-          ResourceUtils.closeOrLog(reader);
+          ResourceUtils.closeIfNotNull(reader);
         }
       } finally {
-        ResourceUtils.releaseOrLog(table);
+        ResourceUtils.releaseIfNotNull(table);
       }
     } finally {
-      ResourceUtils.releaseOrLog(kiji);
+      ResourceUtils.releaseIfNotNull(kiji);
     }
   }
 

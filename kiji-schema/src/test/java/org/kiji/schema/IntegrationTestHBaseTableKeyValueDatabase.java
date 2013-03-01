@@ -79,7 +79,7 @@ public class IntegrationTestHBaseTableKeyValueDatabase extends AbstractKijiInteg
       tableDescriptor.addFamily(new HColumnDescriptor(FAMILY_NAME));
       admin.createTable(tableDescriptor);
     } finally {
-      ResourceUtils.closeOrLog(admin);
+      ResourceUtils.closeIfNotNull(admin);
     }
     mTable = new HTable(conf, TABLE_NAME);
     // Fill it with some data.
@@ -98,7 +98,7 @@ public class IntegrationTestHBaseTableKeyValueDatabase extends AbstractKijiInteg
       admin.disableTable(TABLE_NAME);
       admin.deleteTable(TABLE_NAME);
     } finally {
-      ResourceUtils.closeOrLog(admin);
+      ResourceUtils.closeIfNotNull(admin);
       mTable.close();
       mTable = null;
       mDb = null;

@@ -70,7 +70,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "info", "name", 3L, "me-three");
     writer.put(id, "info", "name", 4L, "me-four");
     writer.put(id, "info", "name", 5L, "me-five");
-    ResourceUtils.closeOrLog(writer);
+    ResourceUtils.closeIfNotNull(writer);
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 1);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
@@ -94,7 +94,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "info", "name", 3L, "me-three");
     writer.put(id, "info", "name", 4L, "me-four");
     writer.put(id, "info", "name", 5L, "me-five");
-    ResourceUtils.closeOrLog(writer);
+    ResourceUtils.closeIfNotNull(writer);
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 0);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
@@ -119,7 +119,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "jobs", "c", 3L, "always coming in 3rd");
     writer.put(id, "jobs", "b", 4L, "always coming in 2nd");
     writer.put(id, "jobs", "a", 5L, "always coming in 1st");
-    ResourceUtils.closeOrLog(writer);
+    ResourceUtils.closeIfNotNull(writer);
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 1);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
@@ -144,7 +144,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "jobs", "b", 3L, "always coming in 3rd");
     writer.put(id, "jobs", "a", 4L, "always coming in 2nd");
     writer.put(id, "jobs", "a", 5L, "always coming in 1st");
-    ResourceUtils.closeOrLog(writer);
+    ResourceUtils.closeIfNotNull(writer);
     final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 0,
         new RegexQualifierColumnFilter("b"));
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
@@ -163,6 +163,6 @@ public class TestKijiPaginationFilter extends KijiClientTest {
 
   @After
   public void cleaup() throws IOException {
-    ResourceUtils.closeOrLog(mReader);
+    ResourceUtils.closeIfNotNull(mReader);
   }
 }

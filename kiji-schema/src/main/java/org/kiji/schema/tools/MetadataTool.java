@@ -210,7 +210,7 @@ public class MetadataTool extends BaseTool {
         throw new InternalKijiError("Neither input nor output file specified.");
       }
     } finally {
-      ResourceUtils.releaseOrLog(kiji);
+      ResourceUtils.releaseIfNotNull(kiji);
     }
     return SUCCESS;
   }

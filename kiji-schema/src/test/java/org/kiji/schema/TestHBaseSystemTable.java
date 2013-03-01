@@ -63,7 +63,7 @@ public class TestHBaseSystemTable {
     replay(mHtable);
     HBaseSystemTable systemTable = new HBaseSystemTable(mHtable);
     systemTable.setDataVersion(ProtocolVersion.parse("kiji-100"));
-    ResourceUtils.closeOrLog(systemTable);
+    ResourceUtils.closeIfNotNull(systemTable);
     verify(mHtable);
   }
 
@@ -81,7 +81,7 @@ public class TestHBaseSystemTable {
     replay(mHtable);
     HBaseSystemTable systemTable = new HBaseSystemTable(mHtable);
     assertEquals(ProtocolVersion.parse("100"), systemTable.getDataVersion());
-    ResourceUtils.closeOrLog(systemTable);
+    ResourceUtils.closeIfNotNull(systemTable);
     verify(mHtable);
   }
 

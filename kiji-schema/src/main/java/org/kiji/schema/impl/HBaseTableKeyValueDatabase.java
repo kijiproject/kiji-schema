@@ -195,7 +195,7 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
       LOG.debug("When constructing the tableSet for the metatable we found table '{}'.", tableName);
       tableNames.add(tableName);
     }
-    ResourceUtils.closeOrLog(resultScanner);
+    ResourceUtils.closeIfNotNull(resultScanner);
     return tableNames;
 
   }

@@ -19,6 +19,7 @@
 
 package org.kiji.schema.impl;
 
+import java.io.IOException;
 import java.util.Iterator;
 
 import org.apache.hadoop.hbase.client.Result;
@@ -154,14 +155,14 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
 
   /** {@inheritDoc} */
   @Override
-  public void close() {
+  public void close() throws IOException {
     if (!mIsOpen) {
       LOG.warn("Called close() on [HBase]KijiRowScanner more than once.");
     }
 
     mIsOpen = false;
 
-    ResourceUtils.closeOrLog(mResultScanner);
+    ResourceUtils.closeIfNotNull(mResultScanner);
   }
 
   /** {@inheritDoc} */

@@ -63,9 +63,9 @@ public class TestKijiRowScanner {
 
   @After
   public void cleanupEnvironment() throws IOException {
-    ResourceUtils.closeOrLog(mReader);
-    ResourceUtils.releaseOrLog(mTable);
-    ResourceUtils.releaseOrLog(mKiji);
+    ResourceUtils.closeIfNotNull(mReader);
+    ResourceUtils.releaseIfNotNull(mTable);
+    ResourceUtils.releaseIfNotNull(mKiji);
   }
 
   @Test
@@ -80,7 +80,7 @@ public class TestKijiRowScanner {
     assertEquals("bar-val", actual1);
     assertEquals("foo-val", actual2);
 
-    ResourceUtils.closeOrLog(scanner);
+    ResourceUtils.closeIfNotNull(scanner);
   }
 
   @Test
@@ -96,6 +96,6 @@ public class TestKijiRowScanner {
 
     assertEquals("foo-val", first);
 
-    ResourceUtils.closeOrLog(scanner);
+    ResourceUtils.closeIfNotNull(scanner);
   }
 }

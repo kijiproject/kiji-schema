@@ -91,10 +91,10 @@ public class IntegrationTestKijiTableWriterDeletes extends AbstractKijiIntegrati
    */
   @After
   public final void teardownIntegrationTestKijiTableWriterDeletes() throws Exception {
-    ResourceUtils.closeOrLog(mReader);
-    ResourceUtils.closeOrLog(mWriter);
-    ResourceUtils.releaseOrLog(mTable);
-    ResourceUtils.releaseOrLog(mKiji);
+    ResourceUtils.closeIfNotNull(mReader);
+    ResourceUtils.closeIfNotNull(mWriter);
+    ResourceUtils.releaseIfNotNull(mTable);
+    ResourceUtils.releaseIfNotNull(mKiji);
   }
 
   @Test

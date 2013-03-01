@@ -74,13 +74,13 @@ public class TestFakeKiji {
       final KijiRowScanner scanner =
           table.openTableReader().getScanner(dataRequest);
       assertFalse(scanner.iterator().hasNext());
-      ResourceUtils.closeOrLog(scanner);
+      ResourceUtils.closeIfNotNull(scanner);
     }
 
     {
       final KijiTableWriter writer = table.openTableWriter();
       writer.put(table.getEntityId("row1"), "family", "column", "the string value");
-      ResourceUtils.closeOrLog(writer);
+      ResourceUtils.closeIfNotNull(writer);
     }
 
     {
@@ -95,11 +95,11 @@ public class TestFakeKiji {
       KijiRowData row = it.next();
       assertEquals("the string value", row.getMostRecentValue("family", "column").toString());
       assertFalse(it.hasNext());
-      ResourceUtils.closeOrLog(scanner);
-      ResourceUtils.closeOrLog(reader);
+      ResourceUtils.closeIfNotNull(scanner);
+      ResourceUtils.closeIfNotNull(reader);
     }
 
-    ResourceUtils.releaseOrLog(table);
-    ResourceUtils.releaseOrLog(kiji);
+    ResourceUtils.releaseIfNotNull(table);
+    ResourceUtils.releaseIfNotNull(kiji);
   }
 }

@@ -70,7 +70,7 @@ public final class SplitKeyFile {
       }
       return keys;
     } finally {
-      ResourceUtils.closeOrLog(inputStream);
+      ResourceUtils.closeIfNotNull(inputStream);
     }
   }
 

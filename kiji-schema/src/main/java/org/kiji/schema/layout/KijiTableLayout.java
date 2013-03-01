@@ -1533,7 +1533,7 @@ public final class KijiTableLayout {
       final KijiTableLayout layout = new KijiTableLayout(desc, null);
       return layout;
     } finally {
-      ResourceUtils.closeOrLog(istream);
+      ResourceUtils.closeIfNotNull(istream);
     }
   }
 

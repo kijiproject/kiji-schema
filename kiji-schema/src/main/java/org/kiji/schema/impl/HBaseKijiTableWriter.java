@@ -333,6 +333,6 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   public void close() throws IOException {
     flush();
 
-    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.releaseIfNotNull(mTable);
   }
 }

@@ -161,7 +161,7 @@ public final class FlushTableTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
-    ResourceUtils.closeOrLog(mHBaseAdmin);
+    ResourceUtils.closeIfNotNull(mHBaseAdmin);
     super.cleanup();
   }
 

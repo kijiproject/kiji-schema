@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.tools.BaseTool;
-import org.kiji.schema.util.ResourceUtils;
 
 /**
  * A base class for all Kiji integration tests.
@@ -388,7 +387,7 @@ public abstract class AbstractKijiIntegrationTest {
     final StringWriter writer = new StringWriter();
     final PrintWriter printWriter = new PrintWriter(writer);
     exn.printStackTrace(printWriter);
-    ResourceUtils.closeOrLog(printWriter);
+    printWriter.close();
     return writer.toString();
   }
 

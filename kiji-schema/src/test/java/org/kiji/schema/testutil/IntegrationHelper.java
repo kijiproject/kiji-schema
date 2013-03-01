@@ -165,7 +165,7 @@ public class IntegrationHelper extends Configured {
       IOUtils.copy(inStream, outStream);
     } finally {
       if (null != outStream) {
-        ResourceUtils.closeOrLog(outStream);
+        ResourceUtils.closeIfNotNull(outStream);
       }
     }
   }
@@ -188,10 +188,10 @@ public class IntegrationHelper extends Configured {
       writeTempFile(formatFile, formatStream);
     } finally {
       if (null != dataStream) {
-        ResourceUtils.closeOrLog(dataStream);
+        ResourceUtils.closeIfNotNull(dataStream);
       }
       if (null != formatStream) {
-        ResourceUtils.closeOrLog(formatStream);
+        ResourceUtils.closeIfNotNull(formatStream);
       }
     }
   }
