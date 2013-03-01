@@ -40,8 +40,8 @@ import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
 import org.kiji.schema.util.ResourceUtils;
 
-public class TestScanTool extends KijiClientTest {
-  private static final Logger LOG = LoggerFactory.getLogger(TestScanTool.class);
+public class TestGetTool extends KijiClientTest {
+  private static final Logger LOG = LoggerFactory.getLogger(TestGetTool.class);
 
   /** Horizontal ruler to delimit CLI outputs in logs. */
   private static final String RULER =
@@ -89,65 +89,28 @@ public class TestScanTool extends KijiClientTest {
   }
 
   @Test
-  public void testScanTable() throws Exception {
+  public void testGetFromTable() throws Exception {
     final Kiji kiji = getKiji();
     final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE);
     kiji.createTable(layout.getName(), layout);
-    final KijiTable table = kiji.openTable(layout.getName());
-    try {
-      // Table is empty:
-      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), "--kiji=" + table.getURI()));
-      assertEquals(1, mToolOutputLines.length);
-      assertTrue(mToolOutputLines[0].startsWith("Scanning kiji table: "));
 
-      new InstanceBuilder(kiji)
-          .withTable(table)
-              .withRow("hashed")
-                  .withFamily("family").withQualifier("column").withValue(314L, "value")
-          .build();
-
-      // Table has now one row:
-      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), "--kiji=" + table.getURI()));
-      assertEquals(3, mToolOutputLines.length);
-      assertTrue(mToolOutputLines[0].startsWith("Scanning kiji table: "));
-      assertTrue(mToolOutputLines[1].startsWith("entity-id=hbase=hex:"));
-
-    } finally {
-      ResourceUtils.releaseOrLog(table);
-    }
-  }
-
-  @Test
-  public void testFormattedRowKey() throws Exception {
-    final Kiji kiji = getKiji();
-    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FORMATTED_RKF);
     new InstanceBuilder(kiji)
         .withTable(layout.getName(), layout)
-            .withRow("dummy", "str1", "str2", 1, 2L)
-                .withFamily("family").withQualifier("column")
-                    .withValue(1L, "string-value")
-                    .withValue(2L, "string-value2")
-            .withRow("dummy", "str1", "str2", 1)
-                .withFamily("family").withQualifier("column").withValue(1L, "string-value")
-            .withRow("dummy", "str1", "str2")
-                .withFamily("family").withQualifier("column").withValue(1L, "string-value")
-            .withRow("dummy", "str1")
-                .withFamily("family").withQualifier("column").withValue(1L, "string-value")
-            .withRow("dummy")
-                .withFamily("family").withQualifier("column").withValue(1L, "string-value")
+            .withRow("hashed")
+                .withFamily("family").withQualifier("column").withValue(314L, "value")
         .build();
 
     final KijiTable table = kiji.openTable(layout.getName());
     try {
-      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), "--kiji=" + table.getURI()));
-      // TODO: Validate ScanTool output
+      assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), "--kiji=" + table.getURI(),
+          "--entity-id=hashed"));
     } finally {
       ResourceUtils.releaseOrLog(table);
     }
   }
 
   @Test
-  public void testKijiScanStartAndLimitRow() throws Exception {
+  public void testGetFromTableMore() throws Exception {
     final Kiji kiji = getKiji();
     final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST);
     final long timestamp = 10L;
@@ -182,19 +145,16 @@ public class TestScanTool extends KijiClientTest {
 
     final KijiTable table = kiji.openTable(layout.getName());
     try {
-      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(),
-          "--kiji=" + table.getURI(),
-          "--columns=info:name"
-      ));
-      // TODO: Validate output
-
-      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(),
+      assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), "--kiji=" + table.getURI(),
+          "--entity-id=jane.doe@gmail.com"));
+      assertEquals(5, mToolOutputLines.length);
+      assertEquals(BaseTool.SUCCESS, runTool(new GetTool(),
           "--kiji=" + table.getURI(),
           "--columns=info:name",
-          "--start-row=hex:50000000000000000000000000000000",  // after the second row.
-          "--limit-row=hex:e0000000000000000000000000000000"  // before the last row.
-      ));
-      // TODO: Validate output
+          "--entity-id=hbase=hex:9decb1b27454729c38e149964ee5a0d4"
+          )); // Garrett Wu
+      assertEquals(3, mToolOutputLines.length);
+      // TODO: Validate GetTool output
     } finally {
       ResourceUtils.releaseOrLog(table);
     }

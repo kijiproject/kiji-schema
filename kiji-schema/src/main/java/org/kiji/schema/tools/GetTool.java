@@ -30,64 +30,50 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
-import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
-import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
-import org.kiji.schema.util.ResourceUtils;
 
 /**
- * Command-line tool to explore kiji table data like the 'scan' command of a unix shell.
+ * Command-line tool to get a row from a kiji table.
  *
- * List all data in the columns 'info:email' and 'derived:domain' of a table 'foo' up to max-rows:
+ * In row 'bar', display 'info:email' and 'derived:domain' columns of table 'foo':
  * <pre>
- *   kiji scan \
+ *   kiji get \
  *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
  *       --columns=info:email,derived:domain \
- *       --max-rows=10
- * </pre>
- *
- * List all data in table 'foo' form row start-row to limit-row:
- * <pre>
- *   kiji scan \
- *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
- *       --columns=info:email,derived:domain \
- *       --start-row=hex:50000000000000000000000000000000 \
- *       --limit-row=hex:e0000000000000000000000000000000
+ *       --entity-id=bar
  * </pre>
  */
 @ApiAudience.Private
-public final class ScanTool extends BaseTool {
-  private static final Logger LOG = LoggerFactory.getLogger(ScanTool.class);
+public final class GetTool extends BaseTool {
+  private static final Logger LOG = LoggerFactory.getLogger(GetTool.class);
 
   // TODO: make this a URI with columns, optionally.
-  @Flag(name="kiji", usage="URI of the object to list contents from.")
+  @Flag(name="kiji", usage="URI of the table to dump a row from")
   private String mURIFlag;
+
 
   // TODO: remove this flag and make use above URI to specify columns.
   @Flag(name="columns", usage="Comma-delimited columns (family:qualifier), or * for all columns")
   private String mColumns = "*";
 
-  @Flag(name="start-row",
-      usage="HBase row to start scanning at (inclusive), "
-            + "e.g. --start-row='hex:0088deadbeef', or --start-row='utf8:the row key in UTF8'.")
-  private String mStartRowFlag = null;
-
-  @Flag(name="limit-row",
-      usage="HBase row to stop scanning at (exclusive), "
-            + "e.g. --limit-row='hex:0088deadbeef', or --limit-row='utf8:the row key in UTF8'.")
-  private String mLimitRowFlag = null;
-
-  @Flag(name="max-rows", usage="Max number of rows to scan")
-  private int mMaxRows = 0;
+  @Flag(name="entity-id", usage="ID of a single row to look up. "
+      + "Either 'kiji=<Kiji row key>' or 'hbase=<HBase row key>'. "
+      + ("HBase row keys are specified as bytes: "
+          + "by default as UTF-8 strings, or prefixed as in 'utf8:encoded\\x0astring'; "
+          + "in hexadecimal as in 'hex:deadbeef'; "
+          + "as a URL with 'url:this%20URL%00'. ")
+      + "Old deprecated Kiji row keys are specified as naked UTF-8 strings. "
+      + ("New Kiji row keys are specified in JSON, "
+          + "as in: --entity-id=kiji=\"['component1', 2, 'component3']\"."))
+  private String mEntityIdFlag = null;
 
   @Flag(name="max-versions", usage="Max number of versions per cell to display")
   private int mMaxVersions = 1;
@@ -104,13 +90,13 @@ public final class ScanTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   public String getName() {
-    return "scan";
+    return "get";
   }
 
   /** {@inheritDoc} */
   @Override
   public String getDescription() {
-    return "List rows.";
+    return "Get kiji table row.";
   }
 
   /** {@inheritDoc} */
@@ -119,43 +105,32 @@ public final class ScanTool extends BaseTool {
     return "Data";
   }
 
-
   /**
-   * Scans a table, displaying the data in the given columns, or all data if columns is null.
+   * Prints the data for a single entity id.
    *
    * @param reader The reader.
    * @param request The data request.
-   * @param startRow The first row to include in this scan.
-   * @param limitRow The last row to include in this scan.
+   * @param entityId The entity id to lookup.
    * @param mapTypeFamilies The map type families to print.
    * @param groupTypeColumns The group type columns to print.
    * @return A program exit code (zero on success).
-   * @throws IOException If there is an IO error.
    */
-  private int scan(
+  private int lookup(
       KijiTableReader reader,
       KijiDataRequest request,
-      EntityId startRow,
-      EntityId limitRow,
+      EntityId entityId,
       Map<FamilyLayout, List<String>> mapTypeFamilies,
-      Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns)
-      throws IOException {
-    getPrintStream().println("Scanning kiji table: " + mURI);
-    final KijiScannerOptions scannerOptions =
-        new KijiScannerOptions()
-            .setStartRow(startRow)
-            .setStopRow(limitRow);
-    final KijiRowScanner scanner = reader.getScanner(request, scannerOptions);
+      Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns) {
+    // TODO: Send this through an alternative stream: something like verbose or debug?
+    getPrintStream().println(
+        "Looking up entity: " + ToolUtils.formatEntityId(entityId)
+        + " from kiji table: " + mURI);
     try {
-      int rowsOutput = 0;
-      for (KijiRowData row : scanner) {
-        if ((mMaxRows != 0) && (++rowsOutput > mMaxRows)) {
-          break;
-        }
-        ToolUtils.printRow(row, mapTypeFamilies, groupTypeColumns, getPrintStream());
-      }
-    } finally {
-      ResourceUtils.closeOrLog(scanner);
+      final KijiRowData row = reader.get(entityId, request);
+      ToolUtils.printRow(row, mapTypeFamilies, groupTypeColumns, getPrintStream());
+    } catch (IOException ioe) {
+      LOG.error(ioe.getMessage());
+      return FAILURE;
     }
     return SUCCESS;
   }
@@ -163,18 +138,13 @@ public final class ScanTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-
-    if (mMaxRows < 0) {
-      // TODO: Send this error to a future getErrorStream()
-      getPrintStream().printf("--max-rows must be positive, got %d%n", mMaxRows);
-      return FAILURE;
-    }
     if (null == mURIFlag) {
       // TODO: Send this error to a future getErrorStream()
       getPrintStream().printf("--kiji must be specified, got %s%n", mURIFlag);
       return FAILURE;
     }
 
+    mURI = KijiURI.newBuilder(mURIFlag).build();
     mURI = KijiURI.newBuilder(mURIFlag).build();
     if ((null == mURI.getZookeeperQuorum())
         || (null == mURI.getInstance())
@@ -205,23 +175,24 @@ public final class ScanTool extends BaseTool {
 
         final KijiTableReader reader = table.openTableReader();
         try {
-          final EntityIdFactory eidFactory = EntityIdFactory.getFactory(table.getLayout());
-          // Scan from startRow to limitRow.
-          final EntityId startRow = (mStartRowFlag != null)
-              ? eidFactory.getEntityIdFromHBaseRowKey(ToolUtils.parseBytesFlag(mStartRowFlag))
-              : null;
-          final EntityId limitRow = (mLimitRowFlag != null)
-              ? eidFactory.getEntityIdFromHBaseRowKey(ToolUtils.parseBytesFlag(mLimitRowFlag))
-              : null;
-          return scan(reader, request, startRow, limitRow, mapTypeFamilies, groupTypeColumns);
+          if (mEntityIdFlag == null) {
+            // TODO: Send this error to a future getErrorStream()
+            getPrintStream().printf("Specify entity with --entity-id=eid%n");
+            return FAILURE;
+          } else {
+            // Return the specified entity.
+            final EntityId entityId =
+                ToolUtils.createEntityIdFromUserInputs(mEntityIdFlag, tableLayout);
+            return lookup(reader, request, entityId, mapTypeFamilies, groupTypeColumns);
+          }
         } finally {
-          ResourceUtils.closeOrLog(reader);
+          reader.close();
         }
       } finally {
-        ResourceUtils.releaseOrLog(table);
+        table.close();
       }
     } finally {
-      ResourceUtils.releaseOrLog(kiji);
+      kiji.release();
     }
   }
 
@@ -232,6 +203,6 @@ public final class ScanTool extends BaseTool {
    * @throws Exception If there is an error.
    */
   public static void main(String[] args) throws Exception {
-    System.exit(new KijiToolLauncher().run(new ScanTool(), args));
+    System.exit(new KijiToolLauncher().run(new GetTool(), args));
   }
 }

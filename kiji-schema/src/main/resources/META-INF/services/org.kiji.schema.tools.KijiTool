@@ -1,6 +1,7 @@
 org.kiji.schema.tools.CreateTableTool
 org.kiji.schema.tools.DeleteTool
 org.kiji.schema.tools.FlushTableTool
+org.kiji.schema.tools.GetTool
 org.kiji.schema.tools.HelpTool
 org.kiji.schema.tools.IncrementTool
 org.kiji.schema.tools.InstallTool
@@ -8,8 +9,8 @@ org.kiji.schema.tools.LayoutTool
 org.kiji.schema.tools.LsTool
 org.kiji.schema.tools.MetadataTool
 org.kiji.schema.tools.PutTool
+org.kiji.schema.tools.ScanTool
 org.kiji.schema.tools.SynthesizeUserDataTool
 org.kiji.schema.tools.SystemTableTool
 org.kiji.schema.tools.UninstallTool
 org.kiji.schema.tools.VersionTool
-org.kiji.schema.tools.ScanTool
