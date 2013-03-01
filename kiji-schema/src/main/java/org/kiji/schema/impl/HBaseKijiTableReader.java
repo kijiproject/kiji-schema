@@ -38,12 +38,12 @@ import org.kiji.schema.KijiDataRequestValidator;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTableReader;
-import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.filter.KijiRowFilter;
 import org.kiji.schema.filter.KijiRowFilterApplicator;
 import org.kiji.schema.hbase.HBaseScanOptions;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Reads from a kiji table by sending the requests directly to the HBase tables.
@@ -63,6 +63,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
    */
   public HBaseKijiTableReader(HBaseKijiTable table) {
     mTable = table;
+    mTable.retain();
   }
 
   /** {@inheritDoc} */
@@ -159,8 +160,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
       return new HBaseKijiRowScanner(new HBaseKijiRowScanner.Options()
           .withHBaseResultScanner(mTable.getHTable().getScanner(scan))
           .withDataRequest(dataRequest)
-          .withTable(mTable)
-          .withCellDecoderFactory(SpecificCellDecoderFactory.get()));
+          .withTable(mTable));
     } catch (InvalidLayoutException e) {
       // The table layout should never be invalid at this point, since we got it from a valid
       // opened table.  If it is, there's something seriously wrong.
@@ -236,6 +236,6 @@ public class HBaseKijiTableReader implements KijiTableReader {
   /** {@inheritDoc} */
   @Override
   public void close() {
-    // No-op for now.
+    ResourceUtils.releaseOrLog(mTable);
   }
 }

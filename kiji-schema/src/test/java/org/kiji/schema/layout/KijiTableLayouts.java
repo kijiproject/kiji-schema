@@ -31,6 +31,7 @@ import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.util.FromJson;
+import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.ToJson;
 
 /**
@@ -51,7 +52,7 @@ public final class KijiTableLayouts {
       final String json = IOUtils.toString(istream);
       return (TableLayoutDesc) FromJson.fromJsonString(json, TableLayoutDesc.SCHEMA$);
     } finally {
-      istream.close();
+      ResourceUtils.closeOrLog(istream);
     }
   }
 
@@ -206,7 +207,7 @@ public final class KijiTableLayouts {
     layoutFile.deleteOnExit();
     final OutputStream fos = new FileOutputStream(layoutFile);
     IOUtils.write(ToJson.toJsonString(desc), fos);
-    fos.close();
+    ResourceUtils.closeOrLog(fos);
     return layoutFile;
   }
 

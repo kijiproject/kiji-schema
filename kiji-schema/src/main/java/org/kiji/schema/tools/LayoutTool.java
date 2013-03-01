@@ -27,12 +27,9 @@ import java.util.Map;
 import java.util.NavigableMap;
 
 import com.google.common.base.Preconditions;
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
@@ -40,6 +37,7 @@ import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.ToJson;
 
 /**
@@ -65,8 +63,6 @@ import org.kiji.schema.util.ToJson;
  */
 @ApiAudience.Private
 public final class LayoutTool extends BaseTool {
-  private static final Logger LOG = LoggerFactory.getLogger(LayoutTool.class);
-
   @Flag(name="do", usage="Action to perform: dump, set, or history.")
   private String mDo = "dump";
 
@@ -145,7 +141,7 @@ public final class LayoutTool extends BaseTool {
       try {
         fos.write(Bytes.toBytes(json));
       } finally {
-        IOUtils.closeQuietly(fos);
+        ResourceUtils.closeOrLog(fos);
       }
     }
   }
@@ -166,7 +162,8 @@ public final class LayoutTool extends BaseTool {
     try {
       return KijiTableLayout.readTableLayoutDescFromJSON(istream);
     } finally {
-      IOUtils.closeQuietly(istream);
+      ResourceUtils.closeOrLog(istream);
+      ResourceUtils.closeOrLog(fs);
     }
   }
 
@@ -209,7 +206,7 @@ public final class LayoutTool extends BaseTool {
         try {
           fos.write(Bytes.toBytes(json));
         } finally {
-          IOUtils.closeQuietly(fos);
+          ResourceUtils.closeOrLog(fos);
         }
       }
     }
@@ -225,7 +222,7 @@ public final class LayoutTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
-    mKiji.release();
+    ResourceUtils.releaseOrLog(mKiji);
     mKiji = null;
     super.cleanup();
   }

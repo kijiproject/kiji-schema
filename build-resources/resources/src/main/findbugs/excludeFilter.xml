@@ -94,4 +94,19 @@
     <Class name="org.kiji.schema.tools.SynthesizeUserDataTool" />
     <Bug pattern="UWF_NULL_FIELD" />
   </Match>
+
+  <Match>
+    <!-- These fields get populated by the flag parser. -->
+    <Class name="org.kiji.schema.tools.LayoutTool" />
+    <Or>
+      <Bug pattern="UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR" />
+      <Bug pattern="UWF_NULL_FIELD" />
+    </Or>
+  </Match>
+
+  <Match>
+    <!-- These fields get populated by the flag parser. -->
+    <Class name="org.kiji.schema.tools.DeleteTool" />
+    <Bug pattern="UWF_NULL_FIELD" />
+  </Match>
 </FindBugsFilter>

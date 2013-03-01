@@ -21,7 +21,6 @@ package org.kiji.schema.util;
 
 import static org.junit.Assert.assertEquals;
 
-import org.apache.commons.io.IOUtils;
 import org.junit.Test;
 
 import org.kiji.schema.Kiji;
@@ -61,8 +60,8 @@ public class TestInstanceBuilder {
     final KijiRowData row2 = reader.get(table.getEntityId("row2"), req);
     assertEquals("foo3", row2.getValue("family", "column", 100).toString());
 
-    IOUtils.closeQuietly(reader);
-    IOUtils.closeQuietly(table);
-    kiji.release();
+    ResourceUtils.closeOrLog(reader);
+    ResourceUtils.releaseOrLog(table);
+    ResourceUtils.releaseOrLog(kiji);
   }
 }

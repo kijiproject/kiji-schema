@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.util.ResourceUtils;
 
 /** Tests final columns. */
 public class TestFinalColumns extends KijiClientTest {
@@ -59,7 +60,7 @@ public class TestFinalColumns extends KijiClientTest {
     final KijiRowData row = reader.get(eid, KijiDataRequest.create("family", "column"));
     assertEquals("string value", row.getMostRecentValue("family", "column").toString());
 
-    writer.close();
-    table.close();
+    ResourceUtils.closeOrLog(writer);
+    ResourceUtils.releaseOrLog(table);
   }
 }

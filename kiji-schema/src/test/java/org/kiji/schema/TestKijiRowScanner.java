@@ -24,7 +24,6 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 import java.util.Iterator;
 
-import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -33,6 +32,7 @@ import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
+import org.kiji.schema.util.ResourceUtils;
 
 public class TestKijiRowScanner {
   private Kiji mKiji;
@@ -63,9 +63,9 @@ public class TestKijiRowScanner {
 
   @After
   public void cleanupEnvironment() throws IOException {
-    IOUtils.closeQuietly(mReader);
-    IOUtils.closeQuietly(mTable);
-    mKiji.release();
+    ResourceUtils.closeOrLog(mReader);
+    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.releaseOrLog(mKiji);
   }
 
   @Test
@@ -80,7 +80,7 @@ public class TestKijiRowScanner {
     assertEquals("bar-val", actual1);
     assertEquals("foo-val", actual2);
 
-    scanner.close();
+    ResourceUtils.closeOrLog(scanner);
   }
 
   @Test
@@ -96,6 +96,6 @@ public class TestKijiRowScanner {
 
     assertEquals("foo-val", first);
 
-    scanner.close();
+    ResourceUtils.closeOrLog(scanner);
   }
 }

@@ -27,13 +27,13 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Queue;
 
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.impl.DefaultKijiTableFactory;
 import org.kiji.schema.util.Clock;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Maintains a pool of opened KijiTables.
@@ -341,7 +341,7 @@ public final class KijiTablePool implements Closeable {
       }
     }
     for (Pool pool : mTableCache.values()) {
-      IOUtils.closeQuietly(pool);
+      ResourceUtils.closeOrLog(pool);
     }
     mTableCache.clear();
     mIsOpen = false;
@@ -439,7 +439,7 @@ public final class KijiTablePool implements Closeable {
         if (currentTime - connection.getLastAccessTime() > idleTimeout) {
           LOG.info("Closing idle KijiTable connection to " + connection.getTable().getName());
           iterator.remove();
-          IOUtils.closeQuietly(connection.getTable());
+          ResourceUtils.releaseOrLog(connection.getTable());
           mPoolSize--;
         }
       }
@@ -458,7 +458,7 @@ public final class KijiTablePool implements Closeable {
     @Override
     public synchronized void close() throws IOException {
       while (!mConnections.isEmpty()) {
-        IOUtils.closeQuietly(mConnections.remove().getTable());
+        ResourceUtils.releaseOrLog(mConnections.remove().getTable());
       }
     }
   }

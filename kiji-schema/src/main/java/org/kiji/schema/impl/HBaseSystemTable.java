@@ -25,7 +25,6 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -49,6 +48,7 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.util.CloseableIterable;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.util.ResourceUtils;
 
 /**
  * <p>The Kiji system table that is stored in HBase.</p>
@@ -61,8 +61,10 @@ import org.kiji.schema.util.ProtocolVersion;
 @ApiAudience.Private
 public class HBaseSystemTable extends KijiSystemTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseSystemTable.class);
+  // private static final Logger CLEANUP_LOG =
+  //     LoggerFactory.getLogger(HBaseSystemTable.class.getName() + ".Cleanup");
   private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger(HBaseSystemTable.class.getName() + ".Cleanup");
+      LoggerFactory.getLogger("cleanup." + HBaseSystemTable.class.getName());
 
   /** The HBase column family that stores the value of the properties. */
   public static final String VALUE_COLUMN_FAMILY = "value";
@@ -247,7 +249,7 @@ public class HBaseSystemTable extends KijiSystemTable {
     try {
       systemTable.loadDefaults(DEFAULTS_PROPERTIES_FILE);
     } finally {
-      IOUtils.closeQuietly(systemTable);
+      ResourceUtils.closeOrLog(systemTable);
     }
   }
 

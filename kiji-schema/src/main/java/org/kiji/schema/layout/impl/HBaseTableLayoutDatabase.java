@@ -57,6 +57,7 @@ import org.kiji.schema.avro.TableLayoutsBackup;
 import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
+import org.kiji.schema.util.ResourceUtils;
 
 
 /**
@@ -303,7 +304,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
     for (Result result : resultScanner) {
       tableNames.add(Bytes.toString(result.getRow()));
     }
-    resultScanner.close();
+    ResourceUtils.closeOrLog(resultScanner);
     return tableNames;
   }
 

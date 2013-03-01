@@ -22,7 +22,6 @@ package org.kiji.schema;
 import java.io.IOException;
 
 import com.google.common.base.Joiner;
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -38,6 +37,7 @@ import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.util.LockFactory;
+import org.kiji.schema.util.ResourceUtils;
 
 /** Installs or uninstalls Kiji instances from an HBase cluster. */
 @ApiAudience.Public
@@ -112,7 +112,7 @@ public final class KijiInstaller {
       HBaseSchemaTable.install(hbaseAdmin, uri, conf, tableFactory, lockFactory);
 
     } finally {
-      IOUtils.closeQuietly(hbaseAdmin);
+      ResourceUtils.closeOrLog(hbaseAdmin);
     }
     LOG.info(String.format("Installed kiji instance '%s'.", uri));
   }
@@ -158,7 +158,7 @@ public final class KijiInstaller {
         HBaseSchemaTable.uninstall(hbaseAdmin, uri);
 
       } finally {
-        IOUtils.closeQuietly(hbaseAdmin);
+        ResourceUtils.closeOrLog(hbaseAdmin);
       }
     } finally {
       kiji.release();

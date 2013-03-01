@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 
 /** Basic tests for a fake Kiji instance. */
@@ -73,13 +74,13 @@ public class TestFakeKiji {
       final KijiRowScanner scanner =
           table.openTableReader().getScanner(dataRequest);
       assertFalse(scanner.iterator().hasNext());
-      scanner.close();
+      ResourceUtils.closeOrLog(scanner);
     }
 
     {
       final KijiTableWriter writer = table.openTableWriter();
       writer.put(table.getEntityId("row1"), "family", "column", "the string value");
-      writer.close();
+      ResourceUtils.closeOrLog(writer);
     }
 
     {
@@ -94,11 +95,11 @@ public class TestFakeKiji {
       KijiRowData row = it.next();
       assertEquals("the string value", row.getMostRecentValue("family", "column").toString());
       assertFalse(it.hasNext());
-      scanner.close();
-      reader.close();
+      ResourceUtils.closeOrLog(scanner);
+      ResourceUtils.closeOrLog(reader);
     }
 
-    table.close();
-    kiji.release();
+    ResourceUtils.releaseOrLog(table);
+    ResourceUtils.releaseOrLog(kiji);
   }
 }
