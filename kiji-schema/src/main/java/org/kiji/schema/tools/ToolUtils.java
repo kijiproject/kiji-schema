@@ -555,7 +555,7 @@ public final class ToolUtils {
    * @param eid Entity ID to format.
    * @return the formatted entity ID as a String to print on the console.
    */
-  private static String formatEntityId(EntityId eid) {
+  public static String formatEntityId(EntityId eid) {
     final String formattedHBaseRowKey =
         String.format("hbase='%s'", Bytes.toStringBinary(eid.getHBaseRowKey()));
 
