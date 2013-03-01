@@ -46,7 +46,6 @@ import org.kiji.schema.KijiRowKeySplitter;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -301,11 +300,11 @@ public final class HBaseKiji implements Kiji {
   @Override
   public void createTable(String tableName, KijiTableLayout tableLayout, byte[][] splitKeys)
       throws IOException {
-    try {
-      getMetaTable().getTableLayout(tableName);
-      throw new RuntimeException("Table " + tableName + " already exists");
-    } catch (KijiTableNotFoundException e) {
-      // Good.
+    if (getMetaTable().tableExists(tableName)) {
+      final KijiURI tableURI =
+          KijiURI.newBuilder(mURI).withTableName(tableName).build();
+      throw new KijiAlreadyExistsException(String.format(
+          "Kiji table '%s' already exists.", tableURI), tableURI);
     }
 
     if (!tableName.equals(tableLayout.getName())) {

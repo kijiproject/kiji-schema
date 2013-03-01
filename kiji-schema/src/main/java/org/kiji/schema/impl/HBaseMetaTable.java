@@ -196,6 +196,12 @@ public class HBaseMetaTable extends KijiMetaTable {
 
   /** {@inheritDoc} */
   @Override
+  public synchronized boolean tableExists(String tableName) throws IOException {
+    return mTableLayoutDatabase.tableExists(tableName);
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public synchronized void close() throws IOException {
     mTable.close();
     super.close();
