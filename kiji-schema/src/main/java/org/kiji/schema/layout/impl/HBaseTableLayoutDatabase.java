@@ -308,6 +308,32 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
     return tableNames;
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public boolean tableExists(String tableName) throws IOException {
+    boolean retval = false;
+    final Scan scan = new Scan()
+        .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES)
+        .setMaxVersions(1);
+
+    ResultScanner resultScanner = null;
+    try {
+      resultScanner = mTable.getScanner(scan);
+
+      for (Result result : resultScanner) {
+        if (tableName.equals(Bytes.toString(result.getRow()))) {
+          retval = true;
+          break;
+        }
+      }
+    } finally {
+      if (null != resultScanner) {
+        resultScanner.close();
+      }
+    }
+    return retval;
+  }
+
   /**
    * Gets the description of an HColumn suitable for storing the table layout database.
    *

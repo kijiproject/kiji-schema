@@ -47,6 +47,15 @@ public interface KijiTableLayoutDatabase {
   List<String> listTables() throws IOException;
 
   /**
+   * Check if a table by this name exists in the kiji instance.
+   *
+   * @param tableName Name of the table.
+   * @return True if table exists, false otherwise.
+   * @throws IOException If the list of tables cannot be retrieved.
+   */
+  boolean tableExists(String tableName) throws IOException;
+
+  /**
    * Sets a table's layout. Also calls validateAndAssignLayout().
    *
    * @param table The name of the Kiji table to affect.

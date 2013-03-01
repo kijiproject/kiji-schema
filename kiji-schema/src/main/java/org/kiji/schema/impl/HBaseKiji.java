@@ -328,6 +328,13 @@ public final class HBaseKiji implements Kiji {
   @Override
   public void createTable(String tableName, KijiTableLayout tableLayout, byte[][] splitKeys)
       throws IOException {
+    if (getMetaTable().tableExists(tableName)) {
+      final KijiURI tableURI =
+          KijiURI.newBuilder(mURI).withTableName(tableName).build();
+      throw new KijiAlreadyExistsException(String.format(
+          "Kiji table '%s' already exists.", tableURI), tableURI);
+    }
+
     if (!tableName.equals(tableLayout.getName())) {
       throw new RuntimeException(String.format(
           "Table name from layout descriptor '%s' does match table name '%s'.",

@@ -24,6 +24,8 @@ import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import static org.kiji.schema.util.GetEquals.eqGet;
 import static org.kiji.schema.util.PutEquals.eqPut;
@@ -45,6 +47,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.avro.CellSchema;
@@ -54,11 +57,11 @@ import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
+import org.kiji.schema.util.InstanceBuilder;
 
 
 public class TestHBaseTableLayoutDatabase extends KijiClientTest {
   /** A simple layout file example (bare minimum). */
-  public static final String SIMPLE_LAYOUT_RESOURCE = "com/Kijidata/core/layout/simple-layout.xml";
 
   private HTableInterface mHTable;
   private String mFamily;
@@ -136,6 +139,16 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
     assertEquals(version1, mDb.getTableLayout(version1.getDesc().getName().toString()));
 
     verify(mHTable);
+  }
+
+  @Test
+  public void testTableExists() throws IOException {
+    final KijiTableLayout simple =
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
+    final Kiji kiji = new InstanceBuilder(getKiji())
+        .withTable("table", simple).build();
+    assertTrue(kiji.getMetaTable().tableExists(simple.getDesc().getName()));
+    assertFalse(kiji.getMetaTable().tableExists("faketablename"));
   }
 
   @Test
