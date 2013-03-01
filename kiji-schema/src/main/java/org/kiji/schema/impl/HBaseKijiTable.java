@@ -134,7 +134,6 @@ public final class HBaseKijiTable implements KijiTable {
     mName = name;
     mTableURI = KijiURI.newBuilder(mKiji.getURI()).withTableName(mName).build();
     mTableLayout = mKiji.getMetaTable().getTableLayout(name);
-
     mWriterFactory = new HBaseKijiWriterFactory(this);
     mHTableFactory = htableFactory;
     mConf = conf;

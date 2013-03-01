@@ -59,7 +59,7 @@ public class TestHBaseAtomicKijiPutter {
 
     // Fill local variables.
     mTable = mKiji.openTable("user");
-    mPutter = mTable.getUtilityWriterFactory().openAtomicPutter();
+    mPutter = mTable.getWriterFactory().openAtomicPutter();
     mReader = mTable.openTableReader();
   }
 
@@ -155,12 +155,12 @@ public class TestHBaseAtomicKijiPutter {
         mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData(), 45L);
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test(expected=IllegalStateException.class)
   public void testSkipBegin() throws Exception {
     mPutter.put("info", "visits", 45L);
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test(expected=IllegalStateException.class)
   public void testBeginTwice() throws Exception {
     final EntityId eid = mTable.getEntityId("foo");
 
@@ -177,7 +177,7 @@ public class TestHBaseAtomicKijiPutter {
     mPutter.commit("notDefault");
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test(expected=IllegalStateException.class)
   public void testRollback() throws Exception {
     final EntityId eid = mTable.getEntityId("foo");
 

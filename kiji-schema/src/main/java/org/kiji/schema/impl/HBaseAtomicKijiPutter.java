@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -52,10 +53,10 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   private byte[] mId;
 
   /** The Kiji table instance. */
-  private HBaseKijiTable mTable;
+  private final HBaseKijiTable mTable;
 
   /** The HTableInterface associated with the KijiTable. */
-  private HTableInterface mHTable;
+  private final HTableInterface mHTable;
 
   /** HBase column name translator. */
   private final ColumnNameTranslator mTranslator;
@@ -64,9 +65,13 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   private ArrayList<KeyValue> mHopper = null;
 
   /** Set of Locality Group names of pending writes. */
-  private HashSet<String> mLGNames = new HashSet<String>();
+  private HashSet<String> mLGNames = Sets.newHashSet();
 
-  /** Composite Put containing batch puts. */
+  /**
+   * Composite Put containing batch puts.
+   * mPut is null outside of a begin() -> commit()/rollback() transaction.
+   * mPut is non null inside of a begin() -> commit()/rollback() transaction.
+   */
   private Put mPut;
 
   /**
@@ -76,7 +81,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
    * @throws IOException in case of an error.
    */
   public HBaseAtomicKijiPutter(HBaseKijiTable table) throws IOException {
-    //table.retain();
+    table.retain();
     mTable = table;
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
     mHTable = HBaseKijiTable.createHTableInterface(mTable);
@@ -84,10 +89,10 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
 
   /** {@inheritDoc} */
   @Override
-  public void begin(EntityId eid) {
-    Preconditions.checkArgument(mPut == null,
+  public synchronized void begin(EntityId eid) {
+    Preconditions.checkState(mPut == null,
         "There is already a Put object in use by this Putter."
-        + "  Call commit() or rollback() to clear the Put.");
+        + "  Call commit(), checkAndCommit(), or rollback() to clear the Put.");
     if (mPut == null) {
       mEntityId = eid;
       mId = eid.getHBaseRowKey();
@@ -105,7 +110,8 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** {@inheritDoc} */
   @Override
   public void commit(String localityGroup) throws IOException {
-    Preconditions.checkArgument(mLGNames.size() == 1, "All writes must be to the same locality "
+    Preconditions.checkState(mPut != null, "commit must be paired with a call to begin()");
+    Preconditions.checkState(mLGNames.size() == 1, "All writes must be to the same locality "
         + " group.");
     Preconditions.checkArgument(mLGNames.contains(localityGroup), "All writes must be in the "
         + "given locality group: " + localityGroup);
@@ -121,12 +127,13 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     mEntityId = null;
     mHopper = null;
     mId = null;
-    mLGNames = new HashSet<String>();
+    mLGNames = Sets.newHashSet();
   }
 
   /** {@inheritDoc} */
   @Override
   public <T> boolean checkAndCommit(String family, String qualifier, T value) throws IOException {
+    Preconditions.checkState(mPut != null, "checkAndCommit must be paired with a call to begin()");
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
     final HBaseColumnName columnName = mTranslator.toHBaseColumnName(kijiColumnName);
 
@@ -148,7 +155,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
       mEntityId = null;
       mHopper = null;
       mId = null;
-      mLGNames = new HashSet<String>();
+      mLGNames = Sets.newHashSet();
     }
     return retVal;
   }
@@ -156,22 +163,27 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** {@inheritDoc} */
   @Override
   public void rollback() {
+    Preconditions.checkState(mPut != null, "rollback() must be paired with a call to begin()");
     mPut = null;
     mEntityId = null;
     mHopper = null;
     mId = null;
-    mLGNames = new HashSet<String>();
+    mLGNames = Sets.newHashSet();
   }
 
   /** {@inheritDoc} */
   @Override
   public <T> void put(String family, String qualifier, T value) throws IOException {
+    Preconditions.checkState(mPut != null, "calls to put() must be between calls to begin() and "
+        + "commit(), checkAndCommit(), or rollback()");
     put(family, qualifier, HConstants.LATEST_TIMESTAMP, value);
   }
 
   /** {@inheritDoc} */
   @Override
   public <T> void put(String family, String qualifier, long timestamp, T value) throws IOException {
+    Preconditions.checkState(mPut != null, "calls to put() must be between calls to begin() and "
+        + "commit(), checkAndCommit(), or rollback()");
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
     final HBaseColumnName columnName = mTranslator.toHBaseColumnName(kijiColumnName);
 
@@ -189,8 +201,10 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    rollback();
+    if (mPut != null) {
+      rollback();
+    }
     mHTable.close();
-    //mTable.release();
+    mTable.release();
   }
 }

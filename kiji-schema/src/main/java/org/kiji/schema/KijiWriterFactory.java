@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -25,10 +25,19 @@ import org.kiji.annotations.ApiAudience;
 
 /** Interface for utility table writer factories. */
 @ApiAudience.Public
-public interface KijiUtilityWriterFactory {
+public interface KijiWriterFactory {
 
   /**
-   * Opens a new AtomicKijiPutter for the KijiTable associated with WriterFactory.
+   * Opens a new KijiTableWriter for the KijiTable associated with this writer factory.
+   * The caller of this method is responsible for closing the writer.
+   *
+   * @throws IOException in case of an error.
+   * @return A new KijiTableWriter.
+   */
+  KijiTableWriter openTableWriter() throws IOException;
+
+  /**
+   * Opens a new AtomicKijiPutter for the KijiTable associated with this writer factory.
    * The caller of this method is responsible for closing the writer.
    *
    * @throws IOException in case of an error.

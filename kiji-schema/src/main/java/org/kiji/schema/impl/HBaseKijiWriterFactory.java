@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -23,22 +23,29 @@ import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.AtomicKijiPutter;
-import org.kiji.schema.KijiUtilityWriterFactory;
+import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.KijiWriterFactory;
 
-/** Factory for Utility Table Writers. */
+/** Factory for Table Writers. */
 @ApiAudience.Private
-public final class HBaseKijiUtilityWriterFactory implements KijiUtilityWriterFactory {
+public final class HBaseKijiWriterFactory implements KijiWriterFactory {
 
-  /** HBaseKijiTable for this Utility-writer factory. */
+  /** HBaseKijiTable for this writer factory. */
   private final HBaseKijiTable mTable;
 
   /**
-   * Constructor for this Utility-writer factory.
+   * Constructor for this writer factory.
    *
    * @param table The HBaseKijiTable to which this writer factory's writers write.
    */
-  public HBaseKijiUtilityWriterFactory(HBaseKijiTable table) {
+  public HBaseKijiWriterFactory(HBaseKijiTable table) {
     mTable = table;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiTableWriter openTableWriter() throws IOException {
+    return new HBaseKijiTableWriter(mTable);
   }
 
   /** {@inheritDoc} */
