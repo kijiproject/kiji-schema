@@ -21,6 +21,7 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
@@ -64,8 +65,6 @@ import org.kiji.schema.util.ResourceUtils;
 @ApiAudience.Private
 public final class HBaseKijiTable implements KijiTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTable.class);
-  // private static final Logger CLEANUP_LOG =
-  //     LoggerFactory.getLogger(HBaseKijiTable.class.getName() + ".Cleanup");
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKijiTable.class.getName());
 
@@ -79,7 +78,7 @@ public final class HBaseKijiTable implements KijiTable {
   private final KijiURI mTableURI;
 
   /** Whether the table is open. */
-  private boolean mIsOpen;
+  private AtomicBoolean mIsOpen;
 
   /** String representation of the call stack at the time this object is constructed. */
   private String mConstructorStack;
@@ -144,7 +143,7 @@ public final class HBaseKijiTable implements KijiTable {
       throw new RuntimeException("Invalid Row Key format found in Kiji Table");
     }
 
-    mIsOpen = true;
+    mIsOpen = new AtomicBoolean(true);
     if (CLEANUP_LOG.isDebugEnabled()) {
       mConstructorStack = Debug.getStackTrace();
     }
@@ -245,26 +244,26 @@ public final class HBaseKijiTable implements KijiTable {
    */
   @Override
   public void close() throws IOException {
-    synchronized (this) {
-      if (!mIsOpen) {
-        LOG.warn("close() called on an KijiTable that was already closed.");
-        return;
-      }
-      mIsOpen = false;
+    if (!mIsOpen.getAndSet(false)) {
+      LOG.warn("close() called on resource that was already closed.");
+      return;
     }
 
-    LOG.debug(String.format("Closing KijiTable '%s'.", mTableURI));
+    LOG.debug("Closing resource '{}'.", mTableURI);
     if (null != mHTable) {
       mHTable.close();
     }
-    mKiji.release();
+    ResourceUtils.releaseOrLog(mKiji);
+    LOG.debug("Resource '{}' closed.", mTableURI);
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiTable retain() {
     Preconditions.checkState(mRetainCount.getAndIncrement() >= 0,
-        "Cannot retain a closed KijiTable.");
+        String.format(
+            "Cannot retain a closed resource: retain counter is %s.",
+            mRetainCount.get()));
     return this;
   }
 
@@ -272,7 +271,8 @@ public final class HBaseKijiTable implements KijiTable {
   @Override
   public void release() throws IOException {
     final int counter = mRetainCount.decrementAndGet();
-    Preconditions.checkState(counter >= 0, "Cannot release resource: retain counter is 0.");
+    Preconditions.checkState(counter >= 0,
+        String.format("Cannot release resource: retain counter is %s.", mRetainCount.get()));
     if (counter == 0) {
       close();
     }
@@ -305,17 +305,16 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    if (mIsOpen) {
+    if (mIsOpen.get()) {
       CLEANUP_LOG.warn(
-          "Closing HBaseKijiTable {} in finalize(). You should close it explicitly",
-          mTableURI);
-      CLEANUP_LOG.warn(
-          "HBaseKijiTable {} still has {} retained references.",
+          "Finalizing opened resource '{}' with {} retained references. "
+              + "You must release() it.",
           mTableURI,
           mRetainCount.get());
       if (CLEANUP_LOG.isDebugEnabled()) {
         CLEANUP_LOG.debug(
-            "Call stack when this HBaseKijiTable was constructed:\n{}",
+            "HBaseKijiTable '{}' was constructed through:\n{}",
+            mTableURI,
             mConstructorStack);
       }
       close();

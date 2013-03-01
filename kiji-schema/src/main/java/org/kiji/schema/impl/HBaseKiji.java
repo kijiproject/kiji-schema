@@ -22,9 +22,11 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -32,7 +34,6 @@ import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.util.StringUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +56,7 @@ import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.layout.impl.HTableSchemaTranslator;
+import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
@@ -69,8 +71,6 @@ import org.kiji.schema.util.ZooKeeperLockFactory;
 @ApiAudience.Public
 public final class HBaseKiji implements Kiji {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKiji.class);
-  // private static final Logger CLEANUP_LOG =
-  //     LoggerFactory.getLogger(HBaseKiji.class.getName() + ".Cleanup");
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKiji.class.getName());
 
@@ -99,7 +99,7 @@ public final class HBaseKiji implements Kiji {
   private HBaseMetaTable mMetaTable;
 
   /** Whether the kiji instance is open. */
-  private boolean mIsOpen;
+  private AtomicBoolean mIsOpen;
 
   /** Retain counter. When decreased to 0, the HBase Kiji may be closed and disposed of. */
   private AtomicInteger mRetainCount = new AtomicInteger(1);
@@ -184,7 +184,7 @@ public final class HBaseKiji implements Kiji {
     mMetaTable = null;
     mAdmin = null;
 
-    mIsOpen = true;
+    mIsOpen = new AtomicBoolean(true);
 
     // Validate configuration settings.
     Preconditions.checkArgument(
@@ -202,11 +202,7 @@ public final class HBaseKiji implements Kiji {
     }
 
     if (CLEANUP_LOG.isDebugEnabled()) {
-      try {
-        throw new Exception();
-      } catch (Exception e) {
-        mConstructorStack = StringUtils.stringifyException(e);
-      }
+      mConstructorStack = Debug.getStackTrace();
     }
     LOG.debug("Opened.");
   }
@@ -226,7 +222,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public synchronized KijiSchemaTable getSchemaTable() throws IOException {
-    Preconditions.checkState(mIsOpen);
+    Preconditions.checkState(mIsOpen.get());
     if (null == mSchemaTable) {
       mSchemaTable = new HBaseSchemaTable(mURI, mConf, mHTableFactory, mLockFactory);
     }
@@ -236,7 +232,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public synchronized KijiSystemTable getSystemTable() throws IOException {
-    Preconditions.checkState(mIsOpen);
+    Preconditions.checkState(mIsOpen.get());
     if (null == mSystemTable) {
       mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
     }
@@ -246,7 +242,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public synchronized KijiMetaTable getMetaTable() throws IOException {
-    Preconditions.checkState(mIsOpen);
+    Preconditions.checkState(mIsOpen.get());
     if (null == mMetaTable) {
       mMetaTable = new HBaseMetaTable(mURI, mConf, getSchemaTable(), mHTableFactory);
     }
@@ -261,7 +257,7 @@ public final class HBaseKiji implements Kiji {
    * @return The current HBaseAdmin instance for this Kiji.
    */
   public synchronized HBaseAdmin getHBaseAdmin() throws IOException {
-    Preconditions.checkState(mIsOpen);
+    Preconditions.checkState(mIsOpen.get());
     if (null == mAdmin) {
       final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
       mAdmin = hbaseFactory.getHBaseAdminFactory(mURI).create(getConf());
@@ -499,15 +495,12 @@ public final class HBaseKiji implements Kiji {
    * @throws IOException on I/O error.
    */
   private void close() throws IOException {
-    synchronized (this) {
-      if (!mIsOpen) {
-        LOG.warn("Called close() on a HBaseKiji instance that was already closed.");
-        return;
-      }
-      mIsOpen = false;
+    if (!mIsOpen.getAndSet(false)) {
+      LOG.warn("Called close() on resource that was already closed.");
+      return;
     }
 
-    LOG.debug(String.format("Closing Kiji instance '%s'.", mURI));
+    LOG.debug("Closing resource '{}'.", mURI);
     ResourceUtils.closeOrLog(mMetaTable);
     ResourceUtils.closeOrLog(mSystemTable);
     ResourceUtils.closeOrLog(mSchemaTable);
@@ -516,29 +509,16 @@ public final class HBaseKiji implements Kiji {
     mMetaTable = null;
     mSystemTable = null;
     mAdmin = null;
-    LOG.debug(String.format("Kiji instance '%s' closed.", mURI));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void finalize() throws Throwable {
-    if (mIsOpen) {
-      CLEANUP_LOG.warn(String.format("Finalizing opened HBaseKiji '%s'.", mURI));
-      if (CLEANUP_LOG.isDebugEnabled()) {
-        CLEANUP_LOG.debug(String.format(
-            "HBaseKiji '%s' was constructed through:%n%s",
-            mURI, mConstructorStack));
-      }
-      close();
-    }
-    super.finalize();
+    LOG.debug("resource '{}' closed.", mURI);
   }
 
   /** {@inheritDoc} */
   @Override
   public Kiji retain() {
-    Preconditions.checkState(mRetainCount.incrementAndGet() >= 0,
-        "Cannot retain a closed Kiji.");
+    Preconditions.checkState(mRetainCount.getAndIncrement() >= 0,
+        String.format(
+            "Cannot retain a closed resource: retain counter is %s.",
+            mRetainCount.get()));
     return this;
   }
 
@@ -546,9 +526,54 @@ public final class HBaseKiji implements Kiji {
   @Override
   public void release() throws IOException {
     final int counter = mRetainCount.decrementAndGet();
-    Preconditions.checkState(counter >= 0, "Cannot release resource: retain counter is 0.");
+    Preconditions.checkState(counter >= 0,
+        String.format("Cannot release resource: retain counter is %s.", mRetainCount.get()));
     if (counter == 0) {
       close();
     }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean equals(Object obj) {
+    if (null == obj) {
+      return false;
+    }
+    if (obj == this) {
+      return true;
+    }
+    if (!getClass().equals(obj.getClass())) {
+      return false;
+    }
+    final Kiji other = (Kiji) obj;
+
+    // Equal if the two instances have the same URI:
+    return mURI.equals(other.getURI());
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    return mURI.hashCode();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void finalize() throws Throwable {
+    if (mIsOpen.get()) {
+      CLEANUP_LOG.warn(
+          "Finalizing opened resource '{}' with {} retained references. "
+              + "You must release() it.",
+          mURI,
+          mRetainCount.get());
+      if (CLEANUP_LOG.isDebugEnabled()) {
+        CLEANUP_LOG.debug(
+            "HBaseKiji '{}' was constructed through:\n{}",
+            mURI,
+            mConstructorStack);
+      }
+      close();
+    }
+    super.finalize();
   }
 }
