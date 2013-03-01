@@ -44,8 +44,73 @@ import org.kiji.schema.util.Hasher;
 
 /**
  * Implements the Formatted Entity Id row key. This allows users to specify keys composed
- * of either the primitive types of string, integer or long with some flexibility to specify
- * hash prefixing.
+ * of one or more components of the primitive types of string, integer or long with some
+ * flexibility to specify hash prefixing.
+ *
+ * <h2>Goals</h2>
+ * <ul>
+ * <li>Allow logical hierarchies in the row key. E.g. “store_id:product_id”.</li>
+ * <li>Simplify ordering for primitive types (especially ints and longs).</li>
+ * <li>Allow range scans over part of the key.</li>
+ * <li>Simplify load distribution.</li>
+ * <li>Allow nullable components while preserving ordering.</li>
+ * </ul>
+ *
+ * <h2>Specifying formatted row keys in the layout</h2>
+ * In the layout file for the table:
+ * <ul>
+ *   <li>Use RowKeyFormat2</li>
+ *   <li>Set RowKeyEncoding to FORMATTED.</li>
+ *   <li>Set the hash spec to specify the hashing algorithm and hash size
+ *   for the hash prefix to your key.</li>
+ *   <li>Set range_scan_start_index to the element at which you would like
+ *   to support range scans. Components to the left of this one will be
+ *   used to calculate the hash.</li>
+ *   <li>Set nullable_start_index to determine which components can be null.</li>
+ *   <li>Specify the primitive types of the composite key using
+ *   {@link org.kiji.schema.avro.RowKeyComponent}</li>
+ * </ul>
+ * <p>For more details, refer to {@link RowKeyFormat2}</p>
+ *
+ * <h2>Hbase encoding of formatted entity IDs</h2>
+ * <ul>
+ *   <li>Key begins with a hash of hash_size bytes as specified in the
+ *   {@link org.kiji.schema.avro.HashSpec}</li>
+ *   <li>String components are UTF-8 encoded followed by '\u0000'</li>
+ *   <li>Integers and longs are in their two’s complement representation with the MSB toggled for
+ *   preserving ordering.</li>
+ *   <li>Integers are 4 byte long.</li>
+ *   <li>Longs are 8 byte long.</li>
+ *   <li>In order to preserve ordering, all components to the right of a null component must be
+ *   null.</li>
+ * </ul>
+ *
+ * <h2>Example</h2>
+ * <p>
+ * The json below creates a composite key with 3 components of type string, integer and long.
+ * There will be a two byte hash of the first two components prefixed to the key. By default,
+ * all except the first components can be set to null.
+ * </p>
+ *
+ * <code>
+ * keys_format : {
+ *   encoding : "FORMATTED",
+ *   salt : {
+ *     hash_size : 2
+ *   },
+ *   range_scan_start_index: 2,
+ *   components : [ {
+ *     name : "dummy",
+ *     type : "STRING"
+ *   }, {
+ *     name : "anint",
+ *     type : "INTEGER"
+ *   }, {
+ *     name : "along",
+ *     type : "LONG"
+ *   } ]
+ * }
+ * </code>
  */
 @ApiAudience.Private
 public final class FormattedEntityId extends EntityId {
