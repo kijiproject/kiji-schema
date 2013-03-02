@@ -41,16 +41,22 @@ import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.impl.CellSpec;
 
-/** HBase implementation of AtomicKijiPutter. */
+/**
+ * HBase implementation of AtomicKijiPutter.
+ * Access via HBaseKijiWriterFactory.openAtomicKijiPutter(), fascilitates guaranteed atomic
+ * puts in batch on a single row within a single Locality Group.
+ *
+ * Use begin(EntityId) to open a new transaction,
+ * put(family, qualifier, value) to stage a put in the transaction,
+ * and commit(localityGroup) or checkAndCommit(family, qualifier, value) to write all
+ * staged puts atomically.
+ *
+ * This class is not threadsafe.  It is the user's responsibility to protect against
+ * concurrent access to a writer while a transaction is being constructed.
+ */
 @ApiAudience.Private
 public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseAtomicKijiPutter.class);
-
-  /** EntityId of the row to mutate atomically. */
-  private EntityId mEntityId;
-
-  /** HBaseRowKey of the row to mutate. */
-  private byte[] mId;
 
   /** The Kiji table instance. */
   private final HBaseKijiTable mTable;
@@ -60,6 +66,12 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
 
   /** HBase column name translator. */
   private final ColumnNameTranslator mTranslator;
+
+  /** EntityId of the row to mutate atomically. */
+  private EntityId mEntityId;
+
+  /** HBaseRowKey of the row to mutate. */
+  private byte[] mId;
 
   /** List of HBase KeyValue objects to be written. */
   private ArrayList<KeyValue> mHopper = null;
@@ -72,7 +84,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
    * mPut is null outside of a begin() -> commit()/rollback() transaction.
    * mPut is non null inside of a begin() -> commit()/rollback() transaction.
    */
-  private Put mPut;
+  private Put mPut = null;
 
   /**
    * Constructor for this AtomicKijiPutter.
@@ -87,12 +99,21 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     mHTable = HBaseKijiTable.createHTableInterface(mTable);
   }
 
+  /** Resets the current transaction. */
+  private void reset() {
+    mPut = null;
+    mEntityId = null;
+    mHopper = null;
+    mId = null;
+    mLGNames = Sets.newHashSet();
+  }
+
   /** {@inheritDoc} */
   @Override
   public synchronized void begin(EntityId eid) {
     Preconditions.checkState(mPut == null,
-        "There is already a Put object in use by this Putter."
-        + "  Call commit(), checkAndCommit(), or rollback() to clear the Put.");
+        "There is already a transaction in progress on row: " + mEntityId
+        + ".  Call commit(), checkAndCommit(), or rollback() to clear the Put.");
     if (mPut == null) {
       mEntityId = eid;
       mId = eid.getHBaseRowKey();
@@ -111,23 +132,20 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   @Override
   public void commit(String localityGroup) throws IOException {
     Preconditions.checkState(mPut != null, "commit must be paired with a call to begin()");
-    Preconditions.checkState(mLGNames.size() == 1, "All writes must be to the same locality "
-        + " group.");
+    Preconditions.checkState(mLGNames.size() == 1,
+        "All writes must be to the same locality group. Locality groups of specified puts: "
+        + mLGNames);
     Preconditions.checkArgument(mLGNames.contains(localityGroup), "All writes must be in the "
         + "given locality group: " + localityGroup);
     for (KeyValue kv : mHopper) {
       mPut.add(kv);
-      }
+    }
 
     mHTable.put(mPut);
     if (!mHTable.isAutoFlush()) {
       mHTable.flushCommits();
     }
-    mPut = null;
-    mEntityId = null;
-    mHopper = null;
-    mId = null;
-    mLGNames = Sets.newHashSet();
+    reset();
   }
 
   /** {@inheritDoc} */
@@ -151,11 +169,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
       if (!mHTable.isAutoFlush()) {
         mHTable.flushCommits();
       }
-      mPut = null;
-      mEntityId = null;
-      mHopper = null;
-      mId = null;
-      mLGNames = Sets.newHashSet();
+      reset();
     }
     return retVal;
   }
@@ -164,11 +178,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   @Override
   public void rollback() {
     Preconditions.checkState(mPut != null, "rollback() must be paired with a call to begin()");
-    mPut = null;
-    mEntityId = null;
-    mHopper = null;
-    mId = null;
-    mLGNames = Sets.newHashSet();
+    reset();
   }
 
   /** {@inheritDoc} */
