@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
@@ -31,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.Clock;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -53,9 +55,18 @@ import org.kiji.schema.util.ResourceUtils;
  *       .build();
  * </code></pre>
  *
- * FIXME: Write docs for opening and releasing tables.
+ * <h2>Obtaining and releasing KijiTables from the pool:</h2>
+ * <p>
+ *   Once you have the pool, KijiTables can be obtained using {@link #get}.  These tables can are
+ *   returned the pool using the {@link org.kiji.schema.KijiTable#release()} method.
+ * </p>
+ * <pre><code>
+ *   KijiTable fooTable = pool.get("foo");
+ *   // Do some magic.
+ *   foo.release();
+ * </code></pre>
  *
- * <p>This class is thread-safe.</p>
+ * <p>This class is thread-safe, but the individual KijiTables that are returned from it are not.</p>
  */
 @ApiAudience.Public
 public final class KijiTablePool implements Closeable {
@@ -219,7 +230,7 @@ public final class KijiTablePool implements Closeable {
    * @param idlePollPeriod amount of time between sweeps of the pool for removing idle connections.
    * @param clock the clock to be used for idle cleanup operations.
    */
-   private KijiTablePool(KijiTableFactory tableFactory,
+  private KijiTablePool(KijiTableFactory tableFactory,
                        int minSize,
                        int maxSize,
                        long idleTimeout,
@@ -260,6 +271,13 @@ public final class KijiTablePool implements Closeable {
    * @throws KijiTablePool.NoCapacityException If the table pool is at capacity.
    */
   public synchronized KijiTable get(String name) throws IOException {
+    // Starts a cleanup thread if necessary.
+    if (mIdleTimeout > 0L && null == mCleanupThread) {
+      LOG.debug("Starting cleanup thread for table pool.");
+      mCleanupThread = new IdleTimeoutThread();
+      mCleanupThread.start();
+    }
+
     LOG.debug("Retrieving a connection for {} from the table pool.", name);
     if (!mIsOpen) {
       throw new IllegalStateException("Table pool is closed.");
@@ -269,37 +287,7 @@ public final class KijiTablePool implements Closeable {
       mPoolCache.put(name, new Pool(name));
     }
 
-    return mPoolCache.get(name).get();
-  }
-
-  /**
-   * Releases a table back to the pool.
-   *
-   * <p>Only open tables that were retrieved from this pool should be released.</p>
-   *
-   * @param table The table to release to the pool. If null, will be a no-op.
-   */
-  public synchronized void release(KijiTable table) {
-    LOG.debug("Releasing a KijiTable {} back to the pool.", table);
-    if (!mIsOpen) {
-      throw new IllegalStateException("Table pool is closed.");
-    }
-
-    if (null == table) {
-      return;
-    }
-
-    // TODO: Check that this table came from this pool.
-    // Throw an IllegalArgumentException if not.
-    //
-    // Verify that the table is still open.  Throw an IllegalStateException if not.
-    mPoolCache.get(table.getName()).release(table);
-
-    // Start the cleanup thread if necessary.
-    if (mIdleTimeout > 0L && null == mCleanupThread) {
-      mCleanupThread = new IdleTimeoutThread();
-      mCleanupThread.start();
-    }
+    return mPoolCache.get(name).getTable();
   }
 
   /**
@@ -387,7 +375,7 @@ public final class KijiTablePool implements Closeable {
      * @throws KijiTablePool.NoCapacityException If there is no more room in the
      *     pool to open a new connection.
      */
-    public synchronized KijiTable get() throws IOException {
+    public synchronized KijiTable getTable() throws IOException {
       Connection availableConnection = mConnections.poll();
       if (null == availableConnection) {
         if (mPoolSize >= mMaxSize) {
@@ -395,32 +383,38 @@ public final class KijiTablePool implements Closeable {
             + " are " + mPoolSize + " tables in the pool.");
         }
         LOG.debug("Cache miss for table {}", mTableName);
-        KijiTable tableConnection = mTableFactory.openTable(mTableName);
+        KijiTable tableConnection = new Connection(mTableFactory.openTable(mTableName), this);
         mPoolSize++;
         if (mPoolSize < mMinSize) {
           LOG.debug("Below the min pool size for table {}. Adding to the pool.", mTableName);
           while (mPoolSize < mMinSize) {
-            mConnections.add(new Connection(mTableFactory.openTable(mTableName), mClock));
+            mConnections.add(new Connection(mTableFactory.openTable(mTableName), this));
             mPoolSize++;
           }
         }
         return tableConnection;
       }
       LOG.debug("Cache hit for table {}", mTableName);
-      return availableConnection.getTable();
+      return availableConnection;
     }
 
     /**
-     * Releases a table back to the pool so it may be reused.
+     * Returns a table back to the pool so it may be reused.  Private so that only a wrapped
+     * table can be returned back to the queue.
      *
-     * @param table The table to release.
+     * @param table The table to return back into the pool.
      */
-    public synchronized void release(KijiTable table) {
-      mConnections.add(new Connection(table, mClock));
+    private synchronized void returnConnection(Connection table) {
+      mConnections.add(table);
+    }
+
+    /** @return the clock used by this KijiTablePool for updating KijiTable access times. */
+    private Clock getClock() {
+      return mClock;
     }
 
     /**
-     * Cleans any connections from the pool that have been idle, while maintining the minimum pool
+     * Cleans any connections from the pool that have been idle, while maintaining the minimum pool
      * size.
      *
      * @param idleTimeout Milliseconds idle required to be closed and
@@ -432,9 +426,9 @@ public final class KijiTablePool implements Closeable {
       while (iterator.hasNext() && mPoolSize > mMinSize) {
         Connection connection = iterator.next();
         if (currentTime - connection.getLastAccessTime() > idleTimeout) {
-          LOG.info("Closing idle KijiTable connection to " + connection.getTable().getName());
+          LOG.info("Closing idle KijiTable connection to {}.", connection.getName());
           iterator.remove();
-          ResourceUtils.releaseOrLog(connection.getTable());
+          ResourceUtils.releaseOrLog(connection.mTable);
           mPoolSize--;
         }
       }
@@ -453,36 +447,33 @@ public final class KijiTablePool implements Closeable {
     @Override
     public synchronized void close() throws IOException {
       while (!mConnections.isEmpty()) {
-        ResourceUtils.releaseOrLog(mConnections.remove().getTable());
+        ResourceUtils.releaseOrLog(mConnections.remove().mTable);
       }
     }
   }
 
   /**
-   * A connection in the pool.
+   * A connection in the pool.  This class wraps a KijiTable, and {@link #release()} can be
+   * called to return this connection to the pool.
+   *
+   * {@link #retain()} and {@link #close()} throw UnsupportedOptionException to avoid
+   * improper states.
    */
-  private static class Connection {
+  private static class Connection implements KijiTable {
     private final KijiTable mTable;
     private long mLastAccessTime;
+    private Pool mPool;
 
     /**
      * Constructor.
      *
-     * @param table The table connection.
-     * @param clock A clock.
+     * @param table The table connection to wrap.
+     * @param pool The pool that this Connection is associated with.
      */
-    public Connection(KijiTable table, Clock clock) {
+    public Connection(KijiTable table, Pool pool) {
       mTable = table;
-      mLastAccessTime = clock.getTime();
-    }
-
-    /**
-     * Gets the table connection.
-     *
-     * @return The table connection.
-     */
-    public KijiTable getTable() {
-      return mTable;
+      mPool = pool;
+      mLastAccessTime = pool.getClock().getTime();
     }
 
     /**
@@ -492,6 +483,53 @@ public final class KijiTablePool implements Closeable {
      */
     public long getLastAccessTime() {
       return mLastAccessTime;
+    }
+
+    // Unwrapped methods to manage the lifecycle of KijiTables obtained from a KijiTablePool.
+    public void close() throws IOException {
+      throw new UnsupportedOperationException("Could not close KijiTable managed by KijiTablePool.");
+    }
+
+    public KijiTable retain() {
+      throw new UnsupportedOperationException("Could not retain KijiTable managed by KijiTablePool.");
+    }
+
+    public void release() throws IOException {
+      mLastAccessTime = mPool.getClock().getTime();
+      mPool.returnConnection(this);
+    }
+
+    // Methods that use the wrapped KijiTable.
+    public Kiji getKiji() {
+      return mTable.getKiji();
+    }
+
+    public String getName() {
+      return mTable.getName();
+    }
+
+    public KijiURI getURI() {
+      return mTable.getURI();
+    }
+
+    public KijiTableLayout getLayout() {
+      return mTable.getLayout();
+    }
+
+    public EntityId getEntityId(Object... kijiRowKey) {
+      return mTable.getEntityId(kijiRowKey);
+    }
+
+    public KijiTableReader openTableReader() {
+      return mTable.openTableReader();
+    }
+
+    public KijiTableWriter openTableWriter() {
+      return mTable.openTableWriter();
+    }
+
+    public List<KijiRegion> getRegions() throws IOException {
+      return mTable.getRegions();
     }
   }
 

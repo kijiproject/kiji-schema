@@ -27,6 +27,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
@@ -85,12 +86,12 @@ public class TestKijiTablePool extends KijiClientTest {
     KijiTable fooTable2 = pool.get("foo");
     KijiTable barTable1 = pool.get("bar");
 
-    pool.release(fooTable1);
+    fooTable1.release();
     assertEquals(fooTable1, pool.get("foo"));
 
-    pool.release(fooTable1);
-    pool.release(fooTable2);
-    pool.release(barTable1);
+    fooTable1.release();
+    fooTable2.release();
+    barTable1.release();
 
     ResourceUtils.closeOrLog(pool);
 
@@ -131,7 +132,7 @@ public class TestKijiTablePool extends KijiClientTest {
 
     KijiTable first = pool.get("foo");
     assertNotNull(first);
-    pool.release(first);
+    first.release();
 
     KijiTable second = pool.get("foo");
     assertTrue("Released table should be reused.", first == second);
@@ -175,7 +176,7 @@ public class TestKijiTablePool extends KijiClientTest {
     replay(mTableFactory);
 
     KijiTable first = pool.get("foo");
-    pool.release(first);
+    first.release();
     long releaseTime = System.currentTimeMillis();
     long acquireTime = releaseTime;
 
@@ -193,4 +194,35 @@ public class TestKijiTablePool extends KijiClientTest {
     assertFalse("Released table should not be reused, since it was idle and closed.",
         first == second);
   }
+
+  @Test
+  public void testUnsupportedCloseOperation() throws IOException {
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
+    KijiTable foo = createMock(KijiTable.class);
+    expect(mTableFactory.openTable("foo")).andReturn(foo);
+
+    KijiTable fooTable = pool.get("foo");
+    try {
+      fooTable.close();
+      fail("Should've gotten an UnsupportedOperationException when trying to close a KijiTablePool table");
+    } catch (UnsupportedOperationException uoe) {
+      assertEquals("Could not close KijiTable managed by KijiTablePool.", uoe.getMessage());
+    }
+  }
+
+  @Test
+  public void testUnsupportedRetainOperation() throws IOException {
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
+    KijiTable foo = createMock(KijiTable.class);
+    expect(mTableFactory.openTable("foo")).andReturn(foo);
+
+    KijiTable fooTable = pool.get("foo");
+    try {
+      fooTable.retain();
+      fail("Should've gotten an UnsupportedOperationException when trying to retain a KijiTablePool table");
+    } catch (UnsupportedOperationException uoe) {
+      assertEquals("Could not retain KijiTable managed by KijiTablePool.", uoe.getMessage());
+    }
+  }
+
 }
