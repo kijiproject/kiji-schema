@@ -31,12 +31,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.impl.DefaultKijiTableFactory;
 import org.kiji.schema.util.Clock;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
- * Maintains a pool of opened KijiTables.
+ * Maintains a pool of opened KijiTables for reuse.
  *
  * <p>Instead of creating a new KijiTable instance when needed, clients may use a
  * KijiTablePool to keep a pool of opened tables for reuse. When a client asks for a
@@ -45,6 +44,17 @@ import org.kiji.schema.util.ResourceUtils;
  * opened and returned. When the client is finished, it should call release() to allow
  * other clients or threads the option to reuse the opened table.</p>
  *
+ * <h2>Building a KijiTablePool:</h2>
+ * KijiTablePools are constructed using a {@link KijiTablePoolBuilder}.
+ * <pre><code>
+ *   KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory)
+ *       .withIdleTimeout(10)
+ *       .withIdlePollPeriod(1)
+ *       .build();
+ * </code></pre>
+ *
+ * FIXME: Write docs for opening and releasing tables.
+ *
  * <p>This class is thread-safe.</p>
  */
 @ApiAudience.Public
@@ -52,6 +62,18 @@ public final class KijiTablePool implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTablePool.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger(KijiTablePool.class.getName() + ".Cleanup");
+
+  /** Default minimum pool size. */
+  public static final int DEFAULT_MIN_POOL_SIZE = 0;
+
+  /** Default maximum pool size. */
+  public static final int DEFAULT_MAX_POOL_SIZE = Integer.MAX_VALUE;
+
+  /** Default idle timeout in milliseconds. */
+  public static final long DEFAULT_IDLE_TIMEOUT = 0L;
+
+  /** Default idle polling period in milliseconds (10 seconds). */
+  public static final long DEFAULT_IDLE_POLL_PERIOD = 10000L;
 
   /** A factory for creating new opened HTables. */
   private final KijiTableFactory mTableFactory;
@@ -72,7 +94,7 @@ public final class KijiTablePool implements Closeable {
   private final long mIdlePollPeriod;
 
   /** A map from table names to their connection pools. */
-  private final Map<String, Pool> mTableCache;
+  private final Map<String, Pool> mPoolCache;
 
   /** A cleanup thread for idle connections. */
   private IdleTimeoutThread mCleanupThread;
@@ -81,9 +103,11 @@ public final class KijiTablePool implements Closeable {
   private boolean mIsOpen;
 
   /**
-   * Describes the options that can be configured on the KijiTablePool.
+   * Builder class for KijiTablePool instances.  These should be constructed with
+   * {@link #newBuilder} instead.
    */
-  public static final class Options {
+  public static final class KijiTablePoolBuilder {
+    private KijiTableFactory mKijiTableFactory;
     private int mMinSize;
     private int mMaxSize;
     private long mIdleTimeout;
@@ -91,36 +115,28 @@ public final class KijiTablePool implements Closeable {
     private Clock mClock;
 
     /**
-     * Creates options with default values.
+     * Creates a KijiTablePoolBuilder with for the specified Kiji instance and the default options.
+     *
+     * @param kijiTableFactory TableFactory to be used for constructing tables for the table pool.
      */
-    public Options() {
-      mMinSize = 0;
-      mMaxSize = 0;
-      mIdleTimeout = 0L;
-      mIdlePollPeriod = 10000L; // 10 seconds.
+    KijiTablePoolBuilder(KijiTableFactory kijiTableFactory) {
+      mKijiTableFactory = kijiTableFactory;
+      mMinSize = DEFAULT_MIN_POOL_SIZE;
+      mMaxSize = DEFAULT_MAX_POOL_SIZE;
+      mIdleTimeout = DEFAULT_IDLE_TIMEOUT;
+      mIdlePollPeriod = DEFAULT_IDLE_POLL_PERIOD;
       mClock = Clock.getDefaultClock();
     }
 
-     /**
+    /**
      * Sets the minimum number of connections to keep per table.
      *
-     * <p>Use zero(0) to indicate that the pool should be unbounded.</p>
-     *
-     * @param minSize The max number of connections to keep per table.
+     * @param minSize The min number of connections to keep per table.
      * @return This options object for method chaining.
      */
-    public Options withMinSize(int minSize) {
+    public KijiTablePoolBuilder withMinSize(int minSize) {
       mMinSize = minSize;
       return this;
-    }
-
-    /**
-     * Gets the minimum number of connections to keep per table.
-     *
-     * @return The min number of connections to keep per table.
-     */
-    public int getMinSize() {
-      return mMinSize;
     }
 
     /**
@@ -131,18 +147,9 @@ public final class KijiTablePool implements Closeable {
      * @param maxSize The max number of connections to keep per table.
      * @return This options object for method chaining.
      */
-    public Options withMaxSize(int maxSize) {
-      mMaxSize = maxSize;
+    public KijiTablePoolBuilder withMaxSize(int maxSize) {
+      mMaxSize = (0 == maxSize) ? Integer.MAX_VALUE : maxSize;
       return this;
-    }
-
-    /**
-     * Gets the maximum number of connections to keep per table.
-     *
-     * @return The max number of connections to keep per table.
-     */
-    public int getMaxSize() {
-      return mMaxSize;
     }
 
     /**
@@ -153,18 +160,9 @@ public final class KijiTablePool implements Closeable {
      * @param timeoutMillis Timeout in milliseconds.
      * @return This options object for method chaining.
      */
-    public Options withIdleTimeout(long timeoutMillis) {
+    public KijiTablePoolBuilder withIdleTimeout(long timeoutMillis) {
       mIdleTimeout = timeoutMillis;
       return this;
-    }
-
-    /**
-     * Gets the amount of time a connection may be idle before being removed from the pool.
-     *
-     * @return The timeout in milliseconds.
-     */
-    public long getIdleTimeout() {
-      return mIdleTimeout;
     }
 
     /**
@@ -173,18 +171,9 @@ public final class KijiTablePool implements Closeable {
      * @param periodMillis Number of milliseconds between sweeps.
      * @return This options object for method chaining.
      */
-    public Options withIdlePollPeriod(long periodMillis) {
+    public KijiTablePoolBuilder withIdlePollPeriod(long periodMillis) {
       mIdlePollPeriod = periodMillis;
       return this;
-    }
-
-    /**
-     * Gets the amount of time between sweeps of the pool for removing idle connections.
-     *
-     * @return Number of milliseconds between sweeps.
-     */
-    public long getIdlePollPeriod() {
-      return mIdlePollPeriod;
     }
 
     /**
@@ -193,53 +182,56 @@ public final class KijiTablePool implements Closeable {
      * @param clock A clock.
      * @return This options object for method chaining.
      */
-    public Options withClock(Clock clock) {
+    public KijiTablePoolBuilder withClock(Clock clock) {
       mClock = clock;
       return this;
     }
 
     /**
-     * Gets a clock.
+     * Builds the configured KijiTablePool.
      *
-     * @return A clock.
+     * @return KijiTablePool with the specified parameters.
      */
-    public Clock getClock() {
-      return mClock;
+    public KijiTablePool build() {
+      return new KijiTablePool(mKijiTableFactory, mMinSize, mMaxSize,
+          mIdleTimeout, mIdlePollPeriod, mClock);
     }
   }
 
   /**
-   * Constructs a new pool of Kiji tables.
+   * Constructs a new KijiTablePoolBuilder for the specified Kiji instance.
    *
-   * @param kiji The kiji instance.
+   * @param kijiTableFactory table factory to be used for the table pool.  Can be a Kiji instance.
+   * @return a new KijiTablePoolBuilder with the default options.
    */
-  public KijiTablePool(Kiji kiji) {
-    this(new DefaultKijiTableFactory(kiji));
+  public static KijiTablePoolBuilder newBuilder(KijiTableFactory kijiTableFactory) {
+    return new KijiTablePoolBuilder(kijiTableFactory);
   }
 
   /**
-   * Constructs a new pool of Kiji tables.
+   * Constructs a new pool of Kiji tables with the specified parameters.  This class should not
+   * be instantiated outside of the builder {@link KijiTablePoolBuilder}.
    *
-   * @param tableFactory A KijiTable factory.
+   * @param tableFactory factory for creating new opened tables.
+   * @param minSize minimum number of connections to keep per table.
+   * @param maxSize maximum number of connections to keep per table.
+   * @param idleTimeout amount of time a connection may be idle before being removed from the pool.
+   * @param idlePollPeriod amount of time between sweeps of the pool for removing idle connections.
+   * @param clock the clock to be used for idle cleanup operations.
    */
-  public KijiTablePool(KijiTableFactory tableFactory) {
-    this(tableFactory, new Options());
-  }
-
-  /**
-   * Constructs a new pool of Kiji tables.
-   *
-   * @param tableFactory A KijiTable factory.
-   * @param options Configurable options for the pool.
-   */
-  public KijiTablePool(KijiTableFactory tableFactory, Options options) {
+   private KijiTablePool(KijiTableFactory tableFactory,
+                       int minSize,
+                       int maxSize,
+                       long idleTimeout,
+                       long idlePollPeriod,
+                       Clock clock) {
     mTableFactory = tableFactory;
-    mClock = options.getClock();
-    mMinSize = options.getMinSize();
-    mMaxSize = (0 == options.getMaxSize()) ? Integer.MAX_VALUE : options.getMaxSize();
-    mIdleTimeout = options.getIdleTimeout();
-    mIdlePollPeriod = options.getIdlePollPeriod();
-    mTableCache = new HashMap<String, Pool>();
+    mClock = clock;
+    mMinSize = minSize;
+    mMaxSize = maxSize;
+    mIdleTimeout = idleTimeout;
+    mIdlePollPeriod = idlePollPeriod;
+    mPoolCache = new HashMap<String, Pool>();
     mIsOpen = true;
   }
 
@@ -268,16 +260,16 @@ public final class KijiTablePool implements Closeable {
    * @throws KijiTablePool.NoCapacityException If the table pool is at capacity.
    */
   public synchronized KijiTable get(String name) throws IOException {
-    LOG.debug("Retrieving a connection for " + name + " from the table pool.");
+    LOG.debug("Retrieving a connection for {} from the table pool.", name);
     if (!mIsOpen) {
       throw new IllegalStateException("Table pool is closed.");
     }
 
-    if (!mTableCache.containsKey(name)) {
-      mTableCache.put(name, new Pool());
+    if (!mPoolCache.containsKey(name)) {
+      mPoolCache.put(name, new Pool(name));
     }
 
-    return mTableCache.get(name).get(name);
+    return mPoolCache.get(name).get();
   }
 
   /**
@@ -288,7 +280,7 @@ public final class KijiTablePool implements Closeable {
    * @param table The table to release to the pool. If null, will be a no-op.
    */
   public synchronized void release(KijiTable table) {
-    LOG.debug("Releasing a KijiTable " + table + " back to the pool.");
+    LOG.debug("Releasing a KijiTable {} back to the pool.", table);
     if (!mIsOpen) {
       throw new IllegalStateException("Table pool is closed.");
     }
@@ -301,7 +293,7 @@ public final class KijiTablePool implements Closeable {
     // Throw an IllegalArgumentException if not.
     //
     // Verify that the table is still open.  Throw an IllegalStateException if not.
-    mTableCache.get(table.getName()).release(table);
+    mPoolCache.get(table.getName()).release(table);
 
     // Start the cleanup thread if necessary.
     if (mIdleTimeout > 0L && null == mCleanupThread) {
@@ -315,7 +307,7 @@ public final class KijiTablePool implements Closeable {
    */
   synchronized void cleanIdleConnections() {
     if (mIdleTimeout > 0) {
-      for (Pool pool: mTableCache.values()) {
+      for (Pool pool: mPoolCache.values()) {
         pool.clean(mIdleTimeout);
       }
     }
@@ -340,10 +332,10 @@ public final class KijiTablePool implements Closeable {
         // Oh well.
       }
     }
-    for (Pool pool : mTableCache.values()) {
+    for (Pool pool : mPoolCache.values()) {
       ResourceUtils.closeOrLog(pool);
     }
-    mTableCache.clear();
+    mPoolCache.clear();
     mIsOpen = false;
   }
 
@@ -363,7 +355,7 @@ public final class KijiTablePool implements Closeable {
    * @return The size of the table pool.
    */
   public int getPoolSize(String tableName) {
-    return mTableCache.get(tableName).getPoolSize();
+    return mPoolCache.get(tableName).getPoolSize();
   }
 
   /**
@@ -375,43 +367,46 @@ public final class KijiTablePool implements Closeable {
     // The total pool size is the total number of tables in use and available connections.
     private int mPoolSize;
 
+    // The name of the table for this pool.
+    private final String mTableName;
+
     /**
      * Constructor.
      */
-    public Pool() {
+    public Pool(String tableName) {
       mConnections = new ArrayDeque<Connection>();
       mPoolSize = 0;
+      mTableName = tableName;
     }
 
     /**
      * Gets a table connection from the pool.
      *
-     * @param tableName The name of the table.
      * @return The table connection.
      * @throws IOException If there is an error opening the table.
      * @throws KijiTablePool.NoCapacityException If there is no more room in the
      *     pool to open a new connection.
      */
-    public synchronized KijiTable get(String tableName) throws IOException {
+    public synchronized KijiTable get() throws IOException {
       Connection availableConnection = mConnections.poll();
       if (null == availableConnection) {
         if (mPoolSize >= mMaxSize) {
-          throw new NoCapacityException("Reached max pool size for table " + tableName + ". There"
+          throw new NoCapacityException("Reached max pool size for table " + mTableName + ". There"
             + " are " + mPoolSize + " tables in the pool.");
         }
-        LOG.debug("Cache miss for table " + tableName);
-        KijiTable tableConnection = mTableFactory.openTable(tableName);
+        LOG.debug("Cache miss for table {}", mTableName);
+        KijiTable tableConnection = mTableFactory.openTable(mTableName);
         mPoolSize++;
         if (mPoolSize < mMinSize) {
-          LOG.debug("Below the min pool size for table " + tableName + ". Adding to the pool.");
+          LOG.debug("Below the min pool size for table {}. Adding to the pool.", mTableName);
           while (mPoolSize < mMinSize) {
-            mConnections.add(new Connection(mTableFactory.openTable(tableName), mClock));
+            mConnections.add(new Connection(mTableFactory.openTable(mTableName), mClock));
             mPoolSize++;
           }
         }
         return tableConnection;
       }
-      LOG.debug("Cache hit for table " + tableName);
+      LOG.debug("Cache hit for table {}", mTableName);
       return availableConnection.getTable();
     }
 
@@ -513,7 +508,7 @@ public final class KijiTablePool implements Closeable {
     @Override
     public void run() {
       while (true) {
-        for (Pool pool : mTableCache.values()) {
+        for (Pool pool : mPoolCache.values()) {
           pool.clean(mIdleTimeout);
         }
         try {

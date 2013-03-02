@@ -45,7 +45,7 @@ public class TestKijiTablePool extends KijiClientTest {
 
   @Test(expected=IOException.class)
   public void testNoSuchTable() throws IOException {
-    KijiTablePool pool = new KijiTablePool(mTableFactory);
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
 
     expect(mTableFactory.openTable("table doesn't exist"))
         .andThrow(new IOException("table not found"));
@@ -60,7 +60,7 @@ public class TestKijiTablePool extends KijiClientTest {
 
   @Test
   public void testGetCachedTable() throws IOException {
-    KijiTablePool pool = new KijiTablePool(mTableFactory);
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
 
     KijiTable foo1 = createMock(KijiTable.class);
     expect(foo1.getName()).andReturn("foo").anyTimes();
@@ -99,9 +99,9 @@ public class TestKijiTablePool extends KijiClientTest {
 
   @Test(expected=KijiTablePool.NoCapacityException.class)
   public void testMaxSize() throws IOException {
-    KijiTablePool.Options options = new KijiTablePool.Options()
-        .withMaxSize(1);
-    KijiTablePool pool = new KijiTablePool(mTableFactory, options);
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory)
+        .withMaxSize(1)
+        .build();
 
     KijiTable foo = createMock(KijiTable.class);
     expect(foo.getName()).andReturn("foo").anyTimes();
@@ -118,9 +118,9 @@ public class TestKijiTablePool extends KijiClientTest {
 
   @Test
   public void testMaxSizeAfterRelease() throws IOException {
-    KijiTablePool.Options options = new KijiTablePool.Options()
-        .withMaxSize(1);
-    KijiTablePool pool = new KijiTablePool(mTableFactory, options);
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory)
+        .withMaxSize(1)
+        .build();
 
     KijiTable foo = createMock(KijiTable.class);
     expect(foo.getName()).andReturn("foo").anyTimes();
@@ -139,9 +139,9 @@ public class TestKijiTablePool extends KijiClientTest {
 
   @Test
   public void testMinPoolSize() throws IOException {
-    KijiTablePool.Options options = new KijiTablePool.Options()
-        .withMinSize(3);
-    KijiTablePool pool = new KijiTablePool(mTableFactory, options);
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory)
+        .withMinSize(3)
+        .build();
 
     KijiTable foo = createMock(KijiTable.class);
     expect(foo.getName()).andReturn("foo").anyTimes();
@@ -156,10 +156,10 @@ public class TestKijiTablePool extends KijiClientTest {
 
   @Test
   public void testIdleTimeout() throws IOException, InterruptedException {
-    KijiTablePool.Options options = new KijiTablePool.Options()
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory)
         .withIdleTimeout(10)
-        .withIdlePollPeriod(1);
-    KijiTablePool pool = new KijiTablePool(mTableFactory, options);
+        .withIdlePollPeriod(1)
+        .build();
 
     KijiTable foo1 = createMock(KijiTable.class);
     expect(foo1.getName()).andReturn("foo").anyTimes();
