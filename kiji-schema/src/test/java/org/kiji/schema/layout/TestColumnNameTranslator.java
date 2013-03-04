@@ -28,6 +28,7 @@ import org.junit.Test;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 
 public class TestColumnNameTranslator {

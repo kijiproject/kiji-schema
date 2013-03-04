@@ -42,10 +42,9 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
-
+import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 public class TestHBaseDataRequestAdapter extends KijiClientTest {
   private KijiTableLayout mTableLayout;

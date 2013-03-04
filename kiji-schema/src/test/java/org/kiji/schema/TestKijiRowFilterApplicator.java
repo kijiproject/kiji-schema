@@ -39,10 +39,10 @@ import org.kiji.schema.filter.KijiRowFilterApplicator;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.HBaseDataRequestAdapter;
-import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.ScanEquals;
 
 
