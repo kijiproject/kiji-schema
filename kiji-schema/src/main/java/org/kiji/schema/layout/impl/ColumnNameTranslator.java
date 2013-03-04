@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.layout;
+package org.kiji.schema.layout.impl;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,10 +31,10 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
-import org.kiji.schema.layout.impl.ColumnId;
 
 /**
  * Translates between HTable and Kiji table column names.
@@ -42,7 +42,7 @@ import org.kiji.schema.layout.impl.ColumnId;
  * <p>This class defines a mapping between names of HBase HTable families/qualifiers and
  * Kiji table family/qualifiers.</p>
  */
-@ApiAudience.Public
+@ApiAudience.Private
 public final class ColumnNameTranslator {
   private static final Logger LOG = LoggerFactory.getLogger(ColumnNameTranslator.class);
 
