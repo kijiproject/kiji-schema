@@ -74,7 +74,7 @@ public final class VersionInfo {
       properties.load(istream);
       return properties;
     } finally {
-      ResourceUtils.closeOrLog(istream);
+      ResourceUtils.closeIfNotNull(istream);
     }
   }
 

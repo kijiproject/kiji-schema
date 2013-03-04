@@ -158,7 +158,7 @@ public class TestLsTool extends KijiClientTest {
       assertTrue(mToolOutputLines[1].startsWith("entity-id=hbase=hex:"));
 
     } finally {
-      ResourceUtils.releaseOrLog(table);
+      ResourceUtils.releaseIfNotNull(table);
     }
   }
 
@@ -187,7 +187,7 @@ public class TestLsTool extends KijiClientTest {
       assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), "--kiji=" + table.getURI()));
       // TODO: Validate LsTool output
     } finally {
-      ResourceUtils.releaseOrLog(table);
+      ResourceUtils.releaseIfNotNull(table);
     }
   }
 
@@ -241,7 +241,7 @@ public class TestLsTool extends KijiClientTest {
       ));
       // TODO: Validate output
     } finally {
-      ResourceUtils.releaseOrLog(table);
+      ResourceUtils.releaseIfNotNull(table);
     }
   }
 }

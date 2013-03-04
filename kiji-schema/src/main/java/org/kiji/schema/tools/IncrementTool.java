@@ -114,13 +114,13 @@ public final class IncrementTool extends BaseTool {
           return SUCCESS;
 
         } finally {
-          ResourceUtils.closeOrLog(writer);
+          ResourceUtils.closeIfNotNull(writer);
         }
       } finally {
-        ResourceUtils.releaseOrLog(table);
+        ResourceUtils.releaseIfNotNull(table);
       }
     } finally {
-      ResourceUtils.releaseOrLog(kiji);
+      ResourceUtils.releaseIfNotNull(kiji);
     }
   }
 

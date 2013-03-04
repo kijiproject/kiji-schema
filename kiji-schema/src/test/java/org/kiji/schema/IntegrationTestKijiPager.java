@@ -87,15 +87,15 @@ public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
           new GregorianCalendar(2010, 10, 4).getTime().getTime(),
           "MTS");
     } finally {
-      ResourceUtils.closeOrLog(writer);
-      ResourceUtils.releaseOrLog(userTable);
-      ResourceUtils.releaseOrLog(kiji);
+      ResourceUtils.closeIfNotNull(writer);
+      ResourceUtils.releaseIfNotNull(userTable);
+      ResourceUtils.releaseIfNotNull(kiji);
     }
   }
 
   @After
   public void teardown() throws Exception {
-    ResourceUtils.closeOrLog(mTableReader);
+    ResourceUtils.closeIfNotNull(mTableReader);
   }
 
 
@@ -168,8 +168,8 @@ public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
     //But it should be empty.
     assertTrue(jobsPager.next().getValues("jobs").isEmpty());
 
-    ResourceUtils.closeOrLog(locationPager);
-    ResourceUtils.closeOrLog(jobsPager);
+    ResourceUtils.closeIfNotNull(locationPager);
+    ResourceUtils.closeIfNotNull(jobsPager);
   }
 
   @Test
@@ -242,7 +242,7 @@ public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
     //But it should be empty.
     assertTrue(jobsPager.next().getValues("jobs").isEmpty());
 
-    ResourceUtils.closeOrLog(locationPager);
-    ResourceUtils.closeOrLog(jobsPager);
+    ResourceUtils.closeIfNotNull(locationPager);
+    ResourceUtils.closeIfNotNull(jobsPager);
   }
 }

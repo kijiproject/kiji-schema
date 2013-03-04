@@ -152,7 +152,7 @@ public final class HBaseKijiPager implements KijiPager {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.releaseIfNotNull(mTable);
   }
 
   /**

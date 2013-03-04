@@ -118,8 +118,8 @@ public final class SynthesizeUserDataTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
-    ResourceUtils.releaseOrLog(mTable);
-    ResourceUtils.releaseOrLog(mKiji);
+    ResourceUtils.releaseIfNotNull(mTable);
+    ResourceUtils.releaseIfNotNull(mKiji);
 
     mTableURI = null;
     mTable = null;
@@ -153,7 +153,7 @@ public final class SynthesizeUserDataTool extends BaseTool {
         }
       }
     } finally {
-      ResourceUtils.closeOrLog(tableWriter);
+      ResourceUtils.closeIfNotNull(tableWriter);
     }
 
     getPrintStream().printf("%d rows synthesized...%n", mNumUsers);

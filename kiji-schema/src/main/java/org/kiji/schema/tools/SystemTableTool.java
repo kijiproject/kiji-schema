@@ -195,7 +195,7 @@ public class SystemTableTool extends BaseTool {
         }
       }
     } finally {
-      ResourceUtils.releaseOrLog(mKiji);
+      ResourceUtils.releaseIfNotNull(mKiji);
     }
   }
 }

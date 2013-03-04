@@ -98,7 +98,7 @@ public class TestSchemaValidationOnWrite extends KijiClientTest {
       LOG.info("Expected error: " + kee);
     }
 
-    ResourceUtils.closeOrLog(writer);
-    ResourceUtils.releaseOrLog(table);
+    ResourceUtils.closeIfNotNull(writer);
+    ResourceUtils.releaseIfNotNull(table);
   }
 }

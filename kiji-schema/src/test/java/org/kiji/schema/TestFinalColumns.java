@@ -60,7 +60,7 @@ public class TestFinalColumns extends KijiClientTest {
     final KijiRowData row = reader.get(eid, KijiDataRequest.create("family", "column"));
     assertEquals("string value", row.getMostRecentValue("family", "column").toString());
 
-    ResourceUtils.closeOrLog(writer);
-    ResourceUtils.releaseOrLog(table);
+    ResourceUtils.closeIfNotNull(writer);
+    ResourceUtils.releaseIfNotNull(table);
   }
 }

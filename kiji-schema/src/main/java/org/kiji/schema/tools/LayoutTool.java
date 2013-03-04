@@ -162,8 +162,8 @@ public final class LayoutTool extends BaseTool {
     try {
       return KijiTableLayout.readTableLayoutDescFromJSON(istream);
     } finally {
-      ResourceUtils.closeOrLog(istream);
-      ResourceUtils.closeOrLog(fs);
+      ResourceUtils.closeIfNotNull(istream);
+      ResourceUtils.closeIfNotNull(fs);
     }
   }
 
@@ -222,7 +222,7 @@ public final class LayoutTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected void cleanup() throws IOException {
-    ResourceUtils.releaseOrLog(mKiji);
+    ResourceUtils.releaseIfNotNull(mKiji);
     mKiji = null;
     super.cleanup();
   }

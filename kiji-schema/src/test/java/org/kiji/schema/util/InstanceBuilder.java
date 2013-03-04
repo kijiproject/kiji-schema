@@ -219,8 +219,8 @@ public class InstanceBuilder {
         }
       }
 
-      ResourceUtils.releaseOrLog(kijiTable);
-      ResourceUtils.closeOrLog(writer);
+      ResourceUtils.releaseIfNotNull(kijiTable);
+      ResourceUtils.closeIfNotNull(writer);
     }
 
     // Add the Kiji instance to the environment.

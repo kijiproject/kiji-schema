@@ -74,7 +74,7 @@ public class FooTableIntegrationTest extends AbstractKijiIntegrationTest {
   @After
   public void teardownFooTable() throws Exception {
     deleteFooTable();
-    ResourceUtils.releaseOrLog(mKijiTable);
-    ResourceUtils.releaseOrLog(mKiji);
+    ResourceUtils.releaseIfNotNull(mKijiTable);
+    ResourceUtils.releaseIfNotNull(mKiji);
   }
 }

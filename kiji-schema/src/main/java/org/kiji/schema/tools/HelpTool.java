@@ -149,7 +149,7 @@ public final class HelpTool extends Configured implements KijiTool {
     try {
       IOUtils.copy(envHelp, System.out);
     } finally {
-      ResourceUtils.closeOrLog(envHelp);
+      ResourceUtils.closeIfNotNull(envHelp);
     }
   }
 }

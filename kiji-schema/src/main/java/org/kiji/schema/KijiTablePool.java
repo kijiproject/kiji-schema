@@ -341,7 +341,7 @@ public final class KijiTablePool implements Closeable {
       }
     }
     for (Pool pool : mTableCache.values()) {
-      ResourceUtils.closeOrLog(pool);
+      ResourceUtils.closeIfNotNull(pool);
     }
     mTableCache.clear();
     mIsOpen = false;
@@ -439,7 +439,11 @@ public final class KijiTablePool implements Closeable {
         if (currentTime - connection.getLastAccessTime() > idleTimeout) {
           LOG.info("Closing idle KijiTable connection to " + connection.getTable().getName());
           iterator.remove();
-          ResourceUtils.releaseOrLog(connection.getTable());
+          try {
+            ResourceUtils.releaseIfNotNull(connection.getTable());
+          } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+          }
           mPoolSize--;
         }
       }
@@ -458,7 +462,7 @@ public final class KijiTablePool implements Closeable {
     @Override
     public synchronized void close() throws IOException {
       while (!mConnections.isEmpty()) {
-        ResourceUtils.releaseOrLog(mConnections.remove().getTable());
+        ResourceUtils.releaseIfNotNull(mConnections.remove().getTable());
       }
     }
   }

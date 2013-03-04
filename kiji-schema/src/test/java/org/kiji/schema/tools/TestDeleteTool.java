@@ -103,8 +103,8 @@ public class TestDeleteTool extends KijiClientTest {
 
   @After
   public final void teardownTestDeleteTool() throws Exception {
-    ResourceUtils.closeOrLog(mReader);
-    ResourceUtils.releaseOrLog(mTable);
+    ResourceUtils.closeIfNotNull(mReader);
+    ResourceUtils.releaseIfNotNull(mTable);
     mReader = null;
     mTable = null;
   }

@@ -46,7 +46,7 @@ public class TestVersionTool extends KijiClientTest {
     final int exitCode = tool.toolMain(Lists.newArrayList("--debug",
         String.format("--kiji=%s", getKiji().getURI())));
 
-    ResourceUtils.closeOrLog(ps);
+    ResourceUtils.closeIfNotNull(ps);
     final String toolOutput = Bytes.toString(baos.toByteArray());
 
     assertEquals(

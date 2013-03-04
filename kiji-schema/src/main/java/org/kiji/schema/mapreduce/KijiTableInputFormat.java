@@ -128,8 +128,8 @@ public class KijiTableInputFormat
     // As a precaution, be sure the table exists and can be opened.
     final Kiji kiji = Kiji.Factory.open(tableURI, conf);
     final KijiTable table = kiji.openTable(tableURI.getTable());
-    ResourceUtils.releaseOrLog(table);
-    ResourceUtils.releaseOrLog(kiji);
+    ResourceUtils.releaseIfNotNull(table);
+    ResourceUtils.releaseIfNotNull(kiji);
 
     // TODO: Check for jars config:
     // GenericTableMapReduceUtil.initTableInput(hbaseTableName, scan, job);
@@ -234,10 +234,10 @@ public class KijiTableInputFormat
     /** {@inheritDoc} */
     @Override
     public void close() throws IOException {
-      ResourceUtils.closeOrLog(mScanner);
-      ResourceUtils.closeOrLog(mReader);
-      ResourceUtils.releaseOrLog(mTable);
-      ResourceUtils.releaseOrLog(mKiji);
+      ResourceUtils.closeIfNotNull(mScanner);
+      ResourceUtils.closeIfNotNull(mReader);
+      ResourceUtils.releaseIfNotNull(mTable);
+      ResourceUtils.releaseIfNotNull(mKiji);
       mIterator = null;
       mScanner = null;
       mReader = null;

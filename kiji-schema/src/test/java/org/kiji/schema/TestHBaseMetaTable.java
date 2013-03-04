@@ -68,7 +68,7 @@ public class TestHBaseMetaTable {
 
     assertEquals(layout, table.updateTableLayout("table", desc));
     assertEquals(layout, table.getTableLayout("table"));
-    ResourceUtils.closeOrLog(table);
+    ResourceUtils.closeIfNotNull(table);
 
     verify(mHTable);
     verify(mTableLayoutDatabase);

@@ -235,7 +235,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
 
   /** {@inheritDoc} */
   @Override
-  public void close() {
-    ResourceUtils.releaseOrLog(mTable);
+  public void close() throws IOException {
+    ResourceUtils.releaseIfNotNull(mTable);
   }
 }

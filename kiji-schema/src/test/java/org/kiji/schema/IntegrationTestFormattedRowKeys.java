@@ -156,9 +156,9 @@ public class IntegrationTestFormattedRowKeys
 
   @After
   public void teardown() throws IOException {
-    ResourceUtils.closeOrLog(mReader);
-    ResourceUtils.closeOrLog(mWriter);
-    ResourceUtils.releaseOrLog(mTable);
-    ResourceUtils.releaseOrLog(mKiji);
+    ResourceUtils.closeIfNotNull(mReader);
+    ResourceUtils.closeIfNotNull(mWriter);
+    ResourceUtils.releaseIfNotNull(mTable);
+    ResourceUtils.releaseIfNotNull(mKiji);
   }
 }

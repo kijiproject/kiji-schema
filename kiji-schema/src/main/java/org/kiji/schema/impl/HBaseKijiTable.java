@@ -219,7 +219,7 @@ public final class HBaseKijiTable implements KijiTable {
           result.add(new HBaseKijiRegion(region, hLocations));
         }
       } finally {
-        ResourceUtils.closeOrLog(concreteHBaseTable);
+        ResourceUtils.closeIfNotNull(concreteHBaseTable);
       }
     } else {
       LOG.warn("Unable to cast HTableInterface {} to an HTable.  "
@@ -253,7 +253,7 @@ public final class HBaseKijiTable implements KijiTable {
     if (null != mHTable) {
       mHTable.close();
     }
-    ResourceUtils.releaseOrLog(mKiji);
+    ResourceUtils.releaseIfNotNull(mKiji);
     LOG.debug("Resource '{}' closed.", mTableURI);
   }
 

@@ -58,7 +58,7 @@ public class TestStripValueRowFilter extends KijiClientTest {
       final KijiTableWriter writer = table.openTableWriter();
       writer.put(table.getEntityId("me"), "info", "name", 1L, "me");
       writer.put(table.getEntityId("me"), "info", "name", 2L, "me-too");
-      ResourceUtils.closeOrLog(writer);
+      ResourceUtils.closeIfNotNull(writer);
     }
 
 
@@ -92,7 +92,7 @@ public class TestStripValueRowFilter extends KijiClientTest {
       }
     }
 
-    ResourceUtils.closeOrLog(scanner);
-    ResourceUtils.closeOrLog(reader);
+    ResourceUtils.closeIfNotNull(scanner);
+    ResourceUtils.closeIfNotNull(reader);
   }
 }

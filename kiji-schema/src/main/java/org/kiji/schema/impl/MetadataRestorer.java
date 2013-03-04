@@ -81,7 +81,7 @@ public class MetadataRestorer {
       fileWriter.create(backup.getSchema(), file);
       fileWriter.append(backup);
     } finally {
-      ResourceUtils.closeOrLog(fileWriter);
+      ResourceUtils.closeIfNotNull(fileWriter);
     }
   }
 
@@ -158,7 +158,7 @@ public class MetadataRestorer {
         restoreTable(tableName, tableBackup, metaTable, kiji);
       }
     } finally {
-      ResourceUtils.closeOrLog(hbaseAdmin);
+      ResourceUtils.closeIfNotNull(hbaseAdmin);
     }
   }
 

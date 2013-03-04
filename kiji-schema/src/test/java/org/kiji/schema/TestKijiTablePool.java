@@ -54,7 +54,7 @@ public class TestKijiTablePool extends KijiClientTest {
     try {
       pool.get("table doesn't exist");
     } finally {
-      ResourceUtils.closeOrLog(pool);
+      ResourceUtils.closeIfNotNull(pool);
     }
   }
 
@@ -72,9 +72,9 @@ public class TestKijiTablePool extends KijiClientTest {
     expect(mTableFactory.openTable("foo")).andReturn(foo2);
     expect(mTableFactory.openTable("bar")).andReturn(bar1);
 
-    ResourceUtils.releaseOrLog(foo1);
-    ResourceUtils.releaseOrLog(foo2);
-    ResourceUtils.releaseOrLog(bar1);
+    ResourceUtils.releaseIfNotNull(foo1);
+    ResourceUtils.releaseIfNotNull(foo2);
+    ResourceUtils.releaseIfNotNull(bar1);
 
     replay(foo1);
     replay(foo2);
@@ -92,7 +92,7 @@ public class TestKijiTablePool extends KijiClientTest {
     pool.release(fooTable2);
     pool.release(barTable1);
 
-    ResourceUtils.closeOrLog(pool);
+    ResourceUtils.closeIfNotNull(pool);
 
     verify(mTableFactory);
   }
@@ -164,11 +164,11 @@ public class TestKijiTablePool extends KijiClientTest {
     KijiTable foo1 = createMock(KijiTable.class);
     expect(foo1.getName()).andReturn("foo").anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo1);
-    ResourceUtils.releaseOrLog(foo1);
+    ResourceUtils.releaseIfNotNull(foo1);
     KijiTable foo2 = createMock(KijiTable.class);
     expect(foo2.getName()).andReturn("foo").anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo2);
-    ResourceUtils.releaseOrLog(foo2);
+    ResourceUtils.releaseIfNotNull(foo2);
 
     replay(foo1);
     replay(foo2);
