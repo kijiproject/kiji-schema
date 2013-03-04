@@ -120,6 +120,8 @@ public final class FormattedEntityId extends EntityId {
 
   private List<Object> mComponentValues;
 
+  private RowKeyFormat2 mRowKeyFormat;
+
   private static final Logger LOG = LoggerFactory.getLogger(FormattedEntityId.class);
 
   /**
@@ -295,19 +297,18 @@ public final class FormattedEntityId extends EntityId {
 
     // to materialize or not to materialize that is the question
     if (format.getSalt().getSuppressKeyMaterialization()) {
-      pos = format.getRangeScanStartIndex();
+      return baos.toByteArray();
     } else {
-      pos = 0;
-    }
-    for (; pos < hbaseKey.size(); pos++) {
-      baos.write(hbaseKey.get(pos), 0, hbaseKey.get(pos).length);
-      if (format.getComponents().get(pos).getType() == ComponentType.STRING
-          || format.getComponents().get(pos) == null) {
-        // empty strings will be encoded as null, hence we need to delimit them too
-        baos.write(zeroDelim);
+      for (pos = 0; pos < hbaseKey.size(); pos++) {
+        baos.write(hbaseKey.get(pos), 0, hbaseKey.get(pos).length);
+        if (format.getComponents().get(pos).getType() == ComponentType.STRING
+            || format.getComponents().get(pos) == null) {
+          // empty strings will be encoded as null, hence we need to delimit them too
+          baos.write(zeroDelim);
+        }
       }
+      return baos.toByteArray();
     }
-    return baos.toByteArray();
   }
 
   @Override
@@ -330,7 +331,15 @@ public final class FormattedEntityId extends EntityId {
     List<Object> kijiRowKey = new ArrayList<Object>();
     // skip over the hash
     int pos = format.getSalt().getHashSize();
+    // we are suppressing materialization, so the components cannot be retrieved.
     int kijiRowElem = 0;
+    if (format.getSalt().getSuppressKeyMaterialization()) {
+      if (pos < hbaseRowKey.length) {
+        throw new EntityIdException("Extra bytes in key after hash when materialization is"
+            + "suppressed");
+      }
+      return null;
+    }
     ByteBuffer buf;
 
     while (kijiRowElem < format.getComponents().size() && pos < hbaseRowKey.length) {
@@ -392,7 +401,7 @@ public final class FormattedEntityId extends EntityId {
           + "number " + kijiRowElem + " cannot be null");
     }
 
-    // finish up with nulls for everything that wasn't in the key/not materialized.
+    // finish up with nulls for everything that wasn't in the key
     for (; kijiRowElem < format.getComponents().size(); kijiRowElem++) {
       kijiRowKey.add(null);
     }
@@ -407,16 +416,22 @@ public final class FormattedEntityId extends EntityId {
    * @param kijiRowKey An ordered list of row key components.
    */
   private FormattedEntityId(RowKeyFormat2 format, byte[] hbaseRowKey, List<Object> kijiRowKey) {
-    Preconditions.checkNotNull(format);
+    mRowKeyFormat = Preconditions.checkNotNull(format);
     Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.FORMATTED);
     mHBaseRowKey = hbaseRowKey;
-    mComponentValues = kijiRowKey;
+    if (format.getSalt().getSuppressKeyMaterialization()) {
+      mComponentValues = null;
+    } else {
+      mComponentValues = kijiRowKey;
+    }
   }
 
   /** {@inheritDoc} **/
   @Override
   @SuppressWarnings("unchecked")
   public <T> T getComponentByIndex(int idx) {
+    Preconditions.checkState(!mRowKeyFormat.getSalt().getSuppressKeyMaterialization(),
+        String.format("Cannot retrieve components as materialization is suppressed"));
     Preconditions.checkArgument(idx >= 0 && idx < mComponentValues.size());
     return (T) mComponentValues.get(idx);
   }
@@ -424,15 +439,24 @@ public final class FormattedEntityId extends EntityId {
   /** {@inheritDoc} **/
   @Override
   public List<Object> getComponents() {
+    Preconditions.checkState(!mRowKeyFormat.getSalt().getSuppressKeyMaterialization(),
+        String.format("Cannot retrieve components as materialization is suppressed"));
     return Collections.unmodifiableList(mComponentValues);
   }
 
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    return Objects.toStringHelper(FormattedEntityId.class)
-        .add("components", Joiner.on(",").join(mComponentValues))
-        .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
-        .toString();
+    if (!mRowKeyFormat.getSalt().getSuppressKeyMaterialization()) {
+      return Objects.toStringHelper(FormattedEntityId.class)
+          .add("components", Joiner.on(",").join(mComponentValues))
+          .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
+          .toString();
+    } else {
+      return Objects.toStringHelper(FormattedEntityId.class)
+          .addValue("components are suppressed")
+          .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
+          .toString();
+    }
   }
 }
