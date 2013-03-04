@@ -45,7 +45,7 @@ import org.kiji.schema.util.ReferenceCountable;
  *   <code>
  *     final KijiTable table = myKiji.openTable("tableName");
  *     // Do some magic
- *     table.close();
+ *     table.release();
  *   </code>
  * </pre>
  *
@@ -75,7 +75,7 @@ import org.kiji.schema.util.ReferenceCountable;
  *     // Close open connections.
  *     reader.close();
  *     writer.close();
- *     table.close();
+ *     table.release();
  *   </code>
  * </pre>
  *
@@ -141,4 +141,14 @@ public interface KijiTable extends ReferenceCountable<KijiTable>, Closeable {
    * @throws IOException If there is an error retrieving the regions of this table.
    */
   List<KijiRegion> getRegions() throws IOException;
+
+  /**
+   * Closes the table and any underlying resources. This method is deprecated; you should
+   * use release() instead.
+   *
+   * @throws IOException if there was an error closing the table.
+   */
+  @Deprecated
+  @Override
+  void close() throws IOException;
 }

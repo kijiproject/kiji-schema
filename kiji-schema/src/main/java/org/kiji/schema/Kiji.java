@@ -64,13 +64,13 @@ import org.kiji.schema.util.ReferenceCountable;
  *
  * <h2>User tables:</h2>
  * <p>
- *   User tables can be accessed using {@link #openTable(String)}.  Note that they must be closed
+ *   User tables can be accessed using {@link #openTable(String)}.  Note that they must be released
  *   after they are no longer necessary.
  * </p>
  * <pre><code>
  *   KijiTable kijiTable = kiji.openTable("myTable");
  *   // Do some table operations
- *   kijiTable.close();
+ *   kijiTable.release();
  * </code></pre>
  *
  * <h2>Administration of user tables:</h2>
