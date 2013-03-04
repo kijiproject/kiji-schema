@@ -18,27 +18,17 @@
  */
 {
   name : "table",
-  keys_format : {
-    encoding : "FORMATTED",
-    salt : {
-      hash_size : 2
-    },
-    components : [ {
-      name : "dummy",
-      type : "STRING"
-    }, {
-      name : "str1",
-      type : "STRING"
-    }, {
-      name : "str2",
-      type : "STRING"
-    }, {
-      name : "anint",
-      type : "INTEGER"
-    }, {
-      name : "along",
-      type : "LONG"
-    } ]
+  "keys_format" : {
+    "org.kiji.schema.avro.RowKeyFormat2" : {
+      "encoding" : "FORMATTED",
+      "salt" : {
+        "suppress_key_materialization" : true
+      },
+      "components" : [ {
+        "name" : "key",
+        "type" : "STRING"
+      } ]
+    }
   },
   locality_groups : [ {
     name : "default",

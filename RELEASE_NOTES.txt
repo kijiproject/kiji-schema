@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-242. Enforce constraint of no non-hashed components
+      in a FORMATTED row key with SuppressKeyMaterialization=true.
   * SCHEMA-141. Improved KijiTablePool API.
   * SCHEMA-234. Extract kiji scan functionality out of kiji ls.
   * SCHEMA-219. Adds KijiWriterFactory with access in KijiTable and

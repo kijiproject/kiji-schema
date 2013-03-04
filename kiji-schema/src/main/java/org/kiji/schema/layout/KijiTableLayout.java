@@ -961,6 +961,15 @@ public final class KijiTableLayout {
           + "starting with the second component.");
     }
 
+    // If suppress_key_materialization is true, range scans are impossible, as the
+    // key components will not be stored.
+    if (format.getSalt().getSuppressKeyMaterialization()
+        && format.getRangeScanStartIndex() != format.getComponents().size()) {
+      throw new InvalidLayoutException("Range scans are not supported if "
+          + "suppress_key_materialization is true. Please set range_scan_start_index"
+          + "to components.size");
+    }
+
     Set<String> nameset = new HashSet<String>();
     for (RowKeyComponent component: format.getComponents()) {
       // ensure names are valid "[a-zA-Z_][a-zA-Z0-9_]*"

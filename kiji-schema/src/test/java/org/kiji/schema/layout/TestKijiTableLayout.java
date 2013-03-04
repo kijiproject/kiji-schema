@@ -258,6 +258,41 @@ public class TestKijiTableLayout {
     return format;
   }
 
+  private RowKeyFormat2 suppressMaterializationRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("ADDRESS").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().setSuppressKeyMaterialization(true).build())
+        .setRangeScanStartIndex(components.size())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 badSuppressMaterializationRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("NAME").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("ADDRESS").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().setSuppressKeyMaterialization(true).build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
   /** Tests for a empty layout with no reference layout. */
   @Test
   public void testEmptyLayoutWithNoReference() throws Exception {
@@ -1049,6 +1084,26 @@ public class TestKijiTableLayout {
     assertEquals(16, KijiTableLayout.getHashSize(makeHashPrefixedRowKeyFormat()));
     // default hash size for RowKeyFormat is 0
     assertEquals(0, KijiTableLayout.getHashSize(makeHashPrefixedRKF1()));
+  }
+
+  @Test
+  public void testSuppressMaterializationRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(suppressMaterializationRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+  }
+
+  @Test(expected=InvalidLayoutException.class)
+  public void testBadSuppressMaterializationRKF() throws InvalidLayoutException {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(badSuppressMaterializationRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
   @Test(expected=InvalidLayoutException.class)

@@ -23,7 +23,9 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -36,14 +38,24 @@ import org.junit.Test;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdException;
 import org.kiji.schema.EntityIdFactory;
+import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiDataRequestBuilder;
+import org.kiji.schema.KijiRowData;
+import org.kiji.schema.KijiTable;
+import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.ComponentType;
 import org.kiji.schema.avro.HashSpec;
 import org.kiji.schema.avro.RowKeyComponent;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat2;
+import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.util.ResourceUtils;
 
 /** Tests for FormattedEntityId. */
-public class TestFormattedEntityId {
+public class TestFormattedEntityId extends KijiClientTest {
 
   private RowKeyFormat2 makeRowKeyFormat() {
     // components of the row key
@@ -164,6 +176,22 @@ public class TestFormattedEntityId {
     return format;
   }
 
+  private RowKeyFormat2 makeHashedRowKeyFormat() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("astring").setType(ComponentType.STRING).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().setSuppressKeyMaterialization(true)
+            .setHashSize(components.size()).build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
   private RowKeyFormat2 makeCompletelyHashedRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -178,6 +206,26 @@ public class TestFormattedEntityId {
     RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
         .setSalt(HashSpec.newBuilder().build())
         .setRangeScanStartIndex(components.size())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 makeSuppressMaterializationTestRKF() {
+    // components of the row key
+    ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
+    components.add(RowKeyComponent.newBuilder()
+        .setName("astring").setType(ComponentType.STRING).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("anint").setType(ComponentType.INTEGER).build());
+    components.add(RowKeyComponent.newBuilder()
+        .setName("along").setType(ComponentType.LONG).build());
+
+    // build the row key format
+    RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().setSuppressKeyMaterialization(true).build())
+        .setRangeScanStartIndex(2)
         .setComponents(components)
         .build();
 
@@ -511,6 +559,124 @@ public class TestFormattedEntityId {
     assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
   }
 
+  @Test
+  public void testSuppressMaterialization() {
+    RowKeyFormat2 format = makeSuppressMaterializationTestRKF();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(new Integer(1));
+    inputRowKey.add(new Long(7L));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+    byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
+    assertNotNull(hbaseRowKey);
+    System.out.println("Hbase Key is: ");
+    for (byte b: hbaseRowKey) {
+      System.out.format("%x ", b);
+    }
+    System.out.format("\n");
+
+    FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+    assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
+  }
+
+  @Test
+  public void testSuppressKeyMaterializationInKiji() throws IOException {
+
+    Kiji kiji = getKiji().retain();
+    kiji.createTable("table",
+        KijiTableLayouts.getTableLayout(KijiTableLayouts.HASHED_FORMATTED_RKF));
+    KijiTable table = kiji.openTable("table");
+    KijiTableWriter kijiTableWriter = table.openTableWriter();
+    KijiTableReader kijiTableReader = table.openTableReader();
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.newColumnsDef().withMaxVersions(1).add("family", "column");
+    KijiDataRequest dataRequest = builder.build();
+
+    kijiTableWriter.put(table.getEntityId(new String("x")),
+        "family", "column", "1");
+
+    kijiTableWriter.flush();
+
+    KijiRowData result = kijiTableReader.get(table.getEntityId(new String("x")), dataRequest);
+    assertTrue(result.containsColumn("family", "column"));
+
+    String res = result.getMostRecentValue("family", "column").toString();
+    assertEquals("1", res);
+    assertArrayEquals(table.getEntityId(new String("x")).getHBaseRowKey(),
+        result.getEntityId().getHBaseRowKey());
+
+    ResourceUtils.closeOrLog(kijiTableReader);
+    ResourceUtils.closeOrLog(kijiTableWriter);
+    ResourceUtils.releaseOrLog(table);
+    ResourceUtils.releaseOrLog(kiji);
+
+    try {
+      result.getEntityId().getComponents();
+    } catch (IllegalStateException ise) {
+      System.out.println("Expected exception " + ise);
+    }
+  }
+
+  @Test(expected=IllegalStateException.class)
+  public void testSuppressMaterializationComponentsException() {
+    RowKeyFormat2 format = makeSuppressMaterializationTestRKF();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(new Integer(1));
+    inputRowKey.add(new Long(7L));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+    formattedEntityId.getComponents();
+  }
+
+  @Test(expected=IllegalStateException.class)
+  public void testSuppressMaterializationComponentsByIndexException() {
+    RowKeyFormat2 format = makeSuppressMaterializationTestRKF();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(new Integer(1));
+    inputRowKey.add(new Long(7L));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+    formattedEntityId.getComponentByIndex(0);
+  }
+
+  @Test(expected=IllegalStateException.class)
+  public void testSuppressMaterializationComponentsExceptionFromHbaseKey() {
+    RowKeyFormat2 format = makeSuppressMaterializationTestRKF();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(new Integer(1));
+    inputRowKey.add(new Long(7L));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+    byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
+    FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+
+    testEntityId.getComponents();
+  }
+
+  @Test(expected=IllegalStateException.class)
+  public void testSuppressMaterializationComponentsByIndexExceptionFromHbaseKey() {
+    RowKeyFormat2 format = makeSuppressMaterializationTestRKF();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+    inputRowKey.add(new Integer(1));
+    inputRowKey.add(new Long(7L));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+    byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
+    FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+
+    testEntityId.getComponentByIndex(0);
+  }
+
   @Test(expected=EntityIdException.class)
   public void testBadNullFormattedEntityId() {
     RowKeyFormat2 format = makeRowKeyFormat();
@@ -616,5 +782,28 @@ public class TestFormattedEntityId {
     List<Object> inputRowKey = new ArrayList<Object>();
 
     FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+  }
+
+  @Test(expected=IllegalStateException.class)
+  public void testHashedEntityId() {
+    RowKeyFormat2 format = makeHashedRowKeyFormat();
+
+    List<Object> inputRowKey = new ArrayList<Object>();
+    inputRowKey.add(new String("one"));
+
+    FormattedEntityId formattedEntityId = FormattedEntityId.getEntityId(inputRowKey, format);
+    byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
+    assertNotNull(hbaseRowKey);
+    System.out.println("Hbase Key is: ");
+    for (byte b: hbaseRowKey) {
+      System.out.format("%x ", b);
+    }
+    System.out.format("\n");
+
+    // since we have suppressed materialization, we dont have valid components anymore.
+    FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+    assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
+
+    List<Object> actuals = testEntityId.getComponents();
   }
 }
