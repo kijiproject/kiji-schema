@@ -48,7 +48,7 @@ import org.kiji.schema.util.ResourceUtils;
 /**
  * Command-line tool to explore kiji table data like the 'scan' command of a unix shell.
  *
- * List all data in the info:email and derived:domain columns of a table foo up to max-rows:
+ * List all data in the columns 'info:email' and 'derived:domain' of a table 'foo' up to max-rows:
  * <pre>
  *   kiji scan \
  *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
@@ -56,7 +56,7 @@ import org.kiji.schema.util.ResourceUtils;
  *       --max-rows=10
  * </pre>
  *
- * List all data in table foo form row start-row to limit-row:
+ * List all data in table 'foo' form row start-row to limit-row:
  * <pre>
  *   kiji scan \
  *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
@@ -69,9 +69,11 @@ import org.kiji.schema.util.ResourceUtils;
 public final class ScanTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(ScanTool.class);
 
-  @Flag(name="kiji", usage="KijiURI of the object to list contents from.")
-  private String mURIFlag = KConstants.DEFAULT_URI;
+  // TODO: make this a URI with columns, optionally.
+  @Flag(name="kiji", usage="URI of the object to list contents from.")
+  private String mURIFlag;
 
+  // TODO: remove this flag and make use above URI to specify columns.
   @Flag(name="columns", usage="Comma-delimited columns (family:qualifier), or * for all columns")
   private String mColumns = "*";
 
