@@ -142,10 +142,10 @@ public final class ScanTool extends BaseTool {
       Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns)
       throws IOException {
     getPrintStream().println("Scanning kiji table: " + mURI);
-    KijiScannerOptions scannerOptions =
+    final KijiScannerOptions scannerOptions =
         new KijiScannerOptions()
-        .setStartRow(startRow)
-        .setStopRow(limitRow);
+            .setStartRow(startRow)
+            .setStopRow(limitRow);
     KijiRowScanner scanner = reader.getScanner(request, scannerOptions);
     try {
       int rowsOutput = 0;
