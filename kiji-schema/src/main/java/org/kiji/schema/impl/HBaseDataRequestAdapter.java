@@ -45,8 +45,8 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.hbase.HBaseScanOptions;
-import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 
 /**
