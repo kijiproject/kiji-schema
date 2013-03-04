@@ -25,7 +25,7 @@ import org.kiji.annotations.Inheritance;
 /**
  * <p>
  *   Interface for modifying a Kiji table.  Wraps methods from KijiPutter, KijiIncrementer,
- *   and KijiDeleter.  To get a KijiTableWriter call
+ *   and KijiDeleter.  To get a KijiTableWriter, call
  *   {@link org.kiji.schema.KijiTable#openTableWriter()}.
  * </p>
  */
