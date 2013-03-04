@@ -44,7 +44,7 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 /**
  * Command-line tool to get a row from a kiji table.
  *
- * In row bar, display info:email and derived:domain columns of table foo:
+ * In row 'bar', display 'info:email' and 'derived:domain' columns of table 'foo':
  * <pre>
  *   kiji get \
  *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
@@ -56,9 +56,12 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 public final class GetTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(GetTool.class);
 
-  @Flag(name="kiji", usage="KijiURI of the object to list contents from.")
-  private String mURIFlag = KConstants.DEFAULT_URI;
+  // TODO: make this a URI with columns, optionally.
+  @Flag(name="kiji", usage="URI of the table to dump a row from")
+  private String mURIFlag;
 
+
+  // TODO: remove this flag and make use above URI to specify columns.
   @Flag(name="columns", usage="Comma-delimited columns (family:qualifier), or * for all columns")
   private String mColumns = "*";
 
