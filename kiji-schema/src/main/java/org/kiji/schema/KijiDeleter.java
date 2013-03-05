@@ -45,7 +45,7 @@ import org.kiji.annotations.Inheritance;
  *
  * This interface is bundled within the {@link KijiTableWriter} interface.
  */
-@ApiAudience.Framework
+@ApiAudience.Public
 @Inheritance.Sealed
 public interface KijiDeleter extends Closeable, Flushable {
   /**

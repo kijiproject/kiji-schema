@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-241. Change audience annotations of KijiDeleter,
+      KijiIncrementer, and KijiPutter to @ApiAudience.Public.
   * SCHEMA-139. KijiTableKeyValueDatabase methods return the true
       instance type, not the interface type.
   * SCHEMA-248. Kiji.modifyTableLayout() no longer takes a table name.
