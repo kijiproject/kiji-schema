@@ -39,9 +39,7 @@ import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
-import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.impl.HashedEntityId;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -98,8 +96,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
-    EntityId meId = HashedEntityId.getEntityId(
-        Bytes.toBytes("me"), (RowKeyFormat) mTableLayout.getKeysFormat());
+    EntityId meId = mTable.getEntityId("me");
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     final NavigableMap<Long, CharSequence> resultMap = myRowData.getValues("info", "name");
     assertEquals("The number of returned values is incorrect:", 2, resultMap.size());

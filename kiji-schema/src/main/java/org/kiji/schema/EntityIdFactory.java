@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import java.util.List;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -30,11 +31,8 @@ import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
-import org.kiji.schema.impl.FormattedEntityId;
-import org.kiji.schema.impl.HashPrefixedEntityId;
-import org.kiji.schema.impl.HashedEntityId;
-import org.kiji.schema.impl.RawEntityId;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.util.ByteArrayFormatter;
 
 /**
  * Factory class for creating EntityIds.
@@ -44,6 +42,11 @@ import org.kiji.schema.layout.KijiTableLayout;
 @ApiAudience.Framework
 @Inheritance.Sealed
 public abstract class EntityIdFactory {
+
+  /**
+   * Creates a new instance. Package-private constructor.
+   */
+  EntityIdFactory() { }
 
   /**
    * Creates an entity ID factory for the specified row key format.
@@ -360,4 +363,52 @@ public abstract class EntityIdFactory {
    * @return a new EntityId with the specified HBase row key.
    */
   public abstract EntityId getEntityIdFromHBaseRowKey(byte[] hbaseRowKey);
+
+  /**
+   * Formats an entity ID for pretty-printing. (e.g., to the console.)
+   *
+   * @param eid Entity ID to format.
+   * @return the formatted entity ID as a String to print for the user.
+   */
+  public static String formatEntityId(EntityId eid) {
+    final String formattedHBaseRowKey =
+        String.format("hbase='%s'", Bytes.toStringBinary(eid.getHBaseRowKey()));
+
+    if (eid instanceof FormattedEntityId) {
+      final FormattedEntityId feid = (FormattedEntityId) eid;
+      final List<String> components = Lists.newArrayList();
+      try {
+        for (Object component: feid.getComponents()) {
+          if (component instanceof Number) {
+            components.add(component.toString());
+          } else {
+            if (component == null) {
+              components.add("null");
+            } else {
+              components.add(String.format("'%s'", component));
+            }
+          }
+        }
+        return String.format("\"[%s]\"", Joiner.on(",").join(components));
+      } catch (IllegalStateException ise) {
+        // getComponents() threw IllegalStateException because key materialization was false.
+        return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(eid.getHBaseRowKey()));
+      }
+    } else if (eid instanceof HashedEntityId) {
+      final HashedEntityId hashed = (HashedEntityId) eid;
+      final byte[] kijiRowKey = hashed.getKijiRowKey();
+      if (kijiRowKey != null) {
+        return String.format("'%s'", Bytes.toString(kijiRowKey));
+      }
+      return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(eid.getHBaseRowKey()));
+
+    } else if (eid instanceof HBaseEntityId) {
+      return formattedHBaseRowKey;
+
+    } else if (eid instanceof HashPrefixedEntityId) {
+      return String.format("'%s'",
+          Bytes.toString(((HashPrefixedEntityId) eid).getKijiRowKey()));
+    }
+    return formattedHBaseRowKey;
+  }
 }

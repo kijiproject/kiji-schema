@@ -49,7 +49,6 @@ import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.HBaseKijiTable;
-import org.kiji.schema.impl.RawEntityId;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.layout.impl.CellSpec;

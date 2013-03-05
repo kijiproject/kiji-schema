@@ -27,11 +27,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.net.URLCodec;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -55,10 +53,6 @@ import org.kiji.schema.KijiRowData;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaType;
-import org.kiji.schema.impl.FormattedEntityId;
-import org.kiji.schema.impl.HBaseEntityId;
-import org.kiji.schema.impl.HashPrefixedEntityId;
-import org.kiji.schema.impl.HashedEntityId;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
@@ -556,40 +550,6 @@ public final class ToolUtils {
    * @return the formatted entity ID as a String to print on the console.
    */
   public static String formatEntityId(EntityId eid) {
-    final String formattedHBaseRowKey =
-        String.format("hbase='%s'", Bytes.toStringBinary(eid.getHBaseRowKey()));
-
-    if (eid instanceof FormattedEntityId) {
-      final FormattedEntityId feid = (FormattedEntityId) eid;
-      final List<String> components = Lists.newArrayList();
-      for (Object component: feid.getComponents()) {
-        if (component instanceof Number) {
-          components.add(component.toString());
-        } else {
-          if (component == null) {
-            components.add("null");
-          } else {
-            components.add(String.format("'%s'", component));
-          }
-        }
-      }
-      return String.format("\"[%s]\"", Joiner.on(",").join(components));
-
-    } else if (eid instanceof HashedEntityId) {
-      final HashedEntityId hashed = (HashedEntityId) eid;
-      final byte[] kijiRowKey = hashed.getKijiRowKey();
-      if (kijiRowKey != null) {
-        return String.format("'%s'", Bytes.toString(kijiRowKey));
-      }
-      return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(eid.getHBaseRowKey()));
-
-    } else if (eid instanceof HBaseEntityId) {
-      return formattedHBaseRowKey;
-
-    } else if (eid instanceof HashPrefixedEntityId) {
-      return String.format("'%s'",
-          Bytes.toString(((HashPrefixedEntityId) eid).getKijiRowKey()));
-    }
-    return formattedHBaseRowKey;
+    return EntityIdFactory.formatEntityId(eid);
   }
 }

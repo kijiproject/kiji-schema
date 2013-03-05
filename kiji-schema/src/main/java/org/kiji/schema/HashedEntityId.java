@@ -17,25 +17,23 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.EntityId;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.util.Hasher;
 
-/** Implements the hash-prefixed row key format. */
+/** Implements the hashed row key format. */
 @ApiAudience.Private
-public final class HashPrefixedEntityId extends EntityId {
+final class HashedEntityId extends EntityId {
   /** Kiji row key bytes. May be null if we only know the HBase row key. */
   private final byte[] mKijiRowKey;
 
@@ -43,47 +41,38 @@ public final class HashPrefixedEntityId extends EntityId {
   private final byte[] mHBaseRowKey;
 
   /**
-   * Creates a HashPrefixedEntityId from the specified Kiji row key.
+   * Creates a HashedEntityId from the specified Kiji row key.
    *
    * @param kijiRowKey Kiji row key.
    * @param format Row key hashing specification.
-   * @return a new HashPrefixedEntityId with the specified Kiji row key.
+   * @return a new HashedEntityId with the specified Kiji row key.
    */
-  public static HashPrefixedEntityId getEntityId(byte[] kijiRowKey, RowKeyFormat format) {
+  static HashedEntityId getEntityId(byte[] kijiRowKey, RowKeyFormat format) {
     Preconditions.checkNotNull(format);
-    Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH_PREFIX);
-    final byte[] hash = hashKijiRowKey(format, kijiRowKey);
-    final int hashSize = format.getHashSize();
-    // Prepend a subset of the hash to the Kiji row key:
-    final byte[] hbaseRowKey = new byte[hashSize + kijiRowKey.length];
-    System.arraycopy(hash, 0, hbaseRowKey, 0, hashSize);
-    System.arraycopy(kijiRowKey, 0, hbaseRowKey, hashSize, kijiRowKey.length);
-    return new HashPrefixedEntityId(kijiRowKey, hbaseRowKey, format);
+    final byte[] hbaseRowKey = hashKijiRowKey(format, kijiRowKey);
+    return new HashedEntityId(kijiRowKey, hbaseRowKey, format);
   }
 
   /**
-   * Creates a HashPrefixedEntityId from the specified HBase row key.
+   * Creates a HashedEntityId from the specified HBase row key.
    *
    * @param hbaseRowKey HBase row key.
    * @param format Row key hashing specification.
    * @return a new HashedEntityId with the specified HBase row key.
    */
-  public static HashPrefixedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat format) {
-    Preconditions.checkNotNull(format);
-    Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH_PREFIX);
-    final int hashSize = format.getHashSize();
-    final byte[] kijiRowKey =
-        Arrays.copyOfRange(hbaseRowKey, hashSize, hbaseRowKey.length);
-    // TODO Paranoid expensive check : rehash the kiji key and compare with the hash?
-    return new HashPrefixedEntityId(kijiRowKey, hbaseRowKey, format);
+  static HashedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat format) {
+    // TODO Validate that hbaseRowKey has the characteristics of the hashing method
+    // specified in format
+    // kijiRowKey is null: there is no (known) way to reverse the hash
+    return new HashedEntityId(null, hbaseRowKey, format);
   }
 
   /**
    * Hashes a Kiji row key.
    *
    * @param format Hashing specification.
-   * @param kijiRowKey Kiji row key.
-   * @return a hash of the Kiji row key.
+   * @param kijiRowKey Kiji row key to hash.
+   * @return a hash of the given Kiji row key.
    */
   public static byte[] hashKijiRowKey(RowKeyFormat format, byte[] kijiRowKey) {
     // TODO refactor into hash factories:
@@ -95,16 +84,16 @@ public final class HashPrefixedEntityId extends EntityId {
   }
 
   /**
-   * Creates a new HashPrefixedEntityId.
+   * Creates a new HashedEntityId.
    *
    * @param kijiRowKey Kiji row key.
    * @param hbaseRowKey HBase row key.
    * @param format Row key hashing specification.
    */
-  private HashPrefixedEntityId(byte[] kijiRowKey, byte[] hbaseRowKey, RowKeyFormat format) {
+  private HashedEntityId(byte[] kijiRowKey, byte[] hbaseRowKey, RowKeyFormat format) {
     Preconditions.checkNotNull(format);
-    Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH_PREFIX);
-    mKijiRowKey = Preconditions.checkNotNull(kijiRowKey);
+    Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH);
+    mKijiRowKey = kijiRowKey;
     mHBaseRowKey = Preconditions.checkNotNull(hbaseRowKey);
   }
 
@@ -114,18 +103,23 @@ public final class HashPrefixedEntityId extends EntityId {
     return mHBaseRowKey;
   }
 
-  /** {@inheritDoc} **/
+  /** {@inheritDoc} */
   @Override
   @SuppressWarnings("unchecked")
   public <T> T getComponentByIndex(int idx) {
     Preconditions.checkArgument(idx == 0);
-    return (T) mKijiRowKey.clone();
+    if (null != mKijiRowKey) {
+      return (T)mKijiRowKey.clone();
+    }
+    return null;
   }
 
-  /** {@inheritDoc} **/
+  /** {@inheritDoc} */
   @Override
   public List<Object> getComponents() {
-    return Lists.<Object>newArrayList(mKijiRowKey);
+    List<Object> resp = new ArrayList<Object>();
+    resp.add(mKijiRowKey);
+    return resp;
   }
 
   /** @return the Kiji row key, or null. */
@@ -136,8 +130,8 @@ public final class HashPrefixedEntityId extends EntityId {
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    return Objects.toStringHelper(HashPrefixedEntityId.class)
-        .add("kiji", Bytes.toStringBinary(mKijiRowKey))
+    return Objects.toStringHelper(HashedEntityId.class)
+        .add("kiji", (mKijiRowKey == null) ? "<unknown>" : Bytes.toStringBinary(mKijiRowKey))
         .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
         .toString();
   }

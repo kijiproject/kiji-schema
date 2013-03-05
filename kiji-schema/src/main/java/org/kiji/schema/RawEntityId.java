@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +27,6 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.EntityId;
 
 /** Implements the raw row key format. */
 @ApiAudience.Private
@@ -38,7 +37,7 @@ public final class RawEntityId extends EntityId {
    * @param kijiRowKey Kiji row key.
    * @return a new RawEntityId with the specified Kiji row key.
    */
-  public static RawEntityId getEntityId(byte[] kijiRowKey) {
+  static RawEntityId getEntityId(byte[] kijiRowKey) {
     return new RawEntityId(kijiRowKey);
   }
 
@@ -48,7 +47,7 @@ public final class RawEntityId extends EntityId {
    * @param hbaseRowKey HBase row key.
    * @return a new RawEntityId with the specified HBase row key.
    */
-  public static RawEntityId fromHBaseRowKey(byte[] hbaseRowKey) {
+  static RawEntityId fromHBaseRowKey(byte[] hbaseRowKey) {
     return new RawEntityId(hbaseRowKey);
   }
 

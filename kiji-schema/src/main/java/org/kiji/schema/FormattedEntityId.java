@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 import java.io.ByteArrayOutputStream;
 import java.io.UnsupportedEncodingException;
@@ -35,8 +35,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.EntityId;
-import org.kiji.schema.EntityIdException;
 import org.kiji.schema.avro.ComponentType;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat2;
@@ -113,7 +111,7 @@ import org.kiji.schema.util.Hasher;
  * </code>
  */
 @ApiAudience.Private
-public final class FormattedEntityId extends EntityId {
+final class FormattedEntityId extends EntityId {
   // HBase row key bytes. The encoded components of the row key
   // potentially including a hash prefix, as specified in the row key format.
   private byte[] mHBaseRowKey;
@@ -147,7 +145,7 @@ public final class FormattedEntityId extends EntityId {
    * @param format The RowKeyFormat2 as specified in the layout file.
    * @return a new FormattedEntityId with the specified Kiji row key.
    */
-  public static FormattedEntityId getEntityId(List<Object> kijiRowKey,
+  static FormattedEntityId getEntityId(List<Object> kijiRowKey,
       RowKeyFormat2 format) {
     Preconditions.checkNotNull(format);
     Preconditions.checkNotNull(kijiRowKey);
@@ -208,7 +206,7 @@ public final class FormattedEntityId extends EntityId {
    * @param format The RowKeyFormat as specified in the layout file.
    * @return a new FormattedEntityId with the specified HBase row key.
    */
-  public static FormattedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat2 format) {
+  static FormattedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat2 format) {
     Preconditions.checkNotNull(format);
     Preconditions.checkNotNull(hbaseRowKey);
     // we modify the hbaseRowKey in the makeKijiRowKey code for integer encoding, so we make
