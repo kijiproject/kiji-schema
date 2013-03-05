@@ -25,6 +25,7 @@ import java.util.AbstractMap.SimpleEntry;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
+import org.kiji.schema.avro.SystemTableBackup;
 import org.kiji.schema.util.CloseableIterable;
 import org.kiji.schema.util.ProtocolVersion;
 
@@ -84,4 +85,24 @@ public abstract class KijiSystemTable implements Closeable {
    */
   public abstract CloseableIterable<SimpleEntry<String, byte[]>> getAll()
       throws IOException;
+
+  /**
+   * Returns key/value backup information in a form that can be directly written to a MetadataBackup
+   * record. To read more about the avro try that has been specified to store this info, see
+   * Layout.avdl
+   *
+   * @throws IOException in case of an error.
+   * @return A SystemTableBackup record containing a list of key/value pairs.
+   */
+  public abstract SystemTableBackup toBackup() throws IOException;
+
+  /**
+   * Restores the system table entries from the specified backup record.
+   *
+   * @param backup The system table entries from a MetadataBackup record.  Each consists of a
+   *    key/value pair and a timestamp.
+   * @throws IOException in case of an error.
+   */
+  public abstract void fromBackup(SystemTableBackup backup) throws IOException;
+
 }

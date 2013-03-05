@@ -36,6 +36,8 @@ import org.kiji.schema.avro.MetaTableBackup;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.SchemaTableBackup;
 import org.kiji.schema.avro.SchemaTableEntry;
+import org.kiji.schema.avro.SystemTableBackup;
+import org.kiji.schema.avro.SystemTableEntry;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -52,11 +54,14 @@ public class TestKijiMetaTable extends KijiClientTest {
   public void testBackupAndRestore() throws InterruptedException, IOException {
     final Kiji kiji = getKiji();
     final KijiMetaTable metaTable = kiji.getMetaTable();
+    final KijiSchemaTable schemaTable = kiji.getSchemaTable();
+    final KijiSystemTable systemTable = kiji.getSystemTable();
 
     final TableLayoutDesc layout = KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST);
     final KijiTableLayout updatedLayout = metaTable.updateTableLayout("foo", layout);
     metaTable.putValue("foo", "key", BYTES_VALUE);
 
+    systemTable.putValue("testKey", Bytes.toBytes("testValue"));
     assertEquals(1, metaTable.listTables().size());
     assertEquals(1, metaTable.tableSet().size());
     assertEquals(1, metaTable.keySet("foo").size());
@@ -71,10 +76,14 @@ public class TestKijiMetaTable extends KijiClientTest {
         .setSchemaTable(
             SchemaTableBackup.newBuilder()
                 .setEntries(new ArrayList<SchemaTableEntry>())
+                .build())
+        .setSystemTable(
+            SystemTableBackup.newBuilder()
+                .setEntries(new ArrayList<SystemTableEntry>())
                 .build());
-    final MetaTableBackup metadata = metaTable.toBackup();
-    backupBuilder.setMetaTable(metadata);
-    backupBuilder.setSchemaTable(kiji.getSchemaTable().toBackup());
+    backupBuilder.setMetaTable(metaTable.toBackup());
+    backupBuilder.setSchemaTable(schemaTable.toBackup());
+    backupBuilder.setSystemTable(systemTable.toBackup());
     final MetadataBackup backup = backupBuilder.build();
 
     // make sure metadata key-value pairs are what we expect.
@@ -106,6 +115,10 @@ public class TestKijiMetaTable extends KijiClientTest {
     assertEquals("The number of keys for the foo table is incorrect.", 1,
         newMetaTable.keySet("foo").size());
     assertArrayEquals(BYTES_VALUE, newMetaTable.getValue("foo", "key"));
+
+    systemTable.putValue("testKey", Bytes.toBytes("changedValue"));
+    restorer.restoreSystemVars(backup, kiji);
+    assertEquals("testValue", Bytes.toString(systemTable.getValue("testKey")));
   }
 
 }

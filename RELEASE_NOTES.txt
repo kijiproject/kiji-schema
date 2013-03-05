@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-223. Adds backup methods to KijiSystemTable and SystemTable 
+      backup to MetadataTool.
   * SCHEMA-244. Kiji.createTable() now takes a TableLayoutDesc object.
       The Kiji.createTable() methods that take a KijiTableLayout object
       are deprecated.

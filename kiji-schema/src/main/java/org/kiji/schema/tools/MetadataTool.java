@@ -64,6 +64,9 @@ public class MetadataTool extends BaseTool {
   @Flag(name = "schemas", usage = "Restore schema definitions")
   private boolean mSchemas = false;
 
+  @Flag(name = "system-variables", usage = "Restore system table variables")
+  private boolean mSystemVars = false;
+
   /** URI of the Kiji instance. */
   private KijiURI mKijiURI = null;
 
@@ -89,10 +92,11 @@ public class MetadataTool extends BaseTool {
    * Sets flags to indicate which aspects of a backup to restore.
    */
   private void initRestoreOps() {
-    if (!mAllTables && !mSchemas) {
+    if (!mAllTables && !mSchemas && !mSystemVars) {
       // User has selected no restore operations. Restore everything.
       mAllTables = true;
       mSchemas = true;
+      mSystemVars = true;
     }
   }
 
@@ -143,6 +147,11 @@ public class MetadataTool extends BaseTool {
       if (mSchemas) {
         LOG.debug("Restoring schemas...");
         mRestorer.restoreSchemas(backup, kiji);
+      }
+
+      if (mSystemVars) {
+        LOG.debug("Restoring system variables...");
+        mRestorer.restoreSystemVars(backup, kiji);
       }
     } finally {
       fileReader.close();
