@@ -35,10 +35,12 @@ import org.kiji.schema.avro.KeyValueBackup;
  * functionality of KijiTableKeyValueDatabase via the {@link org.kiji.schema.KijiMetaTable}.
  * </p>
  *
+ * @param <T> the type of the class implementing KijiTableKeyValueDatabase, to be used
+ *     in putValue()'s return type.
  */
 @ApiAudience.Framework
 @Inheritance.Sealed
-public interface KijiTableKeyValueDatabase {
+public interface KijiTableKeyValueDatabase<T extends KijiTableKeyValueDatabase<T>> {
 
   /**
    * Associates the specified value with the specified table and key
@@ -50,7 +52,7 @@ public interface KijiTableKeyValueDatabase {
    * @return The same KijiTableKeyValueDatabase.
    * @throws IOException If there is an error.
    */
-  KijiTableKeyValueDatabase putValue(String table, String key, byte[] value) throws
+  T putValue(String table, String key, byte[] value) throws
     IOException;
 
   /**

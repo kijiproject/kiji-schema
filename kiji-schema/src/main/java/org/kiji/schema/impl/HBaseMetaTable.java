@@ -70,7 +70,7 @@ public class HBaseMetaTable extends KijiMetaTable {
 
   private final KijiTableLayoutDatabase mTableLayoutDatabase;
   /** The table we delegate storing per table meta data, in the form of key value pairs.  */
-  private final KijiTableKeyValueDatabase mTableKeyValueDatabase;
+  private final KijiTableKeyValueDatabase<?> mTableKeyValueDatabase;
   // TODO: Make KijiTableLayoutDatabase thread-safe,
   //     so we can call HBaseMetaTable thread-safe, too.
 
@@ -210,9 +210,10 @@ public class HBaseMetaTable extends KijiMetaTable {
 
   /** {@inheritDoc} */
   @Override
-  public synchronized KijiTableKeyValueDatabase putValue(String table, String key, byte[] value)
+  public synchronized KijiMetaTable putValue(String table, String key, byte[] value)
     throws IOException {
-    return mTableKeyValueDatabase.putValue(table, key, value);
+    mTableKeyValueDatabase.putValue(table, key, value);
+    return this; // Don't expose the delegate object.
   }
 
   /** {@inheritDoc} */
