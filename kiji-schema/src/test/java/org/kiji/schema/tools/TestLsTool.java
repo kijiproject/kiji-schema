@@ -125,7 +125,7 @@ public class TestLsTool extends KijiClientTest {
     assertTrue(mToolOutputLines[0].startsWith("Listing tables in kiji instance:"));
 
     final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE);
-    kiji.createTable(layout.getName(), layout);
+    kiji.createTable(layout.getDesc());
 
     assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), "--kiji=" + kiji.getURI()));
     assertEquals(2, mToolOutputLines.length);
@@ -137,7 +137,7 @@ public class TestLsTool extends KijiClientTest {
   public void testScanTable() throws Exception {
     final Kiji kiji = getKiji();
     final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE);
-    kiji.createTable(layout.getName(), layout);
+    kiji.createTable(layout.getDesc());
     final KijiTable table = kiji.openTable(layout.getName());
     try {
       // Table is empty:

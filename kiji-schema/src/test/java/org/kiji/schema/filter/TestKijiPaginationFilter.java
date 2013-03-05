@@ -40,22 +40,21 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.impl.HashedEntityId;
-import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 
 public class TestKijiPaginationFilter extends KijiClientTest {
   private KijiTableReader mReader;
-  private KijiTableLayout mTableLayout;
+  private TableLayoutDesc mTableLayout;
   private KijiTable mTable;
 
   @Before
   public void setupInstance() throws Exception {
     final Kiji kiji = getKiji();
-    mTableLayout =
-        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST));
-    kiji.createTable("user", mTableLayout);
+    mTableLayout = KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST);
+    kiji.createTable(mTableLayout);
 
     mTable = kiji.openTable("user");
     mReader = mTable.openTableReader();
@@ -100,7 +99,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
     EntityId meId = HashedEntityId.getEntityId(
-        Bytes.toBytes("me"), (RowKeyFormat)mTableLayout.getDesc().getKeysFormat());
+        Bytes.toBytes("me"), (RowKeyFormat) mTableLayout.getKeysFormat());
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     final NavigableMap<Long, CharSequence> resultMap = myRowData.getValues("info", "name");
     assertEquals("The number of returned values is incorrect:", 2, resultMap.size());

@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.filter.RegexQualifierColumnFilter;
 import org.kiji.schema.filter.TestKijiPaginationFilter;
 import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
-import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -44,15 +43,12 @@ public class TestKijiPager extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestKijiPaginationFilter.class);
   /** Objects to reinstantiate between tests. */
   private KijiTableReader mReader;
-  private KijiTableLayout mTableLayout;
   private KijiTable mTable;
 
   @Before
   public void setupInstance() throws Exception {
     final Kiji kiji = getKiji();
-    mTableLayout =
-        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST));
-    kiji.createTable("user", mTableLayout);
+    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST));
 
     mTable = kiji.openTable("user");
     mReader = mTable.openTableReader();

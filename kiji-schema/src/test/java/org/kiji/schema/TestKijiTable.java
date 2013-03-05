@@ -36,8 +36,7 @@ public class TestKijiTable extends KijiClientTest {
     final int numRegions = 3;
 
     final Kiji mKiji = getKiji();
-    mKiji.createTable(
-        "user", KijiTableLayouts.getTableLayout(KijiTableLayouts.FULL_FEATURED), numRegions);
+    mKiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED), numRegions);
     final KijiTable mTable = mKiji.openTable("user");
 
     // Check there are the right number of regions.

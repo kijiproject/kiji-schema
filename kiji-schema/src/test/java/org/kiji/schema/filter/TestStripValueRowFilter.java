@@ -38,7 +38,6 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiTableWriter;
-import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -49,9 +48,7 @@ public class TestStripValueRowFilter extends KijiClientTest {
   public void testStripValuesFilter() throws Exception {
     final Kiji kiji = getKiji();
 
-    final KijiTableLayout fooLayout =
-        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
-    kiji.createTable("foo", fooLayout);
+    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
 
     final KijiTable table = kiji.openTable("foo");
     {

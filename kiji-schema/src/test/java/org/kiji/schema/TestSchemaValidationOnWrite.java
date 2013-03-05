@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.avro.Edge;
 import org.kiji.schema.avro.Node;
 import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -41,8 +40,7 @@ public class TestSchemaValidationOnWrite extends KijiClientTest {
     final Kiji kiji = getKiji();
 
     final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED);
-    final KijiTableLayout tableLayout = KijiTableLayout.newLayout(layoutDesc);
-    kiji.createTable("user", tableLayout);
+    kiji.createTable(layoutDesc);
 
     final KijiTable table = kiji.openTable("user");
     final KijiTableWriter writer = table.openTableWriter();

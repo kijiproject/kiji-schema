@@ -79,8 +79,7 @@ import org.kiji.schema.util.ReferenceCountable;
  *   Kiji instance:
  * </p>
  * <ul>
- *   <li>{@link #createTable(String, KijiTableLayout)} - creates a Kiji table with a specified
- *       layout.</li>
+ *   <li>{@link #createTable(TableLayoutDesc)} - creates a Kiji table with a specified layout.</li>
  *   <li>{@link #modifyTableLayout(String, TableLayoutDesc)} - updates a Kiji table with a new
  *       layout.</li>
  *   <li>{@link #deleteTable(String)} - removes a Kiji table from HBase.</li>
@@ -180,8 +179,19 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    * @param layout The initial layout of the table (with unassigned column ids).
    * @throws IOException on I/O error.
    * @throws KijiAlreadyExistsException if the table already exists.
+   * @deprecated Replaced by {@link #createTable(String, TableLayoutDesc)}
    */
+  @Deprecated
   void createTable(String name, KijiTableLayout layout) throws IOException;
+
+  /**
+   * Creates a Kiji table in an HBase instance.
+   *
+   * @param layout The initial layout of the table (with unassigned column ids).
+   * @throws IOException on I/O error.
+   * @throws KijiAlreadyExistsException if the table already exists.
+   */
+  void createTable(TableLayoutDesc layout) throws IOException;
 
   /**
    * Creates a Kiji table in an HBase instance.
@@ -193,8 +203,22 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    *     more than 1 and row key hashing on the table layout is disabled.
    * @throws IOException on I/O error.
    * @throws KijiAlreadyExistsException if the table already exists.
+   * @deprecated Replaced by {@link #createTable(String, TableLayoutDesc, int)}
    */
+  @Deprecated
   void createTable(String name, KijiTableLayout layout, int numRegions) throws IOException;
+
+  /**
+   * Creates a Kiji table in an HBase instance.
+   *
+   * @param layout The initial layout of the table (with unassigned column ids).
+   * @param numRegions The initial number of regions to create.
+   * @throws IllegalArgumentException If numRegions is non-positive, or if numRegions is
+   *     more than 1 and row key hashing on the table layout is disabled.
+   * @throws IOException on I/O error.
+   * @throws KijiAlreadyExistsException if the table already exists.
+   */
+  void createTable(TableLayoutDesc layout, int numRegions) throws IOException;
 
   /**
    * Creates a Kiji table in an HBase instance.
@@ -205,8 +229,21 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    *     + 1 regions created.  Pass null to specify the default single region.
    * @throws IOException on I/O error.
    * @throws KijiAlreadyExistsException if the table already exists.
+   * @deprecated Replaced by {@link #createTable(String, TableLayoutDesc, byte[][])}
    */
+  @Deprecated
   void createTable(String name, KijiTableLayout layout, byte[][] splitKeys) throws IOException;
+
+  /**
+   * Creates a Kiji table in an HBase instance.
+   *
+   * @param layout The initial layout of the table (with unassigned column ids).
+   * @param splitKeys The initial key boundaries between regions.  There will be splitKeys
+   *     + 1 regions created.  Pass null to specify the default single region.
+   * @throws IOException on I/O error.
+   * @throws KijiAlreadyExistsException if the table already exists.
+   */
+  void createTable(TableLayoutDesc layout, byte[][] splitKeys) throws IOException;
 
   /**
    * Deletes a Kiji table.  Removes it from HBase.

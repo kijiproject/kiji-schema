@@ -34,7 +34,7 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
   public void setupLayout() throws Exception {
     mTableLayout =
         KijiTableLayouts.getTableLayout(KijiTableLayouts.FULL_FEATURED);
-    getKiji().createTable(mTableLayout.getName(), mTableLayout);
+    getKiji().createTable(mTableLayout.getDesc());
   }
 
   @Test

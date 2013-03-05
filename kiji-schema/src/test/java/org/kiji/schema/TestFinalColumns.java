@@ -27,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -40,8 +39,7 @@ public class TestFinalColumns extends KijiClientTest {
     final Kiji kiji = getKiji();
 
     final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.FINAL_COLUMN);
-    final KijiTableLayout tableLayout = KijiTableLayout.newLayout(layoutDesc);
-    kiji.createTable("table", tableLayout);
+    kiji.createTable(layoutDesc);
 
     final KijiTable table = kiji.openTable("table");
     final KijiTableWriter writer = table.openTableWriter();
