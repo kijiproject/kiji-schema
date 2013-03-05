@@ -300,8 +300,8 @@ public class HBaseMetaTable extends KijiMetaTable {
       Preconditions.checkState(tableName.equals(tableBackup.getName()), String.format(
           "Inconsistent table backup: entry '%s' does not match table name '%s'.",
           tableName, tableBackup.getName()));
-      layoutsFromBackup(tableName, tableBackup.getTableLayoutsBackup());
-      keyValuesFromBackup(tableName, tableBackup.getKeyValueBackup());
+      restoreLayoutsFromBackup(tableName, tableBackup.getTableLayoutsBackup());
+      restoreKeyValuesFromBackup(tableName, tableBackup.getKeyValueBackup());
     }
     mTable.flushCommits();
     LOG.info("Flushing commits to table '{}'", Bytes.toString(mTable.getTableName()));
@@ -334,15 +334,15 @@ public class HBaseMetaTable extends KijiMetaTable {
 
   /** {@inheritDoc} */
   @Override
-  public void keyValuesFromBackup(String table, KeyValueBackup tableBackup) throws
+  public void restoreKeyValuesFromBackup(String table, KeyValueBackup tableBackup) throws
       IOException {
-    mTableKeyValueDatabase.keyValuesFromBackup(table, tableBackup);
+    mTableKeyValueDatabase.restoreKeyValuesFromBackup(table, tableBackup);
   }
 
   @Override
-  public void layoutsFromBackup(String tableName, TableLayoutsBackup tableBackup) throws
+  public void restoreLayoutsFromBackup(String tableName, TableLayoutsBackup tableBackup) throws
       IOException {
-    mTableLayoutDatabase.layoutsFromBackup(tableName, tableBackup);
+    mTableLayoutDatabase.restoreLayoutsFromBackup(tableName, tableBackup);
   }
 
 }

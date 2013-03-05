@@ -29,10 +29,12 @@ import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.KeyValueBackup;
 
 /**
- * A database of per table key-value pairs. This is used to store metadata (in the form of
- * key-value pairs) on a per table basis.
+ * <p>
+ * A database of per table key-value pairs. This is used to store meta data (in the form of
+ * key-value pairs) on a per table basis. It is strongly recommended that you access the
+ * functionality of KijiTableKeyValueDatabase via the {@link org.kiji.schema.KijiMetaTable}.
+ * </p>
  *
- * @see KijiMetaTable
  */
 @ApiAudience.Framework
 @Inheritance.Sealed
@@ -40,7 +42,6 @@ public interface KijiTableKeyValueDatabase {
 
   /**
    * Associates the specified value with the specified table and key
-
    * The specified key and value are associated with each other in the map for the specified table.
    *
    * @param table The kiji table that this key-value pair will be set with.
@@ -133,11 +134,13 @@ public interface KijiTableKeyValueDatabase {
   KeyValueBackup keyValuesToBackup(String table) throws IOException;
 
    /**
-   * Restores all table's key value history from a backup.
+   * Restores all table's key-value history from a backup. This is equivalent to explicitly setting
+   * the timestamp associated with a key-value pair to the timestamp originally recorded for that
+   * layout.
    *
    * @param table The name of the kiji table.
    * @param keyValueBackup The KV backup information of the table to restore.
    * @throws IOException on I/O error.
    */
-  void keyValuesFromBackup(String table, KeyValueBackup keyValueBackup) throws IOException;
+  void restoreKeyValuesFromBackup(String table, KeyValueBackup keyValueBackup) throws IOException;
 }

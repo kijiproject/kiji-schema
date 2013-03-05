@@ -29,7 +29,11 @@ import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.avro.TableLayoutsBackup;
 
 /**
- * A database of Kiji table layouts.
+ * <p>
+ * A database of Kiji table layouts. It is strongly recommended that you access the
+ * functionality of KijiTableKeyValueDatabase via the {@link KijiMetaTable}.
+ * </p>
+ *
  */
 @ApiAudience.Framework
 @Inheritance.Sealed
@@ -111,12 +115,13 @@ public interface KijiTableLayoutDatabase {
   TableLayoutsBackup layoutsToBackup(String table) throws IOException;
 
   /**
-   * Restores a table layout history from a backup.
+   * Restores a table layout history from a backup. This is equivalent to explicitly setting the
+   * timestamp associated with a layout to the timestamp originally recorded for that layout.
    *
    * @param tableName The name of the table to restore layouts for.
    * @param tableBackup Table layout backup to restore from.
    * @throws IOException on I/O error.
    */
-  void layoutsFromBackup(String tableName, TableLayoutsBackup tableBackup) throws
+  void restoreLayoutsFromBackup(String tableName, TableLayoutsBackup tableBackup) throws
     IOException;
 }

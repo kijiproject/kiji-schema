@@ -128,8 +128,8 @@ public class MetadataRestorer {
 
     LOG.info("Restoring layout history for table '%s' (%d layouts).", tableName,
         tableBackup.getTableLayoutsBackup().getLayouts().size());
-    metaTable.layoutsFromBackup(tableName, tableBackup.getTableLayoutsBackup());
-    metaTable.keyValuesFromBackup(tableName, tableBackup.getKeyValueBackup());
+    metaTable.restoreLayoutsFromBackup(tableName, tableBackup.getTableLayoutsBackup());
+    metaTable.restoreKeyValuesFromBackup(tableName, tableBackup.getKeyValueBackup());
   }
 
 

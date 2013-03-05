@@ -230,7 +230,7 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
 
   /** {@inheritDoc} */
   @Override
-  public void keyValuesFromBackup(final String tableName, KeyValueBackup keyValueBackup)
+  public void restoreKeyValuesFromBackup(final String tableName, KeyValueBackup keyValueBackup)
       throws IOException {
     LOG.debug(String.format("Restoring '%s' key-value(s) from backup for table '%s'.",
         keyValueBackup.getKeyValues().size(), tableName));
