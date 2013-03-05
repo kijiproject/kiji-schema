@@ -150,4 +150,14 @@ public class TestSchemaTableTool extends KijiClientTest {
         "--interactive=false"
         );
   }
+
+  @Test(expected=IllegalArgumentException.class)
+  public void testNoInstance() throws Exception {
+    runTool(new SchemaTableTool(),
+        "--get-schema=-2",
+        "--output=./SchemaTableTest",
+        "--interactive=false"
+        );
+  }
+
 }
