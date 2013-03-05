@@ -27,7 +27,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +51,7 @@ import org.kiji.schema.util.ResourceUtils;
  * <h2>Building a KijiTablePool:</h2>
  * KijiTablePools are constructed using a {@link KijiTablePoolBuilder}.
  * <pre><code>
- *   KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory)
+ *   KijiTablePool pool = KijiTablePool.newBuilder(mKiji)
  *       .withIdleTimeout(10)
  *       .withIdlePollPeriod(1)
  *       .build();
@@ -63,10 +65,12 @@ import org.kiji.schema.util.ResourceUtils;
  * <pre><code>
  *   KijiTable fooTable = pool.get("foo");
  *   // Do some magic.
- *   foo.release();
+ *   fooTable.release();
  * </code></pre>
  *
- * <p>This class is thread-safe, but the individual KijiTables that are returned from it are not.</p>
+ * <p>
+ *   This class is thread-safe, but the individual KijiTables that are returned from it are not.
+ * </p>
  */
 @ApiAudience.Public
 public final class KijiTablePool implements Closeable {
@@ -128,10 +132,11 @@ public final class KijiTablePool implements Closeable {
     /**
      * Creates a KijiTablePoolBuilder with for the specified Kiji instance and the default options.
      *
-     * @param kijiTableFactory TableFactory to be used for constructing tables for the table pool.
+     * @param kiji TableFactory to be used for constructing tables for the table pool.  A kiji
+     *             instance is the normal source for this.
      */
-    KijiTablePoolBuilder(KijiTableFactory kijiTableFactory) {
-      mKijiTableFactory = kijiTableFactory;
+    KijiTablePoolBuilder(KijiTableFactory kiji) {
+      mKijiTableFactory = kiji;
       mMinSize = DEFAULT_MIN_POOL_SIZE;
       mMaxSize = DEFAULT_MAX_POOL_SIZE;
       mIdleTimeout = DEFAULT_IDLE_TIMEOUT;
@@ -204,8 +209,7 @@ public final class KijiTablePool implements Closeable {
      * @return KijiTablePool with the specified parameters.
      */
     public KijiTablePool build() {
-      return new KijiTablePool(mKijiTableFactory, mMinSize, mMaxSize,
-          mIdleTimeout, mIdlePollPeriod, mClock);
+      return new KijiTablePool(this);
     }
   }
 
@@ -223,25 +227,16 @@ public final class KijiTablePool implements Closeable {
    * Constructs a new pool of Kiji tables with the specified parameters.  This class should not
    * be instantiated outside of the builder {@link KijiTablePoolBuilder}.
    *
-   * @param tableFactory factory for creating new opened tables.
-   * @param minSize minimum number of connections to keep per table.
-   * @param maxSize maximum number of connections to keep per table.
-   * @param idleTimeout amount of time a connection may be idle before being removed from the pool.
-   * @param idlePollPeriod amount of time between sweeps of the pool for removing idle connections.
-   * @param clock the clock to be used for idle cleanup operations.
+   * @param builder KijiTablePoolBuilder which contains the configuration parameters to build
+   *                this KijiTablePool with.
    */
-  private KijiTablePool(KijiTableFactory tableFactory,
-                       int minSize,
-                       int maxSize,
-                       long idleTimeout,
-                       long idlePollPeriod,
-                       Clock clock) {
-    mTableFactory = tableFactory;
-    mClock = clock;
-    mMinSize = minSize;
-    mMaxSize = maxSize;
-    mIdleTimeout = idleTimeout;
-    mIdlePollPeriod = idlePollPeriod;
+  private KijiTablePool(KijiTablePoolBuilder builder) {
+    mTableFactory = builder.mKijiTableFactory;
+    mClock = builder.mClock;
+    mMinSize = builder.mMinSize;
+    mMaxSize = builder.mMaxSize;
+    mIdleTimeout = builder.mIdleTimeout;
+    mIdlePollPeriod = builder.mIdlePollPeriod;
     mPoolCache = new HashMap<String, Pool>();
     mIsOpen = true;
   }
@@ -350,7 +345,7 @@ public final class KijiTablePool implements Closeable {
    * A pool of connections for a single table. Maintains a number of
    * connections in use, and a queue of available ones for re-use.
    */
-  private class Pool implements Closeable {
+  private final class Pool implements Closeable {
     private final Queue<Connection> mConnections;
     // The total pool size is the total number of tables in use and available connections.
     private int mPoolSize;
@@ -360,8 +355,9 @@ public final class KijiTablePool implements Closeable {
 
     /**
      * Constructor.
+     * @param tableName The name of the table that this pool is for.
      */
-    public Pool(String tableName) {
+    private Pool(String tableName) {
       mConnections = new ArrayDeque<Connection>();
       mPoolSize = 0;
       mTableName = tableName;
@@ -395,6 +391,10 @@ public final class KijiTablePool implements Closeable {
         return tableConnection;
       }
       LOG.debug("Cache hit for table {}", mTableName);
+      final int counter = availableConnection.mRetainCount.incrementAndGet();
+      Preconditions.checkState(counter == 1,
+          "Cannot get retained KijiTable %s: retain counter was %s.",
+          availableConnection.getURI(), counter);
       return availableConnection;
     }
 
@@ -464,6 +464,9 @@ public final class KijiTablePool implements Closeable {
     private long mLastAccessTime;
     private Pool mPool;
 
+    /** Internal retention count for wrapped pool connections. */
+    private AtomicInteger mRetainCount = new AtomicInteger(1);
+
     /**
      * Constructor.
      *
@@ -486,48 +489,88 @@ public final class KijiTablePool implements Closeable {
     }
 
     // Unwrapped methods to manage the lifecycle of KijiTables obtained from a KijiTablePool.
+
+    /** {@inheritDoc} */
+    @Override
+    @Deprecated
     public void close() throws IOException {
-      throw new UnsupportedOperationException("Could not close KijiTable managed by KijiTablePool.");
+      throw new UnsupportedOperationException("Cannot close KijiTable managed by KijiTablePool.");
     }
 
+    /**
+     * Allows clients to express interest in retaining KijiTables that are retrieved from the
+     * pool.  These semantics are not recommended, as this would be circumventing the features of
+     * the KijiTablePools.
+     *
+     * {@inheritDoc}
+     */
+    @Override
     public KijiTable retain() {
-      throw new UnsupportedOperationException("Could not retain KijiTable managed by KijiTablePool.");
+      LOG.warn("Retaining KijiTable obtained from a KijiTablePool is not recommended.");
+      final int counter = mRetainCount.incrementAndGet();
+      Preconditions.checkState(counter >= 2,
+          "Cannot retain a closed KijiTable %s: retain counter was %s.", getURI(), counter);
+      return this;
     }
 
+    /** {@inheritDoc} */
+    @Override
     public void release() throws IOException {
-      mLastAccessTime = mPool.getClock().getTime();
-      mPool.returnConnection(this);
+      final int counter = mRetainCount.decrementAndGet();
+      Preconditions.checkState(counter >= 0,
+          "Cannot release KijiTable %s that has been returned: retain counter is now %s.",
+          getURI(), counter);
+      if (counter == 0) {
+        mLastAccessTime = mPool.getClock().getTime();
+        mPool.returnConnection(this);
+      }
     }
 
     // Methods that use the wrapped KijiTable.
+    /** {@inheritDoc} */
+    @Override
     public Kiji getKiji() {
       return mTable.getKiji();
     }
 
+    /** {@inheritDoc} */
+    @Override
     public String getName() {
       return mTable.getName();
     }
 
+    /** {@inheritDoc} */
+    @Override
     public KijiURI getURI() {
       return mTable.getURI();
     }
 
+    /** {@inheritDoc} */
+    @Override
     public KijiTableLayout getLayout() {
       return mTable.getLayout();
     }
 
+    /** {@inheritDoc} */
+    @Override
     public EntityId getEntityId(Object... kijiRowKey) {
       return mTable.getEntityId(kijiRowKey);
     }
 
+    /** {@inheritDoc} */
+    @Override
     public KijiTableReader openTableReader() {
       return mTable.openTableReader();
     }
 
+    /** {@inheritDoc} */
+    @Override
     public KijiTableWriter openTableWriter() {
       return mTable.openTableWriter();
     }
 
+    /** {@inheritDoc} */
+    @Override
     public List<KijiRegion> getRegions() throws IOException {
       return mTable.getRegions();
     }

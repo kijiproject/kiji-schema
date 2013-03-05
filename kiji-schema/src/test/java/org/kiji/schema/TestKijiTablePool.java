@@ -65,10 +65,13 @@ public class TestKijiTablePool extends KijiClientTest {
 
     KijiTable foo1 = createMock(KijiTable.class);
     expect(foo1.getName()).andReturn("foo").anyTimes();
+    expect(foo1.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
     KijiTable foo2 = createMock(KijiTable.class);
     expect(foo2.getName()).andReturn("foo").anyTimes();
+    expect(foo2.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
     KijiTable bar1 = createMock(KijiTable.class);
     expect(bar1.getName()).andReturn("bar").anyTimes();
+    expect(bar1.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/bar").build()).anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo1);
     expect(mTableFactory.openTable("foo")).andReturn(foo2);
     expect(mTableFactory.openTable("bar")).andReturn(bar1);
@@ -106,6 +109,7 @@ public class TestKijiTablePool extends KijiClientTest {
 
     KijiTable foo = createMock(KijiTable.class);
     expect(foo.getName()).andReturn("foo").anyTimes();
+    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo);
 
     replay(foo);
@@ -125,6 +129,7 @@ public class TestKijiTablePool extends KijiClientTest {
 
     KijiTable foo = createMock(KijiTable.class);
     expect(foo.getName()).andReturn("foo").anyTimes();
+    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo);
 
     replay(foo);
@@ -146,6 +151,7 @@ public class TestKijiTablePool extends KijiClientTest {
 
     KijiTable foo = createMock(KijiTable.class);
     expect(foo.getName()).andReturn("foo").anyTimes();
+    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo).anyTimes();
 
     replay(foo);
@@ -164,10 +170,12 @@ public class TestKijiTablePool extends KijiClientTest {
 
     KijiTable foo1 = createMock(KijiTable.class);
     expect(foo1.getName()).andReturn("foo").anyTimes();
+    expect(foo1.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo1);
     ResourceUtils.releaseOrLog(foo1);
     KijiTable foo2 = createMock(KijiTable.class);
     expect(foo2.getName()).andReturn("foo").anyTimes();
+    expect(foo2.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo2);
     ResourceUtils.releaseOrLog(foo2);
 
@@ -202,26 +210,76 @@ public class TestKijiTablePool extends KijiClientTest {
     expect(mTableFactory.openTable("foo")).andReturn(foo);
 
     KijiTable fooTable = pool.get("foo");
+
     try {
       fooTable.close();
-      fail("Should've gotten an UnsupportedOperationException when trying to close a KijiTablePool table");
+      fail("Should've gotten an UnsupportedOperationException when trying to close a pool table.");
     } catch (UnsupportedOperationException uoe) {
-      assertEquals("Could not close KijiTable managed by KijiTablePool.", uoe.getMessage());
+      assertEquals("Cannot close KijiTable managed by KijiTablePool.", uoe.getMessage());
     }
   }
 
   @Test
-  public void testUnsupportedRetainOperation() throws IOException {
+  public void testRetainOperation() throws IOException {
     KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
+
     KijiTable foo = createMock(KijiTable.class);
+    expect(foo.getName()).andReturn("foo").anyTimes();
+    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo);
 
+    replay(foo);
+    replay(mTableFactory);
+
     KijiTable fooTable = pool.get("foo");
+    fooTable.retain();
+    fooTable.release(); // Corresponds to the retain
+    fooTable.release(); // It puts the table back in the pool.
+  }
+
+  @Test
+  public void testRetainAfterRelease() throws IOException {
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
+
+    KijiTable foo = createMock(KijiTable.class);
+    expect(foo.getName()).andReturn("foo").anyTimes();
+    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+    expect(mTableFactory.openTable("foo")).andReturn(foo);
+
+    replay(foo);
+    replay(mTableFactory);
+
+    KijiTable fooTable = pool.get("foo");
+    fooTable.release();
     try {
       fooTable.retain();
-      fail("Should've gotten an UnsupportedOperationException when trying to retain a KijiTablePool table");
-    } catch (UnsupportedOperationException uoe) {
-      assertEquals("Could not retain KijiTable managed by KijiTablePool.", uoe.getMessage());
+      fail("Should throw an IllegalStateException.");
+    } catch (IllegalStateException ise) {
+      assertTrue(ise.getMessage().endsWith("retain counter was 1."));
+    }
+  }
+
+  @Test
+  public void testTooManyReleases() throws IOException {
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
+
+    KijiTable foo = createMock(KijiTable.class);
+    expect(foo.getName()).andReturn("foo").anyTimes();
+    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+    expect(mTableFactory.openTable("foo")).andReturn(foo);
+
+    replay(foo);
+    replay(mTableFactory);
+
+    KijiTable fooTable = pool.get("foo");
+    fooTable.retain();
+    fooTable.release();
+    fooTable.release();
+    try {
+      fooTable.release();
+      fail("Should throw an IllegalStateException.");
+    } catch (IllegalStateException ise) {
+      assertTrue(ise.getMessage().endsWith("retain counter is now -1."));
     }
   }
 
