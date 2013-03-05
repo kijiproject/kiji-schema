@@ -31,6 +31,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.EntityId;
+import org.kiji.schema.HashedEntityId;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiDataRequest;
@@ -41,7 +42,6 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.impl.HashedEntityId;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 

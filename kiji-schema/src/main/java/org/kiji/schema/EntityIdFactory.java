@@ -30,10 +30,6 @@ import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
-import org.kiji.schema.impl.FormattedEntityId;
-import org.kiji.schema.impl.HashPrefixedEntityId;
-import org.kiji.schema.impl.HashedEntityId;
-import org.kiji.schema.impl.RawEntityId;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**

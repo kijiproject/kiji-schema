@@ -51,7 +51,7 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiURIException;
-import org.kiji.schema.impl.HBaseEntityId;
+import org.kiji.schema.HBaseEntityId;
 import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.util.ResourceUtils;

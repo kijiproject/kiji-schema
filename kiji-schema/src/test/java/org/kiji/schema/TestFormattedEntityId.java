@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -38,6 +38,7 @@ import org.junit.Test;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdException;
 import org.kiji.schema.EntityIdFactory;
+import org.kiji.schema.FormattedEntityId;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiDataRequest;

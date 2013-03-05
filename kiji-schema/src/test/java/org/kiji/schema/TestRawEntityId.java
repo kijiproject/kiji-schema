@@ -17,12 +17,14 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
+
+import org.kiji.schema.RawEntityId;
 
 /** Tests for RawEntityId. */
 public class TestRawEntityId {

@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,62 +27,72 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.EntityId;
 
-/**
- * Entity ID encapsulating an HBase row key. This literally
- * represents a byte[] containing an hbase row key.
- */
+/** Implements the raw row key format. */
 @ApiAudience.Private
-public final class HBaseEntityId extends EntityId {
-  private byte[] mHBaseRowKey;
-
+public final class RawEntityId extends EntityId {
   /**
-   * Creates an HBaseEntityId from the specified HBase row key.
+   * Creates a RawEntityId from the specified Kiji row key.
    *
-   * @param hbaseRowKey HBase row key.
+   * @param kijiRowKey Kiji row key.
+   * @return a new RawEntityId with the specified Kiji row key.
    */
-  private HBaseEntityId(byte[] hbaseRowKey) {
-    mHBaseRowKey = hbaseRowKey;
+  public static RawEntityId getEntityId(byte[] kijiRowKey) {
+    return new RawEntityId(kijiRowKey);
   }
 
   /**
-   * Creates a new entity id using the specified hbase row key.
+   * Creates a RawEntityId from the specified HBase row key.
    *
-   * @param hbaseRowKey that will back the new entity id.
-   * @return a new entity id that uses the specified HBase row key.
+   * @param hbaseRowKey HBase row key.
+   * @return a new RawEntityId with the specified HBase row key.
    */
-  public static HBaseEntityId fromHBaseRowKey(byte[] hbaseRowKey) {
-    return new HBaseEntityId(hbaseRowKey);
+  public static RawEntityId fromHBaseRowKey(byte[] hbaseRowKey) {
+    return new RawEntityId(hbaseRowKey);
+  }
+
+  /**
+   * Kiji row key bytes.
+   * This is also the HBase row key bytes, as the RAW format uses the identity transform.
+   */
+  private final byte[] mBytes;
+
+  /**
+   * Creates a raw entity ID.
+   *
+   * @param rowKey Kiji/HBase row key (both row keys are identical).
+   */
+  private RawEntityId(byte[] rowKey) {
+    mBytes = Preconditions.checkNotNull(rowKey);
   }
 
   /** {@inheritDoc} */
   @Override
   public byte[] getHBaseRowKey() {
-    return mHBaseRowKey;
+    return mBytes;
   }
 
-  /** {@inheritDoc} */
+  /** {@inheritDoc} **/
   @Override
   @SuppressWarnings("unchecked")
   public <T> T getComponentByIndex(int idx) {
     Preconditions.checkArgument(idx == 0);
-    return (T)mHBaseRowKey.clone();
+    return (T) mBytes.clone();
   }
 
-  /** {@inheritDoc} */
+  /** {@inheritDoc} **/
   @Override
   public List<Object> getComponents() {
     List<Object> resp = new ArrayList<Object>();
-    resp.add(mHBaseRowKey);
+    resp.add(mBytes);
     return resp;
   }
 
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    return Objects.toStringHelper(HBaseEntityId.class)
-        .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
+    return Objects.toStringHelper(RawEntityId.class)
+        .add("hbase", Bytes.toStringBinary(mBytes))
         .toString();
   }
 }
