@@ -38,7 +38,7 @@ import org.kiji.schema.util.ProtocolVersion;
  */
 @ApiAudience.Framework
 @Inheritance.Sealed
-public abstract class KijiSystemTable implements Closeable {
+public interface KijiSystemTable extends Closeable {
   /**
    * Gets the version of kiji installed.  This refers to the version of
    * the meta tables and other administrative kiji info installed, not
@@ -47,7 +47,7 @@ public abstract class KijiSystemTable implements Closeable {
    * @return the version string.
    * @throws IOException If there is an error.
    */
-  public abstract ProtocolVersion getDataVersion() throws IOException;
+  ProtocolVersion getDataVersion() throws IOException;
 
   /**
    * Sets the version of kiji installed.  This refers to the version of
@@ -57,16 +57,16 @@ public abstract class KijiSystemTable implements Closeable {
    * @param version the version string.
    * @throws IOException If there is an error.
    */
-  public abstract void setDataVersion(ProtocolVersion version) throws IOException;
+  void setDataVersion(ProtocolVersion version) throws IOException;
 
   /**
    * Gets the value associated with a property key.
    *
    * @param key The property key to look up.
-   * @return The value in the system table with the given key, or null if the key doesn't exist.
+   * @return The value in the system table with the given key, or null if the key is not found.
    * @throws IOException If there is an error.
    */
-  public abstract byte[] getValue(String key) throws IOException;
+  byte[] getValue(String key) throws IOException;
 
   /**
    * Sets a value for a property key, which creates it if it doesn't exist.
@@ -75,7 +75,7 @@ public abstract class KijiSystemTable implements Closeable {
    * @param value The value of the property.
    * @throws IOException If there is an error.
    */
-  public abstract void putValue(String key, byte[] value) throws IOException;
+  void putValue(String key, byte[] value) throws IOException;
 
   /**
    * Gets an iterator across all key value pairs in the table.
@@ -83,7 +83,7 @@ public abstract class KijiSystemTable implements Closeable {
    * @return an iterator of key, value pairs.
    * @throws IOException If there is an error.
    */
-  public abstract CloseableIterable<SimpleEntry<String, byte[]>> getAll()
+  CloseableIterable<SimpleEntry<String, byte[]>> getAll()
       throws IOException;
 
   /**
@@ -94,7 +94,7 @@ public abstract class KijiSystemTable implements Closeable {
    * @throws IOException in case of an error.
    * @return A SystemTableBackup record containing a list of key/value pairs.
    */
-  public abstract SystemTableBackup toBackup() throws IOException;
+  SystemTableBackup toBackup() throws IOException;
 
   /**
    * Restores the system table entries from the specified backup record.
@@ -103,6 +103,5 @@ public abstract class KijiSystemTable implements Closeable {
    *    key/value pair and a timestamp.
    * @throws IOException in case of an error.
    */
-  public abstract void fromBackup(SystemTableBackup backup) throws IOException;
-
+  void fromBackup(SystemTableBackup backup) throws IOException;
 }
