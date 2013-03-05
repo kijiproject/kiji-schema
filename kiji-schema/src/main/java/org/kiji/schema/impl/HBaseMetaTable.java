@@ -55,9 +55,12 @@ import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
  * store.
  */
 @ApiAudience.Private
-public class HBaseMetaTable extends KijiMetaTable {
+public class HBaseMetaTable implements KijiMetaTable {
 
   private static final Logger LOG = LoggerFactory.getLogger(HBaseMetaTable.class);
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger("cleanup" + HBaseMetaTable.class.getName());
+
   /** The HBase column family that will store table layout specific metadata. */
   private static final String LAYOUT_COLUMN_FAMILY = "layout";
   /** The HBase column family that will store user defined metadata. */
@@ -65,6 +68,9 @@ public class HBaseMetaTable extends KijiMetaTable {
 
   /**  The HBase table that stores Kiji metadata. */
   private final HTableInterface mTable;
+
+  /** Whether the table is open. */
+  private boolean mIsOpen;
 
   /** The layout table that we delegate the work of storing table layout metadata to. */
 
@@ -139,6 +145,7 @@ public class HBaseMetaTable extends KijiMetaTable {
    */
   public HBaseMetaTable(HTableInterface htable, KijiTableLayoutDatabase tableLayoutDatabase,
     KijiTableKeyValueDatabase tableKeyValueDatabase) {
+    mIsOpen = true;
     mTable = htable;
     mTableLayoutDatabase = tableLayoutDatabase;
     mTableKeyValueDatabase = tableKeyValueDatabase;
@@ -205,7 +212,21 @@ public class HBaseMetaTable extends KijiMetaTable {
   @Override
   public synchronized void close() throws IOException {
     mTable.close();
-    super.close();
+    if (!mIsOpen) {
+      LOG.warn("close() called on a KijiMetaTable that was already closed.");
+      return;
+    }
+    mIsOpen = false;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void finalize() throws Throwable {
+    if (mIsOpen) {
+      CLEANUP_LOG.warn("Closing KijiMetaTable in finalize(). You should close it explicitly");
+      close();
+    }
+    super.finalize();
   }
 
   /** {@inheritDoc} */
