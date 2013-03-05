@@ -372,13 +372,27 @@ public final class HBaseKiji implements Kiji {
   }
 
   /** {@inheritDoc} */
+  @Deprecated
   @Override
   public KijiTableLayout modifyTableLayout(String tableName, TableLayoutDesc update)
       throws IOException {
-    return modifyTableLayout(tableName, update, false, null);
+    if (!tableName.equals(update.getName())) {
+      throw new InvalidLayoutException(String.format(
+          "Name of table in descriptor '%s' does not match table name '%s'.",
+          update.getName(), tableName));
+    }
+
+    return modifyTableLayout(update);
   }
 
   /** {@inheritDoc} */
+  @Override
+  public KijiTableLayout modifyTableLayout(TableLayoutDesc update) throws IOException {
+    return modifyTableLayout(update, false, null);
+  }
+
+  /** {@inheritDoc} */
+  @Deprecated
   @Override
   public KijiTableLayout modifyTableLayout(
       String tableName,
@@ -386,22 +400,29 @@ public final class HBaseKiji implements Kiji {
       boolean dryRun,
       PrintStream printStream)
       throws IOException {
-
-    Preconditions.checkArgument((tableName != null) && !tableName.isEmpty());
-    Preconditions.checkNotNull(update);
-
-    if (dryRun && (null == printStream)) {
-      printStream = System.out;
-    }
-
     if (!tableName.equals(update.getName())) {
       throw new InvalidLayoutException(String.format(
           "Name of table in descriptor '%s' does not match table name '%s'.",
           update.getName(), tableName));
     }
 
+    return modifyTableLayout(update, dryRun, printStream);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiTableLayout modifyTableLayout(
+      TableLayoutDesc update, boolean dryRun, PrintStream printStream)
+      throws IOException {
+    Preconditions.checkNotNull(update);
+
+    if (dryRun && (null == printStream)) {
+      printStream = System.out;
+    }
+
     // Try to get the table layout first, which will throw a KijiTableNotFoundException if
     // there is no table.
+    final String tableName = update.getName();
     getMetaTable().getTableLayout(tableName);
 
     KijiTableLayout newLayout = null;

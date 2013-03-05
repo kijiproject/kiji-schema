@@ -58,8 +58,7 @@ public class TestKijiAdmin extends KijiClientTest {
 
     mLayoutDescUpdate.setReferenceLayout(getLayout("table").getDesc().getLayoutId());
 
-    final KijiTableLayout tableLayout =
-        getKiji().modifyTableLayout("table", mLayoutDescUpdate);
+    final KijiTableLayout tableLayout = getKiji().modifyTableLayout(mLayoutDescUpdate);
     assertEquals(tableLayout.getFamilies().size(), getLayout("table").getFamilies().size());
   }
 
@@ -72,18 +71,10 @@ public class TestKijiAdmin extends KijiClientTest {
     newTableLayoutDesc.getLocalityGroups().get(0).setMaxVersions(1);
     newTableLayoutDesc.setReferenceLayout(getLayout("table").getDesc().getLayoutId());
 
-    final KijiTableLayout newTableLayout =
-        getKiji().modifyTableLayout("table", newTableLayoutDesc);
+    final KijiTableLayout newTableLayout = getKiji().modifyTableLayout(newTableLayoutDesc);
     assertEquals(
         newTableLayout.getLocalityGroupMap().get("default").getDesc().getMaxVersions(),
         getLayout("table").getLocalityGroupMap().get("default").getDesc().getMaxVersions());
-  }
-
-  @Test(expected=IllegalArgumentException.class)
-  public void testSetTableLayoutEmpty() throws Exception {
-    final TableLayoutDesc tableLayoutDesc = new TableLayoutDesc();
-
-    getKiji().modifyTableLayout("", tableLayoutDesc);
   }
 
   @Test(expected=KijiTableNotFoundException.class)
@@ -101,6 +92,6 @@ public class TestKijiAdmin extends KijiClientTest {
   @Test(expected=KijiTableNotFoundException.class)
   public void testSetTableLayoutOnATableThatDoesNotExist() throws Exception {
     final TableLayoutDesc tableLayoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
-    getKiji().modifyTableLayout("table", tableLayoutDesc);
+    getKiji().modifyTableLayout(tableLayoutDesc);
   }
 }

@@ -178,7 +178,7 @@ public final class LayoutTool extends BaseTool {
     Preconditions.checkArgument(mTableURI.getTable().equals(layoutDesc.getName()),
         "Descriptor table name '%s' does not match URI %s.",
         layoutDesc.getName(), mTableURI);
-    kiji.modifyTableLayout(layoutDesc.getName(), layoutDesc, mDryRun, getPrintStream());
+    kiji.modifyTableLayout(layoutDesc, mDryRun, getPrintStream());
   }
 
   /**
