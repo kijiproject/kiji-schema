@@ -151,7 +151,7 @@ public final class CreateTableTool extends BaseTool {
     getPrintStream().println("Creating Kiji table " + mTableURI);
     if (mNumRegions >= 1) {
       // Create a table with an initial number of evenly split regions.
-      mKiji.createTable(tableName, tableLayout, mNumRegions);
+      mKiji.createTable(tableName, tableLayout.getDesc(), mNumRegions);
 
     } else if (!mSplitKeyFilePath.isEmpty()) {
       switch (KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat())) {
@@ -185,11 +185,12 @@ public final class CreateTableTool extends BaseTool {
       }
 
       // Create the table with the given split keys.
-      mKiji.createTable(tableName, tableLayout, splitKeys.toArray(new byte[splitKeys.size()][]));
+      mKiji.createTable(
+          tableName, tableLayout.getDesc(), splitKeys.toArray(new byte[splitKeys.size()][]));
 
     } else {
       // Create a table with a single initial region:
-      mKiji.createTable(tableName, tableLayout);
+      mKiji.createTable(tableName, tableLayout.getDesc());
     }
 
     return SUCCESS;
