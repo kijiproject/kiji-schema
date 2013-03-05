@@ -31,7 +31,6 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
-import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
@@ -161,25 +160,28 @@ public final class ScanTool extends BaseTool {
     return 0;
   }
 
-  @Override
-  protected void validateFlags() throws Exception {
-    if (mMaxRows < 0) {
-      throw new RuntimeException("--max-rows must be positive");
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void setup() throws Exception {
-    mURI = KijiURI.newBuilder(mURIFlag).build();
-  }
-
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
+
+    if (mMaxRows < 0) {
+      // TODO: Send this error to a future getErrorStream()
+      getPrintStream().printf("--max-rows must be positive");
+      return 1;
+    }
+    if (null == mURIFlag) {
+      // TODO: Send this error to a future getErrorStream()
+      getPrintStream().printf("--kiji must be specified");
+      return 1;
+    }
+
+    mURI = KijiURI.newBuilder(mURIFlag).build();
     if (null == mURI.getZookeeperQuorum() || null == mURI.getInstance()
         || null == mURI.getTable()) {
-      LOG.error("Specify an cluster, instance, and table with --kiji=kiji://zkhost/instance/table");
+      // TODO: Send this error to a future getErrorStream()
+
+      getPrintStream().printf("Specify a cluster, instance, and "
+          + "table with --kiji=kiji://zkhost/instance/table");
       return 1;
     }
 

@@ -81,8 +81,12 @@ public class TestScanTool extends KijiClientTest {
     final KijiURI hbaseURI = KijiURI.newBuilder(kiji.getURI()).withInstanceName(null).build();
 
     final ScanTool scan = new ScanTool();
-    // assertEquals(BaseTool.FAILURE, runTool(scan));
     assertEquals(BaseTool.FAILURE, runTool(scan, "--kiji=" + hbaseURI));
+    assertTrue(mToolOutputLines[0].startsWith("Specify a cluster"));
+    assertEquals(BaseTool.FAILURE, runTool(new ScanTool()));
+    assertTrue(mToolOutputLines[0].startsWith("--kiji must be specified"));
+    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(), "--max-rows=-1"));
+    assertTrue(mToolOutputLines[0].startsWith("--max-rows must be positive"));
   }
 
   @Test
