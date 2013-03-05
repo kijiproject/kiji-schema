@@ -63,7 +63,7 @@ public class IntegrationTestKijiTableWriterDeletes extends AbstractKijiIntegrati
 
     LOG.info("Creating test table.");
     final TableLayoutDesc layout = KijiTableLayouts.getLayout(KijiTableLayouts.DELETES_TEST);
-    mKiji.createTable(layout.getName(), layout);
+    mKiji.createTable(layout);
 
     LOG.info("Populating test table.");
     mTable = mKiji.openTable(layout.getName());

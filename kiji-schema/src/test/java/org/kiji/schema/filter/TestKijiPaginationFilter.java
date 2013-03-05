@@ -54,7 +54,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
   public void setupInstance() throws Exception {
     final Kiji kiji = getKiji();
     mTableLayout = KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST);
-    kiji.createTable("user", mTableLayout);
+    kiji.createTable(mTableLayout);
 
     mTable = kiji.openTable("user");
     mReader = mTable.openTableReader();

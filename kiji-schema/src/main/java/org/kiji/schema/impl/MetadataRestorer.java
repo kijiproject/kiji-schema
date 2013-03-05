@@ -119,7 +119,7 @@ public class MetadataRestorer {
     }
 
     try {
-      kiji.createTable(tableName, initialEntry.getLayout());
+      kiji.createTable(initialEntry.getLayout());
     } catch (KijiAlreadyExistsException kaee) {
       LOG.info("Table already exists in HBase. Continuing with restore operation.");
     }

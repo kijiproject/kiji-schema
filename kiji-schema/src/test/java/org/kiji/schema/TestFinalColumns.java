@@ -39,7 +39,7 @@ public class TestFinalColumns extends KijiClientTest {
     final Kiji kiji = getKiji();
 
     final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.FINAL_COLUMN);
-    kiji.createTable("table", layoutDesc);
+    kiji.createTable(layoutDesc);
 
     final KijiTable table = kiji.openTable("table");
     final KijiTableWriter writer = table.openTableWriter();

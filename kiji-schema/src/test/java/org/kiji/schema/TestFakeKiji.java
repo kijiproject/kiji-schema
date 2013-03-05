@@ -63,7 +63,7 @@ public class TestFakeKiji {
     {
       final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
       final KijiTableLayout tableLayout = KijiTableLayout.newLayout(layoutDesc);
-      kiji.createTable("table", layoutDesc);
+      kiji.createTable(layoutDesc);
     }
 
     final KijiTable table = kiji.openTable("table");

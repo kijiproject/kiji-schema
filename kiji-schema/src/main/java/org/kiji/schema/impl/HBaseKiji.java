@@ -276,14 +276,20 @@ public final class HBaseKiji implements Kiji {
   @Override
   public void createTable(String tableName, KijiTableLayout tableLayout)
       throws IOException {
-    createTable(tableName, tableLayout.getDesc());
+    if (!tableName.equals(tableLayout.getName())) {
+      throw new RuntimeException(String.format(
+          "Table name from layout descriptor '%s' does match table name '%s'.",
+          tableLayout.getName(), tableName));
+    }
+
+    createTable(tableLayout.getDesc());
   }
 
   /** {@inheritDoc} */
   @Override
-  public void createTable(String tableName, TableLayoutDesc tableLayout)
+  public void createTable(TableLayoutDesc tableLayout)
       throws IOException {
-    createTable(tableName, tableLayout, 1);
+    createTable(tableLayout, 1);
   }
 
   /** {@inheritDoc} */
@@ -291,12 +297,18 @@ public final class HBaseKiji implements Kiji {
   @Override
   public void createTable(String tableName, KijiTableLayout tableLayout, int numRegions)
       throws IOException {
-    createTable(tableName, tableLayout.getDesc(), numRegions);
+    if (!tableName.equals(tableLayout.getName())) {
+      throw new RuntimeException(String.format(
+          "Table name from layout descriptor '%s' does match table name '%s'.",
+          tableLayout.getName(), tableName));
+    }
+
+    createTable(tableLayout.getDesc(), numRegions);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void createTable(String tableName, TableLayoutDesc tableLayout, int numRegions)
+  public void createTable(TableLayoutDesc tableLayout, int numRegions)
       throws IOException {
     Preconditions.checkArgument((numRegions >= 1), "numRegions must be positive: " + numRegions);
     if (numRegions > 1) {
@@ -305,9 +317,9 @@ public final class HBaseKiji implements Kiji {
         throw new IllegalArgumentException(
             "May not use numRegions > 1 if row key hashing is disabled in the layout");
       }
-      createTable(tableName, tableLayout, KijiRowKeySplitter.get().getSplitKeys(numRegions));
+      createTable(tableLayout, KijiRowKeySplitter.get().getSplitKeys(numRegions));
     } else {
-      createTable(tableName, tableLayout, null);
+      createTable(tableLayout, null);
     }
   }
 
@@ -316,31 +328,30 @@ public final class HBaseKiji implements Kiji {
   @Override
   public void createTable(String tableName, KijiTableLayout tableLayout, byte[][] splitKeys)
       throws IOException {
-    createTable(tableName, tableLayout.getDesc(), splitKeys);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public void createTable(String tableName, TableLayoutDesc tableLayout, byte[][] splitKeys)
-      throws IOException {
-    // This will validate the layout and may throw an InvalidLayoutException.
-    final KijiTableLayout kijiTableLayout = KijiTableLayout.newLayout(tableLayout);
-
-    try {
-      getMetaTable().getTableLayout(tableName);
-      throw new RuntimeException("Table " + tableName + " already exists");
-    } catch (KijiTableNotFoundException e) {
-      // Good.
-    }
-
     if (!tableName.equals(tableLayout.getName())) {
       throw new RuntimeException(String.format(
           "Table name from layout descriptor '%s' does match table name '%s'.",
           tableLayout.getName(), tableName));
     }
 
+    createTable(tableLayout.getDesc(), splitKeys);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void createTable(TableLayoutDesc tableLayout, byte[][] splitKeys) throws IOException {
+    // This will validate the layout and may throw an InvalidLayoutException.
+    final KijiTableLayout kijiTableLayout = KijiTableLayout.newLayout(tableLayout);
+
+    try {
+      getMetaTable().getTableLayout(tableLayout.getName());
+      throw new RuntimeException("Table " + tableLayout.getName() + " already exists");
+    } catch (KijiTableNotFoundException e) {
+      // Good.
+    }
+
     LOG.debug("Adding layout to the Kiji meta table");
-    getMetaTable().updateTableLayout(tableName, tableLayout);
+    getMetaTable().updateTableLayout(tableLayout.getName(), tableLayout);
 
     LOG.debug("Creating table in HBase");
     try {
@@ -354,7 +365,7 @@ public final class HBaseKiji implements Kiji {
       }
     } catch (TableExistsException tee) {
       final KijiURI tableURI =
-          KijiURI.newBuilder(mURI).withTableName(tableName).build();
+          KijiURI.newBuilder(mURI).withTableName(tableLayout.getName()).build();
       throw new KijiAlreadyExistsException(String.format(
           "Kiji table '%s' already exists.", tableURI), tableURI);
     }
