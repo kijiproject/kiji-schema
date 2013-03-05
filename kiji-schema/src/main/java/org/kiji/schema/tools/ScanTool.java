@@ -182,7 +182,7 @@ public final class ScanTool extends BaseTool {
       // TODO: Send this error to a future getErrorStream()
 
       getPrintStream().printf("Specify a cluster, instance, and "
-          + "table with --kiji=kiji://zkhost/instance/table");
+          + "table with --kiji=kiji://zkhost/instance/table\n");
       return FAILURE;
     }
 
