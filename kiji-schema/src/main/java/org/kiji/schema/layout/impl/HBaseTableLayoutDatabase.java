@@ -367,7 +367,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
 
   /** {@inheritDoc} */
   @Override
-  public void layoutsFromBackup(String tableName, TableLayoutsBackup layoutBackup) throws
+  public void restoreLayoutsFromBackup(String tableName, TableLayoutsBackup layoutBackup) throws
       IOException {
     LOG.info(String.format("Restoring layout history for table '%s'.", tableName));
     for (TableLayoutBackupEntry lbe : layoutBackup.getLayouts()) {

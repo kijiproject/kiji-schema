@@ -30,9 +30,12 @@ import org.kiji.schema.avro.MetaTableBackup;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 
 /**
- * The kiji metadata table, which stores layouts and other user defined metadata on a per-table
+ * <p>
+ * The Kiji meta data table, which stores layouts and other user defined meta data on a per-table
  * basis.
  *
+ * Instantiated in KijiSchema via {@link org.kiji.schema.Kiji#getMetaTable()}
+ * </p>
  * @see KijiSchemaTable
  * @see KijiSystemTable
  */
@@ -42,8 +45,7 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
   KijiTableKeyValueDatabase {
 
   private static final Logger LOG = LoggerFactory.getLogger(KijiMetaTable.class);
-  // private static final Logger CLEANUP_LOG =
-  //     LoggerFactory.getLogger(KijiMetaTable.class.getName() + ".Cleanup");
+
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + KijiMetaTable.class.getName());
 
