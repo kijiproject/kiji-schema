@@ -26,7 +26,6 @@ import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
-import org.kiji.schema.HashedEntityId;
 import org.kiji.schema.avro.HashType;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;

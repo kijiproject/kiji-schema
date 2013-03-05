@@ -24,8 +24,6 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-import org.kiji.schema.RawEntityId;
-
 /** Tests for RawEntityId. */
 public class TestRawEntityId {
   @Test
