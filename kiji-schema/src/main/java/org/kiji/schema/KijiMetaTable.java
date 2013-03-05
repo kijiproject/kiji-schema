@@ -21,9 +21,6 @@ package org.kiji.schema;
 import java.io.Closeable;
 import java.io.IOException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.MetaTableBackup;
@@ -41,21 +38,8 @@ import org.kiji.schema.layout.KijiTableLayoutDatabase;
  */
 @ApiAudience.Framework
 @Inheritance.Sealed
-public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabase,
+public interface KijiMetaTable extends Closeable, KijiTableLayoutDatabase,
     KijiTableKeyValueDatabase<KijiMetaTable> {
-
-  private static final Logger LOG = LoggerFactory.getLogger(KijiMetaTable.class);
-
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + KijiMetaTable.class.getName());
-
-  /** Whether the table is open. */
-  private boolean mIsOpen;
-
-  /** Creates a new <code>KijiMetaTable</code> instance. */
-  protected KijiMetaTable() {
-    mIsOpen = true;
-  }
 
   /**
    * Remove all metadata, including layouts, for a particular table.
@@ -63,27 +47,11 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
    * @param table The name of the kiji table to delete.
    * @throws IOException If there is an error.
    */
-  public abstract void deleteTable(String table) throws IOException;
+  void deleteTable(String table) throws IOException;
 
   /** {@inheritDoc} */
   @Override
-  public void close() throws IOException {
-    if (!mIsOpen) {
-      LOG.warn("close() called on a KijiMetaTable that was already closed.");
-      return;
-    }
-    mIsOpen = false;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void finalize() throws Throwable {
-    if (mIsOpen) {
-      CLEANUP_LOG.warn("Closing KijiMetaTable in finalize(). You should close it explicitly");
-      close();
-    }
-    super.finalize();
-  }
+  void close() throws IOException;
 
   /**
    * Returns metadata backup information in a form that can be directly written to a MetadataBackup
@@ -93,7 +61,7 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
    * @throws IOException If there is an error.
    * @return A map from table names to TableBackup records.
    */
-  public abstract MetaTableBackup toBackup() throws IOException;
+  MetaTableBackup toBackup() throws IOException;
 
   /**
    * Restores metadata from a backup record. This consists of table layouts, schemas, and user
@@ -102,5 +70,5 @@ public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabas
    * @param backup A map from table name to table backup record.
    * @throws IOException on I/O error.
    */
-  public abstract void fromBackup(MetaTableBackup backup) throws IOException;
+  void fromBackup(MetaTableBackup backup) throws IOException;
 }
