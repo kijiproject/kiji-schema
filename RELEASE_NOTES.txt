@@ -3,6 +3,9 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-241. Change audience annotations of KijiDeleter,
+      KijiIncrementer, and KijiPutter. Clients need to be
+      familiar with the methods of these interfaces.
   * SCHEMA-242. Enforce constraint of no non-hashed components
       in a FORMATTED row key with SuppressKeyMaterialization=true.
   * SCHEMA-141. Improved KijiTablePool API.

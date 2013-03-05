@@ -43,7 +43,7 @@ import org.kiji.annotations.Inheritance;
  *
  * This interface is not used alone but is bundled within {@link KijiTableWriter}.
  */
-@ApiAudience.Framework
+@ApiAudience.Public
 @Inheritance.Sealed
 public interface KijiIncrementer extends Closeable, Flushable {
   /**
