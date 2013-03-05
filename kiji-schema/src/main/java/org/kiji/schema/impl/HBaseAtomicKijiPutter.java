@@ -38,8 +38,8 @@ import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.ColumnNameTranslator;
 import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 /**
  * HBase implementation of AtomicKijiPutter.
