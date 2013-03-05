@@ -121,4 +121,38 @@ public class TestKijiMetaTable extends KijiClientTest {
     assertEquals("testValue", Bytes.toString(systemTable.getValue("testKey")));
   }
 
+  @Test
+  public void testSameMetaTableOnPut() throws InterruptedException, IOException {
+    final Kiji kiji = getKiji();
+    final KijiMetaTable metaTable = kiji.getMetaTable();
+
+    final KijiTableKeyValueDatabase outDb = metaTable.putValue("foo", "key", BYTES_VALUE);
+    assertEquals("putValue() exposes the delegate", metaTable, outDb);
+  }
+
+  @Test
+  public void testChainedMetaTable() throws InterruptedException, IOException {
+    // Do an operation on the metatable, then set a key with putValue().
+    // Use the KijiMetaTable obj returned by this to modify the underlying db.
+    // Verify that the original KijiMetaTable sees the change.
+    final Kiji kiji = getKiji();
+    final KijiMetaTable metaTable = kiji.getMetaTable();
+
+    final TableLayoutDesc layout = KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST);
+    final KijiTableLayout updatedLayout = metaTable.updateTableLayout("foo", layout);
+
+    final KijiMetaTable outMeta = metaTable.putValue("foo", "key", BYTES_VALUE);
+    assertEquals("putValue() exposes the delegate", metaTable, outMeta);
+
+    outMeta.deleteTable("foo");
+
+    assertTrue(!outMeta.tableSet().contains("foo"));
+    assertEquals(0, outMeta.listTables().size());
+    assertEquals(0, outMeta.tableSet().size());
+
+    assertTrue(!metaTable.tableSet().contains("foo"));
+    assertEquals(0, metaTable.listTables().size());
+    assertEquals(0, metaTable.tableSet().size());
+  }
+
 }

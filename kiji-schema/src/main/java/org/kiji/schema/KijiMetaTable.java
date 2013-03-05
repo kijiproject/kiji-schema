@@ -42,7 +42,7 @@ import org.kiji.schema.layout.KijiTableLayoutDatabase;
 @ApiAudience.Framework
 @Inheritance.Sealed
 public abstract class KijiMetaTable implements Closeable, KijiTableLayoutDatabase,
-  KijiTableKeyValueDatabase {
+    KijiTableKeyValueDatabase<KijiMetaTable> {
 
   private static final Logger LOG = LoggerFactory.getLogger(KijiMetaTable.class);
 

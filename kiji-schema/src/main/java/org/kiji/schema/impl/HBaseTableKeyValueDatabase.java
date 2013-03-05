@@ -56,7 +56,9 @@ import org.kiji.schema.util.ResourceUtils;
  * a column family of an HTable.
  */
 @ApiAudience.Private
-public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
+public class HBaseTableKeyValueDatabase
+    implements KijiTableKeyValueDatabase<HBaseTableKeyValueDatabase> {
+
   public static final Logger LOG = LoggerFactory.getLogger(HBaseTableKeyValueDatabase.class);
 
   /** The name of the column family used to store the key-value database.*/
@@ -143,7 +145,7 @@ public class HBaseTableKeyValueDatabase implements KijiTableKeyValueDatabase {
 
   /** {@inheritDoc} */
   @Override
-  public KijiTableKeyValueDatabase putValue(String table, String key, byte[] value)
+  public HBaseTableKeyValueDatabase putValue(String table, String key, byte[] value)
       throws IOException {
     Put put = new Put(Bytes.toBytes(table));
     put.add(mFamilyBytes, Bytes.toBytes(key), value);
