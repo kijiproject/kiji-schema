@@ -166,12 +166,12 @@ public final class ScanTool extends BaseTool {
 
     if (mMaxRows < 0) {
       // TODO: Send this error to a future getErrorStream()
-      getPrintStream().printf("--max-rows must be positive");
+      getPrintStream().printf("--max-rows must be positive, got %d\n", mMaxRows);
       return FAILURE;
     }
     if (null == mURIFlag) {
       // TODO: Send this error to a future getErrorStream()
-      getPrintStream().printf("--kiji must be specified");
+      getPrintStream().printf("--kiji must be specified, got %s\n", mURIFlag);
       return FAILURE;
     }
 
