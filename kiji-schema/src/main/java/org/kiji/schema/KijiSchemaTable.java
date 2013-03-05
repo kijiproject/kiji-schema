@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import java.io.Closeable;
+import java.io.Flushable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
@@ -44,7 +45,7 @@ import org.kiji.schema.util.Hasher;
  */
 @ApiAudience.Framework
 @Inheritance.Sealed
-public abstract class KijiSchemaTable implements Closeable {
+public interface KijiSchemaTable extends Flushable, Closeable {
   /**
    * Looks up a schema ID given an Avro schema object.
    *
@@ -54,7 +55,7 @@ public abstract class KijiSchemaTable implements Closeable {
    * @return The schema ID.
    * @throws IOException on I/O error.
    */
-  public abstract long getOrCreateSchemaId(Schema schema) throws IOException;
+  long getOrCreateSchemaId(Schema schema) throws IOException;
 
   /**
    * Looks up a schema hash given an Avro schema object.
@@ -65,17 +66,15 @@ public abstract class KijiSchemaTable implements Closeable {
    * @return The schema hash.
    * @throws IOException on I/O error.
    */
-  public abstract BytesKey getOrCreateSchemaHash(Schema schema) throws IOException;
+  BytesKey getOrCreateSchemaHash(Schema schema) throws IOException;
 
   /**
    * Computes a schema hash.
    *
-   * @param schema Avro schema to compute a hash for.
-   * @return Schema hash.
+   * @param schema The Avro schema to hash.
+   * @return The hash of the schema
    */
-  public BytesKey getSchemaHash(Schema schema) {
-    return mHashCache.getHash(schema);
-  }
+  BytesKey getSchemaHash(Schema schema);
 
   /**
    * Looks up a schema given an ID.
@@ -84,7 +83,7 @@ public abstract class KijiSchemaTable implements Closeable {
    * @return Avro schema, or null if the schema ID is unknown.
    * @throws IOException on I/O error.
    */
-  public abstract Schema getSchema(long schemaId) throws IOException;
+  Schema getSchema(long schemaId) throws IOException;
 
   /**
    * Looks up a schema given a hash.
@@ -93,7 +92,7 @@ public abstract class KijiSchemaTable implements Closeable {
    * @return Avro schema, or null if the schema hash is unknown.
    * @throws IOException on I/O error.
    */
-  public abstract Schema getSchema(BytesKey schemaHash) throws IOException;
+  Schema getSchema(BytesKey schemaHash) throws IOException;
 
   /** Association between a schema and its ID. */
   public static class SchemaEntry {
@@ -164,18 +163,6 @@ public abstract class KijiSchemaTable implements Closeable {
   }
 
   /**
-   * Computes a hash of the specified Avro schema.
-   *
-   * Kiji currently uses MD5 sums (128 bits) of the schema JSON representation.
-   *
-   * @param schema Avro schema to compute a hash of.
-   * @return Hash code as an array of bytes (16 bytes).
-   */
-  public static final byte[] hashSchema(Schema schema) {
-    return Hasher.hash(schema.toString());
-  }
-
-  /**
    * Cache providing an efficient mapping from Avro schema object to the schema hash.
    *
    * Computing the hash code of a schema is expensive as it serializes the Avro schema object
@@ -191,6 +178,18 @@ public abstract class KijiSchemaTable implements Closeable {
      */
     private final Map<Schema, BytesKey> mCache =
         Collections.synchronizedMap(new WeakIdentityHashMap<Schema, BytesKey>());
+
+    /**
+     * Computes a hash of the specified Avro schema.
+     *
+     * Kiji currently uses MD5 sums (128 bits) of the schema JSON representation.
+     *
+     * @param schema Avro schema to compute a hash of.
+     * @return Hash code as an array of bytes (16 bytes).
+     */
+    public static final byte[] hashSchema(Schema schema) {
+      return Hasher.hash(schema.toString());
+    }
 
     /**
      * Hashes an Avro schema.
@@ -209,26 +208,6 @@ public abstract class KijiSchemaTable implements Closeable {
     }
   }
 
-  /** Schema hash cache. Not shared across multiple schema tables. */
-  private final SchemaHashCache mHashCache = new SchemaHashCache();
-
-  /**
-   * Commits any pending additions to the schema table.
-   *
-   * Default implementation is blank as flushing is not generally a vital operation
-   *
-   * @throws IOException on I/O error.
-   */
-  public void flush() throws IOException {};
-
-  /**
-   * Flushes and closes the KijiSchemaTable.  No other methods may be called after this.
-   *
-   * @throws IOException on I/O error.
-   */
-  @Override
-  public abstract void close() throws IOException;
-
   /**
    * Returns schema backup information in a form that can be directly written to a MetadataBackup
    * record. To read more about the avro type that has been specified to store this info, see
@@ -237,7 +216,7 @@ public abstract class KijiSchemaTable implements Closeable {
    * @throws IOException on I/O error.
    * @return A list of schema table entries.
    */
-  public abstract SchemaTableBackup toBackup() throws IOException;
+  SchemaTableBackup toBackup() throws IOException;
 
   /**
    * Restores the schema entries from the specified backup record.
@@ -246,5 +225,5 @@ public abstract class KijiSchemaTable implements Closeable {
    *     definition, schema id, and schema hash.
    * @throws IOException on I/O error.
    */
-  public abstract void fromBackup(SchemaTableBackup backup) throws IOException;
+  void fromBackup(SchemaTableBackup backup) throws IOException;
 }

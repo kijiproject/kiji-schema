@@ -93,7 +93,7 @@ import org.kiji.schema.util.ResourceUtils;
  * </p>
  */
 @ApiAudience.Private
-public class HBaseSchemaTable extends KijiSchemaTable {
+public class HBaseSchemaTable implements KijiSchemaTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseSchemaTable.class);
   // private static final Logger CLEANUP_LOG =
   //     LoggerFactory.getLogger(HBaseSchemaTable.class.getName() + ".Cleanup");
@@ -128,6 +128,9 @@ public class HBaseSchemaTable extends KijiSchemaTable {
 
   /** Maps schema IDs to schema entries. */
   private final Map<Long, SchemaEntry> mSchemaIdMap = new HashMap<Long, SchemaEntry>();
+
+  /** Schema hash cache. */
+  private final SchemaHashCache mHashCache = new KijiSchemaTable.SchemaHashCache();
 
   /** Whether this schema table is open. */
   private boolean mIsOpen = false;
@@ -215,6 +218,12 @@ public class HBaseSchemaTable extends KijiSchemaTable {
   /** Avro writer for a schema entry. */
   private static final DatumWriter<SchemaTableEntry> SCHEMA_ENTRY_WRITER =
       new SpecificDatumWriter<SchemaTableEntry>(SchemaTableEntry.SCHEMA$);
+
+  /** {@inheritDoc} */
+  @Override
+  public BytesKey getSchemaHash(Schema schema) {
+    return mHashCache.getHash(schema);
+  }
 
   /**
    * Decodes a binary-encoded Avro schema entry.
