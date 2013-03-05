@@ -167,12 +167,12 @@ public final class ScanTool extends BaseTool {
     if (mMaxRows < 0) {
       // TODO: Send this error to a future getErrorStream()
       getPrintStream().printf("--max-rows must be positive");
-      return 1;
+      return FAILURE;
     }
     if (null == mURIFlag) {
       // TODO: Send this error to a future getErrorStream()
       getPrintStream().printf("--kiji must be specified");
-      return 1;
+      return FAILURE;
     }
 
     mURI = KijiURI.newBuilder(mURIFlag).build();
@@ -182,7 +182,7 @@ public final class ScanTool extends BaseTool {
 
       getPrintStream().printf("Specify a cluster, instance, and "
           + "table with --kiji=kiji://zkhost/instance/table");
-      return 1;
+      return FAILURE;
     }
 
     final Kiji kiji = Kiji.Factory.open(mURI);
