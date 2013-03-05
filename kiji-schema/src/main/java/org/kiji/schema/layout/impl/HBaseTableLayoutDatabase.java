@@ -315,15 +315,21 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
         .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES)
         .setMaxVersions(1);
 
-    final ResultScanner resultScanner = mTable.getScanner(scan);
+    ResultScanner resultScanner = null;
+    try {
+      resultScanner = mTable.getScanner(scan);
 
-    for (Result result : resultScanner) {
-      if (tableName.equals(Bytes.toString(result.getRow()))) {
-        retval = true;
-        break;
+      for (Result result : resultScanner) {
+        if (tableName.equals(Bytes.toString(result.getRow()))) {
+          retval = true;
+          break;
+        }
+      }
+    } finally {
+      if (null != resultScanner) {
+        resultScanner.close();
       }
     }
-    resultScanner.close();
     return retval;
   }
 
