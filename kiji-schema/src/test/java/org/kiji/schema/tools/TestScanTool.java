@@ -80,8 +80,7 @@ public class TestScanTool extends KijiClientTest {
     final Kiji kiji = getKiji();
     final KijiURI hbaseURI = KijiURI.newBuilder(kiji.getURI()).withInstanceName(null).build();
 
-    final ScanTool scan = new ScanTool();
-    assertEquals(BaseTool.FAILURE, runTool(scan, "--kiji=" + hbaseURI));
+    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(), "--kiji=" + hbaseURI));
     assertTrue(mToolOutputLines[0].startsWith("Specify a cluster"));
     assertEquals(BaseTool.FAILURE, runTool(new ScanTool()));
     assertTrue(mToolOutputLines[0].startsWith("--kiji must be specified"));

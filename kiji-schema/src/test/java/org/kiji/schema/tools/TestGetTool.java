@@ -80,9 +80,12 @@ public class TestGetTool extends KijiClientTest {
     final Kiji kiji = getKiji();
     final KijiURI hbaseURI = KijiURI.newBuilder(kiji.getURI()).withInstanceName(null).build();
 
-    final GetTool get = new GetTool();
-    // assertEquals(BaseTool.FAILURE, runTool(get));
-    assertEquals(BaseTool.FAILURE, runTool(get, "--kiji=" + hbaseURI));
+    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(), "--kiji=" + hbaseURI));
+    assertTrue(mToolOutputLines[0].startsWith("Specify a cluster"));
+    assertEquals(BaseTool.FAILURE, runTool(new ScanTool()));
+    assertTrue(mToolOutputLines[0].startsWith("--kiji must be specified"));
+    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(), "--max-rows=-1"));
+    assertTrue(mToolOutputLines[0].startsWith("--max-rows must be positive"));
   }
 
   @Test
@@ -144,13 +147,13 @@ public class TestGetTool extends KijiClientTest {
     try {
       assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), "--kiji=" + table.getURI(),
           "--entity-id=jane.doe@gmail.com"));
-      assertTrue(5 == mToolOutputLines.length);
+      assertEquals(5, mToolOutputLines.length);
       assertEquals(BaseTool.SUCCESS, runTool(new GetTool(),
           "--kiji=" + table.getURI(),
           "--columns=info:name",
           "--entity-id=hbase=hex:9decb1b27454729c38e149964ee5a0d4"
           )); // Garrett Wu
-      assertTrue(3 == mToolOutputLines.length);
+      assertEquals(3, mToolOutputLines.length);
       // TODO: Validate GetTool output
     } finally {
       ResourceUtils.releaseOrLog(table);

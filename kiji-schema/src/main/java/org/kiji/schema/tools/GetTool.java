@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
@@ -130,24 +129,30 @@ public final class GetTool extends BaseTool {
       ToolUtils.printRow(row, mapTypeFamilies, groupTypeColumns, getPrintStream());
     } catch (IOException ioe) {
       LOG.error(ioe.getMessage());
-      return 1;
+      return FAILURE;
     }
-    return 0;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void setup() throws Exception {
-    mURI = KijiURI.newBuilder(mURIFlag).build();
+    return SUCCESS;
   }
 
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    if (null == mURI.getZookeeperQuorum() || null == mURI.getInstance()
-        || null == mURI.getTable()) {
-      LOG.error("Specify an cluster, instance, and table with --kiji=kiji://zkhost/instance/table");
-      return 1;
+    if (null == mURIFlag) {
+      // TODO: Send this error to a future getErrorStream()
+      getPrintStream().printf("--kiji must be specified, got %s%n", mURIFlag);
+      return FAILURE;
+    }
+
+    mURI = KijiURI.newBuilder(mURIFlag).build();
+    mURI = KijiURI.newBuilder(mURIFlag).build();
+    if ((null == mURI.getZookeeperQuorum())
+        || (null == mURI.getInstance())
+        || (null == mURI.getTable())) {
+      // TODO: Send this error to a future getErrorStream()
+
+      getPrintStream().printf("Specify a cluster, instance, and "
+          + "table with --kiji=kiji://zkhost/instance/table%n");
+      return FAILURE;
     }
 
     final Kiji kiji = Kiji.Factory.open(mURI);
@@ -170,8 +175,9 @@ public final class GetTool extends BaseTool {
         final KijiTableReader reader = table.openTableReader();
         try {
           if (mEntityIdFlag == null) {
-            LOG.error("Specify entity with --entity-id=eid");
-            return 1;
+            // TODO: Send this error to a future getErrorStream()
+            getPrintStream().printf("Specify entity with --entity-id=eid%n");
+            return FAILURE;
           } else {
             // Return the specified entity.
             final EntityId entityId =
