@@ -48,7 +48,7 @@ public final class HashPrefixedEntityId extends EntityId {
    * @param format Row key hashing specification.
    * @return a new HashPrefixedEntityId with the specified Kiji row key.
    */
-  public static HashPrefixedEntityId getEntityId(byte[] kijiRowKey, RowKeyFormat format) {
+  static HashPrefixedEntityId getEntityId(byte[] kijiRowKey, RowKeyFormat format) {
     Preconditions.checkNotNull(format);
     Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH_PREFIX);
     final byte[] hash = hashKijiRowKey(format, kijiRowKey);
@@ -67,7 +67,7 @@ public final class HashPrefixedEntityId extends EntityId {
    * @param format Row key hashing specification.
    * @return a new HashedEntityId with the specified HBase row key.
    */
-  public static HashPrefixedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat format) {
+  static HashPrefixedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat format) {
     Preconditions.checkNotNull(format);
     Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH_PREFIX);
     final int hashSize = format.getHashSize();

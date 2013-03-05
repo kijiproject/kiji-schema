@@ -37,7 +37,7 @@ public final class RawEntityId extends EntityId {
    * @param kijiRowKey Kiji row key.
    * @return a new RawEntityId with the specified Kiji row key.
    */
-  public static RawEntityId getEntityId(byte[] kijiRowKey) {
+  static RawEntityId getEntityId(byte[] kijiRowKey) {
     return new RawEntityId(kijiRowKey);
   }
 
@@ -47,7 +47,7 @@ public final class RawEntityId extends EntityId {
    * @param hbaseRowKey HBase row key.
    * @return a new RawEntityId with the specified HBase row key.
    */
-  public static RawEntityId fromHBaseRowKey(byte[] hbaseRowKey) {
+  static RawEntityId fromHBaseRowKey(byte[] hbaseRowKey) {
     return new RawEntityId(hbaseRowKey);
   }
 

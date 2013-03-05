@@ -46,7 +46,8 @@ public final class HBaseEntityId extends EntityId {
   }
 
   /**
-   * Creates a new entity id using the specified hbase row key.
+   * Creates a new entity id using the specified hbase row key. This should be used by Kiji
+   * project developers, and not by end-users.
    *
    * @param hbaseRowKey that will back the new entity id.
    * @return a new entity id that uses the specified HBase row key.
