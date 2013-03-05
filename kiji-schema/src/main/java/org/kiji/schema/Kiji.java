@@ -80,8 +80,7 @@ import org.kiji.schema.util.ReferenceCountable;
  * </p>
  * <ul>
  *   <li>{@link #createTable(TableLayoutDesc)} - creates a Kiji table with a specified layout.</li>
- *   <li>{@link #modifyTableLayout(String, TableLayoutDesc)} - updates a Kiji table with a new
- *       layout.</li>
+ *   <li>{@link #modifyTableLayout(TableLayoutDesc)} - updates a Kiji table with a new layout.</li>
  *   <li>{@link #deleteTable(String)} - removes a Kiji table from HBase.</li>
  * </ul>
  */
@@ -268,8 +267,19 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    * @param update The new layout for the table.
    * @return the updated layout.
    * @throws IOException If there is an error.
+   * @deprecated Replaced by {@link #modifyTableLayout(TableLayoutDesc)}.
    */
+  @Deprecated
   KijiTableLayout modifyTableLayout(String name, TableLayoutDesc update) throws IOException;
+
+  /**
+   * Sets the layout of a table.
+   *
+   * @param update The new layout for the table.
+   * @return the updated layout.
+   * @throws IOException If there is an error.
+   */
+  KijiTableLayout modifyTableLayout(TableLayoutDesc update) throws IOException;
 
   /**
    * Sets the layout of a table, or print the results of setting the table layout if
@@ -282,7 +292,25 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    *     If null, stdout will be used.
    * @return the updated layout.
    * @throws IOException If there is an error.
+   * @deprecated Replaced by {@link #modifyTableLayout(TableLayoutDesc, boolean, PrintStream)}.
    */
-  KijiTableLayout modifyTableLayout(String name, TableLayoutDesc update, boolean dryRun,
-      PrintStream printStream) throws IOException;
+  @Deprecated
+  KijiTableLayout modifyTableLayout(
+      String name, TableLayoutDesc update, boolean dryRun, PrintStream printStream)
+      throws IOException;
+
+  /**
+   * Sets the layout of a table, or print the results of setting the table layout if
+   * dryRun is true.
+   *
+   * @param update The new layout for the table.
+   * @param dryRun true if this is a 'dry run', false if changes should be made.
+   * @param printStream the print stream to use for information if dryRun is true.
+   *     If null, stdout will be used.
+   * @return the updated layout.
+   * @throws IOException If there is an error.
+   */
+  KijiTableLayout modifyTableLayout(
+      TableLayoutDesc update, boolean dryRun, PrintStream printStream)
+      throws IOException;
 }

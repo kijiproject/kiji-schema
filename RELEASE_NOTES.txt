@@ -3,6 +3,9 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-248. Kiji.modifyTableLayout() no longer takes a table name.
+      The Kiji.modifyTableLayout() methods that take a String name are
+      now deprecated.
   * SCHEMA-223. Adds backup methods to KijiSystemTable and SystemTable 
       backup to MetadataTool.
   * SCHEMA-244. Kiji.createTable() now takes a TableLayoutDesc object.
