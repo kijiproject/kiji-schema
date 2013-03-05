@@ -20,7 +20,9 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
@@ -44,6 +46,8 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.TableKeyNotFoundException;
+import org.kiji.schema.avro.SystemTableBackup;
+import org.kiji.schema.avro.SystemTableEntry;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.util.CloseableIterable;
 import org.kiji.schema.util.Debug;
@@ -61,8 +65,6 @@ import org.kiji.schema.util.ResourceUtils;
 @ApiAudience.Private
 public class HBaseSystemTable extends KijiSystemTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseSystemTable.class);
-  // private static final Logger CLEANUP_LOG =
-  //     LoggerFactory.getLogger(HBaseSystemTable.class.getName() + ".Cleanup");
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseSystemTable.class.getName());
 
@@ -266,6 +268,32 @@ public class HBaseSystemTable extends KijiSystemTable {
         KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString();
     admin.disableTable(tableName);
     admin.deleteTable(tableName);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public SystemTableBackup toBackup() throws IOException {
+    ArrayList<SystemTableEntry> backupEntries = new ArrayList<SystemTableEntry>();
+    CloseableIterable<SimpleEntry<String, byte[]>> entries = getAll();
+    for (SimpleEntry<String, byte[]> entry : entries) {
+      backupEntries.add(SystemTableEntry.newBuilder()
+          .setKey(entry.getKey())
+          .setValue(ByteBuffer.wrap(entry.getValue()))
+          .build());
+    }
+
+    return SystemTableBackup.newBuilder().setEntries(backupEntries).build();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void fromBackup(SystemTableBackup backup) throws IOException {
+    LOG.info(String.format("Restoring system table from backup with %d entries.",
+        backup.getEntries().size()));
+    for (SystemTableEntry entry : backup.getEntries()) {
+      putValue(entry.getKey(), entry.getValue().array());
+    }
+    mTable.flushCommits();
   }
 
   /** Private class for providing a CloseableIterable over system table key, value pairs. */
