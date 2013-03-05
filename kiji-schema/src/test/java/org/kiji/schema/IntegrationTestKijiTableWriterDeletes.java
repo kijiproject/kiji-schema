@@ -31,7 +31,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
 import org.kiji.schema.util.ResourceUtils;
@@ -62,8 +62,8 @@ public class IntegrationTestKijiTableWriterDeletes extends AbstractKijiIntegrati
     mKiji = Kiji.Factory.open(getKijiURI(), getConf());
 
     LOG.info("Creating test table.");
-    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.DELETES_TEST);
-    mKiji.createTable(layout.getName(), layout);
+    final TableLayoutDesc layout = KijiTableLayouts.getLayout(KijiTableLayouts.DELETES_TEST);
+    mKiji.createTable(layout);
 
     LOG.info("Populating test table.");
     mTable = mKiji.openTable(layout.getName());

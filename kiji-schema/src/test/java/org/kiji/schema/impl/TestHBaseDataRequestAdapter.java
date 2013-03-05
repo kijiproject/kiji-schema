@@ -55,7 +55,7 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
   public void setupLayout() throws Exception {
     final KijiTableLayout tableLayout =
         KijiTableLayouts.getTableLayout(KijiTableLayouts.FULL_FEATURED);
-    getKiji().createTable(tableLayout.getName(), tableLayout);
+    getKiji().createTable(tableLayout.getDesc());
 
     mTableLayout = getKiji().getMetaTable().getTableLayout("user");
     mEntityIdFactory = EntityIdFactory.getFactory(mTableLayout);

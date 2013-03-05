@@ -192,7 +192,7 @@ public class InstanceBuilder {
         LOG.info(String.format("  Populating existing table: %s", tableName));
       } else {
         LOG.info(String.format("  Creating and populating table: %s", tableName));
-        kiji.createTable(tableName, layout);
+        kiji.createTable(layout.getDesc());
       }
       final KijiTable kijiTable = kiji.openTable(tableName);
       final KijiTableWriter writer = kijiTable.openTableWriter();

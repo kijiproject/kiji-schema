@@ -34,6 +34,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.SplitKeyFile;
 
@@ -136,7 +137,7 @@ public final class CreateTableTool extends BaseTool {
     final FileSystem fs =
         fileSystemSpecified(path) ? path.getFileSystem(getConf()) : FileSystem.getLocal(getConf());
     final FSDataInputStream inputStream = fs.open(path);
-    final KijiTableLayout tableLayout = KijiTableLayout.createFromEffectiveJson(inputStream);
+    final TableLayoutDesc tableLayout = KijiTableLayout.readTableLayoutDescFromJSON(inputStream);
     final String tableName = tableLayout.getName();
     Preconditions.checkArgument(
         (mTableURI.getTable() == null) || tableName.equals(mTableURI.getTable()),
@@ -151,10 +152,10 @@ public final class CreateTableTool extends BaseTool {
     getPrintStream().println("Creating Kiji table " + mTableURI);
     if (mNumRegions >= 1) {
       // Create a table with an initial number of evenly split regions.
-      mKiji.createTable(tableName, tableLayout, mNumRegions);
+      mKiji.createTable(tableLayout, mNumRegions);
 
     } else if (!mSplitKeyFilePath.isEmpty()) {
-      switch (KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat())) {
+      switch (KijiTableLayout.getEncoding(tableLayout.getKeysFormat())) {
       case HASH:
       case HASH_PREFIX:
         throw new IllegalArgumentException(
@@ -168,7 +169,7 @@ public final class CreateTableTool extends BaseTool {
       default:
         throw new RuntimeException(
             "Unexpected row key encoding: "
-                + KijiTableLayout.getEncoding(tableLayout.getDesc().getKeysFormat()));
+                + KijiTableLayout.getEncoding(tableLayout.getKeysFormat()));
       }
       // Open the split key file.
       final Path splitKeyFilePath = new Path(mSplitKeyFilePath);
@@ -185,11 +186,11 @@ public final class CreateTableTool extends BaseTool {
       }
 
       // Create the table with the given split keys.
-      mKiji.createTable(tableName, tableLayout, splitKeys.toArray(new byte[splitKeys.size()][]));
+      mKiji.createTable(tableLayout, splitKeys.toArray(new byte[splitKeys.size()][]));
 
     } else {
       // Create a table with a single initial region:
-      mKiji.createTable(tableName, tableLayout);
+      mKiji.createTable(tableLayout);
     }
 
     return SUCCESS;

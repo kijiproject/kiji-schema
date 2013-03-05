@@ -3,6 +3,9 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-244. Kiji.createTable() now takes a TableLayoutDesc object.
+      The Kiji.createTable() methods that take a KijiTableLayout object
+      are deprecated.
   * SCHEMA-233. Extract kiji get functionality out of kiji ls.
   * SCHEMA-242. Enforce constraint of no non-hashed components
       in a FORMATTED row key with SuppressKeyMaterialization=true.

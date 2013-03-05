@@ -61,7 +61,7 @@ public class IntegrationTestFormattedRowKeys
   public void setup() throws Exception {
     mKiji = Kiji.Factory.open(getKijiURI());
     LOG.info("Creating test table.");
-    mKiji.createTable(TABLE_NAME, KijiTableLayouts.getTableLayout(KijiTableLayouts.FORMATTED_RKF));
+    mKiji.createTable(KijiTableLayouts.getTableLayout(KijiTableLayouts.FORMATTED_RKF).getDesc());
     mTable = mKiji.openTable(TABLE_NAME);
     mWriter = mTable.openTableWriter();
     mReader = mTable.openTableReader();

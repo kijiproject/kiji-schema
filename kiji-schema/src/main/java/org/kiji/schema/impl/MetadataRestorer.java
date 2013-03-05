@@ -41,7 +41,6 @@ import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.hbase.HBaseFactory;
-import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
@@ -119,9 +118,8 @@ public class MetadataRestorer {
       }
     }
 
-    final KijiTableLayout initialLayout = KijiTableLayout.newLayout(initialEntry.getLayout());
     try {
-      kiji.createTable(tableName, initialLayout);
+      kiji.createTable(initialEntry.getLayout());
     } catch (KijiAlreadyExistsException kaee) {
       LOG.info("Table already exists in HBase. Continuing with restore operation.");
     }

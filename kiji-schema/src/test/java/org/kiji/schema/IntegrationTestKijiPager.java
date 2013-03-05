@@ -49,7 +49,7 @@ public class IntegrationTestKijiPager extends AbstractKijiIntegrationTest {
   @Before
   public final void setup() throws Exception {
     final Kiji kiji = Kiji.Factory.open(getKijiURI());
-    kiji.createTable("user", KijiTableLayouts.getTableLayout(KijiTableLayouts.PAGING_TEST));
+    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST));
     final KijiTable userTable = kiji.openTable("user");
     mTableReader = userTable.openTableReader();
     mGarrettId = userTable.getEntityId("garrett");

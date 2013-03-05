@@ -103,7 +103,7 @@ public class TestLayoutTool extends KijiClientTest {
   @Test
   public void testChangeRowKeyHashing() throws Exception {
     final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST);
-    getKiji().createTable(layout.getName(), layout);
+    getKiji().createTable(layout.getDesc());
 
     final File newLayoutFile = getTempLayoutFile(KijiTableLayouts.getFooChangeHashingTestLayout());
     final KijiURI tableURI =

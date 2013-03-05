@@ -63,7 +63,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
   public void setupTests() throws IOException {
     mTableLayout =
         KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE_UPDATE_NEW_COLUMN);
-    getKiji().createTable(mTableLayout.getName(), mTableLayout);
+    getKiji().createTable(mTableLayout.getDesc());
 
     mColumnNameTranslator = new ColumnNameTranslator(mTableLayout);
     final CellSpec cellSpec = mTableLayout.getCellSpec(new KijiColumnName("family", "new"))

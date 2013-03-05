@@ -244,7 +244,7 @@ import org.kiji.schema.util.ToJson;
  * For storage efficiency purposes, Kiji family and column names are translated into short
  * HBase column names.
  * The translation happens in
- *   {@link org.kiji.schema.layout.ColumnNameTranslator ColumnNameTranslator}
+ *   {@link org.kiji.schema.layout.impl.ColumnNameTranslator ColumnNameTranslator}
  * and relies on
  *   {@link org.kiji.schema.layout.impl.ColumnId ColumnId}.
  * Column IDs are assigned automatically by KijiTableLayout.
