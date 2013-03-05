@@ -149,7 +149,7 @@ public final class ScanTool extends BaseTool {
     try {
       int rowsOutput = 0;
       for (KijiRowData row : scanner) {
-        if (mMaxRows != 0 && ++rowsOutput > mMaxRows) {
+        if ((mMaxRows != 0) && (++rowsOutput > mMaxRows)) {
           break;
         }
         ToolUtils.printRow(row, mapTypeFamilies, groupTypeColumns, getPrintStream());
@@ -176,8 +176,9 @@ public final class ScanTool extends BaseTool {
     }
 
     mURI = KijiURI.newBuilder(mURIFlag).build();
-    if (null == mURI.getZookeeperQuorum() || null == mURI.getInstance()
-        || null == mURI.getTable()) {
+    if ((null == mURI.getZookeeperQuorum())
+        || (null == mURI.getInstance())
+        || (null == mURI.getTable())) {
       // TODO: Send this error to a future getErrorStream()
 
       getPrintStream().printf("Specify a cluster, instance, and "
