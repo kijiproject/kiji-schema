@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -121,6 +121,7 @@ public final class GetTool extends BaseTool {
       EntityId entityId,
       Map<FamilyLayout, List<String>> mapTypeFamilies,
       Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns) {
+    // TODO: Send this through an alternative stream: something like verbose or debug?
     getPrintStream().println(
         "Looking up entity: " + ToolUtils.formatEntityId(entityId)
         + " from kiji table: " + mURI);
