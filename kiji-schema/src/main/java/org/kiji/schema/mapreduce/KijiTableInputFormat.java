@@ -193,8 +193,8 @@ public class KijiTableInputFormat
       mReader = mTable.openTableReader();
       final KijiScannerOptions scannerOptions =
           new KijiScannerOptions()
-          .setStartRow(new HBaseEntityId(mSplit.getStartRow()))
-          .setStopRow(new HBaseEntityId(mSplit.getEndRow()));
+          .setStartRow(HBaseEntityId.fromHBaseRowKey(mSplit.getStartRow()))
+          .setStopRow(HBaseEntityId.fromHBaseRowKey(mSplit.getEndRow()));
       mScanner = mReader.getScanner(mDataRequest, scannerOptions);
       mIterator = mScanner.iterator();
       mCurrentRow = null;

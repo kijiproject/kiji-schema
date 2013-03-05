@@ -95,7 +95,7 @@ public class HBaseDataRequestAdapter {
     if (mKijiDataRequest.isEmpty()) {
       return null;
     }
-    Scan scan = new Scan(toGet(new HBaseEntityId(new byte[0]), tableLayout));
+    Scan scan = new Scan(toGet(HBaseEntityId.fromHBaseRowKey(new byte[0]), tableLayout));
     configureScan(scan, scanOptions);
     return scan;
   }
