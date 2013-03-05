@@ -145,7 +145,7 @@ public final class ScanTool extends BaseTool {
         new KijiScannerOptions()
             .setStartRow(startRow)
             .setStopRow(limitRow);
-    KijiRowScanner scanner = reader.getScanner(request, scannerOptions);
+    final KijiRowScanner scanner = reader.getScanner(request, scannerOptions);
     try {
       int rowsOutput = 0;
       for (KijiRowData row : scanner) {
@@ -157,7 +157,7 @@ public final class ScanTool extends BaseTool {
     } finally {
       ResourceUtils.closeOrLog(scanner);
     }
-    return 0;
+    return SUCCESS;
   }
 
   /** {@inheritDoc} */
