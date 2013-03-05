@@ -45,7 +45,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.TableKeyNotFoundException;
 import org.kiji.schema.avro.SystemTableBackup;
 import org.kiji.schema.avro.SystemTableEntry;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
@@ -63,7 +62,7 @@ import org.kiji.schema.util.ResourceUtils;
  * and the value V is stored in the "value:" column.<p>import org.kiji.schema.KijiURI;
  */
 @ApiAudience.Private
-public class HBaseSystemTable extends KijiSystemTable {
+public class HBaseSystemTable implements KijiSystemTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseSystemTable.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseSystemTable.class.getName());
@@ -181,10 +180,6 @@ public class HBaseSystemTable extends KijiSystemTable {
     Get get = new Get(Bytes.toBytes(key));
     get.addColumn(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0]);
     Result result = mTable.get(get);
-    if (result == null) {
-      throw new TableKeyNotFoundException(String.format(
-          "The key '%s' was not found in the system table.", key));
-    }
     return result.getValue(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0]);
   }
 
