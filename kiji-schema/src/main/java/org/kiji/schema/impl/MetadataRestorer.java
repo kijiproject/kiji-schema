@@ -37,6 +37,7 @@ import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.avro.MetadataBackup;
 import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutBackupEntry;
@@ -173,5 +174,13 @@ public class MetadataRestorer {
     LOG.info("Restoring schema table entries...");
     schemaTable.fromBackup(backup.getSchemaTable());
     LOG.info("Restored " + backup.getSchemaTable().getEntries().size() + " entries.");
+  }
+
+  public void restoreSystemVars(MetadataBackup backup, Kiji kiji) throws IOException {
+    // Restore all System table entries from the file.
+    final KijiSystemTable systemTable = kiji.getSystemTable();
+    LOG.info("Restoring system table entries...");
+    systemTable.fromBackup(backup.getSystemTable());
+    LOG.info(String.format("Restored %d entries.", backup.getSystemTable().getEntries().size()));
   }
 }
