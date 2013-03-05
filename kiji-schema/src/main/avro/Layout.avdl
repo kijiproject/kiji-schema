@@ -349,6 +349,15 @@ protocol KijiTableLayoutRecords {
   /** An MD5 hash. */
   fixed MD5Hash(16);
 
+  /** An entry from the SystemTable inside a metadata backup file. */
+  record SystemTableEntry {
+    /** Entry Key */
+    string key;
+
+    /** Entry Value */
+    bytes value;
+  }
+
   /** An entry from the SchemaTable inside a metadata backup file. */
   record SchemaTableEntry {
     /** Schema ID: positive integers only. */
@@ -412,6 +421,10 @@ protocol KijiTableLayoutRecords {
     KeyValueBackup key_value_backup = [];
   }
 
+  record SystemTableBackup {
+    array<SystemTableEntry> entries = [];
+  }
+
   record SchemaTableBackup {
     array<SchemaTableEntry> entries = [];
   }
@@ -424,6 +437,9 @@ protocol KijiTableLayoutRecords {
   record MetadataBackup {
     /** Layout version (eg. "layout-1.0"). */
     string layout_version;
+
+    /** System table backup. */
+    SystemTableBackup system_table;
 
     /** Schema table backup. */
     SchemaTableBackup schema_table;
