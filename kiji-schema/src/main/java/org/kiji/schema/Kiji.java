@@ -178,7 +178,7 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    * @param layout The initial layout of the table (with unassigned column ids).
    * @throws IOException on I/O error.
    * @throws KijiAlreadyExistsException if the table already exists.
-   * @deprecated Replaced by {@link #createTable(String, TableLayoutDesc)}
+   * @deprecated Replaced by {@link #createTable(TableLayoutDesc)}
    */
   @Deprecated
   void createTable(String name, KijiTableLayout layout) throws IOException;
@@ -202,7 +202,7 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    *     more than 1 and row key hashing on the table layout is disabled.
    * @throws IOException on I/O error.
    * @throws KijiAlreadyExistsException if the table already exists.
-   * @deprecated Replaced by {@link #createTable(String, TableLayoutDesc, int)}
+   * @deprecated Replaced by {@link #createTable(TableLayoutDesc, int)}
    */
   @Deprecated
   void createTable(String name, KijiTableLayout layout, int numRegions) throws IOException;
@@ -228,7 +228,7 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    *     + 1 regions created.  Pass null to specify the default single region.
    * @throws IOException on I/O error.
    * @throws KijiAlreadyExistsException if the table already exists.
-   * @deprecated Replaced by {@link #createTable(String, TableLayoutDesc, byte[][])}
+   * @deprecated Replaced by {@link #createTable(TableLayoutDesc, byte[][])}
    */
   @Deprecated
   void createTable(String name, KijiTableLayout layout, byte[][] splitKeys) throws IOException;
