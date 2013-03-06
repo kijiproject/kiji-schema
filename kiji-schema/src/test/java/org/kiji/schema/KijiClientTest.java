@@ -24,11 +24,14 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.hadoop.hdfs.HdfsConfiguration;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.mapred.JobConf;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -44,6 +47,15 @@ import org.kiji.schema.util.TestFileUtils;
  */
 public class KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(KijiClientTest.class);
+  static {
+    // Force loading the HdfsConfiguration class to register hdfs-default.xml and hdfs-site.xml
+    // resources:
+    HdfsConfiguration.class.getName();
+
+    // Force loading the JobConf class to register mapred-default.xml and mapred-site.xml
+    // resources:
+    JobConf.class.getName();
+  }
 
   /** Test method name (eg. "testFeatureX"). */
   // JUnit requires public, checkstyle disagrees:
@@ -143,6 +155,7 @@ public class KijiClientTest {
     // Force a garbage collection, to trigger finalization of resources and spot
     // resources that were not released or closed.
     System.gc();
+    System.runFinalization();
   }
 
   /**
