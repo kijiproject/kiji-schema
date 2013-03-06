@@ -79,10 +79,10 @@ public final class HBaseKijiTable implements KijiTable {
   private final KijiURI mTableURI;
 
   /** Whether the table is open. */
-  private AtomicBoolean mIsOpen;
+  private final AtomicBoolean mIsOpen;
 
   /** String representation of the call stack at the time this object is constructed. */
-  private String mConstructorStack;
+  private final String mConstructorStack;
 
   /** The underlying HTable that stores this Kiji table's data. */
   private final HTableInterface mHTable;
@@ -97,7 +97,7 @@ public final class HBaseKijiTable implements KijiTable {
   private final EntityIdFactory mEntityIdFactory;
 
   /** Retain counter. When decreased to 0, the HBase KijiTable may be closed and disposed of. */
-  private AtomicInteger mRetainCount = new AtomicInteger(1);
+  private final AtomicInteger mRetainCount = new AtomicInteger(1);
 
   /** Configuration object for new HTables. */
   private final Configuration mConf;
@@ -135,7 +135,6 @@ public final class HBaseKijiTable implements KijiTable {
       HTableInterfaceFactory htableFactory)
       throws IOException {
     mKiji = kiji;
-    mKiji.retain();
     mName = name;
     mTableURI = KijiURI.newBuilder(mKiji.getURI()).withTableName(mName).build();
     mTableLayout = mKiji.getMetaTable().getTableLayout(name);
@@ -161,9 +160,10 @@ public final class HBaseKijiTable implements KijiTable {
     }
 
     mIsOpen = new AtomicBoolean(true);
-    if (CLEANUP_LOG.isDebugEnabled()) {
-      mConstructorStack = Debug.getStackTrace();
-    }
+    mConstructorStack = CLEANUP_LOG.isDebugEnabled() ? Debug.getStackTrace() : null;
+
+    // Retain the Kiji instance only if open succeeds:
+    mKiji.retain();
   }
 
   /** {@inheritDoc} */

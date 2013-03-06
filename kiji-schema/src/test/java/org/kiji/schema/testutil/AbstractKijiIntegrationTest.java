@@ -25,10 +25,13 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 
+import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -170,10 +173,12 @@ public abstract class AbstractKijiIntegrationTest {
    * @return an HBase configuration to work against.
    */
   protected Configuration createConfiguration() {
-    if (null != mStandaloneConf) {
-      return HBaseConfiguration.create(mStandaloneConf);
-    }
-    return HBaseConfiguration.create();
+    final Configuration conf =
+        (null != mStandaloneConf)
+        ? HBaseConfiguration.create(mStandaloneConf)
+        : HBaseConfiguration.create();
+    conf.addResource("mapred-site.xml");
+    return conf;
   }
 
   /**
@@ -251,9 +256,29 @@ public abstract class AbstractKijiIntegrationTest {
     }
   }
 
+  private static final String LINE =
+      "--------------------------------------------------------------------------------";
+
   @Before
   public final void setupKijiIntegrationTest() throws Exception {
     mConf = createConfiguration();
+
+    LOG.info(LINE);
+    LOG.info("Setup summary for {}", getClass().getName());
+    LOG.info("Using Job tracker: {}", mConf.get("mapred.job.tracker"));
+    LOG.info("Using default HDFS: {}", mConf.get("fs.defaultFS"));
+    LOG.info("Using HBase: quorum: {} - client port: {}",
+        mConf.get("hbase.zookeeper.quorum"), mConf.get("hbase.zookeeper.property.clientPort"));
+    LOG.info(LINE);
+    LOG.info("Full configuration dump:");
+    final TreeMap<String, String> tmap = Maps.newTreeMap();
+    for (Map.Entry<String, String> entry : mConf) {
+      tmap.put(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, String> entry: tmap.entrySet()) {
+      LOG.info("{}: '{}'", entry.getKey(), entry.getValue());
+    }
+    LOG.info(LINE);
 
     // Get a new Kiji instance, with a randomly-generated name.
     mKijiURI = mCreationThread.getFreshKiji();

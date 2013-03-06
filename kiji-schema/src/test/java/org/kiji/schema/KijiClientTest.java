@@ -143,6 +143,7 @@ public class KijiClientTest {
     // Force a garbage collection, to trigger finalization of resources and spot
     // resources that were not released or closed.
     System.gc();
+    System.runFinalization();
   }
 
   /**
