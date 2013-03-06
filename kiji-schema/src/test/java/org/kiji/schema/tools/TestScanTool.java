@@ -80,12 +80,20 @@ public class TestScanTool extends KijiClientTest {
     final Kiji kiji = getKiji();
     final KijiURI hbaseURI = KijiURI.newBuilder(kiji.getURI()).withInstanceName(null).build();
 
-    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(), "--kiji=" + hbaseURI));
+    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(), hbaseURI.toString()));
     assertTrue(mToolOutputLines[0].startsWith("Specify a cluster"));
     assertEquals(BaseTool.FAILURE, runTool(new ScanTool()));
-    assertTrue(mToolOutputLines[0].startsWith("--kiji must be specified"));
-    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(), "--max-rows=-1"));
-    assertTrue(mToolOutputLines[0].startsWith("--max-rows must be positive"));
+    assertTrue(mToolOutputLines[0].startsWith("URI must be specified"));
+    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(), hbaseURI.toString(), "--max-rows=-1"));
+    assertTrue(mToolOutputLines[0].startsWith("--max-rows must be nonnegative"));
+    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(),
+        hbaseURI.toString(),
+        "--max-versions=0"));
+    assertTrue(mToolOutputLines[0].startsWith("--max-versions must be positive"));
+    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(),
+        hbaseURI.toString() + "instance/table",
+        "--timestamp="));
+    assertTrue(mToolOutputLines[0].startsWith("--timestamp"));
   }
 
   @Test
@@ -96,7 +104,7 @@ public class TestScanTool extends KijiClientTest {
     final KijiTable table = kiji.openTable(layout.getName());
     try {
       // Table is empty:
-      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), "--kiji=" + table.getURI()));
+      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), table.getURI().toString()));
       assertEquals(1, mToolOutputLines.length);
       assertTrue(mToolOutputLines[0].startsWith("Scanning kiji table: "));
 
@@ -107,7 +115,7 @@ public class TestScanTool extends KijiClientTest {
           .build();
 
       // Table has now one row:
-      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), "--kiji=" + table.getURI()));
+      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), table.getURI().toString()));
       assertEquals(3, mToolOutputLines.length);
       assertTrue(mToolOutputLines[0].startsWith("Scanning kiji table: "));
       assertTrue(mToolOutputLines[1].startsWith("entity-id=hbase=hex:"));
@@ -139,7 +147,7 @@ public class TestScanTool extends KijiClientTest {
 
     final KijiTable table = kiji.openTable(layout.getName());
     try {
-      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), "--kiji=" + table.getURI()));
+      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), table.getURI().toString()));
       // TODO: Validate ScanTool output
     } finally {
       ResourceUtils.releaseOrLog(table);
@@ -183,14 +191,17 @@ public class TestScanTool extends KijiClientTest {
     final KijiTable table = kiji.openTable(layout.getName());
     try {
       assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(),
-          "--kiji=" + table.getURI(),
-          "--columns=info:name"
+          table.getURI().toString() + "info:name"
       ));
       // TODO: Validate output
 
       assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(),
-          "--kiji=" + table.getURI(),
-          "--columns=info:name",
+              table.getURI().toString() + "info:name,info:email"
+          ));
+          // TODO: Validate output
+
+      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(),
+          table.getURI() + "info:name",
           "--start-row=hex:50000000000000000000000000000000",  // after the second row.
           "--limit-row=hex:e0000000000000000000000000000000"  // before the last row.
       ));

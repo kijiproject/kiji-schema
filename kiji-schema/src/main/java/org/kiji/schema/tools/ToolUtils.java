@@ -380,30 +380,29 @@ public final class ToolUtils {
    * Returns the list of map-type families specified by <code>rawColumns</code>.
    * If <code>rawColumns</code> is null, then all map-type families are returned.
    *
-   * @param rawColumns The raw columns supplied by the user.
+   * @param rawColumnNames The raw columns supplied by the user.
    * @param layout The KijiTableLayout.
    * @return A list of map type families specified by the raw columns.
    */
   public static Map<FamilyLayout, List<String>> getMapTypeFamilies(
-      String[] rawColumns,
+      List<KijiColumnName> rawColumnNames,
       KijiTableLayout layout) {
     final Map<FamilyLayout, List<String>> familyMap = Maps.newHashMap();
-    if (null == rawColumns) {
+    if (rawColumnNames.isEmpty()) {
       for (FamilyLayout family : layout.getFamilies()) {
         if (family.isMapType()) {
           familyMap.put(family, new ArrayList<String>());
         }
       }
     } else {
-      for (String rawColumn : rawColumns) {
-        final KijiColumnName colName = new KijiColumnName(rawColumn);
-        final FamilyLayout family = layout.getFamilyMap().get(colName.getFamily());
+      for (KijiColumnName rawColumn : rawColumnNames) {
+        final FamilyLayout family = layout.getFamilyMap().get(rawColumn.getFamily());
         if (null == family) {
           throw new RuntimeException(String.format(
-              "No family '%s' in table '%s'.", colName.getFamily(), layout.getName()));
+              "No family '%s' in table '%s'.", rawColumn.getFamily(), layout.getName()));
         }
         if (family.isMapType()) {
-          addColumn(family, colName.getQualifier(), familyMap);
+          addColumn(family, rawColumn.getQualifier(), familyMap);
         }
       }
     }
@@ -416,40 +415,39 @@ public final class ToolUtils {
    * If a raw column specifies a group-type family, but no qualifier, then each column in that
    * family is returned.
    *
-   * @param rawColumns The raw columns supplied by the user.
+   * @param rawColumnNames The raw columns supplied by the user.
    * @param layout The KijiTableLayout.
    * @return The fully qualified columns specified by the raw columns.
    */
   public static Map<FamilyLayout, List<ColumnLayout>> getGroupTypeColumns(
-      String[] rawColumns,
+      List<KijiColumnName> rawColumnNames,
       KijiTableLayout layout) {
     final Map<FamilyLayout, List<ColumnLayout>> familyMap = Maps.newHashMap();
-    if (null == rawColumns) {
+    if (rawColumnNames.isEmpty()) {
       for (FamilyLayout family : layout.getFamilies()) {
         if (family.isGroupType()) {
           familyMap.put(family, Lists.newArrayList(family.getColumns()));
         }
       }
     } else {
-      for (String rawColumn : rawColumns) {
-        final KijiColumnName colName = new KijiColumnName(rawColumn);
-        final FamilyLayout family = layout.getFamilyMap().get(colName.getFamily());
+      for (KijiColumnName rawColumn : rawColumnNames) {
+        final FamilyLayout family = layout.getFamilyMap().get(rawColumn.getFamily());
         if (null == family) {
           throw new RuntimeException(String.format(
-              "No family '%s' in table '%s'.", colName.getFamily(), layout.getName()));
+              "No family '%s' in table '%s'.", rawColumn.getFamily(), layout.getName()));
         }
         if (family.isGroupType()) {
           // We'll include it.  Is it fully qualified?
-          if (!colName.isFullyQualified()) {
+          if (!rawColumn.isFullyQualified()) {
             // User specified a group-type family, but no qualifier.  Include all qualifiers.
             for (ColumnLayout column : family.getColumns()) {
               addColumn(family, column, familyMap);
             }
           } else {
-            final ColumnLayout column = family.getColumnMap().get(colName.getQualifier());
+            final ColumnLayout column = family.getColumnMap().get(rawColumn.getQualifier());
             if (null == column) {
               throw new RuntimeException(String.format(
-                  "No column '%s' in table '%s'.", colName, layout.getName()));
+                  "No column '%s' in table '%s'.", rawColumn, layout.getName()));
             }
             addColumn(family, column, familyMap);
           }
