@@ -20,10 +20,8 @@
 package org.kiji.schema.tools;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import java.util.ArrayList;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
@@ -55,22 +53,6 @@ public class TestToolUtils {
 
   private final KijiTableLayout mHashPrefixedLayout =
       KijiTableLayouts.getTableLayout(KijiTableLayouts.HASH_PREFIXED_RKF);
-
-  private EntityId makeId(
-      String dummy, String str1, String str2, int anint, long along) {
-    final ArrayList<Object> components = new ArrayList<Object>();
-    components.add(dummy);
-    components.add(str1);
-    components.add(str2);
-    components.add(anint);
-    components.add(along);
-
-    final Object rawFormat = mFormattedLayout.getDesc().getKeysFormat();
-    RowKeyFormat2 format = new RowKeyFormat2();
-    assertTrue(rawFormat instanceof RowKeyFormat2);
-    format = (RowKeyFormat2) rawFormat;
-    return EntityIdFactory.getFactory(format).getEntityId(components);
-  }
 
   // -----------------------------------------------------------------------------------------------
 
@@ -126,14 +108,16 @@ public class TestToolUtils {
 
   @Test
   public void testASCIIChars() throws Exception {
-    for (byte b = 32; b < 127; b++) {
-        for (byte b2 = 32; b2 < 127; b2++) {
-            EntityId eid = makeId(
-                String.format(
-                    "dumm%sy", new String(new byte[]{b, b2}, "Utf-8")), "str1", "str2", 5, 10L);
+    final EntityIdFactory factory =
+        EntityIdFactory.getFactory((RowKeyFormat2) mFormattedLayout.getDesc().getKeysFormat());
 
-            assertEquals(
-                eid, ToolUtils.createEntityIdFromUserInputs(eid.toShellString(), mFormattedLayout));
+    for (byte b = 32; b < 127; b++) {
+      for (byte b2 = 32; b2 < 127; b2++) {
+        final EntityId eid = factory.getEntityId(String.format(
+            "dumm%sy", new String(new byte[]{b, b2}, "Utf-8")), "str1", "str2", 5, 10L);
+
+        assertEquals(
+          eid, ToolUtils.createEntityIdFromUserInputs(eid.toShellString(), mFormattedLayout));
       }
     }
   }
@@ -212,7 +196,9 @@ public class TestToolUtils {
 
   @Test
   public void testHBaseEIDtoFormattedEID() throws Exception {
-    final EntityId feid = makeId("dummy", "str1", "str2", 5, 10);
+    final EntityIdFactory factory =
+        EntityIdFactory.getFactory((RowKeyFormat2) mFormattedLayout.getDesc().getKeysFormat());
+    final EntityId feid = factory.getEntityId("dummy", "str1", "str2", 5, 10);
     final EntityId hbeid = HBaseEntityId.fromHBaseRowKey(feid.getHBaseRowKey());
 
     assertEquals(feid,
