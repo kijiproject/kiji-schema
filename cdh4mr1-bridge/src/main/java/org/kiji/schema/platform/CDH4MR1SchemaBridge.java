@@ -22,6 +22,8 @@ package org.kiji.schema.platform;
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hdfs.HdfsConfiguration;
+import org.apache.hadoop.mapred.JobConf;
 
 import org.kiji.annotations.ApiAudience;
 
@@ -30,6 +32,16 @@ import org.kiji.annotations.ApiAudience;
  */
 @ApiAudience.Private
 public final class CDH4MR1SchemaBridge extends SchemaPlatformBridge {
+  /** {@inheritDoc} */
+  @Override
+  public void initializeHadoopResources() {
+    // Force load class HdfsConfiguration to register hdfs-site.xml and hdfs-default.xml resources:
+    HdfsConfiguration.class.getName();
+
+    // Force load class JobConf to register mapred-site.xml and mapred-default.xml resources:
+    JobConf.class.getName();
+  }
+
   /** {@inheritDoc} */
   @Override
   public void setAutoFlush(HTableInterface hTable, boolean autoFlush) {
