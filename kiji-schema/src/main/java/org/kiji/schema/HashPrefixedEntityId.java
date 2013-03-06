@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.util.ByteArrayFormatter;
 import org.kiji.schema.util.Hasher;
 
 /** Implements the hash-prefixed row key format. */
@@ -139,5 +140,15 @@ final class HashPrefixedEntityId extends EntityId {
         .add("kiji", Bytes.toStringBinary(mKijiRowKey))
         .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
         .toString();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toShellString() {
+    if (mKijiRowKey != null) {
+      return String.format("kiji=%s", Bytes.toStringBinary(mKijiRowKey));
+    } else {
+    return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(mHBaseRowKey));
+    }
   }
 }

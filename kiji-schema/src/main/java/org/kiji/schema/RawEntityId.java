@@ -95,4 +95,10 @@ public final class RawEntityId extends EntityId {
         .add("hbase", Bytes.toStringBinary(mBytes))
         .toString();
   }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toShellString() {
+    return String.format("hbase=%s", Bytes.toStringBinary(mBytes));
+  }
 }
