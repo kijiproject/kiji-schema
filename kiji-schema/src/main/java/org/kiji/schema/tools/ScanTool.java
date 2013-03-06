@@ -22,8 +22,9 @@ package org.kiji.schema.tools;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,14 +69,6 @@ import org.kiji.schema.util.ResourceUtils;
 public final class ScanTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(ScanTool.class);
 
-  // TODO: make this a URI with columns, optionally.
-  @Flag(name="kiji", usage="URI of the object to list contents from.")
-  private String mURIFlag;
-
-  // TODO: remove this flag and make use above URI to specify columns.
-  @Flag(name="columns", usage="Comma-delimited columns (family:qualifier), or * for all columns")
-  private String mColumns = "*";
-
   @Flag(name="start-row",
       usage="HBase row to start scanning at (inclusive), "
             + "e.g. --start-row='hex:0088deadbeef', or --start-row='utf8:the row key in UTF8'.")
@@ -92,14 +85,15 @@ public final class ScanTool extends BaseTool {
   @Flag(name="max-versions", usage="Max number of versions per cell to display")
   private int mMaxVersions = 1;
 
-  @Flag(name="min-timestamp", usage="Min timestamp of versions to display")
-  private long mMinTimestamp = 0;
+  @Flag(name="timestamp", usage="Min..Max timestamp interval to display, "
+      + "where Min and Max represent long-type time in milliseconds since the UNIX Epoch. "
+      + "E.g. '--timestamp=123..1234', '--timestamp=0..', or '--timestamp=..1234'.")
+  private String mTimestamp = "0..";
 
-  @Flag(name="max-timestamp", usage="Max timestamp of versions to display")
-  private long mMaxTimestamp = Long.MAX_VALUE;
-
-  /** URI of the element being inspected. */
-  private KijiURI mURI = null;
+  /**
+   * Lazy initialized timestamp intervals.
+   */
+  private long mMinTimestamp, mMaxTimestamp;
 
   /** {@inheritDoc} */
   @Override
@@ -140,7 +134,6 @@ public final class ScanTool extends BaseTool {
       Map<FamilyLayout, List<String>> mapTypeFamilies,
       Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns)
       throws IOException {
-    getPrintStream().println("Scanning kiji table: " + mURI);
     final KijiScannerOptions scannerOptions =
         new KijiScannerOptions()
             .setStartRow(startRow)
@@ -154,6 +147,9 @@ public final class ScanTool extends BaseTool {
         }
         ToolUtils.printRow(row, mapTypeFamilies, groupTypeColumns, getPrintStream());
       }
+    } catch (IOException ioe) {
+      LOG.error(ioe.getMessage());
+      return FAILURE;
     } finally {
       ResourceUtils.closeOrLog(scanner);
     }
@@ -164,41 +160,63 @@ public final class ScanTool extends BaseTool {
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
 
+    if (nonFlagArgs.isEmpty()) {
+      // TODO: Send this error to a future getErrorStream()
+      getPrintStream().printf("URI must be specified as an argument%n");
+      return FAILURE;
+    } else if (nonFlagArgs.size() > 1) {
+      getPrintStream().printf("Too many arguments: %s%n", nonFlagArgs);
+      return FAILURE;
+    }
+
+    final KijiURI argURI = KijiURI.newBuilder(nonFlagArgs.get(0)).build();
+
     if (mMaxRows < 0) {
       // TODO: Send this error to a future getErrorStream()
-      getPrintStream().printf("--max-rows must be positive, got %d%n", mMaxRows);
-      return FAILURE;
-    }
-    if (null == mURIFlag) {
-      // TODO: Send this error to a future getErrorStream()
-      getPrintStream().printf("--kiji must be specified, got %s%n", mURIFlag);
+      getPrintStream().printf("--max-rows must be nonnegative, got %d%n", mMaxRows);
       return FAILURE;
     }
 
-    mURI = KijiURI.newBuilder(mURIFlag).build();
-    if ((null == mURI.getZookeeperQuorum())
-        || (null == mURI.getInstance())
-        || (null == mURI.getTable())) {
+    if (mMaxVersions < 1) {
       // TODO: Send this error to a future getErrorStream()
+      getPrintStream().printf("--max-versions must be positive, got %d%n", mMaxVersions);
+      return FAILURE;
+    }
 
+    if ((null == argURI.getZookeeperQuorum())
+        || (null == argURI.getInstance())
+        || (null == argURI.getTable())) {
+      // TODO: Send this error to a future getErrorStream()
       getPrintStream().printf("Specify a cluster, instance, and "
-          + "table with --kiji=kiji://zkhost/instance/table%n");
+          + "table with argument kiji://zkhost/instance/table%n");
       return FAILURE;
     }
 
-    final Kiji kiji = Kiji.Factory.open(mURI);
+    final Pattern timestampPattern = Pattern.compile("([0-9]*)\\.\\.([0-9]*)");
+    final Matcher timestampMatcher = timestampPattern.matcher(mTimestamp);
+    if (timestampMatcher.matches()) {
+      mMinTimestamp = ("".equals(timestampMatcher.group(1))) ? 0
+          : Long.parseLong(timestampMatcher.group(1));
+      final String rightEndpoint = timestampMatcher.group(2);
+      mMaxTimestamp = ("".equals(rightEndpoint)) ? Long.MAX_VALUE : Long.parseLong(rightEndpoint);
+    } else {
+      // TODO: Send this error to a future getErrorStream()
+      getPrintStream().printf("--timestamp must be like [0-9]*..[0-9]*, instead got %s%n",
+          mTimestamp);
+      return FAILURE;
+    }
+
+    final Kiji kiji = Kiji.Factory.open(argURI);
     try {
-      final KijiTable table = kiji.openTable(mURI.getTable());
+      final KijiTable table = kiji.openTable(argURI.getTable());
       try {
         final KijiTableLayout tableLayout = table.getLayout();
-        final String[] rawColumnNames =
-            (mColumns.equals("*")) ? null : StringUtils.split(mColumns, ",");
 
         final Map<FamilyLayout, List<String>> mapTypeFamilies =
-            ToolUtils.getMapTypeFamilies(rawColumnNames, tableLayout);
+            ToolUtils.getMapTypeFamilies(argURI.getColumns(), tableLayout);
 
         final Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns =
-            ToolUtils.getGroupTypeColumns(rawColumnNames, tableLayout);
+            ToolUtils.getGroupTypeColumns(argURI.getColumns(), tableLayout);
 
         final KijiDataRequest request = ToolUtils.getDataRequest(
             mapTypeFamilies, groupTypeColumns, mMaxVersions, mMinTimestamp, mMaxTimestamp);
@@ -213,6 +231,7 @@ public final class ScanTool extends BaseTool {
           final EntityId limitRow = (mLimitRowFlag != null)
               ? eidFactory.getEntityIdFromHBaseRowKey(ToolUtils.parseBytesFlag(mLimitRowFlag))
               : null;
+          getPrintStream().println("Scanning kiji table: " + argURI);
           return scan(reader, request, startRow, limitRow, mapTypeFamilies, groupTypeColumns);
         } finally {
           ResourceUtils.closeOrLog(reader);

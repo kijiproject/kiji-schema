@@ -106,12 +106,12 @@ public class TestLsTool extends KijiClientTest {
   // -----------------------------------------------------------------------------------------------
 
   @Test
-  public void testListIntances() throws Exception {
+  public void testListInstances() throws Exception {
     final Kiji kiji = getKiji();
     final KijiURI hbaseURI = KijiURI.newBuilder(kiji.getURI()).withInstanceName(null).build();
 
     final LsTool ls = new LsTool();
-    assertEquals(BaseTool.SUCCESS, runTool(ls, "--kiji=" + hbaseURI));
+    assertEquals(BaseTool.SUCCESS, runTool(ls, hbaseURI.toString()));
     assertEquals(1, mToolOutputLines.length);
     assertEquals(kiji.getURI(), KijiURI.newBuilder(mToolOutputLines[0]).build());
   }
@@ -120,43 +120,28 @@ public class TestLsTool extends KijiClientTest {
   public void testListTables() throws Exception {
     final Kiji kiji = getKiji();
 
-    assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), "--kiji=" + kiji.getURI()));
+    assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), kiji.getURI().toString()));
     assertEquals(1, mToolOutputLines.length);
-    assertTrue(mToolOutputLines[0].startsWith("Listing tables in kiji instance:"));
 
     final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE);
     kiji.createTable(layout.getDesc());
 
-    assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), "--kiji=" + kiji.getURI()));
-    assertEquals(2, mToolOutputLines.length);
-    assertTrue(mToolOutputLines[0].startsWith("Listing tables in kiji instance:"));
-    assertEquals(layout.getName(), mToolOutputLines[1]);
+    assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), kiji.getURI().toString()));
+    assertEquals(1, mToolOutputLines.length);
+    assertEquals(kiji.getURI() + layout.getName(), mToolOutputLines[0]);
   }
 
   @Test
-  public void testScanTable() throws Exception {
+  public void testTableColumns() throws Exception {
     final Kiji kiji = getKiji();
     final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE);
     kiji.createTable(layout.getDesc());
     final KijiTable table = kiji.openTable(layout.getName());
     try {
       // Table is empty:
-      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), "--kiji=" + table.getURI()));
+      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), table.getURI().toString()));
       assertEquals(1, mToolOutputLines.length);
-      assertTrue(mToolOutputLines[0].startsWith("Scanning kiji table: "));
-
-      new InstanceBuilder(kiji)
-          .withTable(table)
-              .withRow("hashed")
-                  .withFamily("family").withQualifier("column").withValue(314L, "value")
-          .build();
-
-      // Table has now one row:
-      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), "--kiji=" + table.getURI()));
-      assertEquals(3, mToolOutputLines.length);
-      assertTrue(mToolOutputLines[0].startsWith("Scanning kiji table: "));
-      assertTrue(mToolOutputLines[1].startsWith("entity-id=hbase=hex:"));
-
+      assertTrue(mToolOutputLines[0].contains("family:column"));
     } finally {
       ResourceUtils.releaseOrLog(table);
     }
@@ -184,8 +169,7 @@ public class TestLsTool extends KijiClientTest {
 
     final KijiTable table = kiji.openTable(layout.getName());
     try {
-      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), "--kiji=" + table.getURI()));
-      // TODO: Validate LsTool output
+      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), table.getURI().toString()));
     } finally {
       ResourceUtils.releaseOrLog(table);
     }
@@ -195,53 +179,56 @@ public class TestLsTool extends KijiClientTest {
   public void testKijiLsStartAndLimitRow() throws Exception {
     final Kiji kiji = getKiji();
     final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST);
-    final long timestamp = 10L;
-    new InstanceBuilder(kiji)
-        .withTable(layout.getName(), layout)
-            .withRow("gwu@usermail.example.com")
-                .withFamily("info")
-                    .withQualifier("email").withValue(timestamp, "gwu@usermail.example.com")
-                    .withQualifier("name").withValue(timestamp, "Garrett Wu")
-            .withRow("aaron@usermail.example.com")
-                .withFamily("info")
-                    .withQualifier("email").withValue(timestamp, "aaron@usermail.example.com")
-                    .withQualifier("name").withValue(timestamp, "Aaron Kimball")
-            .withRow("christophe@usermail.example.com")
-                .withFamily("info")
-                    .withQualifier("email")
-                        .withValue(timestamp, "christophe@usermail.example.com")
-                    .withQualifier("name").withValue(timestamp, "Christophe Bisciglia")
-            .withRow("kiyan@usermail.example.com")
-                .withFamily("info")
-                    .withQualifier("email").withValue(timestamp, "kiyan@usermail.example.com")
-                    .withQualifier("name").withValue(timestamp, "Kiyan Ahmadizadeh")
-            .withRow("john.doe@gmail.com")
-                .withFamily("info")
-                    .withQualifier("email").withValue(timestamp, "john.doe@gmail.com")
-                    .withQualifier("name").withValue(timestamp, "John Doe")
-            .withRow("jane.doe@gmail.com")
-                .withFamily("info")
-                    .withQualifier("email").withValue(timestamp, "jane.doe@gmail.com")
-                    .withQualifier("name").withValue(timestamp, "Jane Doe")
-        .build();
-
+    kiji.createTable(layout.getDesc());
     final KijiTable table = kiji.openTable(layout.getName());
     try {
-      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(),
-          "--kiji=" + table.getURI(),
-          "--columns=info:name"
-      ));
-      // TODO: Validate output
-
-      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(),
-          "--kiji=" + table.getURI(),
-          "--columns=info:name",
-          "--start-row=hex:50000000000000000000000000000000",  // after the second row.
-          "--limit-row=hex:e0000000000000000000000000000000"  // before the last row.
-      ));
+      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), table.getURI().toString()));
       // TODO: Validate output
     } finally {
       ResourceUtils.releaseOrLog(table);
+    }
+  }
+
+
+  @Test
+  public void testMultipleArguments() throws Exception {
+    final Kiji kiji = getKiji();
+    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FORMATTED_RKF);
+    new InstanceBuilder(kiji)
+        .withTable(layout.getName(), layout)
+            .withRow("dummy", "str1", "str2", 1, 2L)
+                .withFamily("family").withQualifier("column")
+                    .withValue(1L, "string-value")
+                    .withValue(2L, "string-value2")
+            .withRow("dummy", "str1", "str2", 1)
+                .withFamily("family").withQualifier("column").withValue(1L, "string-value")
+            .withRow("dummy", "str1", "str2")
+                .withFamily("family").withQualifier("column").withValue(1L, "string-value")
+            .withRow("dummy", "str1")
+                .withFamily("family").withQualifier("column").withValue(1L, "string-value")
+            .withRow("dummy")
+                .withFamily("family").withQualifier("column").withValue(1L, "string-value")
+        .build();
+
+    final KijiTable table = kiji.openTable(layout.getName());
+
+    final KijiTableLayout layoutTwo = KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST);
+    kiji.createTable(layoutTwo.getDesc());
+    final KijiTable tableTwo = kiji.openTable(layoutTwo.getName());
+
+    try {
+      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), table.getURI().toString(),
+          tableTwo.getURI().toString()));
+      assertEquals(9, mToolOutputLines.length);
+      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), kiji.getURI().toString()));
+      assertEquals(2, mToolOutputLines.length);
+      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), kiji.getURI().toString(),
+          table.getURI().toString()));
+      assertEquals(3, mToolOutputLines.length);
+      //assertEquals(2, mToolOutputLines.length);
+    } finally {
+      ResourceUtils.releaseOrLog(table);
+      ResourceUtils.releaseOrLog(tableTwo);
     }
   }
 }

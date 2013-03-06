@@ -80,12 +80,14 @@ public class TestGetTool extends KijiClientTest {
     final Kiji kiji = getKiji();
     final KijiURI hbaseURI = KijiURI.newBuilder(kiji.getURI()).withInstanceName(null).build();
 
-    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(), "--kiji=" + hbaseURI));
+    assertEquals(BaseTool.FAILURE, runTool(new GetTool(), hbaseURI.toString()));
     assertTrue(mToolOutputLines[0].startsWith("Specify a cluster"));
-    assertEquals(BaseTool.FAILURE, runTool(new ScanTool()));
-    assertTrue(mToolOutputLines[0].startsWith("--kiji must be specified"));
-    assertEquals(BaseTool.FAILURE, runTool(new ScanTool(), "--max-rows=-1"));
-    assertTrue(mToolOutputLines[0].startsWith("--max-rows must be positive"));
+    assertEquals(BaseTool.FAILURE, runTool(new GetTool()));
+    assertTrue(mToolOutputLines[0].startsWith("URI must be specified"));
+    assertEquals(BaseTool.FAILURE, runTool(new GetTool(),
+        hbaseURI.toString() + "instance/table",
+        "--max-versions=0"));
+    assertTrue(mToolOutputLines[0].startsWith("--max-versions must be positive"));
   }
 
   @Test
@@ -102,7 +104,7 @@ public class TestGetTool extends KijiClientTest {
 
     final KijiTable table = kiji.openTable(layout.getName());
     try {
-      assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), "--kiji=" + table.getURI(),
+      assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), table.getURI().toString(),
           "--entity-id=hashed"));
     } finally {
       ResourceUtils.releaseOrLog(table);
@@ -145,12 +147,11 @@ public class TestGetTool extends KijiClientTest {
 
     final KijiTable table = kiji.openTable(layout.getName());
     try {
-      assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), "--kiji=" + table.getURI(),
+      assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), table.getURI().toString(),
           "--entity-id=jane.doe@gmail.com"));
       assertEquals(5, mToolOutputLines.length);
       assertEquals(BaseTool.SUCCESS, runTool(new GetTool(),
-          "--kiji=" + table.getURI(),
-          "--columns=info:name",
+          table.getURI() + "info:name",
           "--entity-id=hbase=hex:9decb1b27454729c38e149964ee5a0d4"
           )); // Garrett Wu
       assertEquals(3, mToolOutputLines.length);

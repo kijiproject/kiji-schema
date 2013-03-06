@@ -21,33 +21,23 @@ package org.kiji.schema.tools;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Sets;
-import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.common.flags.Flag;
-import org.kiji.schema.EntityId;
-import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiDataRequest;
-import org.kiji.schema.KijiRowData;
-import org.kiji.schema.KijiRowScanner;
+import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableReader;
-import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -60,79 +50,23 @@ import org.kiji.schema.util.ResourceUtils;
  *
  * List all kiji instances:
  * <pre>
- *   kiji ls --kiji=kiji://hbase-address/
+ *   kiji ls kiji://hbase-address/
  * </pre>
  *
  * List all kiji tables:
  * <pre>
- *   kiji ls --kiji=kiji://hbase-address/kiji-instance/
+ *   kiji ls kiji://hbase-address/kiji-instance/
  * </pre>
  *
- * List all families in a kiji table foo:
+ * List all columns in a kiji table 'foo':
  * <pre>
- *   kiji ls --kiji=kiji://hbase-address/kiji-instance/table-name/
+ *   kiji ls kiji://hbase-address/kiji-instance/foo/
  * </pre>
  *
- * List all data in the info:email and derived:domain columns of a table foo:
- * <pre>
- *   kiji ls \
- *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
- *       --columns=info:email,derived:domain
- * </pre>
- *
- * List all data in the info:email and derived:domain columns of a table foo in row bar:
- * <pre>
- *   kiji ls \
- *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
- *       --columns=info:email,derived:domain \
- *       --entity-id=bar
- * </pre>
  */
 @ApiAudience.Private
 public final class LsTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(LsTool.class);
-
-  @Flag(name="kiji", usage="KijiURI of the object to list contents from.")
-  private String mURIFlag = KConstants.DEFAULT_URI;
-
-  @Flag(name="columns", usage="Comma-delimited columns (family:qualifier), or * for all columns")
-  private String mColumns = "*";
-
-  @Flag(name="entity-id", usage="ID of a single row to look up. "
-      + "Either 'kiji=<Kiji row key>' or 'hbase=<HBase row key>'. "
-      + ("HBase row keys are specified as bytes: "
-          + "by default as UTF-8 strings, or prefixed as in 'utf8:encoded\\x0astring'; "
-          + "in hexadecimal as in 'hex:deadbeed'; "
-          + "as a URL with 'url:this%20URL%00'. ")
-      + "Old deprecated Kiji row keys are specified as naked UTF-8 strings. "
-      + ("New Kiji row keys are specified in JSON, "
-          + "as in: --entity-id=kiji=\"['component1', 2, 'component3']\"."))
-  private String mEntityIdFlag = null;
-
-  @Flag(name="start-row",
-      usage="HBase row to start scanning at (inclusive), "
-            + "e.g. --start-row='hex:0088deadbeef', or --start-row='utf8:the row key in UTF8'.")
-  private String mStartRowFlag = null;
-
-  @Flag(name="limit-row",
-      usage="HBase row to stop scanning at (exclusive), "
-            + "e.g. --limit-row='hex:0088deadbeef', or --limit-row='utf8:the row key in UTF8'.")
-  private String mLimitRowFlag = null;
-
-  @Flag(name="max-rows", usage="Max number of rows to scan")
-  private int mMaxRows = 0;
-
-  @Flag(name="max-versions", usage="Max number of versions per cell to display")
-  private int mMaxVersions = 1;
-
-  @Flag(name="min-timestamp", usage="Min timestamp of versions to display")
-  private long mMinTimestamp = 0;
-
-  @Flag(name="max-timestamp", usage="Max timestamp of versions to display")
-  private long mMaxTimestamp = Long.MAX_VALUE;
-
-  /** URI of the element being inspected. */
-  private KijiURI mURI = null;
 
   /** {@inheritDoc} */
   @Override
@@ -218,161 +152,71 @@ public final class LsTool extends BaseTool {
    * @throws IOException If there is an error.
    */
   private int listTables(Kiji kiji) throws IOException {
-    getPrintStream().println("Listing tables in kiji instance: " + mURI);
     for (String name : kiji.getTableNames()) {
-      getPrintStream().println(name);
+      getPrintStream().println(kiji.getURI() + name);
     }
-    return 0;
-  }
-
-  /**
-   * Scans a table, displaying the data in the given columns, or all data if columns is null.
-   *
-   * @param reader The reader.
-   * @param request The data request.
-   * @param startRow The first row to include in this scan.
-   * @param limitRow The last row to include in this scan.
-   * @param mapTypeFamilies The map type families to print.
-   * @param groupTypeColumns The group type columns to print.
-   * @return A program exit code (zero on success).
-   * @throws IOException If there is an IO error.
-   */
-  private int scan(
-      KijiTableReader reader,
-      KijiDataRequest request,
-      EntityId startRow,
-      EntityId limitRow,
-      Map<FamilyLayout, List<String>> mapTypeFamilies,
-      Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns)
-      throws IOException {
-    getPrintStream().println("Scanning kiji table: " + mURI);
-    KijiScannerOptions scannerOptions =
-        new KijiScannerOptions()
-        .setStartRow(startRow)
-        .setStopRow(limitRow);
-    KijiRowScanner scanner = reader.getScanner(request, scannerOptions);
-    try {
-      int rowsOutput = 0;
-      for (KijiRowData row : scanner) {
-        if (mMaxRows != 0 && ++rowsOutput > mMaxRows) {
-          break;
-        }
-        ToolUtils.printRow(row, mapTypeFamilies, groupTypeColumns, getPrintStream());
-      }
-    } finally {
-      ResourceUtils.closeOrLog(scanner);
-    }
-    return 0;
-  }
-
-  /**
-   * Prints the data for a single entity id.
-   *
-   * @param reader The reader.
-   * @param request The data request.
-   * @param entityId The entity id to lookup.
-   * @param mapTypeFamilies The map type families to print.
-   * @param groupTypeColumns The group type columns to print.
-   * @return A program exit code (zero on success).
-   */
-  private int lookup(
-      KijiTableReader reader,
-      KijiDataRequest request,
-      EntityId entityId,
-      Map<FamilyLayout, List<String>> mapTypeFamilies,
-      Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns) {
-    getPrintStream().println(
-        "Looking up entity: " + Bytes.toStringBinary(entityId.getHBaseRowKey())
-        + " from kiji table: " + mURI);
-    try {
-      final KijiRowData row = reader.get(entityId, request);
-      ToolUtils.printRow(row, mapTypeFamilies, groupTypeColumns, getPrintStream());
-    } catch (IOException ioe) {
-      LOG.error(ioe.getMessage());
-      return 1;
-    }
-    return 0;
-  }
-
-  @Override
-  protected void validateFlags() throws Exception {
-    if (mMaxRows < 0) {
-      throw new RuntimeException("--max-rows must be positive");
-    }
-    if (mEntityIdFlag != null) {
-      if (mStartRowFlag != null) {
-        throw new RuntimeException("--start-row is only relevant when scanning");
-      }
-      if (mLimitRowFlag != null) {
-        throw new RuntimeException("--limit-row is only relevant when scanning");
-      }
-      if (mMaxRows != 0) {
-        throw new RuntimeException("--max-rows is only relevant when scanning");
-      }
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void setup() throws Exception {
-    mURI = KijiURI.newBuilder(mURIFlag).build();
+    return SUCCESS;
   }
 
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    if (mURI.getZookeeperQuorum() == null) {
-      LOG.error("Specify an HBase cluster with --kiji=kiji://zookeeper-quorum");
-      return 1;
+    int status = SUCCESS;
+    if (nonFlagArgs.isEmpty()) {
+      getPrintStream().printf("URI was unspecified, reverting to default: %s%n",
+          KConstants.DEFAULT_URI);
+      return run(KijiURI.newBuilder(KConstants.DEFAULT_URI).build());
+    } else {
+      for (String arg : nonFlagArgs) {
+        status = Math.max(status, run(KijiURI.newBuilder(arg).build()));
+      }
+      return status;
+    }
+  }
+
+  /**
+   * Lists instances, tables, or columns in a kiji URI.
+   * Can be recursively called by run(List<String>).
+   *
+   * @param argURI Kiji URI from which to list instances, tables, or columns.
+   * @return A program exit code (zero on success).
+   * @throws Exception If there is an error.
+   */
+  private int run(final KijiURI argURI) throws Exception {
+    if (argURI.getZookeeperQuorum() == null) {
+      getPrintStream().printf("Specify a cluster with argument: kiji://zookeeper-quorum%n");
+      return FAILURE;
     }
 
-    if (mURI.getInstance() == null) {
-      return listInstances(mURI);
+    if (argURI.getInstance() == null) {
+      // List instances in this kiji instance.
+      return listInstances(argURI);
     }
 
-    final Kiji kiji = Kiji.Factory.open(mURI);
+    final Kiji kiji = Kiji.Factory.open(argURI);
     try {
-      if (mURI.getTable() == null) {
+      if (argURI.getTable() == null) {
         // List tables in this kiji instance.
         return listTables(kiji);
       }
 
-      final KijiTable table = kiji.openTable(mURI.getTable());
+      final KijiTable table = kiji.openTable(argURI.getTable());
       try {
         final KijiTableLayout tableLayout = table.getLayout();
-        final String[] rawColumnNames =
-            (mColumns.equals("*")) ? null : StringUtils.split(mColumns, ",");
-
-        final Map<FamilyLayout, List<String>> mapTypeFamilies =
-            ToolUtils.getMapTypeFamilies(rawColumnNames, tableLayout);
-
-        final Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns =
-            ToolUtils.getGroupTypeColumns(rawColumnNames, tableLayout);
-
-        final KijiDataRequest request = ToolUtils.getDataRequest(
-            mapTypeFamilies, groupTypeColumns, mMaxVersions, mMinTimestamp, mMaxTimestamp);
-
-        final KijiTableReader reader = table.openTableReader();
-        try {
-          final EntityIdFactory eidFactory = EntityIdFactory.getFactory(table.getLayout());
-          if (mEntityIdFlag == null) {
-            // Scan from startRow to limitRow.
-            final EntityId startRow = (mStartRowFlag != null)
-                ? eidFactory.getEntityIdFromHBaseRowKey(ToolUtils.parseBytesFlag(mStartRowFlag))
-                : null;
-            final EntityId limitRow = (mLimitRowFlag != null)
-                ? eidFactory.getEntityIdFromHBaseRowKey(ToolUtils.parseBytesFlag(mLimitRowFlag))
-                : null;
-            return scan(reader, request, startRow, limitRow, mapTypeFamilies, groupTypeColumns);
+        for (FamilyLayout family : tableLayout.getFamilies()) {
+          if (family.isMapType()) {
+            getPrintStream().println(KijiURI.newBuilder(table.getURI())
+                .addColumnName(new KijiColumnName(family.getName()))
+                .build());
           } else {
-            // Return the specified entity.
-            final EntityId entityId =
-                ToolUtils.createEntityIdFromUserInputs(mEntityIdFlag, tableLayout);
-            return lookup(reader, request, entityId, mapTypeFamilies, groupTypeColumns);
+            for (ColumnLayout column : family.getColumns()) {
+              getPrintStream().println(KijiURI.newBuilder(table.getURI())
+                  .addColumnName(new KijiColumnName(family.getName(), column.getName()))
+                  .build());
+            }
           }
-        } finally {
-          ResourceUtils.closeOrLog(reader);
         }
+        return SUCCESS;
       } finally {
         ResourceUtils.releaseOrLog(table);
       }
