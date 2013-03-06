@@ -37,6 +37,12 @@ public final class Hadoop1xSchemaBridge extends SchemaPlatformBridge {
 
   /** {@inheritDoc} */
   @Override
+  public void initializeHadoopResources() {
+    // Do nothing: Configuration resources include hdfs/mapred-site/default.xml by default.
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public void setAutoFlush(HTableInterface hTable, boolean autoFlush) {
     // The HTable implementation of HTableInterface can do this; downcast if available.
     if (hTable instanceof HTable) {
