@@ -25,16 +25,21 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 
+import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
+import org.apache.hadoop.hdfs.HdfsConfiguration;
+import org.apache.hadoop.mapred.JobConf;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -71,6 +76,15 @@ import org.kiji.schema.util.ResourceUtils;
  */
 public abstract class AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractKijiIntegrationTest.class);
+  static {
+    // Force loading the HdfsConfiguration class to register hdfs-default.xml and hdfs-site.xml
+    // resources:
+    HdfsConfiguration.class.getName();
+
+    // Force loading the JobConf class to register mapred-default.xml and mapred-site.xml
+    // resources:
+    JobConf.class.getName();
+  }
 
   /** Whether to start an embedded mini HBase and M/R cluster. */
   private static final boolean STANDALONE =
@@ -170,10 +184,9 @@ public abstract class AbstractKijiIntegrationTest {
    * @return an HBase configuration to work against.
    */
   protected Configuration createConfiguration() {
-    if (null != mStandaloneConf) {
-      return HBaseConfiguration.create(mStandaloneConf);
-    }
-    return HBaseConfiguration.create();
+    return (null != mStandaloneConf)
+        ? HBaseConfiguration.create(mStandaloneConf)
+        : HBaseConfiguration.create();
   }
 
   /**
@@ -251,9 +264,29 @@ public abstract class AbstractKijiIntegrationTest {
     }
   }
 
+  private static final String LINE =
+      "--------------------------------------------------------------------------------";
+
   @Before
   public final void setupKijiIntegrationTest() throws Exception {
     mConf = createConfiguration();
+
+    LOG.info(LINE);
+    LOG.info("Setup summary for {}", getClass().getName());
+    LOG.info("Using Job tracker: {}", mConf.get("mapred.job.tracker"));
+    LOG.info("Using default HDFS: {}", mConf.get("fs.defaultFS"));
+    LOG.info("Using HBase: quorum: {} - client port: {}",
+        mConf.get("hbase.zookeeper.quorum"), mConf.get("hbase.zookeeper.property.clientPort"));
+    LOG.info(LINE);
+    LOG.info("Full configuration dump:");
+    final TreeMap<String, String> tmap = Maps.newTreeMap();
+    for (Map.Entry<String, String> entry : mConf) {
+      tmap.put(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, String> entry: tmap.entrySet()) {
+      LOG.info("{}: '{}'", entry.getKey(), entry.getValue());
+    }
+    LOG.info(LINE);
 
     // Get a new Kiji instance, with a randomly-generated name.
     mKijiURI = mCreationThread.getFreshKiji();

@@ -80,7 +80,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   private KijiCellEncoder mNodeCellEncoder;
 
   @Before
-  public void initDecoders() throws Exception {
+  public final void initDecoders() throws Exception {
     final CellSchema stringCellSchema = CellSchema.newBuilder()
         .setStorage(SchemaStorage.HASH)
         .setType(SchemaType.INLINE)
@@ -125,7 +125,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   }
 
   @Before
-  public void setupInstance() throws Exception {
+  public final void setupInstance() throws Exception {
     final KijiTableLayout tableLayout =
         KijiTableLayouts.getTableLayout(KijiTableLayouts.ROW_DATA_TEST);
     getKiji().createTable(tableLayout.getDesc());
@@ -161,10 +161,14 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().add("family", "qual0");
     KijiDataRequest dataRequest = builder.build();
-    KijiTable table = getKiji().openTable(tableLayout.getName());
-    HBaseKijiTable hKijiTable = HBaseKijiTable.downcast(table);
-    KijiRowData input = new HBaseKijiRowData(foo, dataRequest, hKijiTable, result);
-    assertEquals(foo, input.getEntityId());
+    final KijiTable table = getKiji().openTable(tableLayout.getName());
+    try {
+      HBaseKijiTable hKijiTable = HBaseKijiTable.downcast(table);
+      KijiRowData input = new HBaseKijiRowData(foo, dataRequest, hKijiTable, result);
+      assertEquals(foo, input.getEntityId());
+    } finally {
+      table.release();
+    }
   }
 
   @Test
@@ -182,13 +186,17 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().addFamily("family");
     KijiDataRequest dataRequest = builder.build();
-    KijiTable table = getKiji().openTable(tableLayout.getName());
-    HBaseKijiTable hKijiTable = HBaseKijiTable.downcast(table);
-    HBaseKijiRowData input = new HBaseKijiRowData(row0, dataRequest, hKijiTable, result);
-    input.getMap();
-    final int integer = (Integer) input.getMostRecentValue("family", "qual3");
-    assertEquals(42, integer);
-    LOG.info("stop testReadInts");
+    final KijiTable table = getKiji().openTable(tableLayout.getName());
+    try {
+      HBaseKijiTable hKijiTable = HBaseKijiTable.downcast(table);
+      HBaseKijiRowData input = new HBaseKijiRowData(row0, dataRequest, hKijiTable, result);
+      input.getMap();
+      final int integer = (Integer) input.getMostRecentValue("family", "qual3");
+      assertEquals(42, integer);
+      LOG.info("stop testReadInts");
+    } finally {
+      table.release();
+    }
   }
 
   @Test
@@ -593,21 +601,33 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     final KijiTableLayout layout =
         KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
 
+    // Create a different Kiji instance, with a table 'table' different than the one created
+    // in setup:
     final Kiji kiji = new InstanceBuilder()
         .withTable("table", layout)
             .withRow("row1")
                .withFamily("family")
                   .withQualifier("column").withValue(1, "foo1")
         .build();
-
-    final KijiTable table = kiji.openTable("table");
-    final KijiTableReader reader = table.openTableReader();
-
-    final KijiRowData row1 = reader.get(table.getEntityId("row1"),
-        KijiDataRequest.create("family", "column"));
-    assertTrue(row1.containsCell("family", "column", 1L));
-    assertFalse(row1.containsCell("family", "column", 2L));
-    assertFalse(row1.containsCell("blope", "column", 1L));
-    assertFalse(row1.containsCell("family", "blope", 1L));
+    try {
+      final KijiTable table = kiji.openTable("table");
+      try {
+        final KijiTableReader reader = table.openTableReader();
+        try {
+          final KijiRowData row1 = reader.get(table.getEntityId("row1"),
+              KijiDataRequest.create("family", "column"));
+          assertTrue(row1.containsCell("family", "column", 1L));
+          assertFalse(row1.containsCell("family", "column", 2L));
+          assertFalse(row1.containsCell("blope", "column", 1L));
+          assertFalse(row1.containsCell("family", "blope", 1L));
+        } finally {
+          reader.close();
+        }
+      } finally {
+        table.release();
+      }
+    } finally {
+      kiji.release();
+    }
   }
 }

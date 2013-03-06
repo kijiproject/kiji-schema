@@ -195,32 +195,36 @@ public class InstanceBuilder {
         kiji.createTable(layout.getDesc());
       }
       final KijiTable kijiTable = kiji.openTable(tableName);
-      final KijiTableWriter writer = kijiTable.openTableWriter();
-
-      // Build & write rows to the table.
-      for (Map.Entry<EntityId, Map<String, Map<String, Map<Long, Object>>>> rowEntry
-          : table.entrySet()) {
-        final EntityId entityId = rowEntry.getKey();
-        final Map<String, Map<String, Map<Long, Object>>> row = rowEntry.getValue();
-        for (Map.Entry<String, Map<String, Map<Long, Object>>> familyEntry : row.entrySet()) {
-          final String familyName = familyEntry.getKey();
-          final Map<String, Map<Long, Object>> family = familyEntry.getValue();
-          for (Map.Entry<String, Map<Long, Object>> qualifierEntry : family.entrySet()) {
-            final String qualifierName = qualifierEntry.getKey();
-            final Map<Long, Object> qualifier = qualifierEntry.getValue();
-            for (Map.Entry<Long, Object> valueEntry : qualifier.entrySet()) {
-              final long timestamp = valueEntry.getKey();
-              final Object value = valueEntry.getValue();
-              LOG.info("\tBuilding put: {} -> ({}:{}, {}:{})",
-                  entityId, familyName, qualifierName, timestamp, value);
-              writer.put(entityId, familyName, qualifierName, timestamp, value);
+      try {
+        final KijiTableWriter writer = kijiTable.openTableWriter();
+        try {
+          // Build & write rows to the table.
+          for (Map.Entry<EntityId, Map<String, Map<String, Map<Long, Object>>>> rowEntry
+              : table.entrySet()) {
+            final EntityId entityId = rowEntry.getKey();
+            final Map<String, Map<String, Map<Long, Object>>> row = rowEntry.getValue();
+            for (Map.Entry<String, Map<String, Map<Long, Object>>> familyEntry : row.entrySet()) {
+              final String familyName = familyEntry.getKey();
+              final Map<String, Map<Long, Object>> family = familyEntry.getValue();
+              for (Map.Entry<String, Map<Long, Object>> qualifierEntry : family.entrySet()) {
+                final String qualifierName = qualifierEntry.getKey();
+                final Map<Long, Object> qualifier = qualifierEntry.getValue();
+                for (Map.Entry<Long, Object> valueEntry : qualifier.entrySet()) {
+                  final long timestamp = valueEntry.getKey();
+                  final Object value = valueEntry.getValue();
+                  LOG.info("\tBuilding put: {} -> ({}:{}, {}:{})",
+                      entityId, familyName, qualifierName, timestamp, value);
+                  writer.put(entityId, familyName, qualifierName, timestamp, value);
+                }
+              }
             }
           }
+        } finally {
+          writer.close();
         }
+      } finally {
+        kijiTable.release();
       }
-
-      ResourceUtils.releaseOrLog(kijiTable);
-      ResourceUtils.closeOrLog(writer);
     }
 
     // Add the Kiji instance to the environment.
