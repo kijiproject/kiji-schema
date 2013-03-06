@@ -31,6 +31,10 @@ import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 
+import org.apache.hadoop.hdfs.HdfsConfiguration;
+
+import org.apache.hadoop.mapred.JobConf;
+
 import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -74,6 +78,15 @@ import org.kiji.schema.util.ResourceUtils;
  */
 public abstract class AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractKijiIntegrationTest.class);
+  static {
+    // Force loading the HdfsConfiguration class to register hdfs-default.xml and hdfs-site.xml
+    // resources:
+    HdfsConfiguration.class.getName();
+
+    // Force loading the JobConf class to register mapred-default.xml and mapred-site.xml
+    // resources:
+    JobConf.class.getName();
+  }
 
   /** Whether to start an embedded mini HBase and M/R cluster. */
   private static final boolean STANDALONE =
@@ -173,12 +186,9 @@ public abstract class AbstractKijiIntegrationTest {
    * @return an HBase configuration to work against.
    */
   protected Configuration createConfiguration() {
-    final Configuration conf =
-        (null != mStandaloneConf)
+    return (null != mStandaloneConf)
         ? HBaseConfiguration.create(mStandaloneConf)
         : HBaseConfiguration.create();
-    conf.addResource("mapred-site.xml");
-    return conf;
   }
 
   /**
