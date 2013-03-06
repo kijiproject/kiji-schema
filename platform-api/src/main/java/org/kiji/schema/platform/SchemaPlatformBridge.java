@@ -42,6 +42,15 @@ public abstract class SchemaPlatformBridge {
   }
 
   /**
+   * Initialize Hadoop configuration resources (HDFS and MapReduce resource files).
+   *
+   * Ensure that these configuration resources are loaded into subsequently-constructed
+   * Configuration objects.
+   * This includes hdfs-site.xml, hdfs-default.xml, mapred-site.xml and mapred-default.xml.
+   */
+  public abstract void initializeHadoopResources();
+
+  /**
    * Set the autoflush behavior associated with an HTableInterface.
    *
    * @param hTable the table connection to configure.
@@ -58,7 +67,6 @@ public abstract class SchemaPlatformBridge {
    */
   public abstract void setWriteBufferSize(HTableInterface hTable, long bufSize)
       throws IOException;
-
 
   private static SchemaPlatformBridge mBridge;
 

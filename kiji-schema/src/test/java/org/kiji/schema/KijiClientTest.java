@@ -29,8 +29,6 @@ import com.google.common.collect.Lists;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
-import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.mapred.JobConf;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -38,6 +36,7 @@ import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.TestFileUtils;
 
 /**
@@ -46,14 +45,9 @@ import org.kiji.schema.util.TestFileUtils;
  */
 public class KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(KijiClientTest.class);
-  static {
-    // Force loading the HdfsConfiguration class to register hdfs-default.xml and hdfs-site.xml
-    // resources:
-    HdfsConfiguration.class.getName();
 
-    // Force loading the JobConf class to register mapred-default.xml and mapred-site.xml
-    // resources:
-    JobConf.class.getName();
+  static {
+    SchemaPlatformBridge.get().initializeHadoopResources();
   }
 
   /** Test method name (eg. "testFeatureX"). */

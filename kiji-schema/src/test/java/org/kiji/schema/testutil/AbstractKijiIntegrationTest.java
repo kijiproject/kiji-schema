@@ -38,8 +38,6 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
-import org.apache.hadoop.hdfs.HdfsConfiguration;
-import org.apache.hadoop.mapred.JobConf;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -51,6 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.tools.BaseTool;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -77,13 +76,7 @@ import org.kiji.schema.util.ResourceUtils;
 public abstract class AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractKijiIntegrationTest.class);
   static {
-    // Force loading the HdfsConfiguration class to register hdfs-default.xml and hdfs-site.xml
-    // resources:
-    HdfsConfiguration.class.getName();
-
-    // Force loading the JobConf class to register mapred-default.xml and mapred-site.xml
-    // resources:
-    JobConf.class.getName();
+    SchemaPlatformBridge.get().initializeHadoopResources();
   }
 
   /** Whether to start an embedded mini HBase and M/R cluster. */
