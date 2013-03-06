@@ -42,6 +42,11 @@ import org.kiji.schema.layout.KijiTableLayout;
 public abstract class EntityIdFactory {
 
   /**
+   * Creates a new instance. Package-private constructor.
+   */
+  EntityIdFactory() { }
+
+  /**
    * Creates an entity ID factory for the specified row key format.
    *
    * @param format Row key format of type RowKeyFormat that determines the

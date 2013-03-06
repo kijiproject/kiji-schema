@@ -50,6 +50,12 @@ import org.kiji.annotations.Inheritance;
 @ApiAudience.Public
 @Inheritance.Sealed
 public abstract class EntityId {
+
+  /**
+   * Creates a new instance. Package-private constructor.
+   */
+  EntityId() { }
+
   /**
    * Translates this Kiji row key into an HBase row key.
    *
