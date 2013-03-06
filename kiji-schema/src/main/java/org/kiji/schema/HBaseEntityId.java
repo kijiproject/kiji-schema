@@ -27,6 +27,7 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.util.ByteArrayFormatter;
 
 /**
  * Entity ID encapsulating an HBase row key. This literally
@@ -84,5 +85,17 @@ public final class HBaseEntityId extends EntityId {
     return Objects.toStringHelper(HBaseEntityId.class)
         .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
         .toString();
+  }
+
+  /**
+   * Shell friendly string representation of the HBaseEntityId.
+   * When used as input to a CLI, will be converted to the EntityId type specified in the
+   * provided table layout.
+   *
+   * @return a copyable string.
+   */
+  @Override
+  public String toShellString() {
+    return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(mHBaseRowKey));
   }
 }

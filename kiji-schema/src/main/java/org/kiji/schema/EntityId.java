@@ -101,4 +101,15 @@ public abstract class EntityId {
     final EntityId eid = (EntityId) obj;
     return Arrays.equals(getHBaseRowKey(), eid.getHBaseRowKey());
   }
+
+  /**
+   * A String which can be copied into CLI and parsed to the same EntityId.
+   * Characters interpreted by the JSON parser for formatted entity ids
+   * as part of the JSON structure are automatically escaped with '\'.
+   * Other characters which may be interpreted by your shell environment
+   * must be escaped manually.
+   *
+   * @return A copyable string.
+   */
+  public abstract String toShellString();
 }

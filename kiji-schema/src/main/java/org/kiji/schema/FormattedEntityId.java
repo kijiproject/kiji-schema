@@ -25,11 +25,16 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -153,6 +158,16 @@ final class FormattedEntityId extends EntityId {
     if (kijiRowKey.size() > format.getComponents().size()) {
       throw new EntityIdException("Too many components in kiji Row Key");
     }
+    if (kijiRowKey.size() < format.getComponents().size()) {
+      int krk = kijiRowKey.size();
+      int fgc = format.getComponents().size();
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(String.format(
+              "{} components found in {}, {} expected by row key format."
+              + "The last {} components implicitly set to null",
+              krk, kijiRowKey.toString(), fgc, fgc - krk));
+      }
+    }
     if (kijiRowKey.size() < format.getNullableStartIndex()) {
       throw new EntityIdException("Too few components in kiji Row key");
     }
@@ -185,9 +200,14 @@ final class FormattedEntityId extends EntityId {
         // for non-null components ensure that the type matches the format spec
         ComponentType type = getType(kijiRowKey.get(i));
         if (null == type || type != format.getComponents().get(i).getType()) {
+          if (type == ComponentType.INTEGER
+               && format.getComponents().get(i).getType() == ComponentType.LONG) {
+            kijiRowKey.set(i, ((Integer) kijiRowKey.get(i)).longValue());
+          } else {
           throw new EntityIdException(String.format(
-              "Invalid type for %d'th component %s in kijiRowKey", i,
-              kijiRowKey.get(i).toString()));
+              "Invalid type for component %s at index %d in kijiRowKey",
+              kijiRowKey.get(i).toString(), i));
+          }
         }
       }
     }
@@ -424,7 +444,7 @@ final class FormattedEntityId extends EntityId {
     }
   }
 
-  /** {@inheritDoc} **/
+  /** {@inheritDoc} */
   @Override
   @SuppressWarnings("unchecked")
   public <T> T getComponentByIndex(int idx) {
@@ -434,7 +454,7 @@ final class FormattedEntityId extends EntityId {
     return (T) mComponentValues.get(idx);
   }
 
-  /** {@inheritDoc} **/
+  /** {@inheritDoc} */
   @Override
   public List<Object> getComponents() {
     Preconditions.checkState(!mRowKeyFormat.getSalt().getSuppressKeyMaterialization(),
@@ -456,5 +476,33 @@ final class FormattedEntityId extends EntityId {
           .add("hbase", Bytes.toStringBinary(mHBaseRowKey))
           .toString();
     }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toShellString() {
+    /** Set of characters which must be escaped */
+    HashSet<Character> escapeSet = Sets.newHashSet('"', '\\', '\'');
+    ArrayList<String> componentStrings = Lists.newArrayList();
+    for (Object component : mComponentValues) {
+      if (component == null) {
+        componentStrings.add("null");
+      } else {
+        String unescapedString = component.toString();
+        ArrayList<Character> escapedString = Lists.newArrayList();
+        for (char c: unescapedString.toCharArray()) {
+          if (escapeSet.contains(c)) {
+            escapedString.add('\\');
+          }
+          escapedString.add(c);
+        }
+        if (getType(component) == ComponentType.STRING) {
+          componentStrings.add(String.format("'%s'", StringUtils.join(escapedString, "")));
+        } else {
+          componentStrings.add(component.toString());
+        }
+      }
+    }
+    return "[" + StringUtils.join(componentStrings, ", ") + "]";
   }
 }

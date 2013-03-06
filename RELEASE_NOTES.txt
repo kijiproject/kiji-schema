@@ -3,6 +3,9 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA_173. Improves CLI parsing of EntityIds.  Adds abstract
+      toShellString() to EntityId which returns a string which can be
+      copied into CLI.
   * SCHEMA-207. KijiURIBuilder supports relative paths to
       DEFAULT_HBASE_URI.
   * SCHEMA-247. The ls tool can no longer perform get and scan.
@@ -13,7 +16,7 @@ Version 1.0.0-rc5
   * SCHEMA-248. Kiji.modifyTableLayout() no longer takes a table name.
       The Kiji.modifyTableLayout() methods that take a String name are
       now deprecated.
-  * SCHEMA-223. Adds backup methods to KijiSystemTable and SystemTable 
+  * SCHEMA-223. Adds backup methods to KijiSystemTable and SystemTable
       backup to MetadataTool.
   * SCHEMA-244. Kiji.createTable() now takes a TableLayoutDesc object.
       The Kiji.createTable() methods that take a KijiTableLayout object
