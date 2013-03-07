@@ -37,7 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.platform.SchemaPlatformBridge;
-import org.kiji.schema.util.TestFileUtils;
+import org.kiji.schema.util.TestingFileUtils;
 
 /**
  * Base class for tests that interact with kiji as a client.
@@ -50,9 +50,9 @@ public class KijiClientTest {
     SchemaPlatformBridge.get().initializeHadoopResources();
   }
 
-  /** Test method name (eg. "testFeatureX"). */
   // JUnit requires public, checkstyle disagrees:
   // CSOFF: VisibilityModifierCheck
+  /** Test method name (eg. "testFeatureX"). */
   @Rule
   public final TestName mTestName = new TestName();
   // CSON: VisibilityModifierCheck
@@ -94,7 +94,7 @@ public class KijiClientTest {
   private void doSetupKijiTest() throws Exception {
     mTestId =
         String.format("%s_%s", getClass().getName().replace('.', '_'), mTestName.getMethodName());
-    mLocalTempDir = TestFileUtils.createTempDir(mTestId, "temp-dir");
+    mLocalTempDir = TestingFileUtils.createTempDir(mTestId, "temp-dir");
     mConf = HBaseConfiguration.create();
     mConf.set("fs.defaultFS", "file://" + mLocalTempDir);
     mConf.set("fs.default.name", "file://" + mLocalTempDir);

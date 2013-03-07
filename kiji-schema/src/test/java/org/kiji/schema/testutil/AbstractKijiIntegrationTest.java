@@ -270,14 +270,46 @@ public abstract class AbstractKijiIntegrationTest {
     LOG.info("Using default HDFS: {}", mConf.get("fs.defaultFS"));
     LOG.info("Using HBase: quorum: {} - client port: {}",
         mConf.get("hbase.zookeeper.quorum"), mConf.get("hbase.zookeeper.property.clientPort"));
+
     LOG.info(LINE);
-    LOG.info("Full configuration dump:");
-    final TreeMap<String, String> tmap = Maps.newTreeMap();
-    for (Map.Entry<String, String> entry : mConf) {
-      tmap.put(entry.getKey(), entry.getValue());
+    {
+      LOG.info("Environment variables:");
+      final TreeMap<String, String> tmap = Maps.newTreeMap();
+      for (Map.Entry<String, String> entry : System.getenv().entrySet()) {
+        tmap.put(entry.getKey(), entry.getValue());
+      }
+      for (Map.Entry<String, String> entry: tmap.entrySet()) {
+        LOG.info("{}: '{}'", entry.getKey(), entry.getValue());
+      }
     }
-    for (Map.Entry<String, String> entry: tmap.entrySet()) {
-      LOG.info("{}: '{}'", entry.getKey(), entry.getValue());
+    LOG.info(LINE);
+    {
+      LOG.info("System properties:");
+      final TreeMap<String, String> tmap = Maps.newTreeMap();
+      for (Map.Entry<Object, Object> entry : System.getProperties().entrySet()) {
+        tmap.put(entry.getKey().toString(), entry.getValue().toString());
+      }
+      for (Map.Entry<String, String> entry: tmap.entrySet()) {
+        LOG.info("{}: '{}'", entry.getKey(), entry.getValue());
+      }
+    }
+    LOG.info(LINE);
+    {
+      LOG.info("Classpath:");
+      for (String entry: System.getProperty("java.class.path").split(":")) {
+        LOG.info(entry);
+      }
+    }
+    LOG.info(LINE);
+    {
+      LOG.info("Hadoop configuration:");
+      final TreeMap<String, String> tmap = Maps.newTreeMap();
+      for (Map.Entry<String, String> entry : mConf) {
+        tmap.put(entry.getKey(), entry.getValue());
+      }
+      for (Map.Entry<String, String> entry: tmap.entrySet()) {
+        LOG.info("{}: '{}'", entry.getKey(), entry.getValue());
+      }
     }
     LOG.info(LINE);
 
