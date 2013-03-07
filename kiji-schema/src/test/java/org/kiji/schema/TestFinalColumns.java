@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.util.ResourceUtils;
 
 /** Tests final columns. */
 public class TestFinalColumns extends KijiClientTest {
@@ -42,23 +41,31 @@ public class TestFinalColumns extends KijiClientTest {
     kiji.createTable(layoutDesc);
 
     final KijiTable table = kiji.openTable("table");
-    final KijiTableWriter writer = table.openTableWriter();
-
-    final EntityId eid = table.getEntityId("row-key");
-    writer.put(eid, "family", "column", "string value");
-
     try {
-      writer.put(eid, "family", "column", 1L);
-      fail("Final string column should not accept anything else but strings.");
-    } catch (KijiEncodingException kee) {
-      LOG.info("Expected error: " + kee);
+      final KijiTableWriter writer = table.openTableWriter();
+      try {
+        final EntityId eid = table.getEntityId("row-key");
+        writer.put(eid, "family", "column", "string value");
+
+        try {
+          writer.put(eid, "family", "column", 1L);
+          fail("Final string column should not accept anything else but strings.");
+        } catch (KijiEncodingException kee) {
+          LOG.info("Expected error: " + kee);
+        }
+
+        final KijiTableReader reader = table.openTableReader();
+        try {
+          final KijiRowData row = reader.get(eid, KijiDataRequest.create("family", "column"));
+          assertEquals("string value", row.getMostRecentValue("family", "column").toString());
+        } finally {
+          reader.close();
+        }
+      } finally {
+        writer.close();
+      }
+    } finally {
+      table.release();
     }
-
-    final KijiTableReader reader = table.openTableReader();
-    final KijiRowData row = reader.get(eid, KijiDataRequest.create("family", "column"));
-    assertEquals("string value", row.getMostRecentValue("family", "column").toString());
-
-    ResourceUtils.closeOrLog(writer);
-    ResourceUtils.releaseOrLog(table);
   }
 }

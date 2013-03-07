@@ -49,13 +49,19 @@ public class TestKijiPaginationFilter extends KijiClientTest {
   private KijiTable mTable;
 
   @Before
-  public void setupInstance() throws Exception {
+  public final void setupTestKijiPaginationFilter() throws Exception {
     final Kiji kiji = getKiji();
     mTableLayout = KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST);
     kiji.createTable(mTableLayout);
 
     mTable = kiji.openTable("user");
     mReader = mTable.openTableReader();
+  }
+
+  @After
+  public final void teardownTestKijiPaginationFilter() throws Exception {
+    mReader.close();
+    mTable.release();
   }
 
   @Test
@@ -155,10 +161,5 @@ public class TestKijiPaginationFilter extends KijiClientTest {
         resultMap.get("b").get(3L).toString());
     assertEquals("Incorrect second value of first page:", "always coming in 4th",
         resultMap.get("b").get(2L).toString());
-  }
-
-  @After
-  public void cleaup() throws IOException {
-    ResourceUtils.closeOrLog(mReader);
   }
 }

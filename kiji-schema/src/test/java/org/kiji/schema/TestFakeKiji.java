@@ -32,74 +32,89 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 
 /** Basic tests for a fake Kiji instance. */
-public class TestFakeKiji {
+public class TestFakeKiji extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestFakeKiji.class);
 
   @Test
   public void testFakeKiji() throws Exception {
     LOG.info("Opening an in-memory kiji instance");
-    final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji/instance").build();
+    final KijiURI uri = KijiURI
+        .newBuilder(String.format("kiji://.fake.%s/instance", getTestId()))
+        .build();
     final Configuration conf = HBaseConfiguration.create();
     KijiInstaller.get().install(uri, conf);
 
     final Kiji kiji = Kiji.Factory.open(uri, conf);
+    try {
+      LOG.info(String.format("Opened fake Kiji '%s'.", kiji.getURI()));
 
-    LOG.info(String.format("Opened fake Kiji '%s'.", kiji.getURI()));
+      final KijiSystemTable systemTable = kiji.getSystemTable();
+      assertEquals("Client version should match installed version",
+          VersionInfo.getClientDataVersion(), systemTable.getDataVersion());
 
-    final KijiSystemTable systemTable = kiji.getSystemTable();
-    assertEquals("Client version should match installed version",
-        VersionInfo.getClientDataVersion(), systemTable.getDataVersion());
+      assertNotNull(kiji.getSchemaTable());
+      assertNotNull(kiji.getMetaTable());
 
-    assertNotNull(kiji.getSchemaTable());
-    assertNotNull(kiji.getMetaTable());
+      kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
+      final KijiTable table = kiji.openTable("table");
+      try {
+        {
+          final KijiTableReader reader = table.openTableReader();
+          try {
+            final KijiDataRequest dataRequest = KijiDataRequest.builder()
+                .addColumns(ColumnsDef.create().addFamily("family"))
+                .build();
+            final KijiRowScanner scanner = reader.getScanner(dataRequest);
+            try {
+              assertFalse(scanner.iterator().hasNext());
+            } finally {
+              scanner.close();
+            }
+          } finally {
+            reader.close();
+          }
+        }
 
-    {
-      final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
-      final KijiTableLayout tableLayout = KijiTableLayout.newLayout(layoutDesc);
-      kiji.createTable(layoutDesc);
+        {
+          final KijiTableWriter writer = table.openTableWriter();
+          try {
+            writer.put(table.getEntityId("row1"), "family", "column", "the string value");
+          } finally {
+            writer.close();
+          }
+        }
+
+        {
+          final KijiTableReader reader = table.openTableReader();
+          try {
+            final KijiDataRequest dataRequest = KijiDataRequest.builder()
+                .addColumns(ColumnsDef.create().addFamily("family"))
+                .build();
+            final KijiRowScanner scanner = reader.getScanner(dataRequest);
+            try {
+              final Iterator<KijiRowData> it = scanner.iterator();
+              assertTrue(it.hasNext());
+              KijiRowData row = it.next();
+              assertEquals("the string value",
+                  row.getMostRecentValue("family", "column").toString());
+              assertFalse(it.hasNext());
+            } finally {
+              scanner.close();
+            }
+          } finally {
+            reader.close();
+          }
+        }
+      } finally {
+        table.release();
+      }
+    } finally {
+      kiji.release();
     }
-
-    final KijiTable table = kiji.openTable("table");
-    {
-      final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-      builder.newColumnsDef().addFamily("family");
-      final KijiDataRequest dataRequest = builder.build();
-      final KijiRowScanner scanner =
-          table.openTableReader().getScanner(dataRequest);
-      assertFalse(scanner.iterator().hasNext());
-      ResourceUtils.closeOrLog(scanner);
-    }
-
-    {
-      final KijiTableWriter writer = table.openTableWriter();
-      writer.put(table.getEntityId("row1"), "family", "column", "the string value");
-      ResourceUtils.closeOrLog(writer);
-    }
-
-    {
-      final KijiTableReader reader = table.openTableReader();
-      final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-      builder.newColumnsDef().addFamily("family");
-      final KijiDataRequest dataRequest = builder.build();
-      final KijiRowScanner scanner =
-          table.openTableReader().getScanner(dataRequest);
-      final Iterator<KijiRowData> it = scanner.iterator();
-      assertTrue(it.hasNext());
-      KijiRowData row = it.next();
-      assertEquals("the string value", row.getMostRecentValue("family", "column").toString());
-      assertFalse(it.hasNext());
-      ResourceUtils.closeOrLog(scanner);
-      ResourceUtils.closeOrLog(reader);
-    }
-
-    ResourceUtils.releaseOrLog(table);
-    ResourceUtils.releaseOrLog(kiji);
   }
 }

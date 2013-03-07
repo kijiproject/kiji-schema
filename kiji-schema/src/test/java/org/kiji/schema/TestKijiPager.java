@@ -33,6 +33,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.filter.RegexQualifierColumnFilter;
 import org.kiji.schema.filter.TestKijiPaginationFilter;
 import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
@@ -118,43 +119,54 @@ public class TestKijiPager extends KijiClientTest {
   public void testGroupTypeColumnPagingFromScan() throws IOException {
     final EntityId id = mTable.getEntityId("me");
     final KijiTableWriter writer = mTable.openTableWriter();
-    writer.put(id, "info", "name", 1L, "me");
-    writer.put(id, "info", "name", 2L, "me-too");
-    writer.put(id, "info", "name", 3L, "me-three");
-    writer.put(id, "info", "name", 4L, "me-four");
-    writer.put(id, "info", "name", 5L, "me-five");
-    ResourceUtils.closeOrLog(writer);
+    try {
+      writer.put(id, "info", "name", 1L, "me");
+      writer.put(id, "info", "name", 2L, "me-too");
+      writer.put(id, "info", "name", 3L, "me-three");
+      writer.put(id, "info", "name", 4L, "me-four");
+      writer.put(id, "info", "name", 5L, "me-five");
+    } finally {
+      writer.close();
+    }
 
-    final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
-    final KijiDataRequest dataRequest = builder.build();
+    final KijiDataRequest dataRequest = KijiDataRequest.builder()
+        .addColumns(ColumnsDef.create().withMaxVersions(5).withPageSize(2).add("info", "name"))
+        .build();
     assertTrue(!dataRequest.isEmpty());
     assertTrue(dataRequest.isPagingEnabled());
     assertTrue(dataRequest.getColumn("info", "name").isPagingEnabled());
-    final Iterator<KijiRowData> scanner = mReader.getScanner(dataRequest).iterator();
-    assertTrue(scanner.hasNext());
-    final KijiRowData myRowData = scanner.next();
-    final KijiPager pager = myRowData.getPager("info", "name");
-    assertTrue(pager.hasNext());
 
-    final NavigableMap<Long, CharSequence> resultMap = pager.next().getValues("info", "name");
-    assertEquals("The number of returned values is incorrect: ", 2, resultMap.size());
-    assertEquals("Incorrect first value of first page:", "me-five", resultMap.get(5L).toString());
-    assertEquals("Incorrect second value of first page:", "me-four", resultMap.get(4L).toString());
-    assertTrue(pager.hasNext());
-    final NavigableMap<Long, CharSequence> resultMap2 = pager.next().getValues("info", "name");
-    assertEquals("The number of returned values is incorrect: ", 2 , resultMap2.size());
-    assertEquals("Incorrect first value of second page:", "me-three",
-        resultMap2.get(3L).toString());
-    assertEquals("Incorrect second value of second page:", "me-too", resultMap2.get(2L).toString());
+    final KijiRowScanner scanner = mReader.getScanner(dataRequest);
+    try {
+      final Iterator<KijiRowData> iterator = scanner.iterator();
+      assertTrue(iterator.hasNext());
+      final KijiRowData myRowData = iterator.next();
+      final KijiPager pager = myRowData.getPager("info", "name");
+      assertTrue(pager.hasNext());
 
-    assertTrue(pager.hasNext());
-    final NavigableMap<Long, CharSequence> resultMap3 = pager.next().getValues("info", "name");
-    assertEquals("The number of returned values is incorrect: ", 1 , resultMap3.size());
-    assertEquals("Incorrect first value of second page:", "me", resultMap3.get(1L).toString());
-    ResourceUtils.closeOrLog(pager);
+      final NavigableMap<Long, CharSequence> resultMap = pager.next().getValues("info", "name");
+      assertEquals("The number of returned values is incorrect: ", 2, resultMap.size());
+      assertEquals("Incorrect first value of first page:", "me-five", resultMap.get(5L).toString());
+      assertEquals("Incorrect second value of first page:", "me-four",
+          resultMap.get(4L).toString());
+      assertTrue(pager.hasNext());
+      final NavigableMap<Long, CharSequence> resultMap2 = pager.next().getValues("info", "name");
+      assertEquals("The number of returned values is incorrect: ", 2 , resultMap2.size());
+      assertEquals("Incorrect first value of second page:", "me-three",
+          resultMap2.get(3L).toString());
+      assertEquals("Incorrect second value of second page:", "me-too",
+          resultMap2.get(2L).toString());
 
-    assertTrue(!scanner.hasNext());
+      assertTrue(pager.hasNext());
+      final NavigableMap<Long, CharSequence> resultMap3 = pager.next().getValues("info", "name");
+      assertEquals("The number of returned values is incorrect: ", 1 , resultMap3.size());
+      assertEquals("Incorrect first value of second page:", "me", resultMap3.get(1L).toString());
+      ResourceUtils.closeOrLog(pager);
+
+      assertTrue(!iterator.hasNext());
+    } finally {
+      scanner.close();
+    }
   }
 
   @Test

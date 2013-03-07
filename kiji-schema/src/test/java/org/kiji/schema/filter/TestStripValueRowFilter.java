@@ -31,7 +31,7 @@ import org.junit.Test;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiDataRequest;
-import org.kiji.schema.KijiDataRequestBuilder;
+import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
@@ -51,45 +51,51 @@ public class TestStripValueRowFilter extends KijiClientTest {
     kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
 
     final KijiTable table = kiji.openTable("foo");
-    {
-      final KijiTableWriter writer = table.openTableWriter();
-      writer.put(table.getEntityId("me"), "info", "name", 1L, "me");
-      writer.put(table.getEntityId("me"), "info", "name", 2L, "me-too");
-      ResourceUtils.closeOrLog(writer);
-    }
-
-
-    final KijiTableReader reader = table.openTableReader();
-    final KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().withMaxVersions(2).add("info", "name");
-    final KijiDataRequest dataRequest = builder.build();
-    final KijiRowFilter rowFilter = new StripValueRowFilter();
-    final KijiScannerOptions scannerOptions =
-        new KijiScannerOptions()
-        .setKijiRowFilter(rowFilter);
-    final KijiRowScanner scanner =
-        reader.getScanner(dataRequest, scannerOptions);
-
-    for (KijiRowData row : scanner) {
-      final NavigableSet<String> qualifiers = row.getQualifiers("info");
-      assertEquals(1, qualifiers.size());
-      assertTrue(qualifiers.contains("name"));
-
-      // Ensure that we can use getTimestamps() to count.
-      assertEquals(2, row.getTimestamps("info", "name").size());
-      try {
-        // Cell value is stripped, hence IOException on the wrong schema hash:
-        row.getMostRecentValue("info", "name");
-        fail("row.getMostRecentValue() did not throw IOException.");
-      } catch (IOException ioe) {
-        assertTrue(ioe.getMessage(),
-            ioe.getMessage().contains(
-                "Schema with hash 00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00 "
-                + "not found in schema table."));
+    try {
+      {
+        final KijiTableWriter writer = table.openTableWriter();
+        writer.put(table.getEntityId("me"), "info", "name", 1L, "me");
+        writer.put(table.getEntityId("me"), "info", "name", 2L, "me-too");
+        ResourceUtils.closeOrLog(writer);
       }
-    }
 
-    ResourceUtils.closeOrLog(scanner);
-    ResourceUtils.closeOrLog(reader);
+      final KijiTableReader reader = table.openTableReader();
+      try {
+        final KijiDataRequest dataRequest = KijiDataRequest.builder()
+            .addColumns(ColumnsDef.create().withMaxVersions(2).add("info", "name"))
+            .build();
+        final KijiRowFilter rowFilter = new StripValueRowFilter();
+        final KijiScannerOptions scannerOptions =
+            new KijiScannerOptions().setKijiRowFilter(rowFilter);
+
+        final KijiRowScanner scanner = reader.getScanner(dataRequest, scannerOptions);
+        try {
+          for (KijiRowData row : scanner) {
+            final NavigableSet<String> qualifiers = row.getQualifiers("info");
+            assertEquals(1, qualifiers.size());
+            assertTrue(qualifiers.contains("name"));
+
+            // Ensure that we can use getTimestamps() to count.
+            assertEquals(2, row.getTimestamps("info", "name").size());
+            try {
+              // Cell value is stripped, hence IOException on the wrong schema hash:
+              row.getMostRecentValue("info", "name");
+              fail("row.getMostRecentValue() did not throw IOException.");
+            } catch (IOException ioe) {
+              assertTrue(ioe.getMessage(),
+                  ioe.getMessage().contains(
+                      "Schema with hash 00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00 "
+                      + "not found in schema table."));
+            }
+          }
+        } finally {
+          scanner.close();
+        }
+      } finally {
+        reader.close();
+      }
+    } finally {
+      table.release();
+    }
   }
 }
