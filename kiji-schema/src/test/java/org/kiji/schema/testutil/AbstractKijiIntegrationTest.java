@@ -26,12 +26,14 @@ import java.io.StringWriter;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -257,8 +259,20 @@ public abstract class AbstractKijiIntegrationTest {
     }
   }
 
-  private static final String LINE =
-      "--------------------------------------------------------------------------------";
+  private static final String LINE = Strings.repeat("-", 80);
+
+  private static <K, V> String toLogString(Iterable<Map.Entry<K, V>> entries) {
+    final Map<String, V> map = Maps.newTreeMap();
+    for (Map.Entry<K, V> entry : entries) {
+      map.put(entry.getKey().toString(), entry.getValue());
+    }
+    final StringBuilder sb = new StringBuilder();
+    for (Map.Entry<String, V> entry : map.entrySet()) {
+      sb.append(String.format("%s: \"%s\"%n",
+          entry.getKey(), StringEscapeUtils.escapeJava(entry.getValue().toString())));
+    }
+    return sb.toString();
+  }
 
   @Before
   public final void setupKijiIntegrationTest() throws Exception {
@@ -271,15 +285,15 @@ public abstract class AbstractKijiIntegrationTest {
     LOG.info("Using HBase: quorum: {} - client port: {}",
         mConf.get("hbase.zookeeper.quorum"), mConf.get("hbase.zookeeper.property.clientPort"));
     LOG.info(LINE);
-    LOG.info("Full configuration dump:");
-    final TreeMap<String, String> tmap = Maps.newTreeMap();
-    for (Map.Entry<String, String> entry : mConf) {
-      tmap.put(entry.getKey(), entry.getValue());
-    }
-    for (Map.Entry<String, String> entry: tmap.entrySet()) {
-      LOG.info("{}: '{}'", entry.getKey(), entry.getValue());
-    }
-    LOG.info(LINE);
+
+    LOG.info("Environment variables:\n{}\n{}\n{}",
+        LINE, toLogString(System.getenv().entrySet()), LINE);
+    LOG.info("System properties:\n{}\n{}\n{}",
+        LINE, toLogString(System.getProperties().entrySet()), LINE);
+    LOG.info("Classpath:\n{}\n{}\n{}",
+        LINE, Joiner.on("\n").join(System.getProperty("java.class.path").split(":")), LINE);
+    LOG.info("Hadoop configuration:\n{}\n{}\n{}",
+        LINE, toLogString(mConf), LINE);
 
     // Get a new Kiji instance, with a randomly-generated name.
     mKijiURI = mCreationThread.getFreshKiji();

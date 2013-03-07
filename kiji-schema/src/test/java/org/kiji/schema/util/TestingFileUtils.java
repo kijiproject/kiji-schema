@@ -24,7 +24,7 @@ import java.io.IOException;
 import com.google.common.base.Preconditions;
 
 /** File utilities for testing. */
-public final class TestFileUtils {
+public final class TestingFileUtils {
 
   /**
    * Creates a temporary directory.
@@ -42,6 +42,6 @@ public final class TestFileUtils {
   }
 
   /** Utility class cannot be instantiated. */
-  private TestFileUtils() {
+  private TestingFileUtils() {
   }
 }
