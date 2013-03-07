@@ -17,10 +17,12 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 import org.junit.Test;
 
@@ -29,37 +31,42 @@ import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.util.ByteArrayFormatter;
 
-/** Tests for HashPrefixedEntityId. */
-public class TestHashPrefixedEntityId {
+/** Tests for HashedEntityId. */
+public class TestHashedEntityId {
   @Test
   public void testHashedEntityIdFromKijiRowKey() {
     final RowKeyFormat format = RowKeyFormat.newBuilder()
-        .setEncoding(RowKeyEncoding.HASH_PREFIX)
+        .setEncoding(RowKeyEncoding.HASH)
         .setHashType(HashType.MD5)
-        .setHashSize(4)
+        .setHashSize(16)
         .build();
     final byte[] kijiRowKey = new byte[] {0x11, 0x22};
-    final HashPrefixedEntityId eid = HashPrefixedEntityId.getEntityId(kijiRowKey, format);
+    final HashedEntityId eid = HashedEntityId.getEntityId(kijiRowKey, format);
     assertArrayEquals(kijiRowKey, (byte[])eid.getComponentByIndex(0));
     assertEquals(
-        "c700ed4f1122",
+        "c700ed4fdb1d27055aa3faa2c2432283",
         ByteArrayFormatter.toHex(eid.getHBaseRowKey()));
     assertEquals(1, eid.getComponents().size());
+    // when we create a hashed entity ID from a kiji row key we expect to
+    // be able to retrieve it.
+    assertNotNull(eid.getComponents().get(0));
     assertEquals(kijiRowKey, eid.getComponents().get(0));
   }
 
   @Test
   public void testHashedEntityIdFromHBaseRowKey() throws Exception {
     final RowKeyFormat format = RowKeyFormat.newBuilder()
-        .setEncoding(RowKeyEncoding.HASH_PREFIX)
+        .setEncoding(RowKeyEncoding.HASH)
         .setHashType(HashType.MD5)
-        .setHashSize(4)
+        .setHashSize(16)
         .build();
-    final byte[] hbaseRowKey = ByteArrayFormatter.parseHex("c700ed4f1122");
-    final HashPrefixedEntityId eid = HashPrefixedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+    final byte[] hbaseRowKey = ByteArrayFormatter.parseHex("c700ed4fdb1d27055aa3faa2c2432283");
+    final HashedEntityId eid = HashedEntityId.fromHBaseRowKey(hbaseRowKey, format);
     assertArrayEquals(hbaseRowKey, eid.getHBaseRowKey());
-    assertArrayEquals(new byte[] {0x11, 0x22}, (byte[])eid.getComponentByIndex(0));
+    // when we create a hashed entity ID from an hbase row key we cannot retrieve the
+    // original key which was used to create it.
+    assertNull(eid.getComponentByIndex(0));
     assertEquals(1, eid.getComponents().size());
-    assertArrayEquals(new byte[] {0x11, 0x22}, (byte[])eid.getComponents().get(0));
+    assertNull(eid.getComponents().get(0));
   }
 }

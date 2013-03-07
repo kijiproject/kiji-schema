@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 import java.util.Arrays;
 import java.util.List;
@@ -28,7 +28,6 @@ import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.EntityId;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.util.Hasher;
@@ -49,7 +48,7 @@ public final class HashPrefixedEntityId extends EntityId {
    * @param format Row key hashing specification.
    * @return a new HashPrefixedEntityId with the specified Kiji row key.
    */
-  public static HashPrefixedEntityId getEntityId(byte[] kijiRowKey, RowKeyFormat format) {
+  static HashPrefixedEntityId getEntityId(byte[] kijiRowKey, RowKeyFormat format) {
     Preconditions.checkNotNull(format);
     Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH_PREFIX);
     final byte[] hash = hashKijiRowKey(format, kijiRowKey);
@@ -68,7 +67,7 @@ public final class HashPrefixedEntityId extends EntityId {
    * @param format Row key hashing specification.
    * @return a new HashedEntityId with the specified HBase row key.
    */
-  public static HashPrefixedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat format) {
+  static HashPrefixedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat format) {
     Preconditions.checkNotNull(format);
     Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.HASH_PREFIX);
     final int hashSize = format.getHashSize();

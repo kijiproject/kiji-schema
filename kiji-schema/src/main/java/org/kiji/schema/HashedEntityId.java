@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,7 +27,6 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.EntityId;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.util.Hasher;
@@ -48,7 +47,7 @@ public final class HashedEntityId extends EntityId {
    * @param format Row key hashing specification.
    * @return a new HashedEntityId with the specified Kiji row key.
    */
-  public static HashedEntityId getEntityId(byte[] kijiRowKey, RowKeyFormat format) {
+  static HashedEntityId getEntityId(byte[] kijiRowKey, RowKeyFormat format) {
     Preconditions.checkNotNull(format);
     final byte[] hbaseRowKey = hashKijiRowKey(format, kijiRowKey);
     return new HashedEntityId(kijiRowKey, hbaseRowKey, format);
@@ -61,7 +60,7 @@ public final class HashedEntityId extends EntityId {
    * @param format Row key hashing specification.
    * @return a new HashedEntityId with the specified HBase row key.
    */
-  public static HashedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat format) {
+  static HashedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat format) {
     // TODO Validate that hbaseRowKey has the characteristics of the hashing method
     // specified in format
     // kijiRowKey is null: there is no (known) way to reverse the hash

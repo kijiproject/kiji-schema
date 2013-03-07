@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,14 +27,13 @@ import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.EntityId;
 
 /**
  * Entity ID encapsulating an HBase row key. This literally
  * represents a byte[] containing an hbase row key.
  */
 @ApiAudience.Private
-public class HBaseEntityId extends EntityId {
+public final class HBaseEntityId extends EntityId {
   private byte[] mHBaseRowKey;
 
   /**
@@ -42,8 +41,19 @@ public class HBaseEntityId extends EntityId {
    *
    * @param hbaseRowKey HBase row key.
    */
-  public HBaseEntityId(byte[] hbaseRowKey) {
+  private HBaseEntityId(byte[] hbaseRowKey) {
     mHBaseRowKey = hbaseRowKey;
+  }
+
+  /**
+   * Creates a new entity id using the specified hbase row key. This should be used by Kiji
+   * project developers, and not by end-users.
+   *
+   * @param hbaseRowKey that will back the new entity id.
+   * @return a new entity id that uses the specified HBase row key.
+   */
+  public static HBaseEntityId fromHBaseRowKey(byte[] hbaseRowKey) {
+    return new HBaseEntityId(hbaseRowKey);
   }
 
   /** {@inheritDoc} */

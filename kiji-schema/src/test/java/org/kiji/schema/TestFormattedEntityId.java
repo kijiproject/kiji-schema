@@ -17,13 +17,9 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -35,17 +31,6 @@ import java.util.TreeMap;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import org.kiji.schema.EntityId;
-import org.kiji.schema.EntityIdException;
-import org.kiji.schema.EntityIdFactory;
-import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiClientTest;
-import org.kiji.schema.KijiDataRequest;
-import org.kiji.schema.KijiDataRequestBuilder;
-import org.kiji.schema.KijiRowData;
-import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableReader;
-import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.ComponentType;
 import org.kiji.schema.avro.HashSpec;
 import org.kiji.schema.avro.RowKeyComponent;

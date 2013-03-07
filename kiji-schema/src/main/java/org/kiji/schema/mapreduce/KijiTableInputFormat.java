@@ -41,6 +41,7 @@ import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import org.kiji.schema.EntityId;
+import org.kiji.schema.HBaseEntityId;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRegion;
@@ -51,7 +52,6 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiURIException;
-import org.kiji.schema.impl.HBaseEntityId;
 import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.util.ResourceUtils;
@@ -193,8 +193,8 @@ public class KijiTableInputFormat
       mReader = mTable.openTableReader();
       final KijiScannerOptions scannerOptions =
           new KijiScannerOptions()
-          .setStartRow(new HBaseEntityId(mSplit.getStartRow()))
-          .setStopRow(new HBaseEntityId(mSplit.getEndRow()));
+          .setStartRow(HBaseEntityId.fromHBaseRowKey(mSplit.getStartRow()))
+          .setStopRow(HBaseEntityId.fromHBaseRowKey(mSplit.getEndRow()));
       mScanner = mReader.getScanner(mDataRequest, scannerOptions);
       mIterator = mScanner.iterator();
       mCurrentRow = null;
