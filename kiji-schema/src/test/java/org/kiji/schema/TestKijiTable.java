@@ -38,14 +38,17 @@ public class TestKijiTable extends KijiClientTest {
     final Kiji mKiji = getKiji();
     mKiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED), numRegions);
     final KijiTable mTable = mKiji.openTable("user");
+    try {
+      // Check there are the right number of regions.
+      List<KijiRegion> regions = mTable.getRegions();
+      assertEquals(numRegions, regions.size());
 
-    // Check there are the right number of regions.
-    List<KijiRegion> regions = mTable.getRegions();
-    assertEquals(numRegions, regions.size());
-
-    // Check that all KijiRegions have location info.
-    for (KijiRegion region : regions) {
-      assertTrue(region.getLocations().size() > 0);
+      // Check that all KijiRegions have location info.
+      for (KijiRegion region : regions) {
+        assertTrue(region.getLocations().size() > 0);
+      }
+    } finally {
+      mTable.release();
     }
   }
 }
