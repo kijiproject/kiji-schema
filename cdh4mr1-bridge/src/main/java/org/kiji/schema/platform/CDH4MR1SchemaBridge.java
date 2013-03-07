@@ -35,11 +35,20 @@ public final class CDH4MR1SchemaBridge extends SchemaPlatformBridge {
   /** {@inheritDoc} */
   @Override
   public void initializeHadoopResources() {
-    // Force load class HdfsConfiguration to register hdfs-site.xml and hdfs-default.xml resources:
-    HdfsConfiguration.class.getName();
+    // Force initialization of HdfsConfiguration,
+    // to register hdfs-site.xml and hdfs-default.xml resources:
+    HdfsConfiguration.init();
 
-    // Force load class JobConf to register mapred-site.xml and mapred-default.xml resources:
-    JobConf.class.getName();
+    // Force initialization of JobConf,
+    // to register mapred-site.xml and mapred-default.xml resources:
+    try {
+      // JobConf does not provide a static initialization method,
+      // use Class.forName() to trigger static initialization:
+      Class.forName(JobConf.class.getName());
+    } catch (ClassNotFoundException cnfe) {
+      throw new RuntimeException(
+          "Error initializing class JobConf to register mapred resources.", cnfe);
+    }
   }
 
   /** {@inheritDoc} */
