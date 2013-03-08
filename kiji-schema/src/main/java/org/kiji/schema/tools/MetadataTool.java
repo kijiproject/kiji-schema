@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.InternalKijiError;
-import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
@@ -49,7 +48,7 @@ public class MetadataTool extends BaseTool {
   private MetadataRestorer mRestorer = new MetadataRestorer();
 
   @Flag(name="kiji", usage="URI of the Kiji instance to use.")
-  private String mKijiURIFlag = KConstants.DEFAULT_URI;
+  private String mKijiURIFlag;
 
   @Flag(name = "backup", usage = "Output filename for Kiji metadata")
   private String mOutFile = null;

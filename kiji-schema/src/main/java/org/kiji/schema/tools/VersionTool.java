@@ -25,7 +25,6 @@ import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
-import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -41,7 +40,7 @@ import org.kiji.schema.util.VersionInfo;
 public final class VersionTool extends BaseTool {
 
   @Flag(name="kiji", usage="URI of the Kiji instance to print the version of.")
-  private String mKijiURIFlag = KConstants.DEFAULT_URI;
+  private String mKijiURIFlag;
 
   private KijiURI mKijiURI = null;
 

@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
-import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.util.ResourceUtils;
@@ -55,7 +54,7 @@ public final class FlushTableTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(FlushTableTool.class.getName());
 
   @Flag(name="target", usage="URI of the Kiji table or the Kiji instance to flush.")
-  private String mTargetURIFlag = KConstants.DEFAULT_URI;
+  private String mTargetURIFlag;
 
   @Flag(name="meta", usage="If true, flushes all kiji meta tables.")
   private boolean mFlushMeta = false;

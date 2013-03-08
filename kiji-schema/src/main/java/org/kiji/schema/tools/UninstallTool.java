@@ -26,7 +26,6 @@ import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
-import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiInvalidNameException;
 import org.kiji.schema.KijiNotInstalledException;
@@ -39,7 +38,7 @@ import org.kiji.schema.KijiURI;
 public final class UninstallTool extends BaseTool {
 
   @Flag(name="kiji", usage="URI of the Kiji instance to uninstall.")
-  private String mKijiURIFlag = KConstants.DEFAULT_URI;
+  private String mKijiURIFlag;
 
   /** URI of the Kiji instance to uninstall. */
   private KijiURI mKijiURI = null;

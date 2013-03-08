@@ -27,7 +27,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
-import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiURI;
@@ -40,7 +39,7 @@ public final class InstallTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(InstallTool.class);
 
   @Flag(name="kiji", usage="URI of the Kiji instance to install.")
-  private String mKijiURIFlag = KConstants.DEFAULT_URI;
+  private String mKijiURIFlag;
 
   /** URI of the Kiji instance to install. */
   private KijiURI mKijiURI = null;
