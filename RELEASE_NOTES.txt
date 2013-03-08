@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-247. The ls tool can no longer perform get and scan.
   * SCHEMA-241. Change audience annotations of KijiDeleter,
       KijiIncrementer, and KijiPutter to @ApiAudience.Public.
   * SCHEMA-139. KijiTableKeyValueDatabase methods return the true
