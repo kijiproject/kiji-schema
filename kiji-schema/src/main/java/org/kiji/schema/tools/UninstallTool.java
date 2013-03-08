@@ -39,7 +39,7 @@ import org.kiji.schema.KijiURI;
 public final class UninstallTool extends BaseTool {
 
   @Flag(name="kiji", usage="URI of the Kiji instance to uninstall.")
-  private String mKijiURIFlag = KConstants.DEFAULT_URI;
+  private String mKijiURIFlag = KConstants.DEFAULT_INSTANCE_URI;
 
   /** URI of the Kiji instance to uninstall. */
   private KijiURI mKijiURI = null;

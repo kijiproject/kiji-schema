@@ -161,17 +161,15 @@ public final class LsTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    int status = SUCCESS;
     if (nonFlagArgs.isEmpty()) {
-      getPrintStream().printf("URI was unspecified, reverting to default: %s%n",
-          KConstants.DEFAULT_URI);
-      return run(KijiURI.newBuilder(KConstants.DEFAULT_URI).build());
-    } else {
-      for (String arg : nonFlagArgs) {
-        status = Math.max(status, run(KijiURI.newBuilder(arg).build()));
-      }
-      return status;
+      nonFlagArgs.add(KConstants.DEFAULT_INSTANCE_URI);
     }
+
+    int status = SUCCESS;
+    for (String arg : nonFlagArgs) {
+      status = (run(KijiURI.newBuilder(arg).build()) == SUCCESS) ? status : FAILURE;
+    }
+    return status;
   }
 
   /**

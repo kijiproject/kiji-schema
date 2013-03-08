@@ -40,7 +40,7 @@ public final class InstallTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(InstallTool.class);
 
   @Flag(name="kiji", usage="URI of the Kiji instance to install.")
-  private String mKijiURIFlag = KConstants.DEFAULT_URI;
+  private String mKijiURIFlag = KConstants.DEFAULT_INSTANCE_URI;
 
   /** URI of the Kiji instance to install. */
   private KijiURI mKijiURI = null;

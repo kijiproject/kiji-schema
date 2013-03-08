@@ -55,7 +55,7 @@ public final class FlushTableTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(FlushTableTool.class.getName());
 
   @Flag(name="target", usage="URI of the Kiji table or the Kiji instance to flush.")
-  private String mTargetURIFlag = KConstants.DEFAULT_URI;
+  private String mTargetURIFlag = KConstants.DEFAULT_INSTANCE_URI;
 
   @Flag(name="meta", usage="If true, flushes all kiji meta tables.")
   private boolean mFlushMeta = false;

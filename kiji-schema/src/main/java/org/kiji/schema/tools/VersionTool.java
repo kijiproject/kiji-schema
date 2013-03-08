@@ -41,7 +41,7 @@ import org.kiji.schema.util.VersionInfo;
 public final class VersionTool extends BaseTool {
 
   @Flag(name="kiji", usage="URI of the Kiji instance to print the version of.")
-  private String mKijiURIFlag = KConstants.DEFAULT_URI;
+  private String mKijiURIFlag = KConstants.DEFAULT_INSTANCE_URI;
 
   private KijiURI mKijiURI = null;
 

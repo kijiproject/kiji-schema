@@ -49,7 +49,7 @@ public class MetadataTool extends BaseTool {
   private MetadataRestorer mRestorer = new MetadataRestorer();
 
   @Flag(name="kiji", usage="URI of the Kiji instance to use.")
-  private String mKijiURIFlag = KConstants.DEFAULT_URI;
+  private String mKijiURIFlag = KConstants.DEFAULT_INSTANCE_URI;
 
   @Flag(name = "backup", usage = "Output filename for Kiji metadata")
   private String mOutFile = null;
