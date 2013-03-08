@@ -46,6 +46,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
+import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,8 +78,15 @@ import org.kiji.schema.util.ResourceUtils;
  */
 public abstract class AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractKijiIntegrationTest.class);
+
+  public static final String ADD_CLASSPATH_TO_JOB_DCACHE_PROPERTY =
+      "org.kiji.mapreduce.add.classpath.to.job.dcache";
+
   static {
     SchemaPlatformBridge.get().initializeHadoopResources();
+    if (System.getProperty(ADD_CLASSPATH_TO_JOB_DCACHE_PROPERTY, null) == null) {
+      System.setProperty(ADD_CLASSPATH_TO_JOB_DCACHE_PROPERTY, "true");
+    }
   }
 
   /** Whether to start an embedded mini HBase and M/R cluster. */
@@ -157,8 +165,12 @@ public abstract class AbstractKijiIntegrationTest {
   /** The randomly generated URI for the instance. */
   private KijiURI mKijiURI;
 
-  // Disable checkstyle since mTempDir must be a public to work as a JUnit @Rule.
+  // JUnit requires public, checkstyle disagrees:
   // CSOFF: VisibilityModifierCheck
+  /** Test method name (eg. "testFeatureX"). */
+  @Rule
+  public final TestName mTestName = new TestName();
+
   /** A temporary directory for test data. */
   @Rule
   public TemporaryFolder mTempDir = new TemporaryFolder();
@@ -251,8 +263,7 @@ public abstract class AbstractKijiIntegrationTest {
         mCreationThread = null;
         mDeletionThread = null;
 
-        // Force garbage compaction to find any remaining references to
-        // opened tables, etc.
+        // Force garbage compaction to find any remaining references to opened tables, etc.
         System.gc();
         System.runFinalization();
       }
@@ -313,6 +324,7 @@ public abstract class AbstractKijiIntegrationTest {
 
     // Force garbage collection:
     System.gc();
+    System.runFinalization();
   }
 
   /** @return The integration helper. */
