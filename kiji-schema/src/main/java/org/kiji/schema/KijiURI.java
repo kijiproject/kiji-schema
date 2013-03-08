@@ -487,11 +487,17 @@ public final class KijiURI {
   /**
    * Gets a builder configured with the Kiji URI.
    *
+   * <p> The String parameter can be a relative URI (with a specified instance), in which
+   *     case it is automatically normalized relative to DEFAULT_HBASE_URI.
+   *
    * @param uri String specification of a Kiji URI.
    * @return A builder configured with uri.
    * @throws KijiURIException If the uri is invalid.
    */
   public static KijiURIBuilder newBuilder(String uri) {
+    if (!uri.startsWith("kiji://")) {
+      uri = String.format("%s/%s/", KConstants.DEFAULT_HBASE_URI, uri);
+    }
     try {
       return newBuilder(new KijiURI(new URI(uri)));
     } catch (URISyntaxException exn) {
