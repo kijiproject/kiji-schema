@@ -31,7 +31,13 @@ public final class KConstants {
   public static final String DEFAULT_HBASE_URI = "kiji://.env/";
 
   /** Default Kiji URI, as built by KijiURI.newBuilder().build(). */
-  public static final String DEFAULT_URI = DEFAULT_HBASE_URI + DEFAULT_INSTANCE_NAME + "/";
+  public static final String DEFAULT_URI = (new StringBuilder(DEFAULT_HBASE_URI))
+        .append(DEFAULT_INSTANCE_NAME)
+        .append("/")
+      .toString();
+
+  /** Default Kiji URI with instance specified as 'default'. */
+  public static final String DEFAULT_INSTANCE_URI = DEFAULT_URI;
 
   public static final long END_OF_TIME = Long.MAX_VALUE;
   public static final long BEGINNING_OF_TIME = 0;
