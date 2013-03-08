@@ -28,7 +28,7 @@ public final class KConstants {
   public static final String DEFAULT_INSTANCE_NAME = "default";
 
   /** Default Kiji URI. */
-  public static final String DEFAULT_URI = "kiji://.env/" + DEFAULT_INSTANCE_NAME;
+  public static final String DEFAULT_URI = "kiji://.env/";
 
   public static final long END_OF_TIME = Long.MAX_VALUE;
   public static final long BEGINNING_OF_TIME = 0;
