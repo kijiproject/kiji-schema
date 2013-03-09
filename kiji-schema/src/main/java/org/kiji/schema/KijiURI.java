@@ -486,6 +486,8 @@ public final class KijiURI {
 
   /**
    * Gets a builder configured with the Kiji URI.
+   * The String parameter can be a relative URI (with a specified instance), in which
+   * case it is automatically normalized relative to DEFAULT_HBASE_URI.
    *
    * <p> The String parameter can be a relative URI (with a specified instance), in which
    *     case it is automatically normalized relative to DEFAULT_HBASE_URI.
