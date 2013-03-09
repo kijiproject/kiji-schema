@@ -101,4 +101,9 @@ public abstract class EntityId {
     final EntityId eid = (EntityId) obj;
     return Arrays.equals(getHBaseRowKey(), eid.getHBaseRowKey());
   }
+
+  /**
+   * A String which can be copied into CLI and parsed to the same EntityId.
+   * @return A copyable string. */
+  public abstract String toShellString();
 }

@@ -145,6 +145,10 @@ public final class KijiTableLayouts {
   public static final String HASHED_FORMATTED_RKF =
       "org/kiji/schema/layout/hashed-formattedkey.json";
 
+  /** Table named 'table' which uses hash prefixed row keys. */
+  public static final String HASH_PREFIXED_RKF =
+      "org/kiji/schema/layout/hashprefixedkey.json";
+
   /** Test layout with hashing disabled. */
   public static TableLayoutDesc getFooUnhashedTestLayout() throws IOException {
     final TableLayoutDesc desc = getLayout(FOO_TEST);

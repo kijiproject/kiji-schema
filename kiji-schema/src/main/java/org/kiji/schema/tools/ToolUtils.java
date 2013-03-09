@@ -103,7 +103,7 @@ public final class ToolUtils {
     } else {
       // Kiji row key specification
       final String kijiSpec = entityFlag.startsWith(KIJI_ROW_KEY_SPEC_PREFIX)
-          ? entityFlag.substring(HBASE_ROW_KEY_SPEC_PREFIX.length())
+          ? entityFlag.substring(KIJI_ROW_KEY_SPEC_PREFIX.length())
           : entityFlag;
 
       return parseKijiRowKey(kijiSpec, factory, layout);
@@ -156,9 +156,11 @@ public final class ToolUtils {
       return node.getNumberValue();
     } else if (node.isTextual()) {
       return node.getTextValue();
+    } else if (node.isNull()) {
+      return null;
     } else {
       throw new IOException(String.format(
-          "Invalid JSON value: '%s', expecting string or int.", node));
+          "Invalid JSON value: '%s', expecting string, int, long, or null.", node));
     }
   }
 
