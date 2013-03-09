@@ -46,7 +46,6 @@ import org.kiji.schema.KijiRowKeySplitter;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.TableLayoutDesc;
