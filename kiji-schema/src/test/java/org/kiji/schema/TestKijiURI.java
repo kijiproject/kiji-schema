@@ -125,6 +125,18 @@ public class TestKijiURI {
     assertEquals("col", uri.getColumns().get(0).getName());
   }
 
+  @Test
+  public void testRelativeToDefaultHBaseURI() {
+    final KijiURI uri = KijiURI.newBuilder("instance/table/col").build();
+    assertEquals("instance", uri.getInstance());
+    assertEquals("table", uri.getTable());
+    assertEquals("col", uri.getColumns().get(0).getName());
+    final KijiURI uriTwo = KijiURI.newBuilder("///instance///table/////col").build();
+    assertEquals("instance", uriTwo.getInstance());
+    assertEquals("table", uriTwo.getTable());
+    assertEquals("col", uriTwo.getColumns().get(0).getName());
+  }
+
   @Test(expected = KijiURIException.class)
   public void testNoAuthority() {
     KijiURI.newBuilder("kiji:///");
