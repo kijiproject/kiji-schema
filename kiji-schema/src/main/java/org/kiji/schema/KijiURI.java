@@ -495,7 +495,7 @@ public final class KijiURI {
    */
   public static KijiURIBuilder newBuilder(String uri) {
     if (!uri.startsWith("kiji://")) {
-      uri = (new StringBuilder(uri)).insert(0, KConstants.DEFAULT_HBASE_URI).append("/").toString();
+      uri = String.format("%s/%s/", KConstants.DEFAULT_HBASE_URI, uri);
     }
     try {
       return newBuilder(new KijiURI(new URI(uri)));
