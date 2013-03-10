@@ -82,6 +82,12 @@ public abstract class AbstractKijiIntegrationTest {
   public static final String ADD_CLASSPATH_TO_JOB_DCACHE_PROPERTY =
       "org.kiji.mapreduce.add.classpath.to.job.dcache";
 
+  public static final String CLEANUP_AFTER_TEST_PROPERTY =
+      "org.kiji.schema.test.cleanup.after.test";
+
+  public static final boolean CLEANUP_AFTER_TEST =
+      Boolean.parseBoolean(System.getProperty(CLEANUP_AFTER_TEST_PROPERTY, "false"));
+
   static {
     SchemaPlatformBridge.get().initializeHadoopResources();
     if (System.getProperty(ADD_CLASSPATH_TO_JOB_DCACHE_PROPERTY, null) == null) {
@@ -227,10 +233,14 @@ public abstract class AbstractKijiIntegrationTest {
     synchronized (THREAD_MANAGEMENT_LOCK) {
       // Create background worker threads if they're not already created.
       if (null == mCreationThread) {
+        LOG.info("Starting Kiji instance creation thread.");
         mCreationThread = new KijiCreationThread(mHBaseURI);
-        mDeletionThread = new KijiDeletionThread();
         mCreationThread.start();
-        mDeletionThread.start();
+        if (CLEANUP_AFTER_TEST) {
+          LOG.info("Starting Kiji instance deletion thread.");
+          mDeletionThread = new KijiDeletionThread();
+          mDeletionThread.start();
+        }
       }
       RUNNING_TEST_SEMAPHORE.release();
     }
@@ -247,19 +257,21 @@ public abstract class AbstractKijiIntegrationTest {
         // Put the remaining created instances into the deletion queue
         mCreationThread.stopKijiCreation();
         KijiURI unusedKijiURI = mCreationThread.getKijiForCleanup();
-        while (null != unusedKijiURI) {
+        while (CLEANUP_AFTER_TEST && (null != unusedKijiURI)) {
           try {
             mDeletionThread.destroyKiji(unusedKijiURI);
-          } catch (InterruptedException e) {
-            LOG.error("Failed to put Kiji instance [" + unusedKijiURI.toString()
-                + "] into the deletion queue: " + e.getMessage());
+          } catch (InterruptedException exn) {
+            LOG.error("Failed to put Kiji instance '{}' into the deletion queue: {}",
+                unusedKijiURI, exn.getMessage());
             continue;
           }
           unusedKijiURI = mCreationThread.getKijiForCleanup();
         }
 
         // Finish deleting and clear the threads
-        mDeletionThread.waitForCompletion();
+        if (CLEANUP_AFTER_TEST) {
+          mDeletionThread.waitForCompletion();
+        }
         mCreationThread = null;
         mDeletionThread = null;
 
@@ -314,7 +326,7 @@ public abstract class AbstractKijiIntegrationTest {
   @After
   public final void teardownKijiIntegrationTest() throws Exception {
     // Schedule the Kiji instance for asynchronous deletion.
-    if (null != mKijiURI) {
+    if (CLEANUP_AFTER_TEST && (null != mKijiURI)) {
       mDeletionThread.destroyKiji(mKijiURI);
     }
 
