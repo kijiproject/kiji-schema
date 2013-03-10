@@ -69,8 +69,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** The request used to retrieve this Kiji row data. */
   private final KijiDataRequest mDataRequest;
 
-  /** The KijiTable we are reading from. */
-  private final HBaseKijiTable mHTable;
+  /** The HBase KijiTable we are reading from. */
+  private final HBaseKijiTable mTable;
 
   /** The layout for the table this row data came from. */
   private final KijiTableLayout mTableLayout;
@@ -111,7 +111,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     mTableLayout = layout;
     mResult = result;
     mCellDecoderFactory = decoderFactory;
-    mHTable = null;
+    mTable = null;
     mSchemaTable = schemaTable;
   }
 
@@ -135,8 +135,13 @@ public final class HBaseKijiRowData implements KijiRowData {
       KijiTableLayout layout,
       Result result,
       KijiSchemaTable schemaTable) {
-    this(EntityIdFactory.getFactory(layout).getEntityIdFromHBaseRowKey(result.getRow()),
-        request, decoderFactory, layout, result, schemaTable);
+    this(
+        EntityIdFactory.getFactory(layout).getEntityIdFromHBaseRowKey(result.getRow()),
+        request,
+        decoderFactory,
+        layout,
+        result,
+        schemaTable);
   }
 
   /**
@@ -146,41 +151,24 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @param request The requested data.
    * @param table The Kiji table that this row belongs to.
    * @param result The HBase result containing the row data.
+   * @throws IOException on I/O error.
    */
-  public HBaseKijiRowData(EntityId entityId, KijiDataRequest request, HBaseKijiTable table,
-      Result result) {
+  public HBaseKijiRowData(
+      EntityId entityId,
+      KijiDataRequest request,
+      HBaseKijiTable table,
+      Result result)
+      throws IOException {
     mEntityId = entityId;
     mDataRequest = request;
     mTableLayout = table.getLayout();
     mResult = result;
     mCellDecoderFactory = SpecificCellDecoderFactory.get();
-
-    try {
-      mSchemaTable = table.getKiji().getSchemaTable();
-    } catch (IOException ioe) {
-      throw new RuntimeException(ioe); // :(
-    }
+    mSchemaTable = table.getKiji().getSchemaTable();
+    mTable = table;
 
     // Compute this lazily.
     mFilteredMap = null;
-    mHTable = table;
-  }
-
-  /**
-   * Initializes a row data.
-   *
-   * The entity ID is constructed from the HTable encoded result.
-   * This may fail if the table uses hashed row keys.
-   *
-   * @param request The requested data.
-   * @param table The Kiji table that this row belongs to.
-   * @param result The HBase result containing the row data.
-   * @throws IOException If there is an error reading the entityId from the hbase result.
-   */
-  public HBaseKijiRowData(KijiDataRequest request, HBaseKijiTable table, Result result)
-      throws IOException {
-    this(EntityIdFactory.getFactory(table.getLayout()).getEntityIdFromHBaseRowKey(
-        result.getRow()), request, table, result);
   }
 
   /**
@@ -603,7 +591,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   public KijiPager getPager(String family, String qualifier)
     throws KijiColumnPagingNotEnabledException {
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
-    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mHTable,  kijiColumnName);
+    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable,  kijiColumnName);
   }
 
     /** {@inheritDoc} */
@@ -613,6 +601,6 @@ public final class HBaseKijiRowData implements KijiRowData {
     if (kijiFamily.isFullyQualified()) {
       throw new IllegalArgumentException("Family name (" + family + ") had a colon ':' in it");
     }
-    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mHTable, kijiFamily);
+    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable, kijiFamily);
   }
 }

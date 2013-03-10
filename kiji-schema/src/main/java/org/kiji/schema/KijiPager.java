@@ -34,12 +34,12 @@ import org.kiji.annotations.Inheritance;
  * the {@link KijiRowData} constructed with your data request</p>
  *
  * <p> For example, you could request two versions per page, and a maximum of 5 versions for the
- *  whole request:
+ *   whole request:
  *
  * <pre>
- *  KijiDataRequestBuilder builder = KijiDataRequest.builder();
- *  builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
- *  final KijiDataRequest dataRequest = builder.build();
+ *   KijiDataRequestBuilder builder = KijiDataRequest.builder();
+ *   builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
+ *   final KijiDataRequest dataRequest = builder.build();
  * </pre>
  * </p>
  *
@@ -47,11 +47,15 @@ import org.kiji.annotations.Inheritance;
  * The row data constructed using this data request may then be used to retrieve a pager and
  * process results:
  * <pre>
- *  KijiPager pager = myRowData.getPager("info", "name");
- *  while(pager.hasNext()) {
- *    final NavigableMap<Long, CharSequence> resultMap = pager.next().getValues("info", "name");
- *    ...
- * }
+ *   final KijiPager pager = myRowData.getPager("info", "name");
+ *   try  {
+ *     while(pager.hasNext()) {
+ *       final NavigableMap<Long, CharSequence> resultMap = pager.next().getValues("info", "name");
+ *       // ...
+ *     }
+ *   } finally {
+ *     pager.close();
+ *   }
  * </pre>
  * </p>
  */
