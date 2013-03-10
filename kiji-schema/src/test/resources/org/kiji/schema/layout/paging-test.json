@@ -19,9 +19,7 @@
 {
   name : "user",
   keys_format : {
-    encoding : "HASH",
-    hash_type : "MD5",
-    hash_size : 16
+    encoding : "RAW"
   },
   locality_groups : [ {
     name : "default",
