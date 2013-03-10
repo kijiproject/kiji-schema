@@ -31,6 +31,7 @@ import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiPager;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.filter.KijiPaginationFilter;
@@ -117,12 +118,15 @@ public final class HBaseKijiPager implements KijiPager {
   public KijiRowData next(int pageSize) {
     // Initialize a data request builder from the paged column.
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-      builder.withTimeRange(mColumnDataRequest.getMinTimestamp(),
-        mColumnDataRequest.getMaxTimestamp()).newColumnsDef()
-      .withFilter(new KijiPaginationFilter(pageSize, mOffset, // Add a pagination filter.
-        mColumnDataRequest.getColumn(mColumnName.getFamily(),
-        mColumnName.getQualifier()).getFilter())) // Pass in user defined filters.
-      .withMaxVersions(mMaxVersions).add(mColumnName);
+    builder
+        .withTimeRange(mColumnDataRequest.getMinTimestamp(), mColumnDataRequest.getMaxTimestamp())
+        .newColumnsDef()
+            .withFilter(new KijiPaginationFilter(
+                pageSize, mOffset, // Add a pagination filter.
+                mColumnDataRequest.getColumn(mColumnName.getFamily(),
+                mColumnName.getQualifier()).getFilter())) // Pass in user defined filters.
+            .withMaxVersions(mMaxVersions)
+            .add(mColumnName);
 
     KijiDataRequest nextPageDataRequest = builder.build();
     LOG.debug("DataRequest in pager is: [{}]", nextPageDataRequest.toString());
@@ -137,8 +141,7 @@ public final class HBaseKijiPager implements KijiPager {
       }
       return new HBaseKijiRowData(mEntityId, nextPageDataRequest, mTable, nextResultPage);
     } catch (IOException ioe) {
-      LOG.error("Unable to get next page of results: {}", ioe);
-      return new HBaseKijiRowData(mEntityId, nextPageDataRequest, mTable, new Result());
+      throw new KijiIOException(ioe);
     }
 
   }

@@ -3,7 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
-  * SCHEMA_173. Improves CLI parsing of EntityIds.  Adds abstract
+  * SCHEMA-262. KijiPager and KijiRowScanner throw unchecked KijiIOException. 
+  * SCHEMA-173. Improves CLI parsing of EntityIds.  Adds abstract
       toShellString() to EntityId which returns a string which can be
       copied into CLI.
   * SCHEMA-207. KijiURIBuilder supports relative paths to

@@ -19,8 +19,10 @@
 
 package org.kiji.schema.impl;
 
+import java.io.IOException;
 import java.util.Iterator;
 
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.slf4j.Logger;
@@ -30,6 +32,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.util.Debug;
@@ -42,8 +45,6 @@ import org.kiji.schema.util.ResourceUtils;
 @ApiAudience.Private
 public class HBaseKijiRowScanner implements KijiRowScanner {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiRowScanner.class);
-  // private static final Logger CLEANUP_LOG =
-  //     LoggerFactory.getLogger(HBaseKijiRowScanner.class.getName() + ".Cleanup");
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKijiRowScanner.class.getName());
 
@@ -190,8 +191,7 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
      * @param results An Iterator of HBase results.
      */
     public KijiRowIterator(Iterator<Result> results) {
-      assert null != results;
-      mResults = results;
+      mResults = Preconditions.checkNotNull(results);
     }
 
     /** {@inheritDoc} */
@@ -209,10 +209,14 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
       }
 
       // Read the entity id from the HBase result.
-      final EntityId entityId = EntityIdFactory.getFactory(mTable.getLayout()).
-          getEntityIdFromHBaseRowKey(result.getRow());
-      // TODO: Inject the cell decoder factory in the row data
-      return new HBaseKijiRowData(entityId, mKijiDataRequest, mTable, result);
+      final EntityId entityId = EntityIdFactory.getFactory(mTable.getLayout())
+          .getEntityIdFromHBaseRowKey(result.getRow());
+      try {
+        // TODO: Inject the cell decoder factory in the row data
+        return new HBaseKijiRowData(entityId, mKijiDataRequest, mTable, result);
+      } catch (IOException ioe) {
+        throw new KijiIOException(ioe);
+      }
     }
 
     /** {@inheritDoc} */
