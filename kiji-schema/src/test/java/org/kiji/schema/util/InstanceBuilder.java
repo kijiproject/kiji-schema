@@ -41,6 +41,8 @@ import org.kiji.schema.KijiInvalidNameException;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**
@@ -113,8 +115,9 @@ public class InstanceBuilder {
   }
 
   /**
-   * Adds a table to the testing environment. Note: This will replace any existing added tables
-   * with the same name.
+   * Adds a table to the testing environment.
+   *
+   * <p> Note: This will replace any existing added tables with the same name.
    *
    * @param table The name of the Kiji table to add.
    * @param layout The layout of the Kiji table being added.
@@ -128,8 +131,23 @@ public class InstanceBuilder {
   }
 
   /**
-   * Adds a table to the testing environment. Note: This will replace any existing added tables
-   * with the same name.
+   * Adds a table to the testing environment.
+   *
+   * <p> Note: This will replace any existing added tables with the same name.
+   *
+   * @param layoutDesc The layout descriptor of the Kiji table being added.
+   * @return A builder to continue building with.
+   * @throws InvalidLayoutException is the layout is invalid.
+   */
+  public TableBuilder withTable(TableLayoutDesc layoutDesc) throws InvalidLayoutException {
+    final KijiTableLayout layout = KijiTableLayout.newLayout(layoutDesc);
+    return withTable(layoutDesc.getName(), layout);
+  }
+
+  /**
+   * Adds a table to the testing environment.
+   *
+   * <p> Note: This will replace any existing added tables with the same name.
    *
    * @param table An existing Kiji table to populate.
    * @return A builder to continue building with.
@@ -144,8 +162,9 @@ public class InstanceBuilder {
   }
 
   /**
-   * Builds a test environment. Creates an in-memory HBase cluster, populates and installs
-   * the provided Kiji instances.
+   * Builds a test environment.
+   *
+   * <p> Creates an in-memory HBase cluster, populates and installs the provided Kiji instances.
    *
    * @return The kiji instances for the test environment.
    */
