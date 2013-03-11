@@ -48,4 +48,13 @@ public interface KijiWriterFactory {
    * @throws IOException in case of an error.
    */
   AtomicKijiPutter openAtomicPutter() throws IOException;
+
+  /**
+   * Opens a new KijiBufferedWriter for the KijiTable associated with this writer factory.
+   * The caller of this method is responsible for closing the writer.
+   *
+   * @return A new KijiBufferedWriter.
+   * @throws IOException in case of an error.
+   */
+  KijiBufferedWriter openBufferedWriter() throws IOException;
 }

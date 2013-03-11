@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -20,14 +20,15 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.NavigableMap;
+import java.util.ArrayList;
 
 import com.google.common.base.Preconditions;
+
 import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.Increment;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.RowLock;
@@ -35,48 +36,85 @@ import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.ClassSize;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.DecodedCell;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.KijiCell;
+import org.kiji.schema.KijiBufferedWriter;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.NoSuchColumnException;
-import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
+import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
- * Makes modifications to a Kiji table by sending requests directly to HBase from the local client.
+ * HBase implementation of a batch KijiTableWriter.  Contains its own HTable connection to optimize
+ * performance.  Buffer is stored locally and the underlying HTableInterface buffer is ignored.
+ * Default buffer size is 2,000,000 bytes.
  */
-@ApiAudience.Private
-public final class HBaseKijiTableWriter implements KijiTableWriter {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTableWriter.class);
+@ApiAudience.Public
+@Inheritance.Sealed
+public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
+  private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiBufferedWriter.class);
 
-  /** The kiji table instance. */
+  /** Underlying HTableInterface used by this writer. */
+  private final HTableInterface mHTable;
+  /** KijiTable this writer is attached to. */
   private final HBaseKijiTable mTable;
-
-  /** The column name translator to use. */
+  /** Column name translator to use. */
   private final ColumnNameTranslator mTranslator;
+  /** Local write buffers. */
+  private ArrayList<Put> mPutBuffer = new ArrayList<Put>();
+  private ArrayList<Delete> mDeleteBuffer = new ArrayList<Delete>();
+  /** Local write buffer size. */
+  private long mWriteBufferMaxSize = 2000000L;
+  private long mCurrentWriteBufferSize = 0L;
 
   /**
-   * Creates a non-buffered kiji table writer that sends modifications directly to Kiji.
+   * Creates a buffered kiji table writer that stores modifications to be sent on command
+   * or when the buffer overflows.
    *
    * @param table A kiji table.
+   * @throws KijiTableNotFoundException in case of an invalid table parameter
+   * @throws IOException in case of IO errors.
    */
-  public HBaseKijiTableWriter(HBaseKijiTable table) {
+  public HBaseKijiBufferedWriter(HBaseKijiTable table) throws IOException {
+    table.retain();
     mTable = table;
-    mTable.retain();
+    try {
+      mHTable = HBaseKijiTable.createHTableInterface(table);
+    } catch (TableNotFoundException e) {
+      close();
+      throw new KijiTableNotFoundException(table.getName());
+    }
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
   }
+
+  /**
+   * Size (in bytes) of a delete in the buffer.
+   *
+   * @param d the delete to be measured.
+   * @return The size (in bytes) of the delete to buffer.
+   */
+  private long deleteSize(Delete d) {
+    long heapsize = ClassSize.align(
+        ClassSize.OBJECT + 2 * ClassSize.REFERENCE
+        + 2 * Bytes.SIZEOF_LONG + Bytes.SIZEOF_BOOLEAN
+        + ClassSize.REFERENCE + ClassSize.TREEMAP);
+    heapsize += ClassSize.align(ClassSize.ARRAY + d.getRow().length);
+    return heapsize;
+  }
+
+  // ----------------------------------------------------------------------------------------------
+  // Puts
 
   /** {@inheritDoc} */
   @Override
@@ -99,52 +137,10 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
 
     final Put put = new Put(entityId.getHBaseRowKey())
         .add(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp, encoded);
-    mTable.getHTable().put(put);
-  }
-
-  // ----------------------------------------------------------------------------------------------
-  // Counter increment
-
-  /** {@inheritDoc} */
-  @Override
-  public KijiCell<Long> increment(EntityId entityId, String family, String qualifier, long amount)
-      throws IOException {
-
-    verifyIsCounter(family, qualifier);
-
-    // Translate the Kiji column name to an HBase column name.
-    final HBaseColumnName hbaseColumnName =
-        mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
-
-    // Send the increment to the HBase HTable.
-    final Increment increment = new Increment(entityId.getHBaseRowKey());
-    increment.addColumn(
-        hbaseColumnName.getFamily(),
-        hbaseColumnName.getQualifier(),
-        amount);
-    final Result result = mTable.getHTable().increment(increment);
-    final NavigableMap<Long, byte[]> counterEntries =
-        result.getMap().get(hbaseColumnName.getFamily()).get(hbaseColumnName.getQualifier());
-    assert null != counterEntries;
-    assert 1 == counterEntries.size();
-
-    final Map.Entry<Long, byte[]> counterEntry = counterEntries.firstEntry();
-    final DecodedCell<Long> counter =
-        new DecodedCell<Long>(null, Bytes.toLong(counterEntry.getValue()));
-    return new KijiCell<Long>(family, qualifier, counterEntry.getKey(), counter);
-  }
-
-  /**
-   * Verifies that a column is a counter.
-   *
-   * @param family A column family.
-   * @param qualifier A column qualifier.
-   * @throws IOException If the column is not a counter, or it does not exist.
-   */
-  private void verifyIsCounter(String family, String qualifier) throws IOException {
-    final KijiColumnName column = new KijiColumnName(family, qualifier);
-    if (mTable.getLayout().getCellSchema(column).getType() != SchemaType.COUNTER) {
-      throw new IOException(String.format("Column '%s' is not a counter", column));
+    mPutBuffer.add(put);
+    mWriteBufferMaxSize += put.heapSize();
+    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
+      flush();
     }
   }
 
@@ -161,7 +157,11 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {
     final Delete delete = new Delete(entityId.getHBaseRowKey(), upToTimestamp, null);
-    mTable.getHTable().delete(delete);
+    mDeleteBuffer.add(delete);
+    mWriteBufferMaxSize += deleteSize(delete);
+    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
+      flush();
+    }
   }
 
   /** {@inheritDoc} */
@@ -199,7 +199,11 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     delete.deleteFamily(hbaseColumnName.getFamily(), upToTimestamp);
 
     // Send the delete to the HBase HTable.
-    mTable.getHTable().delete(delete);
+    mDeleteBuffer.add(delete);
+    mWriteBufferMaxSize += deleteSize(delete);
+    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
+      flush();
+    }
   }
 
   /**
@@ -216,6 +220,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
       FamilyLayout familyLayout,
       long upToTimestamp)
       throws IOException {
+
     final String familyName = Preconditions.checkNotNull(familyLayout.getName());
     // Delete each column in the group according to the layout.
     final Delete delete = new Delete(entityId.getHBaseRowKey());
@@ -228,7 +233,11 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     }
 
     // Send the delete to the HBase HTable.
-    mTable.getHTable().delete(delete);
+    mDeleteBuffer.add(delete);
+    mWriteBufferMaxSize += deleteSize(delete);
+    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
+      flush();
+    }
   }
 
   /**
@@ -257,7 +266,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     final byte[] hbaseRow = entityId.getHBaseRowKey();
 
     // Lock the row.
-    final RowLock rowLock = mTable.getHTable().lockRow(hbaseRow);
+    final RowLock rowLock = mHTable.lockRow(hbaseRow);
     try {
       // Step 1.
       final Get get = new Get(hbaseRow, rowLock);
@@ -268,7 +277,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
       filter.addFilter(new ColumnPrefixFilter(hbaseColumnName.getQualifier()));
       get.setFilter(filter);
 
-      final Result result = mTable.getHTable().get(get);
+      final Result result = mHTable.get(get);
 
       // Step 2.
       if (result.isEmpty()) {
@@ -281,11 +290,15 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
               + ":" + Bytes.toString(hbaseQualifier));
           delete.deleteColumns(hbaseColumnName.getFamily(), hbaseQualifier, upToTimestamp);
         }
-        mTable.getHTable().delete(delete);
+        mDeleteBuffer.add(delete);
+        mWriteBufferMaxSize += deleteSize(delete);
+        if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
+          flush();
+        }
       }
     } finally {
       // Make sure to unlock the row!
-      mTable.getHTable().unlockRow(rowLock);
+      mHTable.unlockRow(rowLock);
     }
   }
 
@@ -303,7 +316,11 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
         mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumns(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
-    mTable.getHTable().delete(delete);
+    mDeleteBuffer.add(delete);
+    mWriteBufferMaxSize += deleteSize(delete);
+    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
+      flush();
+    }
   }
 
   /** {@inheritDoc} */
@@ -320,20 +337,37 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
         mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
-    mTable.getHTable().delete(delete);
+    mDeleteBuffer.add(delete);
+    mWriteBufferMaxSize += deleteSize(delete);
+    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
+      flush();
+    }
   }
 
   // ----------------------------------------------------------------------------------------------
 
+  /** {@inheritDoc} */
   @Override
-  public void flush() throws IOException {
-    mTable.getHTable().flushCommits();
+  public void setBufferSize(long bufferSize) {
+    mWriteBufferMaxSize = bufferSize;
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public void flush() throws IOException {
+    mHTable.put(mPutBuffer);
+    mHTable.delete(mDeleteBuffer);
+    mHTable.flushCommits();
+    mCurrentWriteBufferSize = 0L;
+  }
+
+  /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
     flush();
-
+    if (mHTable != null) {
+      mHTable.close();
+    }
     ResourceUtils.releaseOrLog(mTable);
   }
 }

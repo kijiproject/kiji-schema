@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0
+  * SCHEMA-189. Adds KijiBufferedWriter.
   * SCHEMA-106. Move CellSpec to org.kiji.schema.layout and mark as Framework.
 
 Version 1.0.0-rc5
