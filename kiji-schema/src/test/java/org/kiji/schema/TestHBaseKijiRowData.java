@@ -622,4 +622,135 @@ public class TestHBaseKijiRowData extends KijiClientTest {
       kiji.release();
     }
   }
+
+  @Test
+  public void testGetCellList() throws IOException {
+    LOG.info("start testReadColumnTypes");
+    List<KeyValue> kvs = new ArrayList<KeyValue>();
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value0")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value1")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value2")));
+    Result result = new Result(kvs);
+
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.newColumnsDef().withMaxVersions(3).add("family", "qual0");
+    KijiDataRequest dataRequest = builder.build();
+    HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
+        tableLayout, result, getKiji().getSchemaTable());
+    for (String family : input.getMap().keySet()) {
+      LOG.info("Family: " + family);
+      for (String qual : input.getMap().get(family).keySet()) {
+        LOG.info("Qualifier: " + qual);
+      }
+    }
+    assertFalse(input.containsColumn("not-a-family"));
+    assertTrue(input.containsColumn("family"));
+    assertTrue(input.containsColumn("family", "qual0"));
+    List<KijiCell<CharSequence>> cellList = input.<CharSequence>getCellList("family", "qual0");
+    assertEquals(3, cellList.size());
+    assertEquals("value0", cellList.get(0).getData().toString());
+    assertEquals("value1", cellList.get(1).getData().toString());
+    assertEquals("value2", cellList.get(2).getData().toString());
+  }
+
+  @Test
+  public void testGetCellListMapFamilyTypes() throws IOException {
+            final KijiTableLayout layout =
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
+
+    // Create a different Kiji instance, with a table 'table' different than the one created
+    // in setup:
+    final Kiji kiji = new InstanceBuilder()
+        .withTable("table", layout)
+            .withRow("row1")
+               .withFamily("map")
+                  .withQualifier("key0").withValue(1L, 0)
+                  .withQualifier("key1").withValue(1L, 1)
+                  .withQualifier("key2").withValue(1L, 2)
+        .build();
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.newColumnsDef().withMaxVersions(3).addFamily("map");
+    KijiDataRequest dataRequest = builder.build();
+    KijiTable table = null;
+    KijiTableReader reader = null;
+    try {
+      table = kiji.openTable("table");
+      reader = table.openTableReader();
+      final KijiRowData row1 = reader.get(table.getEntityId("row1"),
+          dataRequest);
+      List<KijiCell<Integer>> cells = row1.getCellList("map");
+      assertEquals("Wrong number returned in list.", 3, cells.size());
+    } finally {
+      reader.close();
+      table.release();
+      kiji.release();
+    }
+  }
+
+  @Test
+  public void testGetCellListMaxVersion() throws IOException {
+    LOG.info("start testReadColumnTypes");
+    List<KeyValue> kvs = new ArrayList<KeyValue>();
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value0")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value1")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value2")));
+    Result result = new Result(kvs);
+
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.newColumnsDef().withMaxVersions(2).add("family", "qual0");
+    KijiDataRequest dataRequest = builder.build();
+    HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
+        tableLayout, result, getKiji().getSchemaTable());
+    for (String family : input.getMap().keySet()) {
+      LOG.info("Family: " + family);
+      for (String qual : input.getMap().get(family).keySet()) {
+        LOG.info("Qualifier: " + qual);
+      }
+    }
+    assertFalse(input.containsColumn("not-a-family"));
+    assertTrue(input.containsColumn("family"));
+    assertTrue(input.containsColumn("family", "qual0"));
+    List<KijiCell<CharSequence>> cellList = input.<CharSequence>getCellList("family", "qual0");
+    assertEquals(2, cellList.size());
+    assertEquals("value0", cellList.get(0).getData().toString());
+    assertEquals("value1", cellList.get(1).getData().toString());
+  }
+
+  @Test
+  public void testGetCellListMapFamilyMaxVersionsTypes() throws IOException {
+            final KijiTableLayout layout =
+        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
+
+    // Create a different Kiji instance, with a table 'table' different than the one created
+    // in setup:
+    final Kiji kiji = new InstanceBuilder()
+        .withTable("table", layout)
+            .withRow("row1")
+               .withFamily("map")
+                  .withQualifier("key0").withValue(1L, 0)
+                  .withQualifier("key1").withValue(1L, 1)
+                  .withQualifier("key2").withValue(1L, 2)
+        .build();
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.newColumnsDef().withMaxVersions(2).addFamily("map");
+    KijiDataRequest dataRequest = builder.build();
+    KijiTable table = null;
+    KijiTableReader reader = null;
+    try {
+      table = kiji.openTable("table");
+      reader = table.openTableReader();
+      final KijiRowData row1 = reader.get(table.getEntityId("row1"),
+          dataRequest);
+      List<KijiCell<Integer>> cells = row1.getCellList("map");
+      assertEquals("Wrong number returned in list.", 2, cells.size());
+    } finally {
+      reader.close();
+      table.release();
+      kiji.release();
+    }
+  }
 }

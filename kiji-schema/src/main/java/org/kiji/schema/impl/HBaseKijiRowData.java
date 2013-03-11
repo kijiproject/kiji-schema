@@ -22,6 +22,7 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -510,8 +511,8 @@ public final class HBaseKijiRowData implements KijiRowData {
       throws IOException {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         String.format("getValues(String family) is only enabled on map "
-        + "type column families. The column family [%s], is a group type column family. Please use "
-        + "getValues(String family, String qualifier) method.",
+        + "type column families. The column family [%s], is a group type column family. Please use"
+        + " the getValues(String family, String qualifier) method.",
         family));
     final NavigableMap<String, NavigableMap<Long, T>> result = Maps.newTreeMap();
     for (String qualifier : getQualifiers(family)) {
@@ -586,6 +587,83 @@ public final class HBaseKijiRowData implements KijiRowData {
       result.put(qualifier, cells);
     }
     return result;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> List<KijiCell<T>> getCellList(String family, String qualifier) throws
+    IOException {
+    // Initialize list of cells
+    List<KijiCell<T>> cellList = new ArrayList<KijiCell<T>>();
+    // Initialize column name translator
+    final ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(mTableLayout);
+    // Translate the HBase column name to a Kiji column name.
+    final HBaseColumnName hbaseColumnName = columnNameTranslator.toHBaseColumnName(
+      new KijiColumnName(family, qualifier));
+    // get cell decoder
+    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+    // get info about the data request for this column
+    KijiDataRequest.Column columnRequest = mDataRequest.getColumn(family, qualifier);
+
+    final List<KeyValue> allKeyValues = mResult.getColumn(hbaseColumnName.getFamily(),
+      hbaseColumnName.getQualifier());
+
+    // need to trim to max versions for this particular column.
+    int colMaxVersions = columnRequest.getMaxVersions();
+    if (colMaxVersions < allKeyValues.size()) {
+      List<KeyValue> trimmedKeyValues = allKeyValues.subList(0, colMaxVersions);
+      //generate cell list
+      for (KeyValue kv : trimmedKeyValues) {
+        final KijiCell<T> cell = new KijiCell<T>(family, qualifier,
+          kv.getTimestamp(), decoder.decodeCell(kv.getValue()));
+        cellList.add(cell);
+      }
+    } else {
+      for (KeyValue kv : allKeyValues) {
+        final KijiCell<T> cell = new KijiCell<T>(family, qualifier,
+          kv.getTimestamp(), decoder.decodeCell(kv.getValue()));
+        cellList.add(cell);
+      }
+    }
+    return Collections.unmodifiableList(cellList);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public <T> List<KijiCell<T>> getCellList(String family) throws
+    IOException {
+    Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
+        String.format("getCellList(String family) is only enabled"
+        + " on map type column families. The column family [%s], is a group type column family."
+        + " Please use the getCellList(String family, String qualifier) method.",
+        family));
+    // Initialize list of cells
+    List<KijiCell<T>> cellList = new ArrayList<KijiCell<T>>();
+    // Initialize column name translator
+    final ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(mTableLayout);
+    // get cell decoder
+    final KijiCellDecoder<T> decoder = getDecoder(family, null);
+    // get info about the data request for this column
+    KijiDataRequest.Column columnRequest = mDataRequest.getColumn(family, null);
+    final int maxVersions = columnRequest.getMaxVersions();
+    int nVersions = 0;
+    // list, in sorted order, all keyvalue pairs.
+    final List<KeyValue> allKeyValues = mResult.list();
+    for (KeyValue kv : allKeyValues) {
+      // Filter KeyValues by Kiji column family.
+      final KijiColumnName colName = columnNameTranslator.toKijiColumnName(
+        new HBaseColumnName(kv.getFamily(), kv.getQualifier()));
+      if (colName.getFamily().equals(family)) {
+        nVersions += 1;
+        final KijiCell<T> cell = new KijiCell<T>(family, colName.getQualifier(),
+          kv.getTimestamp(), decoder.decodeCell(kv.getValue()));
+          cellList.add(cell);
+          if (nVersions == maxVersions) {
+            return Collections.unmodifiableList(cellList);
+          }
+      }
+    }
+    return Collections.unmodifiableList(cellList);
   }
 
   /**
