@@ -273,24 +273,30 @@ public final class HBaseKijiTable implements KijiTable {
     return mHTable;
   }
 
+  /** {@inheritDoc} */
+  @Deprecated
+  @Override
+  public void close() throws IOException {
+    LOG.error("KijiTable.close() is deprecated, use KijiTable.release() instead.");
+  }
+
   /**
-   * Releases all the resources used by this Kiji instance.
+   * Releases the resources used by this table.
    *
    * @throws IOException on I/O error.
    */
-  @Override
-  public void close() throws IOException {
-    if (!mIsOpen.getAndSet(false)) {
-      LOG.warn("close() called on resource that was already closed.");
-      return;
-    }
+  private void closeResources() throws IOException {
+    final boolean opened = mIsOpen.getAndSet(false);
+    Preconditions.checkState(opened,
+        "HBaseKijiTable.close() on table '%s' already closed.", mTableURI);
 
-    LOG.debug("Closing resource '{}'.", mTableURI);
+    LOG.debug("Closing HBaseKijiTable '{}'.", mTableURI);
     if (null != mHTable) {
       mHTable.close();
     }
-    ResourceUtils.releaseOrLog(mKiji);
-    LOG.debug("Resource '{}' closed.", mTableURI);
+
+    mKiji.release();
+    LOG.debug("HBaseKijiTable '{}' closed.", mTableURI);
   }
 
   /** {@inheritDoc} */
@@ -309,7 +315,7 @@ public final class HBaseKijiTable implements KijiTable {
     Preconditions.checkState(counter >= 0,
         "Cannot release closed KijiTable %s: retain counter is now %s.", mTableURI, counter);
     if (counter == 0) {
-      close();
+      closeResources();
     }
   }
 
@@ -342,17 +348,15 @@ public final class HBaseKijiTable implements KijiTable {
   protected void finalize() throws Throwable {
     if (mIsOpen.get()) {
       CLEANUP_LOG.warn(
-          "Finalizing opened resource '{}' with {} retained references. "
-              + "You must release() it.",
-          mTableURI,
-          mRetainCount.get());
+          "Finalizing opened HBaseKijiTable '{}' with {} retained references: "
+          + "use KijiTable.release()!",
+          mTableURI, mRetainCount.get());
       if (CLEANUP_LOG.isDebugEnabled()) {
         CLEANUP_LOG.debug(
             "HBaseKijiTable '{}' was constructed through:\n{}",
-            mTableURI,
-            mConstructorStack);
+            mTableURI, mConstructorStack);
       }
-      close();
+      closeResources();
     }
     super.finalize();
   }
