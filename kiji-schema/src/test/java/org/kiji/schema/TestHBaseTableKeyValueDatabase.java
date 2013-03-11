@@ -34,26 +34,23 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.impl.HBaseTableKeyValueDatabase;
-import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
-import org.kiji.schema.util.ResourceUtils;
 
 /**
  * This class tests that HBaseTableLayoutDatabase is correctly writing and reading from HBase
  * when performing its operations.
  */
-public class IntegrationTestHBaseTableKeyValueDatabase extends AbstractKijiIntegrationTest {
+public class TestHBaseTableKeyValueDatabase extends KijiClientTest {
   private static final String TABLE_NAME =  "metaTable";
   private static final Map<String, Map<String, byte[]>> TABLE_KV_MAP = createTableMap();
   private static final String FAMILY_NAME = "meta";
-  private HTable mTable;
-  private HBaseTableKeyValueDatabase mDb;
 
   private static Map<String, Map<String, byte[]>> createTableMap() {
     Map<String, byte[]> innerMap1 = new HashMap<String, byte[]>();
@@ -69,19 +66,28 @@ public class IntegrationTestHBaseTableKeyValueDatabase extends AbstractKijiInteg
     return Collections.unmodifiableMap(result);
   }
 
+  private Configuration mConf;
+  private HBaseAdmin mHBaseAdmin;
+  private HTableInterface mTable;
+  private HBaseTableKeyValueDatabase mDb;
+
   @Before
-  public void setupHBaseTable() throws IOException {
-    Configuration conf = HBaseConfiguration.create();
-    HBaseAdmin admin = new HBaseAdmin(conf);
-    try {
-      // Create an HBase table.
-      HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
-      tableDescriptor.addFamily(new HColumnDescriptor(FAMILY_NAME));
-      admin.createTable(tableDescriptor);
-    } finally {
-      ResourceUtils.closeOrLog(admin);
-    }
-    mTable = new HTable(conf, TABLE_NAME);
+  public final void setupHBaseTable() throws IOException {
+    final String fakeHBaseID = getTestId();
+    final KijiURI hbaseURI = KijiURI
+        .newBuilder(String.format("kiji://.fake.%s", fakeHBaseID))
+        .build();
+    final HBaseFactory factory = HBaseFactory.Provider.get();
+
+    mConf = HBaseConfiguration.create();
+    mHBaseAdmin = factory.getHBaseAdminFactory(hbaseURI).create(mConf);
+    // Create an HBase table.
+    HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
+    tableDescriptor.addFamily(new HColumnDescriptor(FAMILY_NAME));
+    mHBaseAdmin.createTable(tableDescriptor);
+
+    mTable = factory.getHTableInterfaceFactory(hbaseURI).create(mConf, TABLE_NAME);
+
     // Fill it with some data.
     mDb = new HBaseTableKeyValueDatabase(mTable, FAMILY_NAME);
     mDb.putValue("table1", "config1", Bytes.toBytes("1one"));
@@ -91,18 +97,11 @@ public class IntegrationTestHBaseTableKeyValueDatabase extends AbstractKijiInteg
   }
 
   @After
-  public void teardownHBaseTable() throws IOException {
-    Configuration conf = HBaseConfiguration.create();
-    HBaseAdmin admin = new HBaseAdmin(conf);
-    try {
-      admin.disableTable(TABLE_NAME);
-      admin.deleteTable(TABLE_NAME);
-    } finally {
-      ResourceUtils.closeOrLog(admin);
-      mTable.close();
-      mTable = null;
-      mDb = null;
-    }
+  public final void teardownHBaseTable() throws IOException {
+    mTable.close();
+    mHBaseAdmin.disableTable(TABLE_NAME);
+    mHBaseAdmin.deleteTable(TABLE_NAME);
+    mHBaseAdmin.close();
   }
 
   @Test
