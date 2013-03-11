@@ -104,7 +104,7 @@ public class TestSchemaTableTool extends KijiClientTest {
   public void testCreateSchema() throws Exception {
     assertEquals(BaseTool.SUCCESS, runTool(new SchemaTableTool(),
         "--kiji=" + getKiji().getURI(),
-        "--get-or-create=./SchemaTableTest",
+        "--register=./SchemaTableTest",
         "--interactive=false"
     ));
     assertEquals(mSimpleSchema, mTable.getSchema(Long.parseLong(mToolOutputStr.trim())));
@@ -126,7 +126,7 @@ public class TestSchemaTableTool extends KijiClientTest {
   public void testBothModes() throws Exception {
     runTool(new SchemaTableTool(),
         "--kiji=" + getKiji().getURI(),
-        "--get-or-create=./SchemaTableTest",
+        "--register=./SchemaTableTest",
         "--get-schema=1",
         "--interactive=false"
         );
@@ -136,7 +136,7 @@ public class TestSchemaTableTool extends KijiClientTest {
   public void testInvalidInputFile() throws Exception {
     runTool(new SchemaTableTool(),
         "--kiji=" + getKiji().getURI(),
-        "--get-or-create=./invalidFile",
+        "--register=./invalidFile",
         "--interactive=false"
         );
   }

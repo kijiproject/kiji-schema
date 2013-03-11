@@ -39,7 +39,7 @@ import org.kiji.schema.KijiURI;
  *
  * --kiji=kiji://hbase-address/instance/ to specify the URI of the target instance.
  *
- * --get-or-create=path/to/schema/definition Adds the given schema to the schema table if
+ * --register=path/to/schema/definition Adds the given schema to the schema table if
  *  it is not already present.  Returns the ID of the schema in all cases.
  *
  * --get-schema=<long schemaId> requires --output=path/to/schema/definition Gets the schema
@@ -53,9 +53,9 @@ public final class SchemaTableTool extends BaseTool {
   @Flag(name="kiji", usage="URI of the target instance.", required=true)
   private String mURIFlag = null;
 
-  @Flag(name="get-or-create", usage="Path to a file containing a schema defintion "
+  @Flag(name="register", usage="Path to a file containing a schema defintion "
       + "to get the ID for the given schema or add it to the schema table.")
-  private String mCreateFlag = null;
+  private String mRegisterFlag = null;
 
   @Flag(name="get-schema", usage="ID of the schema to retrieve from the schema table.")
   private Long mGetFlag = null;
@@ -92,13 +92,13 @@ public final class SchemaTableTool extends BaseTool {
   @Override
   protected void validateFlags() throws Exception {
     mURI = KijiURI.newBuilder(mURIFlag).build();
-    if (mCreateFlag == null || mCreateFlag.isEmpty()) {
+    if (mRegisterFlag == null || mRegisterFlag.isEmpty()) {
       Preconditions.checkArgument(mGetFlag != null,
-          "Specify exactly one of '--get-or-create' and '--get-schema'");
+          "Specify exactly one of '--register' and '--get-schema'");
       Preconditions.checkArgument(mOutputFlag != null && !mOutputFlag.isEmpty());
     } else {
       Preconditions.checkArgument(mGetFlag == null,
-          "Specify exactly one of '--get-or-create' and '--get-schema'");
+          "Specify exactly one of '--register' and '--get-schema'");
       Preconditions.checkArgument(mOutputFlag == null || mOutputFlag.isEmpty());
     }
   }
@@ -109,8 +109,8 @@ public final class SchemaTableTool extends BaseTool {
     mKiji = Kiji.Factory.open(mURI);
     try {
       final KijiSchemaTable table = mKiji.getSchemaTable();
-      if (mCreateFlag != null && !mCreateFlag.isEmpty()) {
-        File file = new File(mCreateFlag);
+      if (mRegisterFlag != null && !mRegisterFlag.isEmpty()) {
+        File file = new File(mRegisterFlag);
         Schema schema = new Schema.Parser().parse(file);
         long id = table.getOrCreateSchemaId(schema);
         if (isInteractive()) {
@@ -122,7 +122,7 @@ public final class SchemaTableTool extends BaseTool {
         Schema schema = table.getSchema(mGetFlag);
         Preconditions.checkArgument(schema != null, "No schema definition with ID: %s", mGetFlag);
         try {
-          File file = new File(mOutputFlag);
+          final File file = new File(mOutputFlag);
           boolean fileCreated = file.createNewFile();
           if (fileCreated) {
             FileOutputStream fop = new FileOutputStream(file.getAbsoluteFile());
@@ -143,16 +143,15 @@ public final class SchemaTableTool extends BaseTool {
                 fop.close();
               }
             } else {
-              return ABORTED;
+              return FAILURE;
             }
           }
           if (isInteractive()) {
-            getPrintStream().println(
-                String.format("Schema definition written to: %s", mOutputFlag));
+            getPrintStream().printf("Schema definition written to: %s", mOutputFlag);
           }
           return SUCCESS;
         } catch (IOException ioe) {
-          LOG.error(String.format("Error writing to file: %s", mOutputFlag));
+          LOG.error("Error writing to file: {}", mOutputFlag);
           throw ioe;
         }
       }

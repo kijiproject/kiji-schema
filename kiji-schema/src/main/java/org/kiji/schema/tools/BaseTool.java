@@ -82,14 +82,11 @@ public abstract class BaseTool extends Configured implements KijiTool {
   /** Success tool exit code. */
   public static final int SUCCESS = 0;
 
-  /** Failure tool exit code. */
-  public static final int FAILURE = 1;
-
   /**
-   * Aborted tool exit code.
-   * Used to indicate intentional user termination of tool operation in interactive prompts.
+   * Failure tool exit code.
+   * Used to indicate any noop tool exit.
    */
-  public static final int ABORTED = 2;
+  public static final int FAILURE = 1;
 
   /**
    * Prompts the user for a yes or no answer to the specified question until they provide a valid
