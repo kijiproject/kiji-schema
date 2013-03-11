@@ -25,12 +25,15 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -158,10 +161,12 @@ final class FormattedEntityId extends EntityId {
     if (kijiRowKey.size() < format.getComponents().size()) {
       int krk = kijiRowKey.size();
       int fgc = format.getComponents().size();
-      LOG.debug(String.format(
-            "%d components found in %s, %d expected by row key format."
-            + "The last %d components implicitly set to null",
-            krk, kijiRowKey.toString(), fgc, fgc - krk));
+      if (LOG.isDebugEnabled()) {
+        LOG.debug(String.format(
+              "{} components found in {}, {} expected by row key format."
+              + "The last {} components implicitly set to null",
+              krk, kijiRowKey.toString(), fgc, fgc - krk));
+      }
     }
     if (kijiRowKey.size() < format.getNullableStartIndex()) {
       throw new EntityIdException("Too few components in kiji Row key");
@@ -476,8 +481,8 @@ final class FormattedEntityId extends EntityId {
   /** {@inheritDoc} */
   @Override
   public String toShellString() {
-    /** List of characters which must be escaped */
-    ArrayList<Character> escapeList = Lists.newArrayList('"', '\\', '\'');
+    /** Set of characters which must be escaped */
+    HashSet<Character> escapeSet = Sets.newHashSet('"', '\\', '\'');
     ArrayList<String> componentStrings = Lists.newArrayList();
     for (Object component : mComponentValues) {
       if (component == null) {
@@ -486,7 +491,7 @@ final class FormattedEntityId extends EntityId {
         String unescapedString = component.toString();
         ArrayList<Character> escapedString = Lists.newArrayList();
         for (char c: unescapedString.toCharArray()) {
-          if (escapeList.contains(c)) {
+          if (escapeSet.contains(c)) {
             escapedString.add('\\');
           }
           escapedString.add(c);

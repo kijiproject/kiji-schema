@@ -20,14 +20,12 @@
 package org.kiji.schema.tools;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
 
 import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,9 +42,7 @@ import org.kiji.schema.layout.KijiTableLayouts;
 public class TestToolUtils {
   private static final Logger LOG = LoggerFactory.getLogger(TestToolUtils.class);
 
-  public TestToolUtils() throws IOException {
-    super();
-  }
+  public TestToolUtils() throws IOException {}
 
   private final KijiTableLayout mFormattedLayout =
       KijiTableLayouts.getTableLayout(KijiTableLayouts.FORMATTED_RKF);
@@ -59,35 +55,6 @@ public class TestToolUtils {
 
   private final KijiTableLayout mHashPrefixedLayout =
       KijiTableLayouts.getTableLayout(KijiTableLayouts.HASH_PREFIXED_RKF);
-
-  private EntityId makeId(
-      String dummy, String str1, String str2, int anint, long along) {
-    final ArrayList<Object> components = new ArrayList<Object>();
-    components.add(dummy);
-    components.add(str1);
-    components.add(str2);
-    components.add(anint);
-    components.add(along);
-
-    final Object rawFormat = mFormattedLayout.getDesc().getKeysFormat();
-    RowKeyFormat2 format = new RowKeyFormat2();
-    if (rawFormat instanceof RowKeyFormat2) {
-      format = (RowKeyFormat2) rawFormat;
-    } else {
-      fail();
-    }
-    return EntityIdFactory.getFactory(format).getEntityId(components);
-  }
-
-  // -----------------------------------------------------------------------------------------------
-
-  @Before
-  public final void setupTestToolUtils() throws Exception {
-  }
-
-  @After
-  public final void teardownTestDeleteTool() throws Exception {
-  }
 
   // -----------------------------------------------------------------------------------------------
 
@@ -142,19 +109,17 @@ public class TestToolUtils {
   }
 
   @Test
-  public void testUtf8Chars() throws Exception {
-    for (byte b = -128; b < 127; b++) {
-      // This conditional eliminates utf-8 control characters which are invalid string elements.
-      if (b < 0 || b > 31) {
-        for (byte b2 = -128; b2 < 127; b2++) {
-          if (b2 < 0 || b2 > 31) {
-            EntityId eid = makeId(
-                String.format(
-                    "dumm%sy", new String(new byte[]{b, b2}, "Utf-8")), "str1", "str2", 5, 10L);
-            assertEquals(
-                eid, ToolUtils.createEntityIdFromUserInputs(eid.toShellString(), mFormattedLayout));
-          }
-        }
+  public void testASCIIChars() throws Exception {
+    final EntityIdFactory factory =
+        EntityIdFactory.getFactory((RowKeyFormat2) mFormattedLayout.getDesc().getKeysFormat());
+
+    for (byte b = 32; b < 127; b++) {
+      for (byte b2 = 32; b2 < 127; b2++) {
+        final EntityId eid = factory.getEntityId(String.format(
+            "dumm%sy", new String(new byte[]{b, b2}, "Utf-8")), "str1", "str2", 5, 10L);
+
+        assertEquals(
+          eid, ToolUtils.createEntityIdFromUserInputs(eid.toShellString(), mFormattedLayout));
       }
     }
   }
@@ -233,7 +198,9 @@ public class TestToolUtils {
 
   @Test
   public void testHBaseEIDtoFormattedEID() throws Exception {
-    final EntityId feid = makeId("dummy", "str1", "str2", 5, 10);
+    final EntityIdFactory factory =
+        EntityIdFactory.getFactory((RowKeyFormat2) mFormattedLayout.getDesc().getKeysFormat());
+    final EntityId feid = factory.getEntityId("dummy", "str1", "str2", 5, 10);
     final EntityId hbeid = HBaseEntityId.fromHBaseRowKey(feid.getHBaseRowKey());
 
     assertEquals(feid,
