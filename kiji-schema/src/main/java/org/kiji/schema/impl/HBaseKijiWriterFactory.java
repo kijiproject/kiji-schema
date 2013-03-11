@@ -23,6 +23,7 @@ import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.AtomicKijiPutter;
+import org.kiji.schema.KijiBufferedWriter;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiWriterFactory;
 
@@ -54,4 +55,9 @@ public final class HBaseKijiWriterFactory implements KijiWriterFactory {
     return new HBaseAtomicKijiPutter(mTable);
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public KijiBufferedWriter openBufferedWriter() throws IOException {
+    return new HBaseKijiBufferedWriter(mTable);
+  }
 }

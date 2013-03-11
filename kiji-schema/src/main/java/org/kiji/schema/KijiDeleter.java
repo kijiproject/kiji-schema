@@ -44,6 +44,10 @@ import org.kiji.annotations.Inheritance;
  * </pre>
  *
  * This interface is bundled within the {@link KijiTableWriter} interface.
+ *
+ * Delete operations in long running applications can be dangerous if the table layout may change
+ * during the lifetime of the application.  The user must ensure that all writers are closed and
+ * reopened to reflect new table layouts after a change.
  */
 @ApiAudience.Public
 @Inheritance.Sealed
