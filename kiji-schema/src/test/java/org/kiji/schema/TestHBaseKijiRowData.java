@@ -622,4 +622,294 @@ public class TestHBaseKijiRowData extends KijiClientTest {
       kiji.release();
     }
   }
+
+  @Test
+  public void testIterator() throws IOException {
+    LOG.info("start testIterator");
+    List<KeyValue> kvs = new ArrayList<KeyValue>();
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value0")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value1")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value2")));
+    Result result = new Result(kvs);
+
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.newColumnsDef().withMaxVersions(3).add("family", "qual0");
+    KijiDataRequest dataRequest = builder.build();
+    HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
+        tableLayout, result, getKiji().getSchemaTable());
+    for (String family : input.getMap().keySet()) {
+      LOG.info("Family: " + family);
+      for (String qual : input.getMap().get(family).keySet()) {
+        LOG.info("Qualifier: " + qual);
+      }
+    }
+    assertFalse(input.containsColumn("not-a-family"));
+    assertTrue(input.containsColumn("family"));
+    assertTrue(input.containsColumn("family", "qual0"));
+    Iterator<KijiCell<CharSequence>> cells = input.<CharSequence>iterator("family", "qual0");
+    assertTrue(cells.hasNext());
+    assertEquals("value0", cells.next().getData().toString());
+    assertTrue(cells.hasNext());
+    assertEquals("value1", cells.next().getData().toString());
+    assertTrue(cells.hasNext());
+    assertEquals("value2", cells.next().getData().toString());
+    assertFalse(cells.hasNext());
+  }
+
+  @Test
+  public void tesIteratorMapFamilyTypes() throws IOException {
+    final KijiTableLayout layout =
+    KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
+    Kiji kiji = null;
+    KijiTable table = null;
+    KijiTableReader reader = null;
+    try {
+      // Create a different Kiji instance, with a table 'table' different than the one created
+      // in setup:
+      kiji = new InstanceBuilder()
+          .withTable("table", layout)
+              .withRow("row1")
+                .withFamily("map")
+                    .withQualifier("key0").withValue(1L, 0)
+                    .withQualifier("key1").withValue(1L, 1)
+                    .withQualifier("key2").withValue(1L, 2)
+                .withFamily("family")
+                    .withQualifier("qual0").withValue(1L, "string1")
+                    .withQualifier("qual0").withValue(2L, "string2")
+          .build();
+      KijiDataRequestBuilder builder = KijiDataRequest.builder();
+      builder.newColumnsDef().withMaxVersions(1).addFamily("map");
+      KijiDataRequest dataRequest = builder.build();
+      try {
+        table = kiji.openTable("table");
+        try {
+        reader = table.openTableReader();
+        final KijiRowData row1 = reader.get(table.getEntityId("row1"),
+            dataRequest);
+        Iterator<KijiCell<Integer>> cells = row1.iterator("map");
+        assertTrue(cells.hasNext());
+        KijiCell cell0 = cells.next();
+        assertEquals("Wrong first cell!", "key0", cell0.getQualifier());
+        assertTrue(cells.hasNext());
+        KijiCell cell1 = cells.next();
+        assertEquals("Wrong second cell!", "key1", cell1.getQualifier());
+        assertTrue(cells.hasNext());
+        KijiCell cell2 = cells.next();
+        assertEquals("Wrong third cell!", "key2", cell2.getQualifier());
+        assertFalse(cells.hasNext());
+        } finally {
+          reader.close();
+        }
+      } finally {
+        table.release();
+      }
+    } finally {
+      kiji.release();
+    }
+  }
+
+  @Test
+  public void testIteratorMaxVersion() throws IOException {
+    LOG.info("start testIteratorMaxVersion");
+    List<KeyValue> kvs = new ArrayList<KeyValue>();
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value0")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value1")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value2")));
+    Result result = new Result(kvs);
+
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.newColumnsDef().withMaxVersions(2).add("family", "qual0");
+    KijiDataRequest dataRequest = builder.build();
+    HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
+        tableLayout, result, getKiji().getSchemaTable());
+
+    assertFalse(input.containsColumn("not-a-family"));
+    assertTrue(input.containsColumn("family"));
+    assertTrue(input.containsColumn("family", "qual0"));
+    Iterator<KijiCell<CharSequence>> cells = input.<CharSequence>iterator("family", "qual0");
+    assertTrue(cells.hasNext());
+    assertEquals("value0", cells.next().getData().toString());
+    assertTrue(cells.hasNext());
+    assertEquals("value1", cells.next().getData().toString());
+    assertFalse(cells.hasNext());
+  }
+
+  @Test
+  public void testIteratorMapFamilyMaxVersionsTypes() throws IOException {
+    final KijiTableLayout layout =
+      KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
+    Kiji kiji = null;
+    KijiTable table = null;
+    KijiTableReader reader = null;
+    try {
+      // Create a different Kiji instance, with a table 'table' different than the one created
+      // in setup:
+      kiji = new InstanceBuilder().withTable("table", layout)
+        .withRow("row1")
+            .withFamily("map")
+              .withQualifier("key0")
+                .withValue(1L, 0)
+                .withValue(2L, 1)
+                .withValue(3L, 2).build();
+      KijiDataRequestBuilder builder = KijiDataRequest.builder();
+      builder.newColumnsDef().withMaxVersions(2).addFamily("map");
+      KijiDataRequest dataRequest = builder.build();
+      try {
+        table = kiji.openTable("table");
+        try {
+          reader = table.openTableReader();
+          final KijiRowData row1 = reader.get(table.getEntityId("row1"),
+            dataRequest);
+          Iterator<KijiCell<Integer>> cells = row1.iterator("map");
+          assertTrue(cells.hasNext());
+          KijiCell<Integer> cell0 = cells.next();
+          assertEquals("Wrong first cell!", 2, cell0.getData().intValue());
+          assertTrue(cells.hasNext());
+          KijiCell<Integer> cell1 = cells.next();
+          assertEquals("Wrong second cell!", 1, cell1.getData().intValue());
+          assertFalse(cells.hasNext());
+        } finally {
+          reader.close();
+        }
+      } finally {
+        table.release();
+      }
+    } finally {
+      kiji.release();
+    }
+  }
+
+  @Test
+  public void testMapAsIterable() throws IOException {
+      final KijiTableLayout layout =
+    KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
+    Kiji kiji = null;
+    KijiTable table = null;
+    KijiTableReader reader = null;
+    try {
+      // Create a different Kiji instance, with a table 'table' different than the one created
+      // in setup:
+      kiji = new InstanceBuilder()
+          .withTable("table", layout)
+              .withRow("row1")
+                .withFamily("map")
+                    .withQualifier("key0").withValue(1L, 0)
+                    .withQualifier("key1").withValue(1L, 1)
+                    .withQualifier("key2").withValue(1L, 2)
+                .withFamily("family")
+                    .withQualifier("qual0").withValue(1L, "string1")
+                    .withQualifier("qual0").withValue(2L, "string2")
+          .build();
+      KijiDataRequestBuilder builder = KijiDataRequest.builder();
+      builder.newColumnsDef().withMaxVersions(3).addFamily("map");
+      KijiDataRequest dataRequest = builder.build();
+      try {
+        table = kiji.openTable("table");
+        try {
+        reader = table.openTableReader();
+        final KijiRowData row1 = reader.get(table.getEntityId("row1"),
+            dataRequest);
+        Iterable<KijiCell<Integer>> cells = row1.<Integer>asIterable("map");
+        int cellCount = 0;
+        for (KijiCell<Integer> cell: cells) {
+          cellCount += 1;
+        }
+        assertEquals("Wrong number of cells returned by asIterable.", 3, cellCount);
+        } finally {
+          reader.close();
+        }
+      } finally {
+        table.release();
+      }
+    } finally {
+      kiji.release();
+    }
+  }
+
+  @Test
+  public void testGroupAsIterable() throws IOException {
+    List<KeyValue> kvs = new ArrayList<KeyValue>();
+    EntityId row0 = mEntityIdFactory.getEntityId("row0");
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value0")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value1")));
+    kvs.add(new KeyValue(row0.getHBaseRowKey(), mHBaseFamily, mHBaseQual0, encodeStr("value2")));
+    Result result = new Result(kvs);
+
+    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
+    KijiDataRequestBuilder builder = KijiDataRequest.builder();
+    builder.newColumnsDef().withMaxVersions(3).add("family", "qual0");
+    KijiDataRequest dataRequest = builder.build();
+    HBaseKijiRowData input = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
+        tableLayout, result, getKiji().getSchemaTable());
+    for (String family : input.getMap().keySet()) {
+      LOG.info("Family: " + family);
+      for (String qual : input.getMap().get(family).keySet()) {
+        LOG.info("Qualifier: " + qual);
+      }
+    }
+    assertFalse(input.containsColumn("not-a-family"));
+    assertTrue(input.containsColumn("family"));
+    assertTrue(input.containsColumn("family", "qual0"));
+    Iterable<KijiCell<CharSequence>> cells = input.<CharSequence>asIterable("family", "qual0");
+    assertTrue(input.iterator("family", "qual0").hasNext());
+    int cellCount = 0;
+    for (KijiCell<CharSequence> cell: cells) {
+      cellCount += 1;
+    }
+    assertEquals("Wrong number of cells returned by asIterable.", 3, cellCount);
+  }
+
+  @Test
+  public void testEmptyResult() throws IOException {
+    LOG.info("start testEmptyResult");
+    final KijiTableLayout layout =
+    KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
+    Kiji kiji = null;
+    KijiTable table = null;
+    KijiTableReader reader = null;
+    try {
+      // Create a different Kiji instance, with a table 'table' different than the one created
+      // in setup:
+      kiji = new InstanceBuilder()
+          .withTable("table", layout)
+              .withRow("row1")
+                .withFamily("family")
+                    .withQualifier("qual0").withValue(1L, "string1")
+                    .withQualifier("qual0").withValue(2L, "string2")
+          .build();
+      KijiDataRequestBuilder builder = KijiDataRequest.builder();
+      builder.newColumnsDef().add("family", "qual1");
+      KijiDataRequest dataRequest = builder.build();
+        table = kiji.openTable("table");
+        try {
+        reader = table.openTableReader();
+        final KijiRowData row1 = reader.get(table.getEntityId("row1"),
+            dataRequest);
+
+        NavigableMap<Long, CharSequence> values = row1.getValues("family", "qual1");
+        assertTrue("getValues should return an empty map for empty rowdata.", values.isEmpty());
+        NavigableMap<Long, KijiCell<CharSequence>> cells = row1.getCells("family", "qual1");
+        assertTrue("getCells should return an empty map for empty rowdata.", cells.isEmpty());
+        Iterator<KijiCell<CharSequence>> iterator =  row1.iterator("family", "qual1");
+        assertFalse("iterator obtained on a column the rowdata has no data for should return false"
+          + "when hasNext is called.",
+            iterator.hasNext());
+        CharSequence value = row1.getMostRecentValue("family", "qual1");
+        assertEquals("getMostRecentValue should return a null value from an empty rowdata.", null,
+            value);
+        KijiCell<CharSequence> cell = row1.getMostRecentCell("family", "qual1");
+        assertEquals("getMostRecentCell should return a null cell from empty rowdata.", null,
+            cell);
+        } finally {
+          reader.close();
+        }
+      } finally {
+        table.release();
+      }
+  }
+
 }

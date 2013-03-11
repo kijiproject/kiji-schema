@@ -25,6 +25,7 @@ import static org.junit.Assert.fail;
 
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.NavigableMap;
 
 import org.junit.After;
@@ -71,94 +72,112 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
     mKiji.release();
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testGetValues() throws IOException {
      assertTrue("Row does not contain column family [family].", mRow1.containsColumn("family"));
      assertTrue("Row does not contain column [family:column1].",
          mRow1.containsColumn("family", "column1"));
      assertTrue("Row does not contain column [family:column2].",
          mRow1.containsColumn("family", "column2"));
+     try {
      final NavigableMap<String, NavigableMap<Long, CharSequence>> stringGet = mRow1.getValues(
          "family");
      final NavigableMap<String, NavigableMap<Long, Integer>> intGet = mRow1.getValues("family");
      assertEquals("I am not a string! () for the stringGet.", "I am a String",
          stringGet.get("column1").get(1L).toString());
-     try {
        intGet.get("column1").get(1L);
        fail("Didn't throw an exception!");
      } catch (IllegalStateException ex) {
        assertEquals("Incorrect Exception message: ", "getValues(String family) is only enabled on"
-         + "map type column families. The column family [family], is a group type column family."
-         + "Please use getValues(String family, String qualifier) method.", ex.getMessage());
+         + " map type column families. The column family [family], is a group type column family."
+         + " Please use the getValues(String family, String qualifier) method.", ex.getMessage());
      }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testGetMostRecentValues() throws IOException {
      assertTrue("Row does not contain column family [family].", mRow1.containsColumn("family"));
      assertTrue("Row does not contain column [family:column1].",
          mRow1.containsColumn("family", "column1"));
      assertTrue("Row does not contain column [family:column2].",
          mRow1.containsColumn("family", "column2"));
+     try {
      final NavigableMap<String, CharSequence> stringGet =
          mRow1.getMostRecentValues("family");
      final NavigableMap<String, Integer> intGet = mRow1.getMostRecentValues("family");
      assertEquals("I am not a string! () for the stringGet.", "I am a String",
          stringGet.get("column1").toString());
-     try {
        intGet.get("column1");
        fail("Didn't throw an exception!");
      } catch (IllegalStateException ex) {
        assertEquals("Incorrect Exception message: ", "getMostRecentValues(String family) is only "
          + "enabled on map type column families. The column family [family], is a group type column"
-         + " family. Please use getMostRecentValues(String family, String qualifier) method.",
+         + " family. Please use the getMostRecentValues(String family, String qualifier) method.",
          ex.getMessage());
      }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testGetMostRecentCells() throws IOException {
      assertTrue("Row does not contain column family [family].", mRow1.containsColumn("family"));
      assertTrue("Row does not contain column [family:column1].",
          mRow1.containsColumn("family", "column1"));
      assertTrue("Row does not contain column [family:column2].",
          mRow1.containsColumn("family", "column2"));
+     try {
      final NavigableMap<String, KijiCell<CharSequence>> stringGet =
          mRow1.getMostRecentCells("family");
      final NavigableMap<String, KijiCell<Integer>> intGet = mRow1.getMostRecentCells("family");
      assertEquals("I am not a string! () for the stringGet.", "I am a String",
          stringGet.get("column1").getData().toString());
-     try {
        intGet.get("column1").getData();
        fail("Didn't throw an exception!");
      } catch (IllegalStateException ex) {
        assertEquals("Incorrect Exception message: ", "getMostRecentCells(String family) is only "
          + "enabled on map type column families. The column family [family], is a group type column"
-         + " family. Please use getMostRecentCells(String family, String qualifier) method.",
+         + " family. Please use the getMostRecentCells(String family, String qualifier) method.",
          ex.getMessage());
      }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testGetCells() throws IOException {
      assertTrue("Row does not contain column family [family].", mRow1.containsColumn("family"));
      assertTrue("Row does not contain column [family:column1].",
          mRow1.containsColumn("family", "column1"));
      assertTrue("Row does not contain column [family:column2].",
          mRow1.containsColumn("family", "column2"));
+     try {
      final NavigableMap<String, NavigableMap<Long, KijiCell<CharSequence>>> stringGet =
          mRow1.getCells("family");
      final NavigableMap<String, NavigableMap<Long, KijiCell<Integer>>> intGet =
          mRow1.getCells("family");
      assertEquals("I am not a string! () for the stringGet.", "I am a String",
          stringGet.get("column1").get(1L).getData().toString());
-     try {
        intGet.get("column1").get(1L).getData();
        fail("Didn't throw an exception!");
      } catch (IllegalStateException ex) {
        assertEquals("Incorrect Exception message: ", "getCells(String family) is only "
          + "enabled on map type column families. The column family [family], is a group type column"
-         + " family. Please use getCells(String family, String qualifier) method.",
+         + " family. Please use the getCells(String family, String qualifier) method.",
+         ex.getMessage());
+     }
+  }
+
+  @Test
+  public void testIterator() throws IOException {
+     assertTrue("Row does not contain column family [family].", mRow1.containsColumn("family"));
+     assertTrue("Row does not contain column [family:column1].",
+         mRow1.containsColumn("family", "column1"));
+     assertTrue("Row does not contain column [family:column2].",
+         mRow1.containsColumn("family", "column2"));
+     try {
+       final Iterator<KijiCell<CharSequence>> stringGet = mRow1.iterator("family");
+       fail("Didn't throw an exception!");
+     } catch (IllegalStateException ex) {
+       assertEquals("Incorrect Exception message: ", "iterator(String family) is only "
+         + "enabled on map type column families. The column family [family], is a group type column"
+         + " family. Please use the iterator(String family, String qualifier) method.",
          ex.getMessage());
      }
   }

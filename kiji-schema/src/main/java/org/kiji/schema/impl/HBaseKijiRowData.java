@@ -21,11 +21,14 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
+import java.util.NoSuchElementException;
 import java.util.TreeMap;
 
 import com.google.common.base.Preconditions;
@@ -33,6 +36,7 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
@@ -47,6 +51,7 @@ import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiPager;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiSchemaTable;
@@ -171,6 +176,230 @@ public final class HBaseKijiRowData implements KijiRowData {
 
     // Compute this lazily.
     mFilteredMap = null;
+  }
+
+  /**
+   * An iterator for cells in group type column or map type column family.
+   *
+   * @param <T> The type parameter for the KijiCells being iterated over.
+   */
+  private static final class KijiCellIterator<T> implements Iterator<KijiCell<T>> {
+    /** A KeyValue comparator. */
+    private static final KVComparator KV_COMPARATOR = new KVComparator();
+    /** The cell decoder for this column. */
+    private final KijiCellDecoder<T> mDecoder;
+    /** The column name translator for the given table. */
+    private final ColumnNameTranslator mColumnNameTranslator;
+    /** The maximum number of versions requested. */
+    private final int mMaxVersions;
+    /** An array of KeyValues returned by HBase. */
+    private final KeyValue[] mKVs;
+    /** The column or map type family being iterated over. */
+    private final KijiColumnName mColumn;
+    /** The number of versions returned by the iterator so far. */
+    private int mNumVersions;
+    /** The current index in the underlying KV array. */
+    private int mCurrentIdx;
+    /** The next cell to return. */
+    private KijiCell<T> mNextCell;
+
+    /**
+     * An iterator of KijiCells, for a particular column.
+     *
+     * @param columnName The Kiji column that is being iterated over.
+     * @param rowdata The HBaseKijiRowData instance containing the desired data.
+     * @param eId of the rowdata we are iterating over.
+     * @throws IOException on I/O error
+     */
+    protected KijiCellIterator(KijiColumnName columnName, HBaseKijiRowData rowdata, EntityId eId)
+        throws IOException {
+      mColumn = columnName;
+      // Initialize column name translator.
+      mColumnNameTranslator = new ColumnNameTranslator(rowdata.mTableLayout);
+      // Get cell decoder.
+      mDecoder = rowdata.getDecoder(mColumn.getFamily(), mColumn.getQualifier());
+      // Get info about the data request for this column.
+      KijiDataRequest.Column columnRequest = rowdata.mDataRequest.getColumn(mColumn.getFamily(),
+          mColumn.getQualifier());
+      mMaxVersions = columnRequest.getMaxVersions();
+      mKVs = rowdata.mResult.raw();
+      mNumVersions = 0;
+      // Find the first index for this column.
+      final HBaseColumnName colName = mColumnNameTranslator.toHBaseColumnName(mColumn);
+      mCurrentIdx = findInsertionPoint(mKVs, new KeyValue(eId.getHBaseRowKey(), colName.getFamily(),
+          colName.getQualifier()));
+      mNextCell = getNextCell();
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean hasNext() {
+      return (null != mNextCell);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public KijiCell<T> next() {
+      KijiCell<T> cellToReturn = mNextCell;
+      if (null == mNextCell) {
+        throw new NoSuchElementException();
+      } else {
+        mNumVersions += 1;
+      }
+      mCurrentIdx = getNextIndex(mCurrentIdx);
+      mNextCell = getNextCell();
+      return cellToReturn;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException("Removing a cell is not a supported operation.");
+    }
+
+    /**
+     * Constructs the next cell that will be returned by the iterator.
+     *
+     * @return The next cell in the column we are iterating over, potentially null.
+     */
+    private KijiCell<T> getNextCell() {
+      KijiCell<T> nextCell = null;
+      try {
+        if (mCurrentIdx < mKVs.length) { // If our index is out of bounds, nextCell is null.
+          final KeyValue kv = mKVs[mCurrentIdx];
+          // Filter KeyValues by Kiji column family.
+          final KijiColumnName colName = mColumnNameTranslator.toKijiColumnName(
+              new HBaseColumnName(kv.getFamily(), kv.getQualifier()));
+          nextCell = new KijiCell<T>(mColumn.getFamily(), colName.getQualifier(),
+              kv.getTimestamp(), mDecoder.decodeCell(kv.getValue()));
+        }
+      } catch (IOException ex) {
+        throw new KijiIOException(ex);
+      }
+      return nextCell;
+    }
+
+    /**
+     * Finds the index of the next KeyValue in the underlying KV array that is from the column we
+     * are iterating over.
+     *
+     * @param lastIndex The index of the KV used to construct the last returned cell.
+     * @return The index of the next KeyValue from the column we are iterating over.If there are no
+     * more cells to iterate over, the returned value will be mKVs.length.
+     */
+    private int getNextIndex(int lastIndex) {
+      int nextIndex = lastIndex;
+      if (mColumn.isFullyQualified()) {
+        if (mNumVersions < mMaxVersions) {
+          nextIndex = lastIndex + 1; // The next element should be the next in the array.
+        } else {
+          nextIndex = mKVs.length; //There is nothing else to return.
+        }
+      } else {
+        if (mNumVersions <= mMaxVersions) {
+          nextIndex = lastIndex + 1; // The next element should be the next in the array.
+        } else {
+          mNumVersions = 0; // Reset current number of versions.
+          nextIndex = findInsertionPoint(mKVs, makePivotKeyValue(mKVs[lastIndex]));
+        }
+      }
+      if (nextIndex < mKVs.length) {
+        final KeyValue kv = mKVs[nextIndex];
+        // Filter KeyValues by Kiji column family.
+        try {
+          final KijiColumnName colName = mColumnNameTranslator.toKijiColumnName(
+            new HBaseColumnName(kv.getFamily(), kv.getQualifier()));
+          if (!colName.getQualifier().equals(mNextCell.getQualifier())) {
+            if (mColumn.isFullyQualified()) {
+              return mKVs.length;
+            } else {
+              nextIndex = findInsertionPoint(mKVs, makePivotKeyValue(mKVs[lastIndex]));
+              mNumVersions = 0;
+            }
+          }
+          if (!colName.getFamily().equals(mColumn.getFamily())) {
+            return mKVs.length; // From the wrong column family.
+          }
+        } catch (NoSuchColumnException ex) {
+          throw new KijiIOException(ex);
+        }
+      }
+      return nextIndex;
+    }
+
+   /**
+    * Finds the insertion point of the pivot KeyValue in the  KeyValue array and returns the index.
+    *
+    * @param kvs The KeyValue array to search in.
+    * @param pivotKeyValue A KeyValue that is less than or equal to the first KeyValue for our
+    *     column, and larger than any KeyValue that may preceed values for our desired column.
+    * @return The index of the first KeyValue in the desired map type family.
+    */
+    private static int findInsertionPoint(KeyValue[] kvs, KeyValue pivotKeyValue) {
+      // Now find where the pivotKeyValue would be placed
+      int binaryResult = Arrays.<KeyValue>binarySearch(kvs, pivotKeyValue, KV_COMPARATOR);
+      if (binaryResult < 0) {
+        return -1 - binaryResult; // Algebra on the formula provided in the binary search JavaDoc.
+      } else {
+        return binaryResult;
+      }
+    }
+
+   /**
+    * Constructs a KeyValue that is strictly greater than every KeyValue associated with baseline
+    * KeyValue.
+    *
+    * @param baselineKV A baseline keyValue from a column that we wish to construct a KeyValue that
+    *     is strictly greater than every KeyValue from the same HBase column.
+    * @return A KeyValue that is strictly greater than every KeyValue that is in the same column as
+    *     the baseline (input) KeyValue, and less than the next column. Note that the ordering is
+    *     defined by KVComparator.
+    *
+    */
+    private static KeyValue makePivotKeyValue(KeyValue baselineKV) {
+      // Generate a byte[] that is the qualifier of the baseline byte[], with a 0 byte appended.
+      byte[] baselineQualifier = baselineKV.getQualifier();
+      byte[] smallestStrictlyGreaterQualifier = Arrays.copyOf(baselineQualifier,
+          baselineQualifier.length + 1);
+      return new KeyValue(baselineKV.getRow(), baselineKV.getFamily(),
+          smallestStrictlyGreaterQualifier);
+    }
+  }
+
+  /**
+   * An iterable of cells in a column.
+   *
+   * @param <T> The type parameter for the KijiCells being iterated over.
+   */
+  private static final class CellIterable<T> implements Iterable<KijiCell<T>> {
+    /** The column family. */
+    private final KijiColumnName mColumnName;
+    /** The rowdata we are iterating over. */
+    private final HBaseKijiRowData mRowData;
+    /** The entity id for the row. */
+    private final EntityId mEntityId;
+    /**
+     * An iterable of KijiCells, for a particular column.
+     *
+     * @param colName The Kiji column family that is being iterated over.
+     * @param rowdata The HBaseKijiRowData instance containing the desired data.
+     * @param eId of the rowdata we are iterating over.
+     */
+    protected CellIterable(KijiColumnName colName, HBaseKijiRowData rowdata, EntityId eId) {
+      mColumnName = colName;
+      mRowData = rowdata;
+      mEntityId = eId;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public Iterator<KijiCell<T>> iterator() {
+      try {
+        return new KijiCellIterator<T>(mColumnName , mRowData, mEntityId);
+      } catch (IOException ex) {
+        throw new KijiIOException(ex);
+      }
+    }
   }
 
   /**
@@ -512,7 +741,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         String.format("getValues(String family) is only enabled on map "
         + "type column families. The column family [%s], is a group type column family. Please use "
-        + "getValues(String family, String qualifier) method.",
+        + "the getValues(String family, String qualifier) method.",
         family));
     final NavigableMap<String, NavigableMap<Long, T>> result = Maps.newTreeMap();
     for (String qualifier : getQualifiers(family)) {
@@ -577,16 +806,78 @@ public final class HBaseKijiRowData implements KijiRowData {
   public <T> NavigableMap<String, NavigableMap<Long, KijiCell<T>>> getCells(String family)
       throws IOException {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
-        String.format("getCells(String family) is only enabled"
+        "getCells(String family) is only enabled"
         + " on map type column families. The column family [%s], is a group type column family."
         + " Please use the getCells(String family, String qualifier) method.",
-        family));
+        family);
     final NavigableMap<String, NavigableMap<Long, KijiCell<T>>> result = Maps.newTreeMap();
     for (String qualifier : getQualifiers(family)) {
       final NavigableMap<Long, KijiCell<T>> cells = getCells(family, qualifier);
       result.put(qualifier, cells);
     }
     return result;
+  }
+
+
+  /**  {@inheritDoc} */
+  @Override
+  public <T> Iterator<KijiCell<T>> iterator(String family, String qualifier) throws
+    IOException {
+    return new KijiCellIterator<T>(new KijiColumnName(family, qualifier), this, mEntityId);
+  }
+
+  /**  {@inheritDoc} */
+  @Override
+  public <T> Iterator<KijiCell<T>> iterator(String family) throws
+    IOException {
+    Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
+        "iterator(String family) is only enabled"
+        + " on map type column families. The column family [%s], is a group type column family."
+        + " Please use the iterator(String family, String qualifier) method.",
+        family);
+    return new KijiCellIterator<T>(new KijiColumnName(family, null), this, mEntityId);
+  }
+
+  /**  {@inheritDoc} */
+  @Override
+  public <T> Iterable<KijiCell<T>> asIterable(String family, String qualifier) {
+    return new CellIterable<T>(new KijiColumnName(family, qualifier), this, mEntityId);
+
+  }
+
+  /**  {@inheritDoc} */
+  @Override
+  public <T> Iterable<KijiCell<T>> asIterable(String family) {
+    Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
+        "asIterable(String family) is only enabled"
+        + " on map type column families. The column family [%s], is a group type column family."
+        + " Please use the asIterable(String family, String qualifier) method.",
+        family);
+    return new CellIterable<T>(new KijiColumnName(family, null) , this, mEntityId);
+  }
+
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiPager getPager(String family, String qualifier)
+    throws KijiColumnPagingNotEnabledException {
+    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
+    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable,  kijiColumnName);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
+    Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
+        String.format("getPager(String family) is only enabled on map"
+        + " type column families. The column family [%s], is a group type column family. Please use"
+        + " the getPager(String family, String qualifier) method.",
+        family));
+    final KijiColumnName kijiFamily = new KijiColumnName(family);
+    if (kijiFamily.isFullyQualified()) {
+      throw new IllegalArgumentException("Family name (" + family + ") had a colon ':' in it");
+    }
+    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable, kijiFamily);
   }
 
   /**
@@ -606,28 +897,5 @@ public final class HBaseKijiRowData implements KijiRowData {
     final CellSpec cellSpec = mTableLayout.getCellSpec(new KijiColumnName(family, qualifier))
         .setSchemaTable(mSchemaTable);
     return mCellDecoderFactory.create(cellSpec);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public KijiPager getPager(String family, String qualifier)
-    throws KijiColumnPagingNotEnabledException {
-    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
-    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable,  kijiColumnName);
-  }
-
-    /** {@inheritDoc} */
-  @Override
-  public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
-        Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
-        String.format("getPager(String family) is only enabled on map"
-        + " type column families. The column family [%s], is a group type column family. Please use"
-        + " the getPager(String family, String qualifier) method.",
-        family));
-    final KijiColumnName kijiFamily = new KijiColumnName(family);
-    if (kijiFamily.isFullyQualified()) {
-      throw new IllegalArgumentException("Family name (" + family + ") had a colon ':' in it");
-    }
-    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable, kijiFamily);
   }
 }
