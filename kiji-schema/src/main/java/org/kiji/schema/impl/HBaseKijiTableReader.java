@@ -227,9 +227,12 @@ public class HBaseKijiTableReader implements KijiTableReader {
    * @return The table layout adapter.
    */
   private KijiTableLayout getTableLayout(KijiDataRequest dataRequest) {
-    KijiDataRequestValidator requestValidator = new KijiDataRequestValidator(dataRequest);
+    // TODO(SCHEMA-263): This could be made more efficient if the layout and/or validator were
+    // cached.
     KijiTableLayout tableLayout = mTable.getLayout();
-    requestValidator.validate(tableLayout);
+    KijiDataRequestValidator requestValidator =
+        KijiDataRequestValidator.validatorForLayout(tableLayout);
+    requestValidator.validate(dataRequest);
     return tableLayout;
   }
 
