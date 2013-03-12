@@ -19,21 +19,50 @@
 
 package org.kiji.schema;
 
-import java.io.IOException;
-
 import org.kiji.annotations.ApiAudience;
 
-/** Runtime (unchecked) IOException. */
+/**
+ * Runtime (unchecked) IOException.
+ *
+ * <p> Use this exception when you cannot throw IOException directly (eg. because checked
+ *     exceptions do not allow IOException).
+ *
+ * <p> For example, KijiPager.next() cannot throw IOException because it implements interfaces
+ *     Iterator. In this case, an underlying IOException may be wrapped as a KijiIOException.
+ */
 @ApiAudience.Public
+@SuppressWarnings("serial")
 public final class KijiIOException extends RuntimeException {
-  private static final long serialVersionUID = -3267145246303892406L;
+
+  /** Creates an unchecked IOException. */
+  public KijiIOException() {
+  }
+
+  /**
+   * Creates an unchecked IOException with the specified message and cause.
+   *
+   * @param message Message to include in this IOException.
+   * @param cause Underlying cause of the IOException.
+   */
+  public KijiIOException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  /**
+   * Creates an unchecked IOException with the specified message.
+   *
+   * @param message Message to include in the IOException.
+   */
+  public KijiIOException(String message) {
+    super(message);
+  }
 
   /**
    * Wraps an IOException into an unchecked exception.
    *
-   * @param ioe Wraps this IOException.
+   * @param cause Underlying cause of the IOException.
    */
-  public KijiIOException(IOException ioe) {
-    super(ioe);
+  public KijiIOException(Throwable cause) {
+    super(cause);
   }
 }
