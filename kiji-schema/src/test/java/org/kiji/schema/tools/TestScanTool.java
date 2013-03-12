@@ -148,7 +148,7 @@ public class TestScanTool extends KijiClientTest {
     final KijiTable table = kiji.openTable(layout.getName());
     try {
       assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), table.getURI().toString()));
-      // TODO: Validate ScanTool output
+      assertEquals(15, mToolOutputLines.length);
     } finally {
       ResourceUtils.releaseOrLog(table);
     }
@@ -193,19 +193,60 @@ public class TestScanTool extends KijiClientTest {
       assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(),
           table.getURI().toString() + "info:name"
       ));
-      // TODO: Validate output
+      assertEquals(18, mToolOutputLines.length);
 
       assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(),
               table.getURI().toString() + "info:name,info:email"
           ));
-          // TODO: Validate output
+      assertEquals(30, mToolOutputLines.length);
 
       assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(),
-          table.getURI() + "info:name",
-          "--start-row=hex:50000000000000000000000000000000",  // after the second row.
-          "--limit-row=hex:e0000000000000000000000000000000"  // before the last row.
+          table.getURI().toString() + "info:name",
+          "--start-row=hbase=hex:654ecd3ca7411bfb5a68fdd433b80c5b",  // after the second row.
+          "--limit-row=hbase=hex:e13743a7f1db7f4246badd6fd6ff54ff"  // before the last row.
       ));
-      // TODO: Validate output
+      assertEquals(9, mToolOutputLines.length);
+
+    } finally {
+      ResourceUtils.releaseOrLog(table);
+    }
+  }
+  @Test
+  public void testRangeScanFormattedRKF() throws Exception {
+    final Kiji kiji = getKiji();
+    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FORMATTED_RKF);
+    new InstanceBuilder(kiji)
+        .withTable(layout.getName(), layout)
+            .withRow("NYC", "Technology", "widget", 1, 2)
+                .withFamily("family").withQualifier("column")
+                    .withValue("Candaules")
+            .withRow("NYC", "Technology", "widget", 1, 20)
+                .withFamily("family").withQualifier("column")
+                    .withValue("Croesus")
+            .withRow("NYC", "Technology", "thingie", 2)
+                .withFamily("family").withQualifier("column")
+                    .withValue("Gyges")
+            .withRow("DC", "Technology", "stuff", 123)
+                .withFamily("family").withQualifier("column")
+                    .withValue("Glaucon")
+            .withRow("DC", "Technology", "stuff", 124, 1)
+                .withFamily("family").withQualifier("column")
+                    .withValue("Lydia")
+        .build();
+
+    final KijiTable table = kiji.openTable(layout.getName());
+    try {
+      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), table.getURI().toString(),
+          "--start-row=['NYC','Technology','widget',1,2]",
+          "--limit-row=['NYC','Technology','widget',1,30]",
+          "--debug"
+          ));
+      assertEquals(10, mToolOutputLines.length);
+      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), table.getURI().toString(),
+          "--start-row=['NYC','Technology','widget']",
+          "--limit-row=['NYC','Technology','widget',1,20]",
+          "--debug"
+          ));
     } finally {
       ResourceUtils.releaseOrLog(table);
     }

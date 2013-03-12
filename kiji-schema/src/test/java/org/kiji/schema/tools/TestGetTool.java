@@ -160,4 +160,42 @@ public class TestGetTool extends KijiClientTest {
       ResourceUtils.releaseOrLog(table);
     }
   }
+
+  @Test
+  public void testGetFormattedRKF() throws Exception {
+    final Kiji kiji = getKiji();
+    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FORMATTED_RKF);
+    new InstanceBuilder(kiji)
+        .withTable(layout.getName(), layout)
+            .withRow("NYC", "Technology", "widget", 1, 2)
+                .withFamily("family").withQualifier("column")
+                    .withValue("Candaules")
+            .withRow("NYC", "Technology", "widget", 1, 20)
+                .withFamily("family").withQualifier("column")
+                    .withValue("Croesus")
+            .withRow("NYC", "Technology", "thingie", 2)
+                .withFamily("family").withQualifier("column")
+                    .withValue("Gyges")
+            .withRow("DC", "Technology", "stuff", 123)
+                .withFamily("family").withQualifier("column")
+                    .withValue("Glaucon")
+            .withRow("DC", "Technology", "stuff", 124, 1)
+                .withFamily("family").withQualifier("column")
+                    .withValue("Lydia")
+        .build();
+
+    final KijiTable table = kiji.openTable(layout.getName());
+    try {
+      assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), table.getURI().toString(),
+          "--entity-id=['NYC','Technology','widget',1,2]"
+          ));
+      assertEquals(3, mToolOutputLines.length);
+      assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), table.getURI().toString(),
+          "--entity-id=['NYC','Technology','thingie',2,null]"
+          ));
+      assertEquals(3, mToolOutputLines.length);
+    } finally {
+      ResourceUtils.releaseOrLog(table);
+    }
+  }
 }
