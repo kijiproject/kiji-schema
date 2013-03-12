@@ -90,13 +90,26 @@ public final class GetTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   public String getDescription() {
-    return "Get kiji table row.";
+    return "Dump one specific row from a Kiji table.";
   }
 
   /** {@inheritDoc} */
   @Override
   public String getCategory() {
     return "Data";
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getUsageString() {
+    return
+        "Usage:\n"
+        + "    kiji get [flags...] (<table-uri> | <columns-uri>)\n"
+        + "\n"
+        + "Example:\n"
+        + "    kiji get kiji://.env/default/my_table \\\n"
+        + "        --entity-id=\"the row ID\"\n"
+        + "        --max-versions=2\n";
   }
 
   /**
@@ -128,7 +141,6 @@ public final class GetTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-
     if (nonFlagArgs.isEmpty()) {
       // TODO: Send this error to a future getErrorStream()
       getPrintStream().printf("URI must be specified as an argument%n");
@@ -204,7 +216,7 @@ public final class GetTool extends BaseTool {
           reader.close();
         }
       } finally {
-        table.close();
+        table.release();
       }
     } finally {
       kiji.release();

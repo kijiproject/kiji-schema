@@ -65,4 +65,7 @@ public interface KijiTool extends Configurable {
    * @throws Exception If there is an error.
    */
   int toolMain(List<String> args) throws Exception;
+
+  /** @return the tool usage string. */
+  String getUsageString();
 }

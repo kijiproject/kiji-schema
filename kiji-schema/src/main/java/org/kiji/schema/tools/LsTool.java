@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,6 +87,28 @@ public final class LsTool extends BaseTool {
     return "Data";
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public String getUsageString() {
+    return
+        "Usage:\n"
+        + "    kiji ls [flags...] [<kiji-uri>...] \n"
+        + "\n"
+        + "Example:\n"
+        + "  Listing the Kiji instances from the default HBase cluster:"
+        + "    kiji ls\n"
+        + "    kiji ls kiji://.env\n"
+        + "\n"
+        + "  Listing the Kiji tables from the Kiji instance named 'default':"
+        + "    kiji ls default\n"
+        + "    kiji ls kiji://.env/default\n"
+        + "\n"
+        + "  Listing the columns in the Kiji table 'table':"
+        + "    kiji ls default/table\n"
+        + "    kiji ls kiji://.env/default/table\n"
+        + "    kiji ls kiji://localhost:2181/default/table\n";
+  }
+
   /**
    * Lists all kiji instances.
    *
@@ -137,7 +160,7 @@ public final class LsTool extends BaseTool {
    * @return instance name (or null if none found)
    */
   protected static String parseInstanceName(String kijiTableName) {
-    String[] parts = org.apache.hadoop.util.StringUtils.split(kijiTableName, '\u0000', '.');
+    final String[] parts = StringUtils.split(kijiTableName, '\u0000', '.');
     if (parts.length < 3 || !KijiURI.KIJI_SCHEME.equals(parts[0])) {
       return null;
     }

@@ -51,18 +51,16 @@ import org.kiji.schema.util.ResourceUtils;
  * List all data in the columns 'info:email' and 'derived:domain' of a table 'foo' up to max-rows:
  * <pre>
  *   kiji scan \
- *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
- *       --columns=info:email,derived:domain \
+ *       kiji://hbase-address/kiji-instance/table-name/info:email,derived:domain \
  *       --max-rows=10
  * </pre>
  *
  * List all data in table 'foo' form row start-row to limit-row:
  * <pre>
  *   kiji scan \
- *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
- *       --columns=info:email,derived:domain \
- *       --start-row=hex:50000000000000000000000000000000 \
- *       --limit-row=hex:e0000000000000000000000000000000
+ *       kiji://hbase-address/kiji-instance/table-name/info:email,derived:domain \
+ *       --start-row=hex:50 \
+ *       --limit-row=hex:e0
  * </pre>
  */
 @ApiAudience.Private
@@ -71,7 +69,7 @@ public final class ScanTool extends BaseTool {
 
   @Flag(name="start-row",
       usage="HBase row to start scanning at (inclusive), "
-            + "e.g. --start-row='hex:0088deadbeef', or --start-row='utf8:the row key in UTF8'.")
+          + "e.g. --start-row='hex:0088deadbeef', or --start-row='utf8:the row key in UTF8'. ")
   private String mStartRowFlag = null;
 
   @Flag(name="limit-row",
@@ -104,7 +102,7 @@ public final class ScanTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   public String getDescription() {
-    return "List rows.";
+    return "Scan through a range of rows in a Kiji table.";
   }
 
   /** {@inheritDoc} */
@@ -113,6 +111,16 @@ public final class ScanTool extends BaseTool {
     return "Data";
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public String getUsageString() {
+    return
+        "Usage:\n"
+        + "    kiji scan [flags...] (<table-uri> | <columns-uri>)\n"
+        + "\n"
+        + "Example:\n"
+        + "    kiji scan --max-rows=2 kiji://.env/default/my_table/family:qualifier,map_family\n";
+  }
 
   /**
    * Scans a table, displaying the data in the given columns, or all data if columns is null.
@@ -159,7 +167,6 @@ public final class ScanTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-
     if (nonFlagArgs.isEmpty()) {
       // TODO: Send this error to a future getErrorStream()
       getPrintStream().printf("URI must be specified as an argument%n");

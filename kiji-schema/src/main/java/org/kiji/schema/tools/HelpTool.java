@@ -47,6 +47,9 @@ public final class HelpTool extends Configured implements KijiTool {
   @Flag(name="verbose", usage="Enable verbose help")
   private boolean mVerbose = false;
 
+  @Flag(name="help", usage="Print the usage message.")
+  private boolean mHelp = false;
+
   /** {@inheritDoc} */
   @Override
   public String getName() {
@@ -67,8 +70,32 @@ public final class HelpTool extends Configured implements KijiTool {
 
   /** {@inheritDoc} */
   @Override
+  public String getUsageString() {
+    return
+        "Usage:'n"
+        + "    kiji help\n";
+  }
+
+  /** Prints the tool usage message. */
+  private void printUsage() {
+    System.out.println(getUsageString());
+    System.out.println("Flags:");
+    FlagParser.printUsage(this, System.out);
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public int toolMain(List<String> args) throws Exception {
     List<String> nonFlagArgs = FlagParser.init(this, args.toArray(new String[args.size()]));
+    if (null == nonFlagArgs) {
+      // There was a problem parsing the flags.
+      return BaseTool.FAILURE;
+    }
+
+    if (mHelp) {
+      printUsage();
+      return BaseTool.SUCCESS;
+    }
 
     if (nonFlagArgs.size() > 0) {
       String toolName = nonFlagArgs.get(0);
