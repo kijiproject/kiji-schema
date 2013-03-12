@@ -29,12 +29,14 @@ import org.kiji.schema.layout.KijiTableLayouts;
 
 public class TestKijiDataRequestValidator extends KijiClientTest {
   private KijiTableLayout mTableLayout;
+  private KijiDataRequestValidator mValidator;
 
   @Before
   public void setupLayout() throws Exception {
     mTableLayout =
         KijiTableLayouts.getTableLayout(KijiTableLayouts.FULL_FEATURED);
     getKiji().createTable(mTableLayout.getDesc());
+    mValidator = KijiDataRequestValidator.validatorForLayout(mTableLayout);
   }
 
   @Test
@@ -43,8 +45,7 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
     builder.newColumnsDef().withMaxVersions(1).add("info", "name");
     KijiDataRequest request = builder.build();
 
-    KijiDataRequestValidator validator = new KijiDataRequestValidator(request);
-    validator.validate(mTableLayout);
+    mValidator.validate(request);
   }
 
   @Test(expected=KijiDataRequestException.class)
@@ -53,8 +54,7 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
     builder.newColumnsDef().withMaxVersions(1).add("blahblah", "name");
     KijiDataRequest request = builder.build();
 
-    KijiDataRequestValidator validator = new KijiDataRequestValidator(request);
-    validator.validate(mTableLayout);
+    mValidator.validate(request);
   }
 
   @Test(expected=KijiDataRequestException.class)
@@ -65,7 +65,6 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
         .add("info", "blahblah");
     KijiDataRequest request = builder.build();
 
-    KijiDataRequestValidator validator = new KijiDataRequestValidator(request);
-    validator.validate(mTableLayout);
+    mValidator.validate(request);
   }
 }
