@@ -25,29 +25,31 @@ import org.kiji.schema.layout.KijiTableLayout;
 /**
  * This class validates a {@link KijiDataRequest} against the layout
  * of a Kiji table to make sure it contains all of the columns requested.
+ *
+ * This class cannot be instantiated. Instead, programs should use the static
+ * {@link validate(KijiDataRequest dataRequest, KijiTableLayout tableLayout)} method to validate
+ * requests against layouts.
  */
 @ApiAudience.Framework
 public final class KijiDataRequestValidator {
-  /** The Kiji data request to validate. */
-  private KijiDataRequest mDataRequest;
-
   /**
-   * Construct a validator for a data request.
-   *
-   * @param dataRequest The data request to validate.
+   * Private empty constructor to ensure this class is never instantiated.
    */
-  public KijiDataRequestValidator(KijiDataRequest dataRequest) {
-    mDataRequest = dataRequest;
-  }
+  private KijiDataRequestValidator() { }
 
   /**
-   * Validates the data request against the given table layout.
+   * Validates a data request against the given table layout.
    *
+   * @param dataRequest The KijiDataRequest to validate.
    * @param tableLayout The Kiji table layout to validate against.
    * @throws KijiDataRequestException If the data request is invalid.
    */
-  public void validate(KijiTableLayout tableLayout) {
-    for (KijiDataRequest.Column column : mDataRequest.getColumns()) {
+  public static void validate(KijiDataRequest dataRequest, KijiTableLayout tableLayout) {
+    if (null == dataRequest) {
+      throw new KijiDataRequestException("Data request cannot be null.");
+    }
+
+    for (KijiDataRequest.Column column : dataRequest.getColumns()) {
       final String qualifier = column.getQualifier();
       final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
           tableLayout.getFamilyMap().get(column.getFamily());
