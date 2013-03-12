@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,6 +130,11 @@ public final class GetTool extends BaseTool {
       Map<FamilyLayout, List<ColumnLayout>> groupTypeColumns) {
     try {
       final KijiRowData row = reader.get(entityId, request);
+      if (hasVerboseDebug()
+          && (!ToolUtils.formatEntityId(entityId).startsWith("hbase="))) {
+        getPrintStream().printf("entity-id=%s%s%n", ToolUtils.HBASE_ROW_KEY_SPEC_PREFIX,
+            Bytes.toStringBinary((entityId.getHBaseRowKey())));
+      }
       ToolUtils.printRow(row, mapTypeFamilies, groupTypeColumns, getPrintStream());
     } catch (IOException ioe) {
       LOG.error(ioe.getMessage());

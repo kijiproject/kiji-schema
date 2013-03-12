@@ -25,13 +25,13 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
@@ -69,13 +69,27 @@ public final class ScanTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(ScanTool.class);
 
   @Flag(name="start-row",
-      usage="HBase row to start scanning at (inclusive),\n"
-          + "\te.g. --start-row='hex:0088deadbeef', or --start-row='utf8:the row key in UTF8'. ")
+      usage="HBase row to stop scanning at (exclusive).\n"
+          + "\tEither 'kiji=<Kiji row key>' or 'hbase=<HBase row key>'.\n"
+          + ("\tHBase row keys are specified as bytes:\n"
+              + "\t\tby default as UTF-8 strings, or prefixed as in 'utf8:encoded\\x0astring';\n"
+              + "\t\tin hexadecimal as in 'hex:deadbeef';\n"
+              + "\t\tas a URL with 'url:this%20URL%00'.\n")
+          + "\tOld deprecated Kiji row keys are specified as naked UTF-8 strings.\n"
+          + ("\tNew Kiji row keys are specified in JSON, "
+              + "as in: --start-row=kiji=\"['component1', 2, 'component3']\"."))
   private String mStartRowFlag = null;
 
   @Flag(name="limit-row",
-      usage="HBase row to stop scanning at (exclusive),\n"
-            + "\te.g. --limit-row='hex:0088deadbeef', or --limit-row='utf8:the row key in UTF8'.")
+      usage="HBase row to stop scanning at (exclusive).\n"
+          + "\tEither 'kiji=<Kiji row key>' or 'hbase=<HBase row key>'.\n"
+          + ("\tHBase row keys are specified as bytes:\n"
+              + "\t\tby default as UTF-8 strings, or prefixed as in 'utf8:encoded\\x0astring';\n"
+              + "\t\tin hexadecimal as in 'hex:deadbeef';\n"
+              + "\t\tas a URL with 'url:this%20URL%00'.\n")
+          + "\tOld deprecated Kiji row keys are specified as naked UTF-8 strings.\n"
+          + ("\tNew Kiji row keys are specified in JSON, "
+              + "as in: --limit-row=kiji=\"['component1', 2, 'component3']\"."))
   private String mLimitRowFlag = null;
 
   @Flag(name="max-rows", usage="Max number of rows to scan")
@@ -154,6 +168,11 @@ public final class ScanTool extends BaseTool {
         if ((mMaxRows != 0) && (++rowsOutput > mMaxRows)) {
           break;
         }
+        if (hasVerboseDebug()
+            && (!ToolUtils.formatEntityId(row.getEntityId()).startsWith("hbase="))) {
+          getPrintStream().printf("entity-id=%s%s%n", ToolUtils.HBASE_ROW_KEY_SPEC_PREFIX,
+              Bytes.toStringBinary((row.getEntityId().getHBaseRowKey())));
+        }
         ToolUtils.printRow(row, mapTypeFamilies, groupTypeColumns, getPrintStream());
       }
     } catch (IOException ioe) {
@@ -231,15 +250,24 @@ public final class ScanTool extends BaseTool {
 
         final KijiTableReader reader = table.openTableReader();
         try {
-          final EntityIdFactory eidFactory = EntityIdFactory.getFactory(table.getLayout());
           // Scan from startRow to limitRow.
           final EntityId startRow = (mStartRowFlag != null)
-              ? eidFactory.getEntityIdFromHBaseRowKey(ToolUtils.parseBytesFlag(mStartRowFlag))
+              ? ToolUtils.createEntityIdFromUserInputs(mStartRowFlag, tableLayout)
               : null;
           final EntityId limitRow = (mLimitRowFlag != null)
-              ? eidFactory.getEntityIdFromHBaseRowKey(ToolUtils.parseBytesFlag(mLimitRowFlag))
+              ? ToolUtils.createEntityIdFromUserInputs(mLimitRowFlag, tableLayout)
               : null;
           getPrintStream().println("Scanning kiji table: " + argURI);
+
+          if (startRow != null && hasVerboseDebug()) {
+            getPrintStream().printf("\tstart-row=%s%s%n", ToolUtils.HBASE_ROW_KEY_SPEC_PREFIX,
+                Bytes.toStringBinary(startRow.getHBaseRowKey()));
+          }
+          if (limitRow != null && hasVerboseDebug()) {
+            getPrintStream().printf("\tlimit-row=%s%s%n", ToolUtils.HBASE_ROW_KEY_SPEC_PREFIX,
+                Bytes.toStringBinary(limitRow.getHBaseRowKey()));
+          }
+
           return scan(reader, request, startRow, limitRow, mapTypeFamilies, groupTypeColumns);
         } finally {
           ResourceUtils.closeOrLog(reader);

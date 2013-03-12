@@ -389,7 +389,7 @@ public abstract class EntityIdFactory {
             }
           }
         }
-        return String.format("\"[%s]\"", Joiner.on(",").join(components));
+        return String.format("[%s]", Joiner.on(",").join(components));
       } catch (IllegalStateException ise) {
         // getComponents() threw IllegalStateException because key materialization was false.
         return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(eid.getHBaseRowKey()));
