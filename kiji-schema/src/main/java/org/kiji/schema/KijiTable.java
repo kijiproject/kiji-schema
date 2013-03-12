@@ -149,4 +149,13 @@ public interface KijiTable extends ReferenceCountable<KijiTable>, Closeable {
    * @throws IOException If there is an error retrieving the regions of this table.
    */
   List<KijiRegion> getRegions() throws IOException;
+
+  /**
+   * Closes any open resources being used by this KijiTable.
+   *
+   * @deprecated Use {@link #release()} instead.
+   * @throws IOException on I/O error.
+   */
+  @Deprecated
+  void close() throws IOException;
 }
