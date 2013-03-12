@@ -20,6 +20,7 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 
@@ -78,6 +79,46 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public <T> boolean checkAndPut(
+      EntityId entityId, String family, String qualifier, T value, List<KijiCell<?>> puts)
+      throws IOException {
+    Put aggregatedPuts = new Put(entityId.getHBaseRowKey());
+    for (KijiCell<?> cell : puts) {
+      final KijiColumnName columnName = new KijiColumnName(cell.getFamily(), cell.getQualifier());
+      final HBaseColumnName hbaseColumnName = mTranslator.toHBaseColumnName(columnName);
+
+      final CellSpec cellSpec = mTable.getLayout().getCellSpec(columnName)
+          .setSchemaTable(mTable.getKiji().getSchemaTable());
+      final KijiCellEncoder cellEncoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+      final byte[] encoded = cellEncoder.encode(cell.getData());
+
+      aggregatedPuts.add(
+          hbaseColumnName.getFamily(),
+          hbaseColumnName.getQualifier(),
+          cell.getTimestamp(),
+          encoded);
+    }
+
+    final KijiColumnName checkColumnName = new KijiColumnName(family, qualifier);
+    final HBaseColumnName checkHBaseColumnName = mTranslator.toHBaseColumnName(checkColumnName);
+
+    final CellSpec checkCellSpec = mTable.getLayout().getCellSpec(checkColumnName)
+        .setSchemaTable(mTable.getKiji().getSchemaTable());
+    final KijiCellEncoder checkCellEncoder =
+        DefaultKijiCellEncoderFactory.get().create(checkCellSpec);
+    final byte[] checkEncoded = checkCellEncoder.encode(value);
+    return mTable.getHTable().checkAndPut(
+        entityId.getHBaseRowKey(),
+        checkHBaseColumnName.getFamily(),
+        checkHBaseColumnName.getQualifier(),
+        checkEncoded,
+        aggregatedPuts);
+  }
+
+  //----------------------------------------------------------------------------------------------
+  // Put
   /** {@inheritDoc} */
   @Override
   public <T> void put(EntityId entityId, String family, String qualifier, T value)
