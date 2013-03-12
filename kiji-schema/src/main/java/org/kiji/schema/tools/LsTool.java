@@ -51,17 +51,22 @@ import org.kiji.schema.util.ResourceUtils;
  *
  * List all kiji instances:
  * <pre>
- *   kiji ls kiji://hbase-address/
+ *   kiji ls
+ *   kiji ls kiji://.env
+ *   kiji ls kiji://localhost:2181
+ *   kiji ls kiji://{host1,host2}:2181
  * </pre>
  *
  * List all kiji tables:
  * <pre>
- *   kiji ls kiji://hbase-address/kiji-instance/
+ *   kiji ls default
+ *   kiji ls kiji://.env/default
  * </pre>
  *
- * List all columns in a kiji table 'foo':
+ * List all columns in a kiji table 'table_foo':
  * <pre>
- *   kiji ls kiji://hbase-address/kiji-instance/foo/
+ *   kiji ls default/table_foo
+ *   kiji ls kiji://.env/default/table_foo
  * </pre>
  *
  */
@@ -95,15 +100,15 @@ public final class LsTool extends BaseTool {
         + "    kiji ls [flags...] [<kiji-uri>...] \n"
         + "\n"
         + "Example:\n"
-        + "  Listing the Kiji instances from the default HBase cluster:"
+        + "  Listing the Kiji instances from the default HBase cluster:\n"
         + "    kiji ls\n"
         + "    kiji ls kiji://.env\n"
         + "\n"
-        + "  Listing the Kiji tables from the Kiji instance named 'default':"
+        + "  Listing the Kiji tables from the Kiji instance named 'default':\n"
         + "    kiji ls default\n"
         + "    kiji ls kiji://.env/default\n"
         + "\n"
-        + "  Listing the columns in the Kiji table 'table':"
+        + "  Listing the columns in the Kiji table 'table':\n"
         + "    kiji ls default/table\n"
         + "    kiji ls kiji://.env/default/table\n"
         + "    kiji ls kiji://localhost:2181/default/table\n";

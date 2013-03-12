@@ -72,7 +72,8 @@ public abstract class BaseTool extends Configured implements KijiTool {
   @Flag(name="debug", usage="Enables more verbose error messages.")
   private boolean mDebugFlag = false;
 
-  @Flag(name="interactive", usage="Whether the command is run in an interactive session or script.")
+  @Flag(name="interactive", usage="Indicates whether the command may prompt the user for input.\n"
+      + "\tSet --interactive=false to run the kiji command as part of a non-interactive script.")
   private boolean mInteractiveFlag = true;
 
   @Flag(name="help", usage="Print the usage message.")

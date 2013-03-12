@@ -43,13 +43,12 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 
 
 /**
- * Command-line tool to get a row from a kiji table.
+ * Command-line tool to get one specific row from a kiji table.
  *
- * In row 'bar', display 'info:email' and 'derived:domain' columns of table 'foo':
+ * Dumps the entity with ID 'bar' from table table 'table_foo',
+ * displaying columns 'info:email' and 'derived:domain':
  * <pre>
- *   kiji get \
- *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
- *       --columns=info:email,derived:domain \
+ *   kiji get kiji://.env/default/table_foo/info:email,derived:domain \
  *       --entity-id=bar
  * </pre>
  */
@@ -57,23 +56,23 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 public final class GetTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(GetTool.class);
 
-  @Flag(name="entity-id", usage="ID of a single row to look up. "
-      + "Either 'kiji=<Kiji row key>' or 'hbase=<HBase row key>'. "
-      + ("HBase row keys are specified as bytes: "
-          + "by default as UTF-8 strings, or prefixed as in 'utf8:encoded\\x0astring'; "
-          + "in hexadecimal as in 'hex:deadbeef'; "
-          + "as a URL with 'url:this%20URL%00'. ")
-      + "Old deprecated Kiji row keys are specified as naked UTF-8 strings. "
-      + ("New Kiji row keys are specified in JSON, "
+  @Flag(name="entity-id", usage="ID of a single row to look up.\n"
+      + "\tEither 'kiji=<Kiji row key>' or 'hbase=<HBase row key>'.\n"
+      + ("\tHBase row keys are specified as bytes:\n"
+          + "\t\tby default as UTF-8 strings, or prefixed as in 'utf8:encoded\\x0astring';\n"
+          + "\t\tin hexadecimal as in 'hex:deadbeef';\n"
+          + "\t\tas a URL with 'url:this%20URL%00'.\n")
+      + "\tOld deprecated Kiji row keys are specified as naked UTF-8 strings.\n"
+      + ("\tNew Kiji row keys are specified in JSON, "
           + "as in: --entity-id=kiji=\"['component1', 2, 'component3']\"."))
   private String mEntityIdFlag = null;
 
   @Flag(name="max-versions", usage="Max number of versions per cell to display")
   private int mMaxVersions = 1;
 
-  @Flag(name="timestamp", usage="Min..Max timestamp interval to display, "
-      + "where Min and Max represent long-type time in milliseconds since the UNIX Epoch. "
-      + "E.g. '--timestamp=123..1234', '--timestamp=0..', or '--timestamp=..1234'.")
+  @Flag(name="timestamp", usage="Min..Max timestamp interval to display,\n"
+      + "\twhere Min and Max represent long-type time in milliseconds since the UNIX Epoch.\n"
+      + "\tE.g. '--timestamp=123..1234', '--timestamp=0..', or '--timestamp=..1234'.")
   private String mTimestamp = "0..";
 
   /**
