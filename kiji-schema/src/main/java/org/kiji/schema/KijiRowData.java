@@ -196,7 +196,7 @@ public interface KijiRowData {
    * Gets all data stored within the specified column family flattened to contain only
    * the data with the latest timestamps in each column.
    *
-   * @param family Column family of the desired data.
+   * @param family Map type column family of the desired data.
    * @param <T> Type of the data stored at the specified coordinates.
    * @return Data contained in the specified column family flattened to contain only the
    *     data with the latest timestamps in each column. Note: this method does not distinguish
@@ -210,7 +210,7 @@ public interface KijiRowData {
   /**
    * Gets all data stored within the specified column family.
    *
-   * @param family Column family of the desired data.
+   * @param family Map type column family of the desired data.
    * @param <T> Type of the data stored at the specified coordinates.
    * @return A sorted map containing the data stored in the specified column family.
    * @throws IOException If there is an error.
@@ -260,7 +260,7 @@ public interface KijiRowData {
    * Gets the cells in the specified column family flattened to contain only the cells with
    * the latest timestamp in each column.
    *
-   * @param family Column family of the desired cells.
+   * @param family Map type column family of the desired cells.
    * @param <T> Type of the cells stored at the specified coordinates.
    * @return Map from column qualifier to the most recent versions of the cells.
    * @throws IOException If there is an error.
@@ -271,7 +271,7 @@ public interface KijiRowData {
   /**
    * Gets all cells stored within the specified column family.
    *
-   * @param family Column family of the desired cells.
+   * @param family Map type column family of the desired cells.
    * @param <T> Type of the cells stored at the specified coordinates.
    * @return Sorted map versions of the specified cell.
    * @throws IOException If there is an error.
@@ -282,7 +282,7 @@ public interface KijiRowData {
   /**
    * Gets all cells stored within the specified column.
    *
-   * @param family Column family of the desired cells.
+   * @param family Map type column family of the desired cells.
    * @param qualifier Column qualifier of the desired cells.
    * @param <T> Type of the cells stored at the specified coordinates.
    * @return A sorted map containing the cells stored in the specified column.
@@ -307,7 +307,7 @@ public interface KijiRowData {
   /**
    * Gets a KijiPager for the specified column family.
    *
-   * @param family Desired column family.
+   * @param family Desired map type column family.
    * @return A pager for the specified column.
    * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the
    *     specified column family.
