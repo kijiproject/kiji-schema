@@ -72,9 +72,12 @@ public abstract class BaseTool extends Configured implements KijiTool {
   @Flag(name="debug", usage="Enables more verbose error messages.")
   private boolean mDebugFlag = false;
 
-  @Flag(name="interactive", usage="Whether the command is run in an interactive session or script."
-      + "The default value is true.")
+  @Flag(name="interactive", usage="Indicates whether the command may prompt the user for input.\n"
+      + "\tSet --interactive=false to run the kiji command as part of a non-interactive script.")
   private boolean mInteractiveFlag = true;
+
+  @Flag(name="help", usage="Print the usage message.")
+  private boolean mHelp = false;
 
   /** The print stream to write to. */
   private PrintStream mPrintStream;
@@ -147,6 +150,8 @@ public abstract class BaseTool extends Configured implements KijiTool {
    *     tool name itself.
    * @throws Exception if there's an error inside the tool.
    * @return 0 on success, non-zero on failure.
+   *
+   * {@inheritDoc}
    */
   @Override
   public int toolMain(List<String> args) throws Exception {
@@ -155,6 +160,11 @@ public abstract class BaseTool extends Configured implements KijiTool {
       if (null == nonFlagArgs) {
         // There was a problem parsing the flags.
         return FAILURE;
+      }
+
+      if (mHelp) {
+        printUsage();
+        return SUCCESS;
       }
 
       // Execute custom functionality implemented in subclasses.
@@ -242,6 +252,22 @@ public abstract class BaseTool extends Configured implements KijiTool {
     } else {
       getPrintStream().println("Printstream is already set.");
     }
+  }
+
+  /** Prints the tool usage message. */
+  private void printUsage() {
+    final PrintStream ps = getPrintStream();
+    ps.println(getUsageString());
+    ps.println("Flags:");
+    FlagParser.printUsage(this, ps);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getUsageString() {
+    return String.format("Usage:%n"
+        + "    kiji %s [flags...]%n",
+        getName());
   }
 
   /**

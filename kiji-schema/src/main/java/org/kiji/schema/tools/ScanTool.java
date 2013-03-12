@@ -48,21 +48,20 @@ import org.kiji.schema.util.ResourceUtils;
 /**
  * Command-line tool to explore kiji table data like the 'scan' command of a unix shell.
  *
- * List all data in the columns 'info:email' and 'derived:domain' of a table 'foo' up to max-rows:
+ * Scan through up to 10 rows, starting from the first row,
+ * and print columns 'info:email' and 'derived:domain' of table 'table_foo':
  * <pre>
  *   kiji scan \
- *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
- *       --columns=info:email,derived:domain \
+ *       kiji://.env/default/table_foo/info:email,derived:domain \
  *       --max-rows=10
  * </pre>
  *
- * List all data in table 'foo' form row start-row to limit-row:
+ * Scan through table 'table_foo' form row start-row 0x50 (included) to limit-row 0xe0 (excluded):
  * <pre>
  *   kiji scan \
- *       --kiji=kiji://hbase-address/kiji-instance/table-name/ \
- *       --columns=info:email,derived:domain \
- *       --start-row=hex:50000000000000000000000000000000 \
- *       --limit-row=hex:e0000000000000000000000000000000
+ *       kiji://.env/default/table_foo/info:email,derived:domain \
+ *       --start-row=hex:50 \
+ *       --limit-row=hex:e0
  * </pre>
  */
 @ApiAudience.Private
@@ -70,13 +69,13 @@ public final class ScanTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(ScanTool.class);
 
   @Flag(name="start-row",
-      usage="HBase row to start scanning at (inclusive), "
-            + "e.g. --start-row='hex:0088deadbeef', or --start-row='utf8:the row key in UTF8'.")
+      usage="HBase row to start scanning at (inclusive),\n"
+          + "\te.g. --start-row='hex:0088deadbeef', or --start-row='utf8:the row key in UTF8'. ")
   private String mStartRowFlag = null;
 
   @Flag(name="limit-row",
-      usage="HBase row to stop scanning at (exclusive), "
-            + "e.g. --limit-row='hex:0088deadbeef', or --limit-row='utf8:the row key in UTF8'.")
+      usage="HBase row to stop scanning at (exclusive),\n"
+            + "\te.g. --limit-row='hex:0088deadbeef', or --limit-row='utf8:the row key in UTF8'.")
   private String mLimitRowFlag = null;
 
   @Flag(name="max-rows", usage="Max number of rows to scan")
@@ -85,9 +84,9 @@ public final class ScanTool extends BaseTool {
   @Flag(name="max-versions", usage="Max number of versions per cell to display")
   private int mMaxVersions = 1;
 
-  @Flag(name="timestamp", usage="Min..Max timestamp interval to display, "
-      + "where Min and Max represent long-type time in milliseconds since the UNIX Epoch. "
-      + "E.g. '--timestamp=123..1234', '--timestamp=0..', or '--timestamp=..1234'.")
+  @Flag(name="timestamp", usage="Min..Max timestamp interval to display,\n"
+      + "\twhere Min and Max represent long-type time in milliseconds since the UNIX Epoch.\n"
+      + "\tE.g. '--timestamp=123..1234', '--timestamp=0..', or '--timestamp=..1234'.")
   private String mTimestamp = "0..";
 
   /**
@@ -104,7 +103,7 @@ public final class ScanTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   public String getDescription() {
-    return "List rows.";
+    return "Scan through a range of rows in a Kiji table.";
   }
 
   /** {@inheritDoc} */
@@ -113,6 +112,16 @@ public final class ScanTool extends BaseTool {
     return "Data";
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public String getUsageString() {
+    return
+        "Usage:\n"
+        + "    kiji scan [flags...] (<table-uri> | <columns-uri>)\n"
+        + "\n"
+        + "Example:\n"
+        + "    kiji scan --max-rows=2 kiji://.env/default/my_table/family:qualifier,map_family\n";
+  }
 
   /**
    * Scans a table, displaying the data in the given columns, or all data if columns is null.
@@ -159,7 +168,6 @@ public final class ScanTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-
     if (nonFlagArgs.isEmpty()) {
       // TODO: Send this error to a future getErrorStream()
       getPrintStream().printf("URI must be specified as an argument%n");
@@ -201,7 +209,7 @@ public final class ScanTool extends BaseTool {
       mMaxTimestamp = ("".equals(rightEndpoint)) ? Long.MAX_VALUE : Long.parseLong(rightEndpoint);
     } else {
       // TODO: Send this error to a future getErrorStream()
-      getPrintStream().printf("--timestamp must be like [0-9]*..[0-9]*, instead got %s%n",
+      getPrintStream().printf("--timestamp must be like [0-9]*..[0-9]*, instead got '%s'%n",
           mTimestamp);
       return FAILURE;
     }
