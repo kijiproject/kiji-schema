@@ -278,6 +278,7 @@ public final class HBaseKijiTable implements KijiTable {
   @Override
   public void close() throws IOException {
     LOG.error("KijiTable.close() is deprecated, use KijiTable.release() instead.");
+    release();
   }
 
   /**
