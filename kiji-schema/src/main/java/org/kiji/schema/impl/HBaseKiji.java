@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -34,7 +33,6 @@ import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +47,7 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.RowKeyEncoding;
+import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
@@ -355,6 +354,10 @@ public final class HBaseKiji implements Kiji {
       throw new RuntimeException("Table " + tableLayout.getName() + " already exists");
     } catch (KijiTableNotFoundException e) {
       // Good.
+    }
+
+    if (tableLayout.getKeysFormat() instanceof RowKeyFormat) {
+      LOG.warn("Usage of 'RowKeyFormat' is deprecated. New tables should use 'RowKeyFormat2'.");
     }
 
     LOG.debug("Adding layout to the Kiji meta table");
