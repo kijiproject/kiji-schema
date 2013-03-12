@@ -25,42 +25,60 @@ import org.kiji.schema.layout.KijiTableLayout;
 /**
  * This class validates a {@link KijiDataRequest} against the layout
  * of a Kiji table to make sure it contains all of the columns requested.
+ *
+ * <p>Application authors cannot instantiate this class directly. Instead they
+ * should use the factory method {@link #validatorForLayout(KijiTableLayout)}
+ * to get a validator. They can then use its {@link validate(KijiDataRequest)}
+ * method to validate requests.</p>
  */
 @ApiAudience.Framework
 public final class KijiDataRequestValidator {
-  /** The Kiji data request to validate. */
-  private KijiDataRequest mDataRequest;
+  /** The KijiTableLayout to validate against. */
+  private final KijiTableLayout mTableLayout;
 
   /**
-   * Construct a validator for a data request.
+   * Construct a validator for a layout.
    *
-   * @param dataRequest The data request to validate.
+   * @param tableLayout The table layout to validate against.
    */
-  public KijiDataRequestValidator(KijiDataRequest dataRequest) {
-    mDataRequest = dataRequest;
+  private KijiDataRequestValidator(KijiTableLayout tableLayout) {
+    mTableLayout = tableLayout;
   }
 
   /**
-   * Validates the data request against the given table layout.
+   * Creates a validator for a table layout.
    *
-   * @param tableLayout The Kiji table layout to validate against.
+   * @param tableLayout The table layout that requests will be validated against. Cannot be null.
+   * @return A validator for the table layout.
+   */
+  public static KijiDataRequestValidator validatorForLayout(KijiTableLayout tableLayout) {
+    if (null == tableLayout) {
+      throw new IllegalArgumentException("Cannot create a validator for a null table layout.");
+    }
+    return new KijiDataRequestValidator(tableLayout);
+  }
+
+  /**
+   * Validates a data request against this validator's table layout.
+   *
+   * @param dataRequest The KijiDataRequest to validate.
    * @throws KijiDataRequestException If the data request is invalid.
    */
-  public void validate(KijiTableLayout tableLayout) {
-    for (KijiDataRequest.Column column : mDataRequest.getColumns()) {
+  public void validate(KijiDataRequest dataRequest) {
+    for (KijiDataRequest.Column column : dataRequest.getColumns()) {
       final String qualifier = column.getQualifier();
       final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
-          tableLayout.getFamilyMap().get(column.getFamily());
+          mTableLayout.getFamilyMap().get(column.getFamily());
 
       if (null == fLayout) {
         throw new KijiDataRequestException(String.format("Table '%s' has no family named '%s'.",
-            tableLayout.getName(), column.getFamily()));
+            mTableLayout.getName(), column.getFamily()));
       }
 
       if (fLayout.isGroupType() && (null != column.getQualifier())) {
         if (!fLayout.getColumnMap().containsKey(qualifier)) {
           throw new KijiDataRequestException(String.format("Table '%s' has no column '%s'.",
-              tableLayout.getName(), column.getName()));
+              mTableLayout.getName(), column.getName()));
         }
       }
     }

@@ -3,6 +3,12 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-134. Hides KijiDataRequestValidator's constructor and
+      changes validate()'s signature. Framework developers should
+      use the factory method validatorForLayout() to get a validator
+      which can validate KijiDataRequests against a table layout.
+  * SCHEMA-261. Bugfix: Restrict KijiRowData.getValues(family) and
+      getMostRecentValues() to only work on map-type column families.
   * SCHEMA-238. Adds a warning for new tables created with a layout
       that uses RowKeyFormat. New tables should be made with RowKeyFormat2.
   * SCHEMA-239. KijiTable.close() is deprecated, use KijiTable.release().
