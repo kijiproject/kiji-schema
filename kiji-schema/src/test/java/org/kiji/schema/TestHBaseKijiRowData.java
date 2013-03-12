@@ -388,16 +388,6 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     assertTrue(input.containsColumn("family", "qual1"));
     assertEquals("value1", input.getMostRecentValue("family", "qual1").toString());
     assertEquals("value1", input.getMostRecentValue("family", "qual1").toString());
-    final NavigableMap<String, CharSequence> strings = input.getMostRecentValues("family");
-    assertEquals(2, strings.size());
-    assertEquals("value0", strings.get("qual0").toString());
-    assertEquals("value1", strings.get("qual1").toString());
-
-    final NavigableMap<String, NavigableMap<Long, CharSequence>> stringsByTime =
-       input.getValues("family");
-    assertEquals(2, stringsByTime.size());
-    final NavigableMap<Long, CharSequence> qual0Strings = stringsByTime.get("qual0");
-    assertEquals("value0", qual0Strings.get(qual0Strings.firstKey()).toString());
   }
 
   @Test
@@ -445,10 +435,11 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         tableLayout, result, getKiji().getSchemaTable());
     assertTrue(input.containsColumn("family", "nodequal0"));
     assertTrue(input.containsColumn("family", "nodequal1"));
-    NavigableMap<String, Node> values = input.getMostRecentValues("family");
-    assertEquals(2, values.size());
-    assertEquals("node0", values.get("nodequal0").getLabel().toString());
-    assertEquals("node1", values.get("nodequal1").getLabel().toString());
+
+    Node value0 = input.getMostRecentValue("family", "nodequal0");
+    assertEquals("node0", value0.getLabel().toString());
+    Node value1 = input.getMostRecentValue("family", "nodequal1");
+    assertEquals("node1", value1.getLabel().toString());
   }
 
   @Test
@@ -555,11 +546,12 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     rowData.merge(put);
 
     assertTrue(rowData.containsColumn("family", "qual2"));
-    NavigableMap<String, CharSequence> strings = rowData.getMostRecentValues("family");
-    assertEquals(3, strings.size());
-    assertEquals("value0", strings.get("qual0").toString());
-    assertEquals("value1", strings.get("qual1").toString());
-    assertEquals("value2", strings.get("qual2").toString());
+    CharSequence string0 = rowData.getMostRecentValue("family", "qual0");
+    assertEquals("value0", string0.toString());
+    CharSequence string1 = rowData.getMostRecentValue("family", "qual1");
+    assertEquals("value1", string1.toString());
+    CharSequence string2 = rowData.getMostRecentValue("family", "qual2");
+    assertEquals("value2", string2.toString());
   }
 
   @Test
@@ -588,11 +580,12 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     rowData.merge(anotherRowData);
 
     assertTrue(rowData.containsColumn("family", "qual2"));
-    NavigableMap<String, CharSequence> strings = rowData.getMostRecentValues("family");
-    assertEquals(3, strings.size());
-    assertEquals("value0", strings.get("qual0").toString());
-    assertEquals("value1", strings.get("qual1").toString());
-    assertEquals("value2", strings.get("qual2").toString());
+    CharSequence string0 = rowData.getMostRecentValue("family", "qual0");
+    assertEquals("value0", string0.toString());
+    CharSequence string1 = rowData.getMostRecentValue("family", "qual1");
+    assertEquals("value1", string1.toString());
+    CharSequence string2 = rowData.getMostRecentValue("family", "qual2");
+    assertEquals("value2", string2.toString());
   }
 
   @Test
