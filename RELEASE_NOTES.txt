@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0-rc5
+  * SCHEMA-238. Adds a warning for new tables created with a layout
+      that uses RowKeyFormat. New tables should be made with RowKeyFormat2.
   * SCHEMA-239. KijiTable.close() is deprecated, use KijiTable.release().
   * SCHEMA-262. KijiPager and KijiRowScanner throw unchecked KijiIOException.
   * SCHEMA-173. Improves CLI parsing of EntityIds.  Adds abstract
