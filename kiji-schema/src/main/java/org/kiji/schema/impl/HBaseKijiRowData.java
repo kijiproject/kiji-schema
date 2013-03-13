@@ -509,8 +509,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   public <T> NavigableMap<String, NavigableMap<Long, T>> getValues(String family)
       throws IOException {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
-        String.format("getValues(String family) is only enabled on map"
-        + "type column families. The column family [%s], is a group type column family. Please use"
+        String.format("getValues(String family) is only enabled on map "
+        + "type column families. The column family [%s], is a group type column family. Please use "
         + "getValues(String family, String qualifier) method.",
         family));
     final NavigableMap<String, NavigableMap<Long, T>> result = Maps.newTreeMap();
@@ -620,8 +620,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
         Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         String.format("getPager(String family) is only enabled on map"
-        + " type column families. The column family %s, is a group type column family. Please use"
-        + " getPager(String family, String qualifier) method.",
+        + " type column families. The column family [%s], is a group type column family. Please use"
+        + " the getPager(String family, String qualifier) method.",
         family));
     final KijiColumnName kijiFamily = new KijiColumnName(family);
     if (kijiFamily.isFullyQualified()) {

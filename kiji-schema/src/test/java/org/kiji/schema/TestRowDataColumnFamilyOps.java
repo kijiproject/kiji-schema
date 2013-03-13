@@ -21,6 +21,8 @@ package org.kiji.schema;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 
 import java.io.IOException;
 import java.util.NavigableMap;
@@ -59,7 +61,7 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
         .build();
      final KijiTable table = mKiji.openTable("table");
      final KijiTableReader reader = table.openTableReader();
-     final KijiRowData row1 = reader.get(table.getEntityId("row1"),
+     mRow1 = reader.get(table.getEntityId("row1"),
               KijiDataRequest.create("family"));
 
   }
@@ -71,7 +73,7 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
 
   @Test(expected=IllegalStateException.class)
   public void testGetValues() throws IOException {
-         assertTrue("Row does not contain column family [family].", mRow1.containsColumn("family"));
+     assertTrue("Row does not contain column family [family].", mRow1.containsColumn("family"));
      assertTrue("Row does not contain column [family:column1].",
          mRow1.containsColumn("family", "column1"));
      assertTrue("Row does not contain column [family:column2].",
@@ -83,10 +85,11 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
          stringGet.get("column1").get(1L).toString());
      try {
        intGet.get("column1").get(1L);
+       fail("Didn't throw an exception!");
      } catch (IllegalStateException ex) {
-       assertEquals("Incorrect Exception message: ", "getValues(String family) is only enabled on map"
-        + "type column families. The column family [family], is a group type column family. Please use"
-        + "getValues(String family, String qualifier) method.", ex.getMessage());
+       assertEquals("Incorrect Exception message: ", "getValues(String family) is only enabled on"
+         + "map type column families. The column family [family], is a group type column family."
+         + "Please use getValues(String family, String qualifier) method.", ex.getMessage());
      }
   }
 
@@ -104,10 +107,11 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
          stringGet.get("column1").toString());
      try {
        intGet.get("column1");
+       fail("Didn't throw an exception!");
      } catch (IllegalStateException ex) {
        assertEquals("Incorrect Exception message: ", "getMostRecentValues(String family) is only "
          + "enabled on map type column families. The column family [family], is a group type column"
-         + "family. Please use getMostRecentValues(String family, String qualifier) method.",
+         + " family. Please use getMostRecentValues(String family, String qualifier) method.",
          ex.getMessage());
      }
   }
@@ -124,8 +128,15 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
      final NavigableMap<String, KijiCell<Integer>> intGet = mRow1.getMostRecentCells("family");
      assertEquals("I am not a string! () for the stringGet.", "I am a String",
          stringGet.get("column1").getData().toString());
-     assertEquals("I am not a string! () for the intGet.", "I am a String", intGet.get("column1")
-       .getData().toString());
+     try {
+       intGet.get("column1").getData();
+       fail("Didn't throw an exception!");
+     } catch (IllegalStateException ex) {
+       assertEquals("Incorrect Exception message: ", "getMostRecentCells(String family) is only "
+         + "enabled on map type column families. The column family [family], is a group type column"
+         + " family. Please use getMostRecentCells(String family, String qualifier) method.",
+         ex.getMessage());
+     }
   }
 
   @Test(expected=IllegalStateException.class)
@@ -141,11 +152,18 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
          mRow1.getCells("family");
      assertEquals("I am not a string! () for the stringGet.", "I am a String",
          stringGet.get("column1").get(1L).getData().toString());
-     assertEquals("I am not a string! () for the intGet.", "I am a String", intGet.get("column1")
-       .get(1L).getData().toString());
+     try {
+       intGet.get("column1").get(1L).getData();
+       fail("Didn't throw an exception!");
+     } catch (IllegalStateException ex) {
+       assertEquals("Incorrect Exception message: ", "getCells(String family) is only "
+         + "enabled on map type column families. The column family [family], is a group type column"
+         + " family. Please use getCells(String family, String qualifier) method.",
+         ex.getMessage());
+     }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testGetPager() throws IOException {
     final KijiTable table = mKiji.openTable("table");
     final KijiTableReader reader = table.openTableReader();
@@ -154,6 +172,13 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
     final KijiDataRequest dataRequest = builder.build();
     final KijiRowData row1 = reader.get(table.getEntityId("row1"),
               dataRequest);
-    KijiPager pager = row1.getPager("family");
+    try {
+      KijiPager pager = row1.getPager("family");
+      fail("Didn't throw an exception!");
+    } catch (IllegalStateException ex) {
+      assertEquals("getPager(String family) is only enabled on map"
+        + " type column families. The column family [family], is a group type column family. Please"
+        + " use the getPager(String family, String qualifier) method.", ex.getMessage());
+    }
   }
 }

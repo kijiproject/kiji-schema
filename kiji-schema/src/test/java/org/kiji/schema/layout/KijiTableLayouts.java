@@ -149,7 +149,7 @@ public final class KijiTableLayouts {
   public static final String HASH_PREFIXED_RKF =
       "org/kiji/schema/layout/hashprefixedkey.json";
 
-  /** Table named 'table' which contains two column containing different types. */
+  /** Table named 'table' which contains two columns containing different types. */
   public static final String TWO_COLUMN_DIFFERENT_TYPES =
       "org/kiji/schema/layout/two-column-different-types.json";
 
