@@ -87,14 +87,13 @@ public class TestKijiRowScanner {
   public void testScannerOptionsStart() throws Exception {
     final KijiDataRequest request = KijiDataRequest.create("info", "name");
 
-    final EntityId startRow = mTable.getEntityId("bar-val");
+    final EntityId startRow = mTable.getEntityId("bar");
     final KijiRowScanner scanner = mReader.getScanner(
         request, new KijiScannerOptions().setStartRow(startRow));
     final Iterator<KijiRowData> iterator = scanner.iterator();
 
     final String first = iterator.next().getValue("info", "name", 1L).toString();
-
-    assertEquals("foo-val", first);
+    assertEquals("bar-val", first);
 
     ResourceUtils.closeOrLog(scanner);
   }
