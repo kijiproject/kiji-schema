@@ -21,7 +21,6 @@ package org.kiji.schema;
 
 import java.util.List;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -32,7 +31,6 @@ import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.util.ByteArrayFormatter;
 
 /**
  * Factory class for creating EntityIds.
@@ -366,56 +364,13 @@ public abstract class EntityIdFactory {
 
   /**
    * Formats an entity ID for pretty-printing. (e.g., to the console.)
-   * This method does not escape elements for consumption by CLI tools; see
-   * {@link EntityId#toShellString} for that.
    *
+   * @deprecated use {@link EntityId#toShellString}.
    * @param eid Entity ID to format.
    * @return the formatted entity ID as a String to print for the user.
    */
+  @Deprecated
   public static String formatEntityId(EntityId eid) {
-
-    // Important: If you change this method (e.g., for bugfixes), make sure to
-    // change the affected EntityId.toShellString() method too. Do not change
-    // how this method formats existing, stable entity ID classes.
-
-    final String formattedHBaseRowKey =
-        String.format("hbase='%s'", Bytes.toStringBinary(eid.getHBaseRowKey()));
-
-    if (eid instanceof FormattedEntityId) {
-      final FormattedEntityId feid = (FormattedEntityId) eid;
-      final List<String> components = Lists.newArrayList();
-      try {
-        for (Object component: feid.getComponents()) {
-          if (component instanceof Number) {
-            components.add(component.toString());
-          } else {
-            if (component == null) {
-              components.add("null");
-            } else {
-              components.add(String.format("'%s'", component));
-            }
-          }
-        }
-        return String.format("[%s]", Joiner.on(",").join(components));
-      } catch (IllegalStateException ise) {
-        // getComponents() threw IllegalStateException because key materialization was false.
-        return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(eid.getHBaseRowKey()));
-      }
-    } else if (eid instanceof HashedEntityId) {
-      final HashedEntityId hashed = (HashedEntityId) eid;
-      final byte[] kijiRowKey = hashed.getKijiRowKey();
-      if (kijiRowKey != null) {
-        return String.format("'%s'", Bytes.toString(kijiRowKey));
-      }
-      return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(eid.getHBaseRowKey()));
-
-    } else if (eid instanceof HBaseEntityId) {
-      return formattedHBaseRowKey;
-
-    } else if (eid instanceof HashPrefixedEntityId) {
-      return String.format("'%s'",
-          Bytes.toString(((HashPrefixedEntityId) eid).getKijiRowKey()));
-    }
-    return formattedHBaseRowKey;
+    return eid.toShellString();
   }
 }
