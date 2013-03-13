@@ -43,21 +43,20 @@ public class TestKijiRowScanner {
   public void setupEnvironment() throws Exception {
     // Get the test table layouts.
     final KijiTableLayout layout = KijiTableLayout.newLayout(
-        KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST));
-
+        KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE_UNHASHED));
     // Populate the environment.
     mKiji = new InstanceBuilder()
-        .withTable("user", layout)
-            .withRow("foo")
-                .withFamily("info")
-                    .withQualifier("name").withValue(1L, "foo-val")
-            .withRow("bar")
-                .withFamily("info")
-                    .withQualifier("name").withValue(1L, "bar-val")
+        .withTable("table", layout)
+            .withRow("a")
+                .withFamily("family")
+                    .withQualifier("column").withValue(1L, "foo-val")
+            .withRow("c")
+                .withFamily("family")
+                    .withQualifier("column").withValue(1L, "bar-val")
         .build();
 
     // Fill local variables.
-    mTable = mKiji.openTable("user");
+    mTable = mKiji.openTable("table");
     mReader = mTable.openTableReader();
   }
 
@@ -70,31 +69,40 @@ public class TestKijiRowScanner {
 
   @Test
   public void testScanner() throws Exception {
-    final KijiDataRequest request = KijiDataRequest.create("info", "name");
+    final KijiDataRequest request = KijiDataRequest.create("family", "column");
     final KijiRowScanner scanner = mReader.getScanner(request);
     final Iterator<KijiRowData> iterator = scanner.iterator();
 
-    final String actual1 = iterator.next().getValue("info", "name", 1L).toString();
-    final String actual2 = iterator.next().getValue("info", "name", 1L).toString();
+    final String actual1 = iterator.next().getValue("family", "column", 1L).toString();
+    final String actual2 = iterator.next().getValue("family", "column", 1L).toString();
 
-    assertEquals("bar-val", actual1);
-    assertEquals("foo-val", actual2);
+    assertEquals("foo-val", actual1);
+    assertEquals("bar-val", actual2);
 
     ResourceUtils.closeOrLog(scanner);
   }
 
   @Test
   public void testScannerOptionsStart() throws Exception {
-    final KijiDataRequest request = KijiDataRequest.create("info", "name");
+    final KijiDataRequest request = KijiDataRequest.create("family", "column");
 
-    final EntityId startRow = mTable.getEntityId("bar");
-    final KijiRowScanner scanner = mReader.getScanner(
+    // Test with a scanner that starts directly on a value.
+    EntityId startRow = mTable.getEntityId("c");
+    KijiRowScanner scanner = mReader.getScanner(
         request, new KijiScannerOptions().setStartRow(startRow));
-    final Iterator<KijiRowData> iterator = scanner.iterator();
+    Iterator<KijiRowData> iterator = scanner.iterator();
 
-    final String first = iterator.next().getValue("info", "name", 1L).toString();
+    String first = iterator.next().getValue("family", "column", 1L).toString();
     assertEquals("bar-val", first);
+    ResourceUtils.closeOrLog(scanner);
 
+    // Test with a scanner that starts between the rows.
+    startRow = mTable.getEntityId("b");
+    scanner = mReader.getScanner(request, new KijiScannerOptions().setStartRow(startRow));
+    iterator = scanner.iterator();
+
+    first = iterator.next().getValue("family", "column", 1L).toString();
+    assertEquals("bar-val", first);
     ResourceUtils.closeOrLog(scanner);
   }
 }
