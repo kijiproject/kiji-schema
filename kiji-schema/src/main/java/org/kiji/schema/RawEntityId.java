@@ -99,7 +99,6 @@ public final class RawEntityId extends EntityId {
   /** {@inheritDoc} */
   @Override
   public String toShellString() {
-    // Important: If you change this method, check EntityIdFactory.formatEntityId() too.
     return String.format("hbase=%s", Bytes.toStringBinary(mBytes));
   }
 }

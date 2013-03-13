@@ -96,7 +96,6 @@ public final class HBaseEntityId extends EntityId {
    */
   @Override
   public String toShellString() {
-    // Important: If you change this method, check EntityIdFactory.formatEntityId() too.
     return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(mHBaseRowKey));
   }
 }
