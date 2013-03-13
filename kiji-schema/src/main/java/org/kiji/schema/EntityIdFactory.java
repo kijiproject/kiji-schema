@@ -366,11 +366,18 @@ public abstract class EntityIdFactory {
 
   /**
    * Formats an entity ID for pretty-printing. (e.g., to the console.)
+   * This method does not escape elements for consumption by CLI tools; see
+   * {@link EntityId#toShellString} for that.
    *
    * @param eid Entity ID to format.
    * @return the formatted entity ID as a String to print for the user.
    */
   public static String formatEntityId(EntityId eid) {
+
+    // Important: If you change this method (e.g., for bugfixes), make sure to
+    // change the affected EntityId.toShellString() method too. Do not change
+    // how this method formats existing, stable entity ID classes.
+
     final String formattedHBaseRowKey =
         String.format("hbase='%s'", Bytes.toStringBinary(eid.getHBaseRowKey()));
 

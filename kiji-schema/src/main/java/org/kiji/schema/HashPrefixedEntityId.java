@@ -145,6 +145,7 @@ final class HashPrefixedEntityId extends EntityId {
   /** {@inheritDoc} */
   @Override
   public String toShellString() {
+    // Important: If you change this method, check EntityIdFactory.formatEntityId() too.
     if (mKijiRowKey != null) {
       return String.format("kiji=%s", Bytes.toStringBinary(mKijiRowKey));
     } else {

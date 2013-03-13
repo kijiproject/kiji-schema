@@ -480,6 +480,8 @@ final class FormattedEntityId extends EntityId {
   /** {@inheritDoc} */
   @Override
   public String toShellString() {
+    // Important: If you change this method, check EntityIdFactory.formatEntityId() too.
+
     /** Set of characters which must be escaped */
     HashSet<Character> escapeSet = Sets.newHashSet('"', '\\', '\'');
     ArrayList<String> componentStrings = Lists.newArrayList();

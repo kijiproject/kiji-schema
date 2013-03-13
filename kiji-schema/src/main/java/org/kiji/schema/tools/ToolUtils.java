@@ -546,9 +546,11 @@ public final class ToolUtils {
   /**
    * Formats an entity ID for a command-line user.
    *
+   * @deprecated use {@link EntityIdFactory#formatEntityId(EntityId)} instead.
    * @param eid Entity ID to format.
    * @return the formatted entity ID as a String to print on the console.
    */
+  @Deprecated
   public static String formatEntityId(EntityId eid) {
     return EntityIdFactory.formatEntityId(eid);
   }
