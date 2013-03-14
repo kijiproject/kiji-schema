@@ -119,18 +119,30 @@ public interface KijiTable extends ReferenceCountable<KijiTable>, Closeable {
   EntityId getEntityId(Object... kijiRowKey);
 
   /**
-   * Opens a KijiTableReader for this table. The caller of this method is responsible
-   * for closing the returned reader.
+   * Opens a KijiTableReader for this table.
+   *
+   * <p> The caller of this method is responsible for closing the returned reader.
+   * <p> The reader returned by this method does not provide any isolation guarantee.
+   *     In particular, you should assume that the underlying resources (connections, buffers, etc)
+   *     are used concurrently for other purposes.
    *
    * @return A KijiTableReader for this table.
+   * @throws KijiIOException Future implementations may throw unchecked KijiIOException.
    */
   KijiTableReader openTableReader();
 
   /**
-   * Opens a KijiTableWriter for this table. The caller of this method is responsible
-   * for closing the returned writer.
+   * Opens a KijiTableWriter for this table.
+   *
+   * <p> The caller of this method is responsible for closing the returned writer.
+   * <p> The writer returned by this method does not provide any isolation guarantee.
+   *     In particular, you should assume that the underlying resources (connections, buffers, etc)
+   *     are used concurrently for other purposes.
+   * <p> If you have specific resource requirements, such as buffering, timeouts, dedicated
+   *     connection, etc, use {@link #getWriterFactory()}.
    *
    * @return A KijiTableWriter for this table.
+   * @throws KijiIOException Future implementations may throw unchecked KijiIOException.
    */
   KijiTableWriter openTableWriter();
 
