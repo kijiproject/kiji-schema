@@ -54,13 +54,20 @@ public final class CreateTableTool extends BaseTool {
   private String mLayout = null;
 
   @Flag(name="num-regions",
-      usage="Number (>= 1) of initial regions to create in the table. "
-          + "Do not use if specifying regions explicitly with --split-key-file=...")
+      usage="Number (>= 1) of initial regions to create in the table.\n"
+          + "\tRegions are evenly sized across the HBase row key space.\n"
+          + "\tDo not use if specifying regions explicitly with --split-key-file=...")
   private String mNumRegionsFlag = null;
 
   @Flag(name="split-key-file",
-      usage="Path to a file of row keys to use as boundaries between regions. "
-          + "Do not use if specifying a number of regions with --num-regions=N.")
+      usage="Path to a file of row keys to use as boundaries between regions.\n"
+          + "\tSplit key files are formatted as one HBase encoded row per line:\n"
+          + "\t\t- each HBase encoded row is formatted in ASCII form;\n"
+          + "\t\t- non printable characters are escaped as '\\x??';\n"
+          + "\t\t- backslash must be escaped as '\\\\'.\n"
+          + "\tThe first and last HBase rows are omitted: a region split file with one\n"
+          + "\tentry E designates 2 regions: [''..E) and [E..).\n"
+          + "\tDo not use if specifying a number of regions with --num-regions=N.")
   private String mSplitKeyFilePath = null;
 
   /**
