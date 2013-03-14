@@ -217,7 +217,7 @@
     <dependency>
       <groupId>org.kiji.testing</groupId>
       <artifactId>fake-hbase</artifactId>
-      <version>0.0.4-SNAPSHOT</version>
+      <version>${fake-hbase.version}</version>
       <scope>test</scope>
     </dependency>
 
