@@ -19,7 +19,11 @@
 
 package org.kiji.schema;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,6 +32,7 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
@@ -41,7 +46,6 @@ import org.kiji.schema.util.ResourceUtils;
 
 /** Tests for FormattedEntityId. */
 public class TestFormattedEntityId extends KijiClientTest {
-
   private RowKeyFormat2 makeRowKeyFormat() {
     // components of the row key
     ArrayList<RowKeyComponent> components = new ArrayList<RowKeyComponent>();
@@ -790,5 +794,14 @@ public class TestFormattedEntityId extends KijiClientTest {
     assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
 
     List<Object> actuals = testEntityId.getComponents();
+  }
+
+  @Test
+  public void testHashedEntityIdToShellString() {
+    final RowKeyFormat2 format = makeHashedRowKeyFormat();
+
+    final FormattedEntityId formattedEntityId =
+        FormattedEntityId.getEntityId(Lists.<Object>newArrayList("one"), format);
+    assertEquals("hbase=hex:f9", formattedEntityId.toShellString());
   }
 }
