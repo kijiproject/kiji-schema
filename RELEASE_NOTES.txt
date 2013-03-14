@@ -2,6 +2,9 @@
 
                               Kiji Schema Release Notes
 
+Version 1.0.0-rc6
+  * SCHEMA-189. Adds KijiBufferedWriter.
+
 Version 1.0.0-rc5
   * SCHEMA-240. Composite key format support in all CLI tools.
   * SCHEMA-134. Hides KijiDataRequestValidator's constructor and
