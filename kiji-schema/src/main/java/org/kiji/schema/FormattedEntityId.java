@@ -42,6 +42,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.avro.ComponentType;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat2;
+import org.kiji.schema.util.ByteArrayFormatter;
 import org.kiji.schema.util.Hasher;
 
 /**
@@ -480,6 +481,10 @@ final class FormattedEntityId extends EntityId {
   /** {@inheritDoc} */
   @Override
   public String toShellString() {
+    if (mRowKeyFormat.getSalt().getSuppressKeyMaterialization()) {
+      return String.format("hbase=hex:%s", ByteArrayFormatter.toHex(mHBaseRowKey));
+    }
+
     /** Set of characters which must be escaped */
     HashSet<Character> escapeSet = Sets.newHashSet('"', '\\', '\'');
     ArrayList<String> componentStrings = Lists.newArrayList();
