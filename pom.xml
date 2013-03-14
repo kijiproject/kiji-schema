@@ -27,7 +27,7 @@
   <parent>
     <groupId>org.kiji.pom</groupId>
     <artifactId>root-pom</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5-SNAPSHOT</version>
   </parent>
 
   <name>KijiSchema top-level project</name>
@@ -35,9 +35,9 @@
   <inceptionYear>2012</inceptionYear>
 
   <properties>
-    <kiji-delegation.version>1.0.0-rc5</kiji-delegation.version>
-    <kiji-platforms.version>1.0.0-rc5</kiji-platforms.version>
-    <fake-hbase.version>0.0.4</fake-hbase.version>
+    <kiji-delegation.version>1.0.0-rc6-SNAPSHOT</kiji-delegation.version>
+    <kiji-platforms.version>1.0.0-rc6-SNAPSHOT</kiji-platforms.version>
+    <fake-hbase.version>0.0.5-SNAPSHOT</fake-hbase.version>
   </properties>
 
   <modules>
