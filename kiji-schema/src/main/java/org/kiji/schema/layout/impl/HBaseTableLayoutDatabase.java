@@ -55,6 +55,7 @@ import org.kiji.schema.avro.TableLayoutBackupEntry;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.avro.TableLayoutsBackup;
 import org.kiji.schema.impl.AvroCellEncoder;
+import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 import org.kiji.schema.util.ResourceUtils;

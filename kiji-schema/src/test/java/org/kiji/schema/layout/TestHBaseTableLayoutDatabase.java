@@ -55,7 +55,6 @@ import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
-import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
 import org.kiji.schema.util.InstanceBuilder;
 
@@ -68,7 +67,7 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
   private HBaseTableLayoutDatabase mDb;
 
   private byte[] encode(TableLayoutDesc desc) throws IOException {
-    final CellSpec cellSpec = new CellSpec()
+    final CellSpec cellSpec = CellSpec.create()
         .setCellSchema(CellSchema.newBuilder()
             .setStorage(SchemaStorage.HASH)
             .setType(SchemaType.CLASS)

@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.layout.impl;
+package org.kiji.schema.layout;
 
 import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
@@ -28,18 +28,20 @@ import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
-import org.kiji.schema.layout.InvalidLayoutException;
-import org.kiji.schema.layout.SchemaClassNotFoundException;
 import org.kiji.schema.util.JavaIdentifiers;
 
 /**
- * Specification of a Kiji cell.
+ * Specification of a column in a Kiji table.
  *
- * Contains everything needed to encode or decode a given column.
- * Wraps a CellSchema Avro record to avoid re-parsing JSON Avro schemas every time, and
- * associate it with a schema table to resolve schema IDs or hashes.
+ * <p> Contains everything needed to encode or decode a given column.
+ *   Wraps a CellSchema Avro record to avoid re-parsing JSON Avro schemas every time, and
+ *   associates it with a schema table to resolve schema IDs or hashes.
+ * </p>
+ * <p> A CellSpec is constructed from a {@link KijiTableLayout}
+ *    and is intended for a consumption by {@link KijiCellEncoder} and {@link KijiCellDecoder}.
+ * </p>
  */
-@ApiAudience.Private
+@ApiAudience.Framework
 public final class CellSpec {
   /** Avro record specifying the cell encoding. */
   private CellSchema mCellSchema;
@@ -81,8 +83,13 @@ public final class CellSpec {
         .setCellSchema(cellSchema);
   }
 
+  /** @return a new, unspecified CellSpec. */
+  public static CellSpec create() {
+    return new CellSpec();
+  }
+
   /** Initializes a new, unspecified CellSpec. */
-  public CellSpec() {
+  private CellSpec() {
   }
 
   /**

@@ -26,7 +26,7 @@ import com.google.common.base.Preconditions;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiCellEncoderFactory;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.layout.CellSpec;
 
 /** Factory for cell encoders. */
 @ApiAudience.Private

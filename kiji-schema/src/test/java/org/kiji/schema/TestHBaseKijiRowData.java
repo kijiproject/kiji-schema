@@ -49,9 +49,9 @@ import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.HBaseKijiTable;
+import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.InstanceBuilder;
 
@@ -85,7 +85,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         .setType(SchemaType.INLINE)
         .setValue("\"string\"")
         .build();
-    final CellSpec stringCellSpec = new CellSpec()
+    final CellSpec stringCellSpec = CellSpec.create()
         .setCellSchema(stringCellSchema)
         .setSchemaTable(getKiji().getSchemaTable());
     mStringCellEncoder = new AvroCellEncoder(stringCellSpec);
@@ -95,7 +95,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         .setType(SchemaType.INLINE)
         .setValue("\"int\"")
         .build();
-    final CellSpec intCellSpec = new CellSpec()
+    final CellSpec intCellSpec = CellSpec.create()
         .setCellSchema(intCellSchema)
         .setSchemaTable(getKiji().getSchemaTable());
     mIntCellEncoder = new AvroCellEncoder(intCellSpec);
@@ -105,7 +105,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         .setType(SchemaType.CLASS)
         .setValue(Node.SCHEMA$.getFullName())
         .build();
-    final CellSpec nodeCellSpec = new CellSpec()
+    final CellSpec nodeCellSpec = CellSpec.create()
         .setCellSchema(nodeCellSchema)
         .setSchemaTable(getKiji().getSchemaTable());
     mNodeCellEncoder = new AvroCellEncoder(nodeCellSpec);

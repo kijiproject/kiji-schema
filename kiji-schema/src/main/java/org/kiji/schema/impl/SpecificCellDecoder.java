@@ -26,7 +26,7 @@ import org.apache.avro.io.DatumReader;
 import org.apache.avro.specific.SpecificDatumReader;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.layout.CellSpec;
 
 /**
  * Decodes cells encoded using Avro into specific types.

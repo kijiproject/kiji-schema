@@ -37,7 +37,7 @@ import org.kiji.schema.DecodedCell;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiEncodingException;
 import org.kiji.schema.KijiSchemaTable;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.util.ByteStreamArray;
 
 /**

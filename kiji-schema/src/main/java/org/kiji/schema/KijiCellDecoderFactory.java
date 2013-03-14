@@ -23,7 +23,7 @@ import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.layout.CellSpec;
 
 /** Interface for factories of KijiCellDecoder instances. */
 @ApiAudience.Framework
