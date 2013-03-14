@@ -46,7 +46,7 @@ public class TestKijiCellEncoder extends KijiClientTest {
 
   @Test
   public void testEncodeAvroInline() throws IOException {
-    final CellSpec cellSpec = new CellSpec()
+    final CellSpec cellSpec = CellSpec.create()
         .setCellSchema(CellSchema.newBuilder()
             .setStorage(SchemaStorage.FINAL)
             .setType(SchemaType.INLINE)
@@ -60,7 +60,7 @@ public class TestKijiCellEncoder extends KijiClientTest {
 
   @Test
   public void testEncodeAvroClass() throws IOException {
-    final CellSpec cellSpec = new CellSpec()
+    final CellSpec cellSpec = CellSpec.create()
         .setCellSchema(CellSchema.newBuilder()
             .setStorage(SchemaStorage.FINAL)
             .setType(SchemaType.CLASS)
@@ -78,7 +78,7 @@ public class TestKijiCellEncoder extends KijiClientTest {
 
   @Test
   public void testEncodeAvroSchemaUID() throws IOException {
-    final CellSpec cellSpec = new CellSpec()
+    final CellSpec cellSpec = CellSpec.create()
         .setCellSchema(CellSchema.newBuilder()
             .setStorage(SchemaStorage.UID)
             .setType(SchemaType.INLINE)
@@ -93,7 +93,7 @@ public class TestKijiCellEncoder extends KijiClientTest {
 
   @Test
   public void testEncodeAvroSchemaHash() throws IOException {
-    final CellSpec cellSpec = new CellSpec()
+    final CellSpec cellSpec = CellSpec.create()
         .setCellSchema(CellSchema.newBuilder()
             .setStorage(SchemaStorage.HASH)
             .setType(SchemaType.INLINE)

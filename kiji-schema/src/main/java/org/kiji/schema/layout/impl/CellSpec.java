@@ -81,8 +81,13 @@ public final class CellSpec {
         .setCellSchema(cellSchema);
   }
 
+  /** @return a new, unspecified CellSpec. */
+  public static CellSpec create() {
+    return new CellSpec();
+  }
+
   /** Initializes a new, unspecified CellSpec. */
-  public CellSpec() {
+  private CellSpec() {
   }
 
   /**

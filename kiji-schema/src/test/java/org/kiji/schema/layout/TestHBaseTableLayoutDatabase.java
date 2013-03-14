@@ -68,7 +68,7 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
   private HBaseTableLayoutDatabase mDb;
 
   private byte[] encode(TableLayoutDesc desc) throws IOException {
-    final CellSpec cellSpec = new CellSpec()
+    final CellSpec cellSpec = CellSpec.create()
         .setCellSchema(CellSchema.newBuilder()
             .setStorage(SchemaStorage.HASH)
             .setType(SchemaType.CLASS)

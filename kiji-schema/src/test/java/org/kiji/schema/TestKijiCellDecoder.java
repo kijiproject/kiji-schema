@@ -46,7 +46,7 @@ public class TestKijiCellDecoder extends KijiClientTest {
   }
 
   private void testDecodeAvroSchema(SchemaStorage storage) throws IOException {
-    final CellSpec cellSpec = new CellSpec()
+    final CellSpec cellSpec = CellSpec.create()
         .setCellSchema(CellSchema.newBuilder()
             .setType(SchemaType.CLASS)
             .setValue(Node.class.getName())
