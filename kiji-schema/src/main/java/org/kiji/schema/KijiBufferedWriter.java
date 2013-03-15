@@ -25,19 +25,20 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 
 /**
- * Interface for performing batch operations on a Kiji Table.
- * Accessible via {@link KijiTable#getWriterFactory()#openBufferedWriter()};
+ * Interface for performing batch operations on a Kiji Table.  Buffered operations are stored in
+ * local memory and flushed on explicit calls to {@link #flush()} or {@link #close()}.  The buffer
+ * of an open writer cannot be relied upon to flush before JVM shutdown.
+ * Accessible via {@link kijiTable#getWriterFactory()#openBufferedWriter()};
  */
 @ApiAudience.Public
 @Inheritance.Sealed
 public interface KijiBufferedWriter extends KijiPutter, KijiDeleter {
-
   /**
    * Set the size of the local write buffer (in bytes).
    *
    * @param bufferSize size (in bytes) to buffer before automatic flush.
    */
-  void setBufferSize(long bufferSize);
+  void setBufferSize(long bufferSize) throws IOException;
 
   /**
    * Commit any buffered writes.

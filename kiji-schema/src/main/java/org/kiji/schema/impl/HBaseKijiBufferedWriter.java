@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import com.google.common.base.Preconditions;
-
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Delete;
@@ -75,8 +74,13 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   private ArrayList<Put> mPutBuffer = new ArrayList<Put>();
   private ArrayList<Delete> mDeleteBuffer = new ArrayList<Delete>();
   /** Local write buffer size. */
-  private long mWriteBufferMaxSize = 2000000L;
+  private long mMaxWriteBufferSize = 2000000L;
   private long mCurrentWriteBufferSize = 0L;
+  /** Static overhead size of a Delete. */
+  private final long mDeleteSize = ClassSize.align(
+      ClassSize.OBJECT + 2 * ClassSize.REFERENCE
+      + 2 * Bytes.SIZEOF_LONG + Bytes.SIZEOF_BOOLEAN
+      + ClassSize.REFERENCE + ClassSize.TREEMAP);
 
   /**
    * Creates a buffered kiji table writer that stores modifications to be sent on command
@@ -98,23 +102,17 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
   }
 
-  /**
-   * Size (in bytes) of a delete in the buffer.
-   *
-   * @param d the delete to be measured.
-   * @return The size (in bytes) of the delete to buffer.
-   */
-  private long deleteSize(Delete d) {
-    long heapsize = ClassSize.align(
-        ClassSize.OBJECT + 2 * ClassSize.REFERENCE
-        + 2 * Bytes.SIZEOF_LONG + Bytes.SIZEOF_BOOLEAN
-        + ClassSize.REFERENCE + ClassSize.TREEMAP);
-    heapsize += ClassSize.align(ClassSize.ARRAY + d.getRow().length);
-    return heapsize;
-  }
-
   // ----------------------------------------------------------------------------------------------
   // Puts
+
+  /** Add a Put to the buffer and update the current buffer size. */
+  synchronized private void updateBuffer(Put p) throws IOException {
+    mPutBuffer.add(p);
+    mCurrentWriteBufferSize += p.heapSize();
+    if (mCurrentWriteBufferSize > mMaxWriteBufferSize) {
+      flush();
+    }
+  }
 
   /** {@inheritDoc} */
   @Override
@@ -137,15 +135,22 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
     final Put put = new Put(entityId.getHBaseRowKey())
         .add(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp, encoded);
-    mPutBuffer.add(put);
-    mWriteBufferMaxSize += put.heapSize();
-    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
-      flush();
-    }
+    updateBuffer(put);
   }
 
   // ----------------------------------------------------------------------------------------------
   // Deletes
+
+  /** Add a Delete to the buffer and update the current buffer size. */
+  synchronized private void updateBuffer(Delete d) throws IOException {
+    mDeleteBuffer.add(d);
+    long heapSize = mDeleteSize;
+    heapSize += ClassSize.align(ClassSize.ARRAY + d.getRow().length);
+    mCurrentWriteBufferSize += heapSize;
+    if (mCurrentWriteBufferSize > mMaxWriteBufferSize) {
+      flush();
+    }
+  }
 
   /** {@inheritDoc} */
   @Override
@@ -158,10 +163,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {
     final Delete delete = new Delete(entityId.getHBaseRowKey(), upToTimestamp, null);
     mDeleteBuffer.add(delete);
-    mWriteBufferMaxSize += deleteSize(delete);
-    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
-      flush();
-    }
+    updateBuffer(delete);
   }
 
   /** {@inheritDoc} */
@@ -198,12 +200,9 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     final Delete delete = new Delete(entityId.getHBaseRowKey());
     delete.deleteFamily(hbaseColumnName.getFamily(), upToTimestamp);
 
-    // Send the delete to the HBase HTable.
+    // Buffer the delete.
     mDeleteBuffer.add(delete);
-    mWriteBufferMaxSize += deleteSize(delete);
-    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
-      flush();
-    }
+    updateBuffer(delete);
   }
 
   /**
@@ -232,12 +231,8 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
           hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
     }
 
-    // Send the delete to the HBase HTable.
-    mDeleteBuffer.add(delete);
-    mWriteBufferMaxSize += deleteSize(delete);
-    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
-      flush();
-    }
+    // Buffer the delete.
+    updateBuffer(delete);
   }
 
   /**
@@ -290,11 +285,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
               + ":" + Bytes.toString(hbaseQualifier));
           delete.deleteColumns(hbaseColumnName.getFamily(), hbaseQualifier, upToTimestamp);
         }
-        mDeleteBuffer.add(delete);
-        mWriteBufferMaxSize += deleteSize(delete);
-        if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
-          flush();
-        }
+        updateBuffer(delete);
       }
     } finally {
       // Make sure to unlock the row!
@@ -316,11 +307,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
         mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumns(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
-    mDeleteBuffer.add(delete);
-    mWriteBufferMaxSize += deleteSize(delete);
-    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
-      flush();
-    }
+    updateBuffer(delete);
   }
 
   /** {@inheritDoc} */
@@ -337,37 +324,54 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
         mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
-    mDeleteBuffer.add(delete);
-    mWriteBufferMaxSize += deleteSize(delete);
-    if (mCurrentWriteBufferSize > mWriteBufferMaxSize) {
-      flush();
-    }
+    updateBuffer(delete);
   }
 
   // ----------------------------------------------------------------------------------------------
 
   /** {@inheritDoc} */
   @Override
-  public void setBufferSize(long bufferSize) {
-    mWriteBufferMaxSize = bufferSize;
+  public void setBufferSize(long bufferSize) throws IOException {
+    Preconditions.checkArgument(bufferSize > 0, "Buffer size cannot be negative.");
+    mMaxWriteBufferSize = bufferSize;
+    if (mCurrentWriteBufferSize > mMaxWriteBufferSize) {
+      flush();
+    }
   }
 
   /** {@inheritDoc} */
   @Override
-  public void flush() throws IOException {
-    mHTable.put(mPutBuffer);
-    mHTable.delete(mDeleteBuffer);
-    mHTable.flushCommits();
+  synchronized public void flush() throws IOException {
+    if (mDeleteBuffer.size() > 0) {
+      mHTable.delete(mDeleteBuffer);
+      mDeleteBuffer = new ArrayList<Delete>();
+    }
+    if (mPutBuffer.size() > 0) {
+      mHTable.put(mPutBuffer);
+      mHTable.flushCommits();
+      mPutBuffer = new ArrayList<Put>();
+    }
     mCurrentWriteBufferSize = 0L;
   }
 
   /** {@inheritDoc} */
   @Override
-  public void close() throws IOException {
+  synchronized public void close() throws IOException {
     flush();
     if (mHTable != null) {
       mHTable.close();
     }
     ResourceUtils.releaseOrLog(mTable);
+  }
+
+  @Override
+  protected void finalize() throws Throwable {
+    try {
+      close();
+    } catch (Throwable t) {
+      LOG.warn("Throwable thrown in finalize: " + t.getMessage());
+    } finally {
+      super.finalize();
+    }
   }
 }
