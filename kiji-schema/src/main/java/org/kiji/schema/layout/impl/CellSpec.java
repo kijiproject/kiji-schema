@@ -39,7 +39,7 @@ import org.kiji.schema.util.JavaIdentifiers;
  * Wraps a CellSchema Avro record to avoid re-parsing JSON Avro schemas every time, and
  * associate it with a schema table to resolve schema IDs or hashes.
  */
-@ApiAudience.Private
+@ApiAudience.Framework
 public final class CellSpec {
   /** Avro record specifying the cell encoding. */
   private CellSchema mCellSchema;
