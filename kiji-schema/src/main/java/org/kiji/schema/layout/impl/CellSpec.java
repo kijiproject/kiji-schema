@@ -33,11 +33,15 @@ import org.kiji.schema.layout.SchemaClassNotFoundException;
 import org.kiji.schema.util.JavaIdentifiers;
 
 /**
- * Specification of a Kiji cell.
+ * Specification of a column in a Kiji table.
  *
- * Contains everything needed to encode or decode a given column.
- * Wraps a CellSchema Avro record to avoid re-parsing JSON Avro schemas every time, and
- * associate it with a schema table to resolve schema IDs or hashes.
+ * <p> Contains everything needed to encode or decode a given column.
+ *   Wraps a CellSchema Avro record to avoid re-parsing JSON Avro schemas every time, and
+ *   associates it with a schema table to resolve schema IDs or hashes.
+ * </p>
+ * <p> A CellSpec is constructed from a {@link KijiTableLayout}
+ *    and is intended for a consumption by {@link KijiCellEncoder} and {@link KijiCellDecoder}.
+ * </p>
  */
 @ApiAudience.Framework
 public final class CellSpec {
