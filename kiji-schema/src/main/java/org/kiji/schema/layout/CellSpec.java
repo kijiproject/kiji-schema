@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.layout.impl;
+package org.kiji.schema.layout;
 
 import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
@@ -28,8 +28,6 @@ import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
-import org.kiji.schema.layout.InvalidLayoutException;
-import org.kiji.schema.layout.SchemaClassNotFoundException;
 import org.kiji.schema.util.JavaIdentifiers;
 
 /**

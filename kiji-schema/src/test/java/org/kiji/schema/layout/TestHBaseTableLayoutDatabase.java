@@ -55,7 +55,6 @@ import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
-import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
 import org.kiji.schema.util.InstanceBuilder;
 

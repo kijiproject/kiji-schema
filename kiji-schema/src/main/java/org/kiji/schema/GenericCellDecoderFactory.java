@@ -26,7 +26,7 @@ import com.google.common.base.Preconditions;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.impl.CounterCellDecoder;
 import org.kiji.schema.impl.GenericCellDecoder;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.layout.CellSpec;
 
 /**
  * Factory for Kiji cell decoders using GenericCellDecoder to handle record-based schemas.

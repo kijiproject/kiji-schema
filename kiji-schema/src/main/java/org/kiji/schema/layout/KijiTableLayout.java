@@ -61,7 +61,6 @@ import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
-import org.kiji.schema.layout.impl.CellSpec;
 import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.util.FromJson;
 import org.kiji.schema.util.Hasher;

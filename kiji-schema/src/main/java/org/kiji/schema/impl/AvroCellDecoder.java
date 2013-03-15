@@ -31,7 +31,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.DecodedCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiSchemaTable;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.BytesKey;
 import org.kiji.schema.util.Hasher;

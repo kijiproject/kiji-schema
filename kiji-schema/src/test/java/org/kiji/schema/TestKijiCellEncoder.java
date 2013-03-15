@@ -32,7 +32,7 @@ import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TestRecord;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.layout.CellSpec;
 
 /** Tests for Kiji cell encoders. */
 public class TestKijiCellEncoder extends KijiClientTest {
