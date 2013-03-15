@@ -109,5 +109,4 @@
     <Class name="org.kiji.schema.tools.DeleteTool" />
     <Bug pattern="UWF_NULL_FIELD" />
   </Match>
-
 </FindBugsFilter>

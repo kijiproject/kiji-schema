@@ -84,7 +84,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
 
   /**
    * Failure tool exit code.
-   * Used to indicate any noop tool exit.
+   * Used to indicate any tool exit without operation, including abort based on user interaction.
    */
   public static final int FAILURE = 1;
 

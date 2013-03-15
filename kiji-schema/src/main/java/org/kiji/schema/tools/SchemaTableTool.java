@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
+import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiURI;
@@ -51,7 +52,7 @@ public final class SchemaTableTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(SchemaTableTool.class);
 
   @Flag(name="kiji", usage="URI of the target instance.", required=true)
-  private String mURIFlag = null;
+  private String mURIFlag = KConstants.DEFAULT_INSTANCE_URI;
 
   @Flag(name="register", usage="Path to a file containing a schema defintion "
       + "to get the ID for the given schema or add it to the schema table.")
@@ -110,22 +111,22 @@ public final class SchemaTableTool extends BaseTool {
     try {
       final KijiSchemaTable table = mKiji.getSchemaTable();
       if (mRegisterFlag != null && !mRegisterFlag.isEmpty()) {
-        File file = new File(mRegisterFlag);
-        Schema schema = new Schema.Parser().parse(file);
-        long id = table.getOrCreateSchemaId(schema);
+        final File file = new File(mRegisterFlag);
+        final Schema schema = new Schema.Parser().parse(file);
+        final long id = table.getOrCreateSchemaId(schema);
         if (isInteractive()) {
           getPrintStream().println("Schema table schema ID for the given schema is: \n");
         }
         getPrintStream().println(id);
         return SUCCESS;
       } else {
-        Schema schema = table.getSchema(mGetFlag);
+        final Schema schema = table.getSchema(mGetFlag);
         Preconditions.checkArgument(schema != null, "No schema definition with ID: %s", mGetFlag);
         try {
           final File file = new File(mOutputFlag);
-          boolean fileCreated = file.createNewFile();
+          final boolean fileCreated = file.createNewFile();
           if (fileCreated) {
-            FileOutputStream fop = new FileOutputStream(file.getAbsoluteFile());
+            final FileOutputStream fop = new FileOutputStream(file.getAbsoluteFile());
             try {
               fop.write(schema.toString().getBytes("utf-8"));
               fop.flush();
@@ -135,7 +136,7 @@ public final class SchemaTableTool extends BaseTool {
           } else {
             if (mayProceed("File: %s already exists, do you wish to overwrite the file?",
                 mOutputFlag)) {
-              FileOutputStream fop = new FileOutputStream(file.getAbsoluteFile());
+              final FileOutputStream fop = new FileOutputStream(file.getAbsoluteFile());
               try {
                 fop.write(schema.toString().getBytes("utf-8"));
               } finally {
