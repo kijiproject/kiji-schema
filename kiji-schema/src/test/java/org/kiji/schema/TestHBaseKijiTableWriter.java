@@ -20,12 +20,18 @@
 package org.kiji.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
+import com.google.common.collect.Lists;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -33,6 +39,8 @@ import org.kiji.schema.util.InstanceBuilder;
 import org.kiji.schema.util.ResourceUtils;
 
 public class TestHBaseKijiTableWriter {
+  private static final Logger LOG = LoggerFactory.getLogger(TestHBaseKijiTableWriter.class);
+
   private Kiji mKiji;
   private KijiTable mTable;
   private KijiTableWriter mWriter;
@@ -107,5 +115,39 @@ public class TestHBaseKijiTableWriter {
     KijiCell<Long> counter = mReader.get(entityId, request).getMostRecentCell("info", "visits");
     final long actual = counter.getData();
     assertEquals(5L, actual);
+  }
+
+  @Test
+  public void testCheckAndPut() throws Exception {
+    final EntityId eid = mTable.getEntityId("foo");
+    final KijiDataRequest nameRequest = KijiDataRequest.create("info", "name");
+    final KijiDataRequest visitsRequest = KijiDataRequest.create("info", "visits");
+    mWriter.put(eid, "info", "name", 123L, "old");
+
+    // Create the list of conditional puts.
+    ArrayList<KijiCell<?>> checkedPuts = Lists.newArrayList();
+    checkedPuts.add(new KijiCell<String>(
+        "info", "name", 234L, new DecodedCell<String>(mTable.getLayout().getCellSchema(
+            new KijiColumnName("info", "name")).getSchema(), "new")));
+    checkedPuts.add(new KijiCell<Long>(
+        "info", "visits", 234L, new DecodedCell<Long>(mTable.getLayout().getCellSchema(
+            new KijiColumnName("info", "visits")).getSchema(), 5L)));
+
+    // Fail a check and ensure puts are not written.
+    assertFalse(mWriter.checkAndPut(eid, "info", "name", "never", checkedPuts));
+    assertEquals(
+        mReader.get(eid, nameRequest).getMostRecentValue("info", "name").toString(),
+        "old");
+
+    // Pass a check and ensure puts are written.
+    assertTrue(mWriter.checkAndPut(eid, "info", "name", "old", checkedPuts));
+    final String actualName =
+        mReader.get(eid, nameRequest).getMostRecentValue("info", "name").toString();
+    final KijiCell<Long> counter =
+        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits");
+    final long actualVisits =
+        counter.getData();
+    assertEquals("new", actualName);
+    assertEquals(5L, actualVisits);
   }
 }
