@@ -50,7 +50,7 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
-import org.kiji.schema.layout.impl.CellSpec;
+import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -344,12 +344,12 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   synchronized public void flush() throws IOException {
     if (mDeleteBuffer.size() > 0) {
       mHTable.delete(mDeleteBuffer);
-      mDeleteBuffer = new ArrayList<Delete>();
+      mDeleteBuffer.clear();
     }
     if (mPutBuffer.size() > 0) {
       mHTable.put(mPutBuffer);
       mHTable.flushCommits();
-      mPutBuffer = new ArrayList<Put>();
+      mPutBuffer.clear();
     }
     mCurrentWriteBufferSize = 0L;
   }
@@ -369,7 +369,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     try {
       close();
     } catch (Throwable t) {
-      LOG.warn("Throwable thrown in finalize: " + t.getMessage());
+      LOG.warn("Throwable thrown by close() in finalize of KijiBufferedWriter: " + t.getMessage());
     } finally {
       super.finalize();
     }
