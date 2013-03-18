@@ -37,6 +37,7 @@ public interface KijiBufferedWriter extends KijiPutter, KijiDeleter {
    * Set the size of the local write buffer (in bytes).
    *
    * @param bufferSize size (in bytes) to buffer before automatic flush.
+   * @throws IOException in case of an error.
    */
   void setBufferSize(long bufferSize) throws IOException;
 

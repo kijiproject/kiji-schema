@@ -48,9 +48,9 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
-import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -105,8 +105,13 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   // ----------------------------------------------------------------------------------------------
   // Puts
 
-  /** Add a Put to the buffer and update the current buffer size. */
-  synchronized private void updateBuffer(Put p) throws IOException {
+  /**
+   * Add a Put to the buffer and update the current buffer size.
+   *
+   * @param p A put to add to the buffer.
+   * @throws IOException in case of an error on flush.
+   */
+  private synchronized void updateBuffer(Put p) throws IOException {
     mPutBuffer.add(p);
     mCurrentWriteBufferSize += p.heapSize();
     if (mCurrentWriteBufferSize > mMaxWriteBufferSize) {
@@ -141,8 +146,13 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   // ----------------------------------------------------------------------------------------------
   // Deletes
 
-  /** Add a Delete to the buffer and update the current buffer size. */
-  synchronized private void updateBuffer(Delete d) throws IOException {
+  /**
+   * Add a Delete to the buffer and update the current buffer size.
+   *
+   * @param d A delete to add to the buffer.
+   * @throws IOException in case of an error on flush.
+   */
+  private synchronized void updateBuffer(Delete d) throws IOException {
     mDeleteBuffer.add(d);
     long heapSize = mDeleteSize;
     heapSize += ClassSize.align(ClassSize.ARRAY + d.getRow().length);
@@ -341,7 +351,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
   /** {@inheritDoc} */
   @Override
-  synchronized public void flush() throws IOException {
+  public synchronized void flush() throws IOException {
     if (mDeleteBuffer.size() > 0) {
       mHTable.delete(mDeleteBuffer);
       mDeleteBuffer.clear();
@@ -356,7 +366,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
   /** {@inheritDoc} */
   @Override
-  synchronized public void close() throws IOException {
+  public synchronized void close() throws IOException {
     flush();
     if (mHTable != null) {
       mHTable.close();
