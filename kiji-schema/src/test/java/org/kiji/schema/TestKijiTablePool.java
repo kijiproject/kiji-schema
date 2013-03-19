@@ -204,22 +204,6 @@ public class TestKijiTablePool extends KijiClientTest {
   }
 
   @Test
-  public void testUnsupportedCloseOperation() throws IOException {
-    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
-    KijiTable foo = createMock(KijiTable.class);
-    expect(mTableFactory.openTable("foo")).andReturn(foo);
-
-    KijiTable fooTable = pool.get("foo");
-
-    try {
-      fooTable.close();
-      fail("Should've gotten an UnsupportedOperationException when trying to close a pool table.");
-    } catch (UnsupportedOperationException uoe) {
-      assertEquals("Cannot close KijiTable managed by KijiTablePool.", uoe.getMessage());
-    }
-  }
-
-  @Test
   public void testRetainOperation() throws IOException {
     KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
 

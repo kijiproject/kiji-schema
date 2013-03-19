@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0
+  * SCHEMA-280. Removes deprecated close() method from KijiTable.  Use
+      table.release().
   * SCHEMA-8. Adds Schema Table Tool for reading and writing to a KijiSchemaTable.
   * SCHEMA-115. KijiManagedHBaseTableName no longer manages names for SchemaV5
       tables.

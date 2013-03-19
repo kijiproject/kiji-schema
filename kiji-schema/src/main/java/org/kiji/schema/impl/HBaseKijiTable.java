@@ -145,7 +145,7 @@ public final class HBaseKijiTable implements KijiTable {
       mHTable = htableFactory.create(conf,
           KijiManagedHBaseTableName.getKijiTableName(kiji.getURI().getInstance(), name).toString());
     } catch (TableNotFoundException e) {
-      close();
+      release();
       throw new KijiTableNotFoundException(name);
     }
 
@@ -273,14 +273,6 @@ public final class HBaseKijiTable implements KijiTable {
     return mHTable;
   }
 
-  /** {@inheritDoc} */
-  @Deprecated
-  @Override
-  public void close() throws IOException {
-    LOG.error("KijiTable.close() is deprecated, use KijiTable.release() instead.");
-    release();
-  }
-
   /**
    * Releases the resources used by this table.
    *
@@ -289,7 +281,7 @@ public final class HBaseKijiTable implements KijiTable {
   private void closeResources() throws IOException {
     final boolean opened = mIsOpen.getAndSet(false);
     Preconditions.checkState(opened,
-        "HBaseKijiTable.close() on table '%s' already closed.", mTableURI);
+        "HBaseKijiTable.release() on table '%s' already closed.", mTableURI);
 
     LOG.debug("Closing HBaseKijiTable '{}'.", mTableURI);
     if (null != mHTable) {

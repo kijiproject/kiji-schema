@@ -19,7 +19,6 @@
 
 package org.kiji.schema;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 
@@ -45,7 +44,7 @@ import org.kiji.schema.util.ReferenceCountable;
  *   <code>
  *     final KijiTable table = myKiji.openTable("tableName");
  *     // Do some magic
- *     table.close();
+ *     table.release();
  *   </code>
  * </pre>
  *
@@ -75,7 +74,7 @@ import org.kiji.schema.util.ReferenceCountable;
  *     // Close open connections.
  *     reader.close();
  *     writer.close();
- *     table.close();
+ *     table.release();
  *   </code>
  * </pre>
  *
@@ -86,7 +85,7 @@ import org.kiji.schema.util.ReferenceCountable;
  */
 @ApiAudience.Public
 @Inheritance.Sealed
-public interface KijiTable extends ReferenceCountable<KijiTable>, Closeable {
+public interface KijiTable extends ReferenceCountable<KijiTable> {
   /** @return the Kiji instance this table belongs to. */
   Kiji getKiji();
 
@@ -161,13 +160,4 @@ public interface KijiTable extends ReferenceCountable<KijiTable>, Closeable {
    * @throws IOException If there is an error retrieving the regions of this table.
    */
   List<KijiRegion> getRegions() throws IOException;
-
-  /**
-   * Closes any open resources being used by this KijiTable.
-   *
-   * @deprecated Use {@link #release()} instead.
-   * @throws IOException on I/O error.
-   */
-  @Deprecated
-  void close() throws IOException;
 }
