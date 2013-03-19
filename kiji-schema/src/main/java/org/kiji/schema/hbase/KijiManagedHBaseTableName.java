@@ -33,7 +33,9 @@ import org.kiji.schema.NotAKijiManagedTableException;
  * cluster.  Within a Kiji instance, several HBase tables are created
  * to manage system, metadata, schemas, and user-space tables.  This
  * class represents the name of one of those HBase tables that are
- * created and managed by Kiji.</p>
+ * created and managed by Kiji.  This class should only be used internally
+ * in Kiji modules, or by framework application developers who need
+ * direct access to HBase tables managed by Kiji.</p>
  *
  * <p>
  * The names of tables in HBase created and managed by Kiji are
@@ -77,7 +79,7 @@ import org.kiji.schema.NotAKijiManagedTableException;
  * </pre>
  *
  * In this example, there is an HBase table completely unrelated to
- * kiji called "devices."  There are two kiji installations, once
+ * kiji called "devices."  There are two kiji installations, one
  * called "default" and another called "experimental."  Within the
  * "default" installation, there are two Kiji tables, "foo" and
  * "bar."  Within the "experimental" installation, there is a single
@@ -96,13 +98,10 @@ public final class KijiManagedHBaseTableName {
 
   /** Regexp matching Kiji system tables. */
   public static final Pattern KIJI_SYSTEM_TABLES_REGEX =
-      Pattern.compile("kiji[.](.*)[.](meta|system|schema|schema_hash|schema_id)");
+      Pattern.compile("kiji[.](.*)[.](meta|system|schema_hash|schema_id)");
 
   /** The name component used for the Kiji meta table. */
   private static final String KIJI_META_COMPONENT = "meta";
-
-  /** The name component used for the Kiji schema table up until layout v5. */
-  private static final String KIJI_SCHEMA_COMPONENT_V5 = "schema";
 
   /** The name component used for the Kiji schema hash table. */
   private static final String KIJI_SCHEMA_HASH_COMPONENT = "schema_hash";
@@ -193,16 +192,6 @@ public final class KijiManagedHBaseTableName {
   }
 
   /**
-   * Gets a new instance of a Kiji-managed HBase table that holds the Kiji schema v5 table.
-   *
-   * @param kijiInstanceName The name of the Kiji instance.
-   * @return The name of the HBase table used to store the Kiji schema table up until layout v5.
-   */
-  public static KijiManagedHBaseTableName getSchemaV5TableName(String kijiInstanceName) {
-    return new KijiManagedHBaseTableName(kijiInstanceName, KIJI_SCHEMA_COMPONENT_V5);
-  }
-
-  /**
    * Gets a new instance of a Kiji-managed HBase table that holds the Kiji schema hash table.
    *
    * @param kijiInstanceName The name of the Kiji instance.
@@ -255,6 +244,8 @@ public final class KijiManagedHBaseTableName {
 
   /**
    * Gets the name of the Kiji table.
+   * A user defined kiji table named "foo" in the default kiji instance will be stored in HBase
+   * with the KijiManaged name "kiji.default.table.foo".  This method will return only "foo".
    *
    * @return The name of the kiji table, or null if this is not a user-space Kiji table.
    */

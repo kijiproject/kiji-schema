@@ -36,13 +36,6 @@ public class TestKijiManagedHBaseTableName {
   }
 
   @Test
-  public void testSchemaV5Table() {
-    KijiManagedHBaseTableName tableName = KijiManagedHBaseTableName.getSchemaV5TableName("default");
-    assertEquals("kiji.default.schema", tableName.toString());
-    assertArrayEquals(Bytes.toBytes("kiji.default.schema"), tableName.toBytes());
-  }
-
-  @Test
   public void testSchemaTable() {
     final KijiManagedHBaseTableName hashTableName =
         KijiManagedHBaseTableName.getSchemaHashTableName("default");
