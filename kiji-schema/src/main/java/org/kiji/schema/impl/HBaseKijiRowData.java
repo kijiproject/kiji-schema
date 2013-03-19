@@ -65,37 +65,21 @@ import org.kiji.schema.util.TimestampComparator;
 public final class HBaseKijiRowData implements KijiRowData {
 
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiRowData.class);
-  /**
-   * The entity id for the row.
-   */
+  /** The entity id for the row. */
   private final EntityId mEntityId;
-  /**
-   * The request used to retrieve this Kiji row data.
-   */
+  /** The request used to retrieve this Kiji row data. */
   private final KijiDataRequest mDataRequest;
-  /**
-   * The HBase KijiTable we are reading from.
-   */
+  /** * The HBase KijiTable we are reading from. */
   private final HBaseKijiTable mTable;
-  /**
-   * The layout for the table this row data came from.
-   */
+  /**  The layout for the table this row data came from. */
   private final KijiTableLayout mTableLayout;
-  /**
-   * The HBase result providing the data of this object.
-   */
+  /**  The HBase result providing the data of this object. */
   private Result mResult;
-  /**
-   * A Kiji cell decoder factory.
-   */
+  /**  A Kiji cell decoder factory. */
   private final KijiCellDecoderFactory mCellDecoderFactory;
-  /**
-   * Schema table to resolve schema hashes or IDs.
-   */
+  /**  Schema table to resolve schema hashes or IDs. */
   private final KijiSchemaTable mSchemaTable;
-  /**
-   * A map from kiji family to kiji qualifier to timestamp to raw encoded cell values.
-   */
+  /**  A map from kiji family to kiji qualifier to timestamp to raw encoded cell values. */
   private NavigableMap<String, NavigableMap<String, NavigableMap<Long, byte[]>>> mFilteredMap;
 
   /**
@@ -111,12 +95,12 @@ public final class HBaseKijiRowData implements KijiRowData {
   // TODO: Delete after tests are refactored.
   @Deprecated
   public HBaseKijiRowData(
-    EntityId entityId,
-    KijiDataRequest request,
-    KijiCellDecoderFactory decoderFactory,
-    KijiTableLayout layout,
-    Result result,
-    KijiSchemaTable schemaTable) {
+      EntityId entityId,
+      KijiDataRequest request,
+      KijiCellDecoderFactory decoderFactory,
+      KijiTableLayout layout,
+      Result result,
+      KijiSchemaTable schemaTable) {
     mEntityId = entityId;
     mDataRequest = request;
     mTableLayout = layout;
@@ -129,8 +113,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   /**
    * Initializes a row data.
    *
-   * The entity ID is constructed from the HTable encoded result. This may fail if the table uses
-   * hashed row keys.
+   * The entity ID is constructed from the HTable encoded result.
+   * This may fail if the table uses hashed row keys.
    *
    * @param request Data request to build the row.
    * @param decoderFactory Factory for cell decoders.
@@ -141,11 +125,11 @@ public final class HBaseKijiRowData implements KijiRowData {
   // TODO: Delete after tests are refactored.
   @Deprecated
   public HBaseKijiRowData(
-    KijiDataRequest request,
-    KijiCellDecoderFactory decoderFactory,
-    KijiTableLayout layout,
-    Result result,
-    KijiSchemaTable schemaTable) {
+      KijiDataRequest request,
+      KijiCellDecoderFactory decoderFactory,
+      KijiTableLayout layout,
+      Result result,
+      KijiSchemaTable schemaTable) {
     this(
       EntityIdFactory.getFactory(layout).getEntityIdFromHBaseRowKey(result.getRow()),
       request,
@@ -165,11 +149,11 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @throws IOException on I/O error.
    */
   public HBaseKijiRowData(
-    EntityId entityId,
-    KijiDataRequest request,
-    HBaseKijiTable table,
-    Result result)
-    throws IOException {
+      EntityId entityId,
+      KijiDataRequest request,
+      HBaseKijiTable table,
+      Result result)
+      throws IOException {
     mEntityId = entityId;
     mDataRequest = request;
     mTableLayout = table.getLayout();
@@ -191,9 +175,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return mResult;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public EntityId getEntityId() {
     return mEntityId;
@@ -250,8 +232,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   public synchronized void merge(Collection<KeyValue> keyValues) {
     // All we have to do is put the KeyValues into the Result.
     List<KeyValue> existingKvs = mResult.list();
-    List<KeyValue> merged = existingKvs != null
-      ? new ArrayList<KeyValue>(existingKvs) : new ArrayList<KeyValue>();
+    List<KeyValue> merged
+      = existingKvs != null ? new ArrayList<KeyValue>(existingKvs) : new ArrayList<KeyValue>();
     merged.addAll(keyValues);
     mResult = new Result(merged);
 
@@ -265,14 +247,14 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @return The map.
    */
   public synchronized NavigableMap<String, NavigableMap<String, NavigableMap<Long, byte[]>>>
-    getMap() {
+      getMap() {
     if (null != mFilteredMap) {
       return mFilteredMap;
     }
 
     LOG.debug("Filtering the HBase Result into a map of kiji cells...");
     final NavigableMap<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> map =
-      mResult.getMap();
+        mResult.getMap();
     mFilteredMap = new TreeMap<String, NavigableMap<String, NavigableMap<Long, byte[]>>>();
     if (null == map) {
       LOG.debug("No result data.");
@@ -282,18 +264,18 @@ public final class HBaseKijiRowData implements KijiRowData {
     final ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(mTableLayout);
     // Loop over the families in the HTable.
     for (NavigableMap.Entry<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> familyEntry
-      : map.entrySet()) {
+        : map.entrySet()) {
       // Loop over the columns in the family.
       for (NavigableMap.Entry<byte[], NavigableMap<Long, byte[]>> columnEntry : familyEntry
           .getValue().entrySet()) {
         final HBaseColumnName hbaseColumnName =
-          new HBaseColumnName(familyEntry.getKey(), columnEntry.getKey());
+            new HBaseColumnName(familyEntry.getKey(), columnEntry.getKey());
 
         // Translate the HBase column name to a Kiji column name.
         KijiColumnName kijiColumnName;
         try {
           kijiColumnName = columnNameTranslator.toKijiColumnName(
-            new HBaseColumnName(familyEntry.getKey(), columnEntry.getKey()));
+              new HBaseColumnName(familyEntry.getKey(), columnEntry.getKey()));
         } catch (NoSuchColumnException e) {
           LOG.info("Ignoring HBase family " + hbaseColumnName
             + " because it doesn't contain Kiji data.");
@@ -352,9 +334,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return mFilteredMap;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public synchronized boolean containsColumn(String family, String qualifier) {
     final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
@@ -368,9 +348,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return !versionMap.isEmpty();
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public synchronized boolean containsColumn(String family) {
 
@@ -385,18 +363,14 @@ public final class HBaseKijiRowData implements KijiRowData {
     return !columnMap.isEmpty();
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public synchronized boolean containsCell(String family, String qualifier, long timestamp) {
     return containsColumn(family, qualifier)
       && getTimestamps(family, qualifier).contains(timestamp);
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public synchronized NavigableSet<String> getQualifiers(String family) {
     final NavigableMap<String, NavigableMap<Long, byte[]>> qmap = getRawQualifierMap(family);
@@ -406,9 +380,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return qmap.navigableKeySet();
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public synchronized NavigableSet<Long> getTimestamps(String family, String qualifier) {
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
@@ -418,9 +390,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return tmap.navigableKeySet();
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public Schema getReaderSchema(String family, String qualifier) throws IOException {
     final Schema schema = mTableLayout.getSchema(new KijiColumnName(family, qualifier));
@@ -472,9 +442,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return tmap.get(timestamp);
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> T getValue(String family, String qualifier, long timestamp) throws IOException {
     final KijiCellDecoder<T> decoder = getDecoder(family, qualifier);
@@ -482,9 +450,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return decoder.decodeValue(bytes);
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> KijiCell<T> getCell(String family, String qualifier, long timestamp)
     throws IOException {
@@ -493,9 +459,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return new KijiCell<T>(family, qualifier, timestamp, decoder.decodeCell(bytes));
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> T getMostRecentValue(String family, String qualifier) throws IOException {
     final KijiCellDecoder<T> decoder = getDecoder(family, qualifier);
@@ -507,9 +471,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return decoder.decodeValue(bytes);
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> NavigableMap<String, T> getMostRecentValues(String family) throws IOException {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
@@ -525,9 +487,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return result;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> NavigableMap<Long, T> getValues(String family, String qualifier)
     throws IOException {
@@ -538,9 +498,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return result;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> NavigableMap<String, NavigableMap<Long, T>> getValues(String family)
     throws IOException {
@@ -557,9 +515,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return result;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> KijiCell<T> getMostRecentCell(String family, String qualifier) throws IOException {
     final KijiCellDecoder<T> decoder = getDecoder(family, qualifier);
@@ -572,9 +528,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return new KijiCell<T>(family, qualifier, timestamp, decoder.decodeCell(bytes));
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> NavigableMap<String, KijiCell<T>> getMostRecentCells(String family)
     throws IOException {
@@ -591,9 +545,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return result;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> NavigableMap<Long, KijiCell<T>> getCells(String family, String qualifier)
     throws IOException {
@@ -613,9 +565,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return result;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> NavigableMap<String, NavigableMap<Long, KijiCell<T>>> getCells(String family)
     throws IOException {
@@ -632,9 +582,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return result;
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> Iterator<KijiCell<T>> iterator(String family, String qualifier) throws
     IOException {
@@ -684,6 +632,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       mNumVersions = mKVs.hasNext() ? mMaxVersions : 0;
     }
 
+    /**  {@inheritDoc} */
     @Override
     public boolean hasNext() {
       if (mNumVersions < mMaxVersions) {
@@ -693,6 +642,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       }
     }
 
+    /**  {@inheritDoc} */
     @Override
     public KijiCell<T> next() {
       KeyValue kv = mKVs.next();
@@ -707,6 +657,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       return cell;
     }
 
+    /**  {@inheritDoc} */
     @Override
     public void remove() {
       throw new UnsupportedOperationException("Removing a cell is not a supported operation.");
@@ -785,9 +736,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     }
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public <T> Iterator<KijiCell<T>> iterator(String family) throws
     IOException {
@@ -818,9 +767,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return mCellDecoderFactory.create(cellSpec);
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public KijiPager getPager(String family, String qualifier)
     throws KijiColumnPagingNotEnabledException {
@@ -828,9 +775,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable, kijiColumnName);
   }
 
-  /**
-   * {@inheritDoc}
-   */
+  /**  {@inheritDoc} */
   @Override
   public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),

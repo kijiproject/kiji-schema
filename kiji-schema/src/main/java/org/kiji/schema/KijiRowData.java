@@ -318,7 +318,7 @@ public interface KijiRowData {
       throws KijiColumnPagingNotEnabledException;
 
   /**
-   * Gets a list of all cells for the specified column.
+   * Gets an iterator over all cells for the specified column.
    *
    * @param family Column family of the desired cells.
    * @param qualifier Column qualifier of the desired cells.
@@ -329,7 +329,7 @@ public interface KijiRowData {
   <T> Iterator<KijiCell<T>> iterator(String family, String qualifier) throws IOException;
 
   /**
-   * Gets a list of all cells for the specified column.
+   * Gets an iterator over all cells for the specified map type column.
    *
    * @param family Map type column family of the desired cells.
    * @param <T> Type of the cells stored at the specified coordinates.
