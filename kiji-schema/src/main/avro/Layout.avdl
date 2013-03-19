@@ -333,7 +333,7 @@ protocol KijiTableLayoutRecords {
     /** Locality groups in the table. */
     array<LocalityGroupDesc> locality_groups = [];
 
-    /** Data layout version (eg. "kiji-1.0"). */
+    /** Data layout version (eg. "layout-1.1"). */
     string version;
 
     /** ID of the layout. */

@@ -132,14 +132,22 @@ public final class LayoutTool extends BaseTool {
    */
   private void dumpLayout() throws Exception {
     final KijiTableLayout layout = mKiji.getMetaTable().getTableLayout(mTableURI.getTable());
-    final String json = ToJson.toJsonString(layout.getDesc());
+    final StringBuilder json = new StringBuilder();
+    json.append("/*\n");
+    json.append("   The raw JSON view of table layouts is intended for use by\n");
+    json.append("   system administrators or for debugging purposes.\n");
+    json.append("\n");
+    json.append("   Most users should use the 'kiji-schema-shell' DDL tool to modify\n");
+    json.append("   your table layouts instead.\n");
+    json.append("*/\n");
+    json.append(ToJson.toJsonString(layout.getDesc()));
     if (mWriteTo.isEmpty()) {
-      System.out.println(json);
+      System.out.println(json.toString());
     } else {
       final String fileName = String.format("%s.json", mWriteTo);
       final FileOutputStream fos = new FileOutputStream(fileName);
       try {
-        fos.write(Bytes.toBytes(json));
+        fos.write(Bytes.toBytes(json.toString()));
       } finally {
         ResourceUtils.closeOrLog(fos);
       }
