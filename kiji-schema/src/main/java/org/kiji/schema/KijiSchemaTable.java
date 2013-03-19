@@ -94,6 +94,33 @@ public interface KijiSchemaTable extends Flushable, Closeable {
    */
   Schema getSchema(BytesKey schemaHash) throws IOException;
 
+  /**
+   * Looks up a schema entry from a given ID.
+   *
+   * @param schemaId Schema ID to look up.
+   * @return SchemaEntry matching the given ID or null if the ID is unknown.
+   * @throws IOException on I/O error.
+   */
+  SchemaEntry getSchemaEntry(long schemaId) throws IOException;
+
+  /**
+   * Looks up a schema entry from a given hash.
+   *
+   * @param schemaHash Schema hash to look up.
+   * @return SchemaEntry matching the given hash or null if the hash is unknown.
+   * @throws IOException on I/O error.
+   */
+  SchemaEntry getSchemaEntry(BytesKey schemaHash) throws IOException;
+
+  /**
+   * Looks up a schema entry from a given Schema definition.
+   *
+   * @param schema Schema definition to look up.
+   * @return SchemaEntry matching the given Schema or null if the schema is unknown.
+   * @throws IOException on I/O error.
+   */
+  SchemaEntry getSchemaEntry(Schema schema) throws IOException;
+
   /** Association between a schema and its ID. */
   public static class SchemaEntry {
     private final long mId;

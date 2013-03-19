@@ -470,16 +470,9 @@ public class HBaseSchemaTable implements KijiSchemaTable {
     return (entry == null) ? null : entry.getSchema();
   }
 
-  /**
-   * Looks up a schema entry by ID, first in-memory, or then in-table.
-   *
-   * Updates the in-memory maps if the schema entry is found in the tables.
-   *
-   * @param schemaId Schema ID
-   * @return Corresponding SchemaEntry, or null if the schema ID does not exist.
-   * @throws IOException on I/O error.
-   */
-  private synchronized SchemaEntry getSchemaEntry(long schemaId) throws IOException {
+  /** {@inheritDoc} */
+  @Override
+  public synchronized SchemaEntry getSchemaEntry(long schemaId) throws IOException {
     Preconditions.checkState(mIsOpen, "Schema table is closed");
 
     final SchemaEntry existingEntry = mSchemaIdMap.get(schemaId);
@@ -503,16 +496,9 @@ public class HBaseSchemaTable implements KijiSchemaTable {
     return (entry == null) ? null : entry.getSchema();
   }
 
-  /**
-   * Looks up a schema entry by hash, first in-memory, or then in-table.
-   *
-   * Updates the in-memory maps if the schema entry is found in the tables.
-   *
-   * @param schemaHash Schema hash
-   * @return Corresponding SchemaEntry, or null if the schema hash does not exist.
-   * @throws IOException on I/O error.
-   */
-  private synchronized SchemaEntry getSchemaEntry(BytesKey schemaHash) throws IOException {
+  /** {@inheritDoc} */
+  @Override
+  public synchronized SchemaEntry getSchemaEntry(BytesKey schemaHash) throws IOException {
     Preconditions.checkState(mIsOpen, "Schema table is closed");
 
     final SchemaEntry existingEntry = mSchemaHashMap.get(schemaHash);
@@ -529,6 +515,12 @@ public class HBaseSchemaTable implements KijiSchemaTable {
     final SchemaEntry entry = storeInMemory(avroEntry);
     Preconditions.checkState(schemaHash.equals(entry.getHash()));
     return entry;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public SchemaEntry getSchemaEntry(Schema schema) throws IOException {
+    return getSchemaEntry(getSchemaHash(schema));
   }
 
   /**
