@@ -25,7 +25,7 @@ import static org.junit.Assert.fail;
 
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Iterator;
 import java.util.NavigableMap;
 
 import org.junit.After;
@@ -165,14 +165,14 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
   }
 
   @Test
-  public void testGetCellList() throws IOException {
+  public void testIterator() throws IOException {
      assertTrue("Row does not contain column family [family].", mRow1.containsColumn("family"));
      assertTrue("Row does not contain column [family:column1].",
          mRow1.containsColumn("family", "column1"));
      assertTrue("Row does not contain column [family:column2].",
          mRow1.containsColumn("family", "column2"));
      try {
-       final List<KijiCell<CharSequence>> stringGet = mRow1.getCellList("family");
+       final Iterator<KijiCell<CharSequence>> stringGet = mRow1.iterator("family");
        fail("Didn't throw an exception!");
      } catch (IllegalStateException ex) {
        assertEquals("Incorrect Exception message: ", "getCellList(String family) is only "

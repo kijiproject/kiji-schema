@@ -20,7 +20,7 @@
 package org.kiji.schema;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 
@@ -323,20 +323,18 @@ public interface KijiRowData {
    * @param family Column family of the desired cells.
    * @param qualifier Column qualifier of the desired cells.
    * @param <T> Type of the cells stored at the specified coordinates.
-   * @return A list containing the cells stored in the specified column.
+   * @return An iterator of the cells of the specified column.
    * @throws IOException If there is an error.
    */
-  <T> List<KijiCell<T>> getCellList(String family, String qualifier) throws
-    IOException;
+  <T> Iterator<KijiCell<T>> iterator(String family, String qualifier) throws IOException;
 
   /**
    * Gets a list of all cells for the specified column.
    *
    * @param family Map type column family of the desired cells.
    * @param <T> Type of the cells stored at the specified coordinates.
-   * @return A list containing the cells stored in the specified column.
+   * @return An iterator of the cells stored in the specified column.
    * @throws IOException If there is an error.
    */
-  <T> List<KijiCell<T>> getCellList(String family) throws
-    IOException;
+  <T> Iterator<KijiCell<T>> iterator(String family) throws IOException;
 }
