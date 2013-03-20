@@ -47,6 +47,7 @@ import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiPager;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiSchemaTable;
@@ -180,12 +181,17 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @param <T> The type parameter for the KijiCells being iterated over.
    */
   private static final class KijiGroupCellIterator<T> implements Iterator<KijiCell<T>> {
-
+    /** The cell decoder for this column. */
     private final KijiCellDecoder<T> mDecoder;
+    /** The maximum number of versions requested. */
     private final int mMaxVersions;
+    /** The number of versions returned by the iterator so far. */
     private int mNumVersions;
+    /** An iterator over KeyValues returned by HBase. */
     private final Iterator<KeyValue> mKVs;
+    /** The column family. */
     private final String mFamily;
+    /** The column qualifier. */
     private final String mQualifier;
 
     /**
@@ -205,7 +211,7 @@ public final class HBaseKijiRowData implements KijiRowData {
           rowdata.mTableLayout);
       // Translate the HBase column name to a Kiji column name.
       final HBaseColumnName hbaseColumnName = columnNameTranslator.toHBaseColumnName(
-        new KijiColumnName(family, qualifier));
+          new KijiColumnName(family, qualifier));
       // get cell decoder
       mDecoder = rowdata.getDecoder(family, qualifier);
       // get info about the data request for this column
@@ -232,14 +238,12 @@ public final class HBaseKijiRowData implements KijiRowData {
     public KijiCell<T> next() {
       KeyValue kv = mKVs.next();
       mNumVersions += 1;
-      KijiCell<T> cell = null;
       try {
-        cell = new KijiCell<T>(mFamily, mQualifier,
+        return new KijiCell<T>(mFamily, mQualifier,
           kv.getTimestamp(), mDecoder.decodeCell(kv.getValue()));
       } catch (IOException ex) {
-        throw new RuntimeException(ex.getMessage());
+        throw new KijiIOException(ex.getMessage());
       }
-      return cell;
     }
 
     /**  {@inheritDoc} */
@@ -255,12 +259,17 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @param <T> The type parameter for the KijiCells being iterated over.
    */
   private static final class KijiMapCellIterator<T> implements Iterator<KijiCell<T>> {
-
+    /** The cell decoder for this column. */
     private final KijiCellDecoder<T> mDecoder;
+    /** The column name translator for the given table. */
     private final ColumnNameTranslator mColumnNameTranslator;
+    /** The maximum number of versions requested. */
     private final int mMaxVersions;
+    /** The number of versions returned by the iterator so far. */
     private int mNumVersions;
+    /** An iterator over KeyValues returned by HBase. */
     private final Iterator<KeyValue> mKVs;
+    /** The column family. */
     private final String mFamily;
 
     /**
@@ -273,7 +282,7 @@ public final class HBaseKijiRowData implements KijiRowData {
      */
     protected KijiMapCellIterator(String family, HBaseKijiRowData rowdata) throws IOException {
       mFamily = family;
-      // Initialize column name translator2e4717a43a971352a54341704c66b193c23ae7cd
+      // Initialize column name translator
       mColumnNameTranslator = new ColumnNameTranslator(rowdata.mTableLayout);
       // get cell decoder
       mDecoder = rowdata.getDecoder(family, null);
@@ -309,7 +318,7 @@ public final class HBaseKijiRowData implements KijiRowData {
               kv.getTimestamp(), mDecoder.decodeCell(kv.getValue()));
           }
         } catch (IOException ex) {
-          throw new RuntimeException(ex.getMessage());
+          throw new KijiIOException(ex.getMessage());
         }
       }
       return cell;
