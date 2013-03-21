@@ -57,7 +57,7 @@ public final class HBaseKijiPager implements KijiPager {
   /** The default page size for this column. */
   private final int mDefaultPageSize;
   /** The max number of versions to return from each column. */
-  private final int mMaxVersions;
+  private int mMaxVersions;
   /** The offset into cells to begin the page. */
   private int mOffset;
   /** Whether or not an exception will be thrown if .next() is called. */
@@ -133,10 +133,11 @@ public final class HBaseKijiPager implements KijiPager {
     HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(nextPageDataRequest);
     try {
       Get hbaseGet = adapter.toGet(mEntityId, mLayout);
-      incrementOffset(pageSize);
+      incrementOffset(pageSize); // track how far we have gone
+      decrementMaxVersions(pageSize); //track how many we have returned
       Result nextResultPage = mTable.getHTable().get(hbaseGet);
       // If we retrieved less results than expected, we are out of pages.
-      if (nextResultPage.size() < pageSize) {
+      if (nextResultPage.size() < pageSize || mMaxVersions <= 0) {
         mHasNext = false;
       }
       return new HBaseKijiRowData(mEntityId, nextPageDataRequest, mTable, nextResultPage);
@@ -165,5 +166,14 @@ public final class HBaseKijiPager implements KijiPager {
    */
   private synchronized void incrementOffset(final int pageSize) {
     mOffset += pageSize;
+  }
+
+  /**
+   * Decrements the max versions for a data request.
+   *
+   * @param pageSize The page size to increment the offset by.
+   */
+  private synchronized void decrementMaxVersions(final int pageSize) {
+    mMaxVersions -= pageSize;
   }
 }

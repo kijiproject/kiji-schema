@@ -104,7 +104,7 @@ public class TestKijiPagerGetScan extends KijiClientTest {
         .addColumns(ColumnsDef.create().withMaxVersions(5).withPageSize(2)
             .add("info", "name")
             .add("info", "location"))
-        .addColumns(ColumnsDef.create().withPageSize(2).addFamily("jobs"))
+        .addColumns(ColumnsDef.create().withMaxVersions(4).withPageSize(2).addFamily("jobs"))
         .build();
     final KijiRowData input = mTableReader.get(mTable.getEntityId("garrett"), dataRequest);
 
@@ -163,11 +163,8 @@ public class TestKijiPagerGetScan extends KijiClientTest {
         jobs.add(employment.getValue().toString() + " @ " + employment.getKey());
       }
       assertEquals(4, jobs.size());
-      // We should try to get the next page
-      assertTrue(jobsPager.hasNext());
-      //But it should be empty.
-      final KijiRowData page3 = jobsPager.next();
-      assertTrue(page3.getValues("jobs").isEmpty());
+      // We shouldn't try to get the next page, max versions has been reached.
+      assertTrue(!jobsPager.hasNext());
     } finally {
       jobsPager.close();
     }
