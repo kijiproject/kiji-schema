@@ -163,6 +163,7 @@
     <dependency>
       <groupId>org.kiji.common</groupId>
       <artifactId>kiji-common-flags</artifactId>
+      <version>1.0.7-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>junit</groupId>

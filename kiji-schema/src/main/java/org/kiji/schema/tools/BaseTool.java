@@ -85,7 +85,10 @@ public abstract class BaseTool extends Configured implements KijiTool {
   /** Success tool exit code. */
   public static final int SUCCESS = 0;
 
-  /** Failure tool exit code. */
+  /**
+   * Failure tool exit code.
+   * Used to indicate any tool exit without operation, including abort based on user interaction.
+   */
   public static final int FAILURE = 1;
 
   /**
