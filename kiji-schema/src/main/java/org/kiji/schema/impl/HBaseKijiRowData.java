@@ -33,6 +33,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
+import org.apache.commons.collections.iterators.ArrayIterator;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -219,7 +220,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       // need to trim to max versions for this particular column.
       mMaxVersions = columnRequest.getMaxVersions();
       mKVs = rowdata.mResult.getColumn(hbaseColumnName.getFamily(),
-        hbaseColumnName.getQualifier()).iterator();
+          hbaseColumnName.getQualifier()).iterator();
       mNumVersions = mKVs.hasNext() ? mMaxVersions : 0;
     }
 
@@ -240,9 +241,9 @@ public final class HBaseKijiRowData implements KijiRowData {
       mNumVersions += 1;
       try {
         return new KijiCell<T>(mFamily, mQualifier,
-          kv.getTimestamp(), mDecoder.decodeCell(kv.getValue()));
+            kv.getTimestamp(), mDecoder.decodeCell(kv.getValue()));
       } catch (IOException ex) {
-        throw new KijiIOException(ex.getMessage());
+        throw new KijiIOException(ex);
       }
     }
 
@@ -290,7 +291,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       KijiDataRequest.Column columnRequest = rowdata.mDataRequest.getColumn(family, null);
       // need to trim to max versions for this particular column.
       mMaxVersions = columnRequest.getMaxVersions();
-      mKVs = rowdata.mResult.list().iterator();
+      mKVs = new ArrayIterator(rowdata.mResult.raw());
       mNumVersions = mKVs.hasNext() ? mMaxVersions : 0;
     }
 
@@ -305,23 +306,22 @@ public final class HBaseKijiRowData implements KijiRowData {
 
     @Override
     public KijiCell<T> next() {
-      KijiCell<T> cell = null;
-      while (mKVs.hasNext() && null == cell) {
+      while (mKVs.hasNext()) {
         try {
           KeyValue kv = mKVs.next();
           // Filter KeyValues by Kiji column family.
           final KijiColumnName colName = mColumnNameTranslator.toKijiColumnName(
-            new HBaseColumnName(kv.getFamily(), kv.getQualifier()));
+              new HBaseColumnName(kv.getFamily(), kv.getQualifier()));
           if (colName.getFamily().equals(mFamily)) {
             mNumVersions += 1;
-            cell = new KijiCell<T>(mFamily, colName.getQualifier(),
-              kv.getTimestamp(), mDecoder.decodeCell(kv.getValue()));
+            return new KijiCell<T>(mFamily, colName.getQualifier(),
+                kv.getTimestamp(), mDecoder.decodeCell(kv.getValue()));
           }
         } catch (IOException ex) {
-          throw new KijiIOException(ex.getMessage());
+          throw new KijiIOException(ex);
         }
       }
-      return cell;
+      return null;
     }
 
     @Override
@@ -759,10 +759,10 @@ public final class HBaseKijiRowData implements KijiRowData {
   public <T> Iterator<KijiCell<T>> iterator(String family) throws
     IOException {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
-      String.format("getCellList(String family) is only enabled"
-      + " on map type column families. The column family [%s], is a group type column family."
-      + " Please use the getCellList(String family, String qualifier) method.",
-      family));
+        String.format("getCellList(String family) is only enabled"
+        + " on map type column families. The column family [%s], is a group type column family."
+        + " Please use the getCellList(String family, String qualifier) method.",
+        family));
     return new KijiMapCellIterator(family, this);
   }
 
@@ -778,7 +778,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
-        Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
+    Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         String.format("getPager(String family) is only enabled on map"
         + " type column families. The column family [%s], is a group type column family. Please use"
         + " the getPager(String family, String qualifier) method.",
