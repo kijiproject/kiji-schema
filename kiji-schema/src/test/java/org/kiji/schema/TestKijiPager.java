@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.filter.RegexQualifierColumnFilter;
 import org.kiji.schema.filter.TestKijiPaginationFilter;
-import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 

@@ -24,6 +24,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificData;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaStorage;
@@ -42,6 +43,7 @@ import org.kiji.schema.util.JavaIdentifiers;
  * </p>
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 public final class CellSpec {
   /** Avro record specifying the cell encoding. */
   private CellSchema mCellSchema;

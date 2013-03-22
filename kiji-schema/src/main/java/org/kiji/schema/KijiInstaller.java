@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HBaseAdminFactory;
@@ -41,6 +42,7 @@ import org.kiji.schema.util.ResourceUtils;
 
 /** Installs or uninstalls Kiji instances from an HBase cluster. */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class KijiInstaller {
   private static final Logger LOG = LoggerFactory.getLogger(KijiInstaller.class);
 

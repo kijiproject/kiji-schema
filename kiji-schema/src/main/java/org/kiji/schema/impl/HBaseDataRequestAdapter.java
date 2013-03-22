@@ -49,7 +49,6 @@ import org.kiji.schema.hbase.HBaseScanOptions;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
-
 /**
  * Wraps a KijiDataRequest to expose methods that generate meaningful objects in HBase
  * land, like {@link org.apache.hadoop.hbase.client.Put}s and {@link

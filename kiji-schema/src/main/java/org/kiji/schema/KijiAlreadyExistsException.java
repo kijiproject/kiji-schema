@@ -20,9 +20,11 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /** Thrown when installing an instance or creating a table that already exists. */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class KijiAlreadyExistsException extends RuntimeException {
   /** URI of the entity that already exists. */
   private final KijiURI mURI;

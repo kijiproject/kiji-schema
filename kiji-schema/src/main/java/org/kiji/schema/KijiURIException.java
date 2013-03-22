@@ -20,9 +20,11 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /** Thrown when parsing a bogus Kiji URI. */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class KijiURIException extends RuntimeException {
   /**
    * Creates a new <code>KijiURIException</code>.

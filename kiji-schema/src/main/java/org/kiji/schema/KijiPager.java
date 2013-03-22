@@ -23,6 +23,7 @@ import java.io.Closeable;
 import java.util.Iterator;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
@@ -60,6 +61,7 @@ import org.kiji.annotations.Inheritance;
  * </p>
  */
 @ApiAudience.Public
+@ApiStability.Experimental
 @Inheritance.Sealed
 public interface KijiPager extends Iterator<KijiRowData>, Closeable {
 

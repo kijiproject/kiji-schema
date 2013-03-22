@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Runtime (unchecked) IOException.
@@ -31,6 +32,7 @@ import org.kiji.annotations.ApiAudience;
  *     Iterator. In this case, an underlying IOException may be wrapped as a KijiIOException.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 @SuppressWarnings("serial")
 public final class KijiIOException extends RuntimeException {
 

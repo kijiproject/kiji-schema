@@ -28,14 +28,15 @@ import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.apache.hadoop.hbase.filter.RegexStringComparator;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.hbase.HBaseColumnName;
-
 
 /**
  * A KijiColumnFilter that only allows qualifiers that match a given regular expression.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class RegexQualifierColumnFilter extends KijiColumnFilter {
   private static final long serialVersionUID = 1L;
 

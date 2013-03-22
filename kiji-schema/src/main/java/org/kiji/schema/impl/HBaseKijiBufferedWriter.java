@@ -59,7 +59,7 @@ import org.kiji.schema.util.ResourceUtils;
  * performance.  Buffer is stored locally and the underlying HTableInterface buffer is ignored.
  * Default buffer size is 2,000,000 bytes.
  */
-@ApiAudience.Public
+@ApiAudience.Private
 @Inheritance.Sealed
 public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiBufferedWriter.class);

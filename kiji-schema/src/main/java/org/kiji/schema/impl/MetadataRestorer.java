@@ -32,6 +32,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KConstants;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAlreadyExistsException;
@@ -45,9 +46,15 @@ import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
- * Metadata restorer backups up meta info to MetadataBackup records and can restore metadata to the
- * meta and schema tables.
+ * The MetadataRestorer is responsible for backing up and restoring the metadata stored in Kiji's
+ * Meta, System, and Schema tables, including information about table layouts, schemas, and system
+ * variables.
+ *
+ * <p>To create a backup file, use {@link MetadataRestorer#exportMetadata(String, Kiji)} a filename
+ * and a Kiji instance. Backups are stored as {@link MetadataBackup} records. To restore a Kiji
+ * instance from a MetadataBackup record, use the various public restore methods.</p>
  */
+@ApiAudience.Private
 public class MetadataRestorer {
   private static final Logger LOG = LoggerFactory.getLogger(MetadataRestorer.class);
 

@@ -32,7 +32,6 @@ import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.VersionInfo;
 
-
 /**
  * Command-line tool for displaying the kiji software version running and the kiji data version
  * in use for a specified kiji instance.

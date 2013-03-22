@@ -22,11 +22,13 @@ package org.kiji.schema;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Thrown when an attempt to access a table fails because it does not exist.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class KijiTableNotFoundException extends IOException {
   /** Name of the missing table. */
   private final String mTableName;

@@ -24,6 +24,7 @@ import java.io.Flushable;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
@@ -50,6 +51,7 @@ import org.kiji.annotations.Inheritance;
  * reopened to reflect new table layouts after a change.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiDeleter extends Closeable, Flushable {
   /**

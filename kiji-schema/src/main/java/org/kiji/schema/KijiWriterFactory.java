@@ -22,6 +22,7 @@ package org.kiji.schema;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Interface for table writer factories.
@@ -29,6 +30,7 @@ import org.kiji.annotations.ApiAudience;
  * <p> Use <code>KijiTable.getWriterFactory()</code> to get a writer.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public interface KijiWriterFactory {
 
   /**

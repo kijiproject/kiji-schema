@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HConstants;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.util.KijiNameValidator;
 
 /**
@@ -73,6 +74,7 @@ import org.kiji.schema.util.KijiNameValidator;
  * <li> "kiji://.unset/instance/table"
  */
 @ApiAudience.Public
+@ApiStability.Stable
 public final class KijiURI {
 
   /** URI/URL scheme used to fully qualify a Kiji table. */

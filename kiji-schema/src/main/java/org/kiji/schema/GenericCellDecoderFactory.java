@@ -24,6 +24,7 @@ import java.io.IOException;
 import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.impl.CounterCellDecoder;
 import org.kiji.schema.impl.GenericCellDecoder;
 import org.kiji.schema.layout.CellSpec;
@@ -32,6 +33,7 @@ import org.kiji.schema.layout.CellSpec;
  * Factory for Kiji cell decoders using GenericCellDecoder to handle record-based schemas.
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 public final class GenericCellDecoderFactory implements KijiCellDecoderFactory {
   /** Singleton instance. */
   private static final GenericCellDecoderFactory SINGLETON = new GenericCellDecoderFactory();

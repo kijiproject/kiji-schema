@@ -26,6 +26,7 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder;
@@ -35,6 +36,7 @@ import org.kiji.schema.hbase.HBaseColumnName;
  * A KijiRowFilter that excludes rows that have no data for some column <code>columnName</code>.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class HasColumnDataRowFilter extends KijiRowFilter {
   /** The name of the column family to check for data in. */
   private final String mFamily;

@@ -22,6 +22,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.MetaTableBackup;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
@@ -37,6 +38,7 @@ import org.kiji.schema.layout.KijiTableLayoutDatabase;
  * @see KijiSystemTable
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiMetaTable extends Closeable, KijiTableLayoutDatabase,
     KijiTableKeyValueDatabase<KijiMetaTable> {

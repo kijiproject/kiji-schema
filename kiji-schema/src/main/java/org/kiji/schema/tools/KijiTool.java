@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.hadoop.conf.Configurable;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
@@ -39,6 +40,7 @@ import org.kiji.annotations.Inheritance;
  * incorporated into your jar.</p>
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 @Inheritance.Extensible
 public interface KijiTool extends Configurable {
   /**

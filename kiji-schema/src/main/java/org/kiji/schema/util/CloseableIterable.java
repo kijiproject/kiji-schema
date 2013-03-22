@@ -21,9 +21,16 @@ package org.kiji.schema.util;
 
 import java.io.Closeable;
 
+import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
+import org.kiji.annotations.Inheritance;
+
 /**
  * Interface for a closeable iterable.
  *
  * @param <T> the type returned by .iterator().next()
  */
+@ApiAudience.Framework
+@ApiStability.Evolving
+@Inheritance.Sealed
 public interface CloseableIterable<T> extends Closeable, Iterable<T> {}

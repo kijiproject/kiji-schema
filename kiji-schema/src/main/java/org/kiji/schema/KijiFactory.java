@@ -24,11 +24,13 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.PriorityProvider;
 
 /** Factory for Kiji instances. */
 @ApiAudience.Public
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiFactory extends PriorityProvider {
   /**

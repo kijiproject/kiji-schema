@@ -24,11 +24,14 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Factory for HBaseAdmin.
  *
  * Note: there is no interface for HBaseAdmin :(
  */
+@ApiAudience.Private
 public interface HBaseAdminFactory {
   /**
    * Creates a new HBaseAdmin instance.

@@ -22,6 +22,7 @@ package org.kiji.schema;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
@@ -35,6 +36,7 @@ import org.kiji.annotations.Inheritance;
  * Intended for framework developers only.
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiCellEncoder {
   /**

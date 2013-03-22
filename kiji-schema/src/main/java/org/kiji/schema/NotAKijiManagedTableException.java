@@ -20,11 +20,13 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Thrown when Kiji encounters an HBase table that is not managed by Kiji.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class NotAKijiManagedTableException extends Exception {
   /** The name of the HBase table. */
   private final String mHBaseTableName;

@@ -17,11 +17,12 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl;
+package org.kiji.schema;
 
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Thrown when a client attempts to fetch the next page of data from a Kiji column, but paging is
@@ -32,6 +33,7 @@ import org.kiji.annotations.ApiAudience;
  * method in your {@link org.kiji.schema.KijiDataRequestBuilder}.</p>
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class KijiColumnPagingNotEnabledException extends IOException {
   /**
    * Creates a new <code>KijiColumnPagingNotEnabledException</code> with the specified

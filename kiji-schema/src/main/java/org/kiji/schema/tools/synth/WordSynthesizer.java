@@ -22,9 +22,12 @@ package org.kiji.schema.tools.synth;
 import java.util.List;
 import java.util.Random;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Synthesizes random words from a dictionary.
  */
+@ApiAudience.Private
 public class WordSynthesizer implements Synthesizer<String> {
   /** A random number generator. */
   private Random mRandom;

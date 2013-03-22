@@ -20,12 +20,14 @@
 package org.kiji.schema.hbase;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Customizable parameters for KijiRowScanners backed by an HBase scan.
  * Any parameters that are not set will default to HBase values.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class HBaseScanOptions {
   /** The number of rows to buffer on the client. */
   private Integer mClientBufferSize = null;

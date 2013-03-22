@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.Lookups;
 import org.kiji.delegation.PriorityProvider;
@@ -36,6 +37,7 @@ import org.kiji.schema.util.LockFactory;
 
 /** Factory for HBase instances based on URIs. */
 @ApiAudience.Framework
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface HBaseFactory extends PriorityProvider {
 

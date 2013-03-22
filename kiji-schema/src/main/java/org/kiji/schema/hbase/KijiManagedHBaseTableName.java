@@ -26,6 +26,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.NotAKijiManagedTableException;
 
 /**
@@ -87,6 +88,7 @@ import org.kiji.schema.NotAKijiManagedTableException;
  * </p>
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 public final class KijiManagedHBaseTableName {
   /** The delimited used to separate the components of an HBase table name. */
   private static final char DELIMITER = '.';

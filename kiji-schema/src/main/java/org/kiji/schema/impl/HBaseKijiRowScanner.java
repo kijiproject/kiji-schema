@@ -38,7 +38,6 @@ import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.ResourceUtils;
 
-
 /**
  * The internal implementation of KijiRowScanner that reads from HTables.
  */

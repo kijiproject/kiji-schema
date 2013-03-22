@@ -25,6 +25,7 @@ import java.util.NavigableMap;
 import java.util.Set;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.KeyValueBackup;
 
@@ -39,6 +40,7 @@ import org.kiji.schema.avro.KeyValueBackup;
  *     in putValue()'s return type.
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiTableKeyValueDatabase<T extends KijiTableKeyValueDatabase<T>> {
 

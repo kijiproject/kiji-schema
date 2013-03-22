@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0
+  * SCHEMA-37. Adds stability annotations to all classes.
   * SCHEMA-280. Removes deprecated close() method from KijiTable.  Use
       table.release().
   * SCHEMA-8. Adds Schema Table Tool for reading and writing to a KijiSchemaTable.

@@ -30,6 +30,7 @@ import org.apache.avro.specific.SpecificDatumReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KConstants;
@@ -44,7 +45,8 @@ import org.kiji.schema.util.ResourceUtils;
 /**
  * A tool to backup and restore Metadata.
  */
-public class MetadataTool extends BaseTool {
+@ApiAudience.Private
+public final class MetadataTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(MetadataTool.class);
   private MetadataRestorer mRestorer = new MetadataRestorer();
 

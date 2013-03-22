@@ -20,9 +20,11 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /** Constants used by Kiji. */
 @ApiAudience.Framework
+@ApiStability.Evolving
 public final class KConstants {
   /** Default kiji instance name. */
   public static final String DEFAULT_INSTANCE_NAME = "default";

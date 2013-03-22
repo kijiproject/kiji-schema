@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.AbstractMap.SimpleEntry;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.SystemTableBackup;
 import org.kiji.schema.util.CloseableIterable;
@@ -37,6 +38,7 @@ import org.kiji.schema.util.ProtocolVersion;
  * @see KijiSchemaTable
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiSystemTable extends Closeable {
   /**

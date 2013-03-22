@@ -22,6 +22,7 @@ package org.kiji.schema;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
@@ -31,6 +32,7 @@ import org.kiji.annotations.Inheritance;
  * Accessible via {@link KijiTable#getWriterFactory()#openBufferedWriter()};
  */
 @ApiAudience.Public
+@ApiStability.Experimental
 @Inheritance.Sealed
 public interface KijiBufferedWriter extends KijiPutter, KijiDeleter {
   /**

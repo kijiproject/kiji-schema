@@ -27,6 +27,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.filter.KijiColumnFilter;
 
 /**
@@ -103,6 +104,7 @@ import org.kiji.schema.filter.KijiColumnFilter;
  * </pre>
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class KijiDataRequestBuilder {
 
   /** Column builders associated with this data request builder. */

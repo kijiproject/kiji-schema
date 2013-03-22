@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.Clock;
 import org.kiji.schema.util.ResourceUtils;
@@ -73,6 +74,7 @@ import org.kiji.schema.util.ResourceUtils;
  * </p>
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class KijiTablePool implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTablePool.class);
   private static final Logger CLEANUP_LOG =

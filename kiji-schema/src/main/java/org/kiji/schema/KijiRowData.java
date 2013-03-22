@@ -26,8 +26,8 @@ import java.util.NavigableSet;
 import org.apache.avro.Schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
-import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
 
 /**
  * KijiRowData provides a way for applications to access data read from a Kiji table.
@@ -90,6 +90,7 @@ import org.kiji.schema.impl.KijiColumnPagingNotEnabledException;
  * </p>
  */
 @ApiAudience.Public
+@ApiStability.Stable
 @Inheritance.Sealed
 public interface KijiRowData {
   /**

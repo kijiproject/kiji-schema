@@ -22,7 +22,7 @@ package org.kiji.schema.filter;
 import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
-
+import org.kiji.annotations.ApiStability;
 
 /**
  * A KijiRowFilter for a disjunction (OR operator) of other filters.
@@ -31,6 +31,7 @@ import org.kiji.annotations.ApiAudience;
  * will be accepted by OrRowFilter(<i>A</i>, <i>B</i>).</p>
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class OrRowFilter extends OperatorRowFilter {
   /**
    * Creates a new <code>OrRowFilter</code> instance.

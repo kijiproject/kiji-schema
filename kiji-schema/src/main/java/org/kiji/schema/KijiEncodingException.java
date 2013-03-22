@@ -20,9 +20,11 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /** Runtime exception thrown when encoding a cell's content fails. */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class KijiEncodingException extends RuntimeException {
 
   /**

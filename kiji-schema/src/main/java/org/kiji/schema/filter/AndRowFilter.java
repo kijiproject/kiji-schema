@@ -22,7 +22,7 @@ package org.kiji.schema.filter;
 import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
-
+import org.kiji.annotations.ApiStability;
 
 /**
  * A KijiRowFilter for a conjunction (AND operator) of other filters.
@@ -31,6 +31,7 @@ import org.kiji.annotations.ApiAudience;
  * will be accepted by AndRowFilter(<i>A</i>, <i>B</i>).</p>
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class AndRowFilter extends OperatorRowFilter {
   /**
    * Creates a new <code>AndRowFilter</code> instance.

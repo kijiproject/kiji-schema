@@ -24,12 +24,14 @@ import java.util.Arrays;
 import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Wraps an array of bytes into an object that can be used as key in a hash map.
  * The wrapper assumes the byte array is immutable (ie. does not copy the byte array).
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 public final class BytesKey {
   private final byte[] mBytes;
 

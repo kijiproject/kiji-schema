@@ -23,6 +23,7 @@ import java.io.Closeable;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
@@ -44,6 +45,7 @@ import org.kiji.annotations.Inheritance;
  * </p>
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiRowScanner extends Closeable, Iterable<KijiRowData> {
   /**

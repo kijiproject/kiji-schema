@@ -34,6 +34,7 @@ import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.hadoop.hbase.HConstants;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.filter.KijiColumnFilter;
 
 /**
@@ -73,6 +74,7 @@ import org.kiji.schema.filter.KijiColumnFilter;
  * syntax; for further customization, see {@link KijiDataRequestBuilder}.</p>
  */
 @ApiAudience.Public
+@ApiStability.Stable
 public final class KijiDataRequest implements Serializable {
   /** Serialization version. */
   public static final long serialVersionUID = 1L;

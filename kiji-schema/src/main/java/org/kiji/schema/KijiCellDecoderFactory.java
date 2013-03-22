@@ -22,11 +22,13 @@ package org.kiji.schema;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.layout.CellSpec;
 
 /** Interface for factories of KijiCellDecoder instances. */
 @ApiAudience.Framework
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiCellDecoderFactory {
   /**

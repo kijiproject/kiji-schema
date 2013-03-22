@@ -22,6 +22,7 @@ package org.kiji.schema.util;
 import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Parses version information for a file format or wire protocol and provides
@@ -58,6 +59,7 @@ import org.kiji.annotations.ApiAudience;
  * <p>ProtocolVersion instances are immutable.</p>
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 public final class ProtocolVersion implements Comparable<ProtocolVersion> {
   /** The protocol name. May be null. */
   private final String mProtocol;

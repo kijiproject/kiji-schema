@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.filter.KijiRowFilter;
 import org.kiji.schema.hbase.HBaseScanOptions;
@@ -69,6 +70,7 @@ import org.kiji.schema.hbase.HBaseScanOptions;
  * Instantiated in Kiji Schema via {@link org.kiji.schema.KijiTable#openTableReader()}.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiTableReader extends Closeable {
 

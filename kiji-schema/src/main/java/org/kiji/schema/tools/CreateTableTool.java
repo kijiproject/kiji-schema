@@ -38,7 +38,6 @@ import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.SplitKeyFile;
 
-
 /**
  * Command-line tool for creating kiji tables in kiji instances.
  */

@@ -67,7 +67,7 @@ import org.kiji.schema.util.ZooKeeperLockFactory;
  * single HBase cluster.  This class represents a single one of those
  * instances.
  */
-@ApiAudience.Public
+@ApiAudience.Private
 public final class HBaseKiji implements Kiji {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKiji.class);
   private static final Logger CLEANUP_LOG =

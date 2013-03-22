@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiDataRequest;
 
 /**
@@ -34,6 +35,7 @@ import org.kiji.schema.KijiDataRequest;
  * result in an IOException.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class StripValueRowFilter extends KijiRowFilter {
   /** {@inheritDoc} */
   @Override

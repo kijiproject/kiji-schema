@@ -27,7 +27,6 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
 
-
 /**
  * Translates between KijiTableLayouts and HTableDescriptors.
  *

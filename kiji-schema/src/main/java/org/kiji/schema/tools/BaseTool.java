@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.common.flags.Flag;
 import org.kiji.common.flags.FlagParser;
@@ -62,6 +63,7 @@ import org.kiji.schema.KijiNotInstalledException;
  * Tools needing to prompt the user for a yes/no answer should use the {@link #yesNoPrompt} method.
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 @Inheritance.Extensible
 public abstract class BaseTool extends Configured implements KijiTool {
   private static final Logger LOG = LoggerFactory.getLogger(BaseTool.class);

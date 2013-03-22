@@ -19,9 +19,14 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
+
 /**
  * Exception thrown during a metadata restore operation due to user error.
  */
+@ApiAudience.Public
+@ApiStability.Evolving
 class RestoreException extends Exception {
   /**
    * Creates a new RestoreException instance, with the specified message. A user-readable

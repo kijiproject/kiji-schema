@@ -26,6 +26,7 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.util.KijiNameValidator;
 
 /**
@@ -37,6 +38,7 @@ import org.kiji.schema.util.KijiNameValidator;
  * be valid UTF-8.
  */
 @ApiAudience.Public
+@ApiStability.Stable
 public final class KijiColumnName implements Comparable<KijiColumnName> {
 
   /** The column family name must match VALID_LAYOUT_NAME_PATTERN. */

@@ -31,6 +31,7 @@ import org.apache.avro.util.WeakIdentityHashMap;
 import org.apache.commons.lang.builder.HashCodeBuilder;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.SchemaTableBackup;
 import org.kiji.schema.util.BytesKey;
@@ -44,6 +45,7 @@ import org.kiji.schema.util.Hasher;
  * @see KijiSystemTable
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiSchemaTable extends Flushable, Closeable {
   /**

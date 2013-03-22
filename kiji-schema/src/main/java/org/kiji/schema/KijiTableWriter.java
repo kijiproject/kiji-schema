@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
@@ -32,6 +33,7 @@ import org.kiji.annotations.Inheritance;
  * </p>
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiTableWriter extends KijiPutter, KijiIncrementer, KijiDeleter {
 }

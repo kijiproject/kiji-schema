@@ -27,6 +27,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.delegation.Lookups;
 
 /**
@@ -40,6 +41,7 @@ import org.kiji.delegation.Lookups;
  * This path can be added to your build by providing it under <tt>src/main/resources</tt>.</p>
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class KijiToolLauncher extends Configured {
 
   /**

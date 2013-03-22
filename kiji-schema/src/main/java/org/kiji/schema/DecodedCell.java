@@ -25,6 +25,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.util.Utf8;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Content of a Kiji cell.
@@ -33,7 +34,8 @@ import org.kiji.annotations.ApiAudience;
  *
  * @param <T> Type of the data in the cell.
  */
-@ApiAudience.Private
+@ApiAudience.Framework
+@ApiStability.Evolving
 public final class DecodedCell<T> {
   /** Schema used to write the cell data, or null for a counter. */
   private Schema mWriterSchema;

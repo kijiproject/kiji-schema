@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
@@ -48,6 +49,7 @@ import org.kiji.annotations.Inheritance;
  * </ul>
  */
 @ApiAudience.Public
+@ApiStability.Stable
 @Inheritance.Sealed
 public abstract class EntityId {
 

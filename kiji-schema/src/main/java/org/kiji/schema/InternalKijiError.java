@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Thrown when there is something wrong with the internal Kiji
@@ -28,6 +29,7 @@ import org.kiji.annotations.ApiAudience;
  * <a target="_top" href="https://jira.kiji.org/">Kiji Issue tracker</a>.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class InternalKijiError extends Error {
   /**
    * Creates a new <code>InternalKijiError</code> with the specified cause.

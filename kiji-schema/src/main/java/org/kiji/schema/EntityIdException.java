@@ -19,9 +19,16 @@
 
 package org.kiji.schema;
 
+import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
+import org.kiji.annotations.Inheritance;
+
 /**
  * Thrown when kiji encounters a row key component name that is not valid.
  */
+@ApiAudience.Public
+@ApiStability.Evolving
+@Inheritance.Sealed
 public class EntityIdException extends RuntimeException {
   /**
    * Creates a new <code>EntityIdException</code> with the specified detail message.

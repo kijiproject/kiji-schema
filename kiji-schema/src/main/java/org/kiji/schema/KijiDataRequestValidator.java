@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**
@@ -32,6 +33,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  * method to validate requests.</p>
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 public final class KijiDataRequestValidator {
   /** The KijiTableLayout to validate against. */
   private final KijiTableLayout mTableLayout;

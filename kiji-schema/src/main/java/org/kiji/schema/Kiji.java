@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.Lookups;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -85,6 +86,7 @@ import org.kiji.schema.util.ReferenceCountable;
  * </ul>
  */
 @ApiAudience.Public
+@ApiStability.Stable
 @Inheritance.Sealed
 public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
   /**

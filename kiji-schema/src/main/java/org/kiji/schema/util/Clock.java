@@ -20,12 +20,14 @@
 package org.kiji.schema.util;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
  * An interface for a wall clock.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 @Inheritance.Sealed
 public abstract class Clock {
 

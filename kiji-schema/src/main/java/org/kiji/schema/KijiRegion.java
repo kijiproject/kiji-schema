@@ -22,12 +22,14 @@ package org.kiji.schema;
 import java.util.Collection;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * A KijiRegion specifies a logical region in a Kiji Table, bounded by
  * a start key (inclusive) and an end key (exclusive).
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public interface KijiRegion {
   /**
    * Gets the start key (inclusive) of this region.

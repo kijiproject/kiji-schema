@@ -20,11 +20,13 @@
 package org.kiji.schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * Thrown when a Kiji instance or table layout name is invalid.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 public final class KijiInvalidNameException extends RuntimeException {
   /**
    * Creates a new <code>KijiInvalidNameException</code> with the specified detail message.

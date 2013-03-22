@@ -24,6 +24,7 @@ import java.io.Flushable;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
@@ -43,6 +44,7 @@ import org.kiji.annotations.Inheritance;
  * This interface is not used alone but is bundled within {@link KijiTableWriter}.
  */
 @ApiAudience.Public
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiPutter extends Closeable, Flushable {
   /**

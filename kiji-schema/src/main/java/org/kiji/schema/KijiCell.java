@@ -24,6 +24,7 @@ import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /**
  * KijiCell represents a cell in a Kiji table.
@@ -38,6 +39,7 @@ import org.kiji.annotations.ApiAudience;
  * @param <T> Type of data stored in the cell.
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 public final class KijiCell<T> {
   /** Decoded cell content. */
   private final DecodedCell<T> mDecodedCell;

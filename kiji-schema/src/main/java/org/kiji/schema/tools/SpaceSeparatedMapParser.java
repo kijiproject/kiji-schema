@@ -24,6 +24,8 @@ import java.util.Map;
 
 import com.google.common.collect.Maps;
 
+import org.kiji.annotations.ApiAudience;
+
 /**
  * Parser for space-separated map arguments.
  *
@@ -37,6 +39,7 @@ import com.google.common.collect.Maps;
  * <li> Values may not contain spaces.
  * <li> Values will typically be URLs or URIs and may include spaces escaped as "%20".
  */
+@ApiAudience.Private
 public final class SpaceSeparatedMapParser {
 
   /** Initializes a space-separated value parse. */

@@ -26,6 +26,7 @@ import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
@@ -38,6 +39,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  * Light-weight object, so as many can be created as needed.
  */
 @ApiAudience.Framework
+@ApiStability.Evolving
 @Inheritance.Sealed
 public abstract class EntityIdFactory {
 

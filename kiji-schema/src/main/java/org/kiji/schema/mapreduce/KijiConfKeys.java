@@ -19,7 +19,12 @@
 
 package org.kiji.schema.mapreduce;
 
+import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
+
 /** Configuration keys used by KijiMR in Hadoop Configuration objects. */
+@ApiAudience.Public
+@ApiStability.Evolving
 @Deprecated
 public final class KijiConfKeys {
 
