@@ -114,72 +114,6 @@ if [ -z $1 ]; then
     exit 1
 fi
 
-# Removes classpath entries that match the given regexp (partial match, not full
-# match).
-function remove_classpath_entries() {
-  local cp=$1
-  local regex=$2
-
-  echo $cp | sed "s/[^:]*$regex[^:]*/::/g" | sed 's/::*/:/g'
-  return 0
-}
-
-# Helper to build classpaths correctly
-function append_path() {
-  if [ -z "$1" ]; then
-    echo $2
-  else
-    echo $1:$2
-  fi
-}
-
-# Scrubs classpaths of a given jar. Mutate will dig into *s, only mutating them
-# if it finds the given jar.
-# mutate_classpath scrubme.jar "$(hadoop classpath)"
-function mutate_classpath () {
-
-    local mutated_classpath
-    local jar_to_scrub=$1
-    shift
-
-    # Stop expanding globs
-    set -f
-    IFS=: read -r -a classpath <<< $@
-
-    for path in $classpath; do
-
-        # If it ends with a glob we'll need to dig deeper for jars
-        if [ "${path: -1:1}" = "*" ]; then
-
-            set +f
-            local expanded_classpath=$(JARS=(${path}.jar); IFS=:; echo "${JARS[*]}")
-            set -f
-
-            # If the expanded classpath contains the jar in question, we'll
-            # scrub it later.
-            if [[ $expanded_classpath =~ .*$jar_to_scrub.* ]]; then
-                mutated_classpath=$(append_path $mutated_classpath $expanded_classpath)
-
-            # If the expanded classpath doesn't contain the jar in question, use
-            # the glob version to reduce clutter.
-            else
-                mutated_classpath=$(append_path $mutated_classpath $path)
-            fi
-
-        # No glob just use the path
-        else
-            mutated_classpath=$(append_path $mutated_classpath $path)
-        fi
-    done
-
-    # Scrub all instances of the jar
-    mutated_classpath=$(remove_classpath_entries "$mutated_classpath" "$jar_to_scrub")
-    echo $mutated_classpath
-
-    set +f
-}
-
-
 # Gather the kiji dependency jars.
 libjars="${KIJI_HOME}/lib/*"
 
@@ -191,16 +125,17 @@ fi
 
 # Gather the HBase classpath.
 hbase_cp=$($HBASE_HOME/bin/hbase classpath)
-hbase_cp=$(mutate_classpath 'slf4j-log4j12' "$hbase_cp")
 
 # Hadoop classpath
 hadoop_cp=$($HADOOP_HOME/bin/hadoop classpath)
-hadoop_cp=$(mutate_classpath 'slf4j-log4j12' "$hadoop_cp")
+
+# The KijiSchema jar needs to go at the head of the classpath to suppress slf4j warnings.
+schema_jar="$KIJI_HOME/lib/kiji-schema-${project.version}.jar"
 
 # Note that we put the libjars before the hbase jars, in case there are conflicts.
 kiji_conf=$KIJI_HOME/conf
 # We put $KIJI_CLASSPATH at the beginning classpath to allow users to win when there are conflicts.
-kiji_cp="$KIJI_CLASSPATH:$kiji_conf:$libjars:$hadoop_cp:$hbase_cp"
+kiji_cp="$schema_jar:$KIJI_CLASSPATH:$kiji_conf:$libjars:$hadoop_cp:$hbase_cp"
 
 # Determine location of Hadoop native libraries and set java.library.path.
 if [ -d "${HADOOP_HOME}/lib/native" ]; then

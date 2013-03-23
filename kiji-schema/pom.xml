@@ -210,8 +210,12 @@
       <artifactId>slf4j-api</artifactId>
     </dependency>
     <dependency>
+      <!-- Since we override aspects of slf4j's behavior at compile time, use compile scope. -->
+      <!-- Important: We included code from slf4j 1.7.2 in kiji-schema; do not upgrade -->
+      <!-- unless you also reflect that in our source code. (SCHEMA-287) -->
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
+      <scope>compile</scope>
     </dependency>
 
     <dependency>

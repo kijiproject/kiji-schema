@@ -33,4 +33,7 @@
 
   <!-- Don't worry about checkstyle on apache foundation code. -->
   <suppress checks=".*" files="src/main/java/org/apache/"/>
+
+  <!-- Don't worry about checkstyle on slf4j code. -->
+  <suppress checks=".*" files="src/main/java/org/slf4j/"/>
 </suppressions>
