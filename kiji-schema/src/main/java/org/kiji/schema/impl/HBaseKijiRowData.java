@@ -22,6 +22,7 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -32,6 +33,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
+import org.apache.commons.collections.iterators.ArrayIterator;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -46,6 +48,7 @@ import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiPager;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiSchemaTable;
@@ -170,6 +173,161 @@ public final class HBaseKijiRowData implements KijiRowData {
 
     // Compute this lazily.
     mFilteredMap = null;
+  }
+
+
+  /**
+   * An iterator for cells in a group type column.
+   *
+   * @param <T> The type parameter for the KijiCells being iterated over.
+   */
+  private static final class KijiGroupCellIterator<T> implements Iterator<KijiCell<T>> {
+    /** The cell decoder for this column. */
+    private final KijiCellDecoder<T> mDecoder;
+    /** The maximum number of versions requested. */
+    private final int mMaxVersions;
+    /** The number of versions returned by the iterator so far. */
+    private int mNumVersions;
+    /** An iterator over KeyValues returned by HBase. */
+    private final Iterator<KeyValue> mKVs;
+    /** The column family. */
+    private final String mFamily;
+    /** The column qualifier. */
+    private final String mQualifier;
+
+    /**
+     * An iterator of KijiCells, for a particular group type column.
+     *
+     * @param family The Kiji column family that is being iterated over.
+     * @param qualifier The Kiji column qualifier that is being iterated over.
+     * @param rowdata The HBaseKijiRowData instance containing the desired data.
+     * @throws IOException on I/O error
+     */
+    protected KijiGroupCellIterator(String family, String qualifier, HBaseKijiRowData rowdata)
+        throws IOException {
+      mFamily = family;
+      mQualifier = qualifier;
+      // Initialize column name translator
+      final ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(
+          rowdata.mTableLayout);
+      // Translate the HBase column name to a Kiji column name.
+      final HBaseColumnName hbaseColumnName = columnNameTranslator.toHBaseColumnName(
+          new KijiColumnName(family, qualifier));
+      // get cell decoder
+      mDecoder = rowdata.getDecoder(family, qualifier);
+      // get info about the data request for this column
+      KijiDataRequest.Column columnRequest = rowdata.mDataRequest.getColumn(family, qualifier);
+      // need to trim to max versions for this particular column.
+      mMaxVersions = columnRequest.getMaxVersions();
+      mKVs = rowdata.mResult.getColumn(hbaseColumnName.getFamily(),
+          hbaseColumnName.getQualifier()).iterator();
+      mNumVersions = mKVs.hasNext() ? mMaxVersions : 0;
+    }
+
+    /**  {@inheritDoc} */
+    @Override
+    public boolean hasNext() {
+      if (mNumVersions < mMaxVersions) {
+        return mKVs.hasNext();
+      } else {
+        return false;
+      }
+    }
+
+    /**  {@inheritDoc} */
+    @Override
+    public KijiCell<T> next() {
+      KeyValue kv = mKVs.next();
+      mNumVersions += 1;
+      try {
+        return new KijiCell<T>(mFamily, mQualifier,
+            kv.getTimestamp(), mDecoder.decodeCell(kv.getValue()));
+      } catch (IOException ex) {
+        throw new KijiIOException(ex);
+      }
+    }
+
+    /**  {@inheritDoc} */
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException("Removing a cell is not a supported operation.");
+    }
+  }
+
+  /**
+   * An iterator for cells in a map type column.
+   *
+   * @param <T> The type parameter for the KijiCells being iterated over.
+   */
+  private static final class KijiMapCellIterator<T> implements Iterator<KijiCell<T>> {
+    /** The cell decoder for this column. */
+    private final KijiCellDecoder<T> mDecoder;
+    /** The column name translator for the given table. */
+    private final ColumnNameTranslator mColumnNameTranslator;
+    /** The maximum number of versions requested. */
+    private final int mMaxVersions;
+    /** The number of versions returned by the iterator so far. */
+    private int mNumVersions;
+    /** An iterator over KeyValues returned by HBase. */
+    private final Iterator<KeyValue> mKVs;
+    /** The column family. */
+    private final String mFamily;
+
+    /**
+     * An iterator of KijiCells, for a particular map type column.
+     *
+     * @param family The Kiji column family that is being iterated over
+     * @param rowdata The HBaseKijiRowData instance containing the desired data.
+
+     * @throws IOException on I/O error
+     */
+    protected KijiMapCellIterator(String family, HBaseKijiRowData rowdata) throws IOException {
+      mFamily = family;
+      // Initialize column name translator
+      mColumnNameTranslator = new ColumnNameTranslator(rowdata.mTableLayout);
+      // get cell decoder
+      mDecoder = rowdata.getDecoder(family, null);
+      // get info about the data request for this column
+      KijiDataRequest.Column columnRequest = rowdata.mDataRequest.getColumn(family, null);
+      // need to trim to max versions for this particular column.
+      mMaxVersions = columnRequest.getMaxVersions();
+      mKVs = new ArrayIterator(rowdata.mResult.raw());
+      mNumVersions = mKVs.hasNext() ? mMaxVersions : 0;
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (mNumVersions < mMaxVersions) {
+        return mKVs.hasNext();
+      } else {
+        return false;
+      }
+    }
+
+    @Override
+    public KijiCell<T> next() {
+      while (mKVs.hasNext()) {
+        try {
+          KeyValue kv = mKVs.next();
+          // Filter KeyValues by Kiji column family.
+          final KijiColumnName colName = mColumnNameTranslator.toKijiColumnName(
+              new HBaseColumnName(kv.getFamily(), kv.getQualifier()));
+          if (colName.getFamily().equals(mFamily)) {
+            mNumVersions += 1;
+            return new KijiCell<T>(mFamily, colName.getQualifier(),
+                kv.getTimestamp(), mDecoder.decodeCell(kv.getValue()));
+          }
+        } catch (IOException ex) {
+          throw new KijiIOException(ex);
+        }
+      }
+      return null;
+    }
+
+    @Override
+    public void remove() {
+      throw new UnsupportedOperationException("Removing a cell is not a supported operation.");
+    }
   }
 
   /**
@@ -511,7 +669,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         String.format("getValues(String family) is only enabled on map "
         + "type column families. The column family [%s], is a group type column family. Please use "
-        + "getValues(String family, String qualifier) method.",
+        + "the getValues(String family, String qualifier) method.",
         family));
     final NavigableMap<String, NavigableMap<Long, T>> result = Maps.newTreeMap();
     for (String qualifier : getQualifiers(family)) {
@@ -588,6 +746,50 @@ public final class HBaseKijiRowData implements KijiRowData {
     return result;
   }
 
+
+  /**  {@inheritDoc} */
+  @Override
+  public <T> Iterator<KijiCell<T>> iterator(String family, String qualifier) throws
+    IOException {
+    return new KijiGroupCellIterator(family, qualifier, this);
+  }
+
+  /**  {@inheritDoc} */
+  @Override
+  public <T> Iterator<KijiCell<T>> iterator(String family) throws
+    IOException {
+    Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
+        String.format("getCellList(String family) is only enabled"
+        + " on map type column families. The column family [%s], is a group type column family."
+        + " Please use the getCellList(String family, String qualifier) method.",
+        family));
+    return new KijiMapCellIterator(family, this);
+  }
+
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiPager getPager(String family, String qualifier)
+    throws KijiColumnPagingNotEnabledException {
+    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
+    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable,  kijiColumnName);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
+    Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
+        String.format("getPager(String family) is only enabled on map"
+        + " type column families. The column family [%s], is a group type column family. Please use"
+        + " the getPager(String family, String qualifier) method.",
+        family));
+    final KijiColumnName kijiFamily = new KijiColumnName(family);
+    if (kijiFamily.isFullyQualified()) {
+      throw new IllegalArgumentException("Family name (" + family + ") had a colon ':' in it");
+    }
+    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable, kijiFamily);
+  }
+
   /**
    * Creates a decoder for the specified column.
    *
@@ -605,28 +807,5 @@ public final class HBaseKijiRowData implements KijiRowData {
     final CellSpec cellSpec = mTableLayout.getCellSpec(new KijiColumnName(family, qualifier))
         .setSchemaTable(mSchemaTable);
     return mCellDecoderFactory.create(cellSpec);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public KijiPager getPager(String family, String qualifier)
-    throws KijiColumnPagingNotEnabledException {
-    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
-    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable,  kijiColumnName);
-  }
-
-    /** {@inheritDoc} */
-  @Override
-  public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
-        Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
-        String.format("getPager(String family) is only enabled on map"
-        + " type column families. The column family [%s], is a group type column family. Please use"
-        + " the getPager(String family, String qualifier) method.",
-        family));
-    final KijiColumnName kijiFamily = new KijiColumnName(family);
-    if (kijiFamily.isFullyQualified()) {
-      throw new IllegalArgumentException("Family name (" + family + ") had a colon ':' in it");
-    }
-    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable, kijiFamily);
   }
 }

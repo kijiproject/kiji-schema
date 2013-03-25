@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
 
@@ -315,4 +316,25 @@ public interface KijiRowData {
    */
   KijiPager getPager(String family)
       throws KijiColumnPagingNotEnabledException;
+
+  /**
+   * Gets an iterator over all cells for the specified column.
+   *
+   * @param family Column family of the desired cells.
+   * @param qualifier Column qualifier of the desired cells.
+   * @param <T> Type of the cells stored at the specified coordinates.
+   * @return An iterator of the cells of the specified column.
+   * @throws IOException If there is an error.
+   */
+  <T> Iterator<KijiCell<T>> iterator(String family, String qualifier) throws IOException;
+
+  /**
+   * Gets an iterator over all cells for the specified map type column.
+   *
+   * @param family Map type column family of the desired cells.
+   * @param <T> Type of the cells stored at the specified coordinates.
+   * @return An iterator of the cells stored in the specified column.
+   * @throws IOException If there is an error.
+   */
+  <T> Iterator<KijiCell<T>> iterator(String family) throws IOException;
 }
