@@ -86,12 +86,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
     }
     // Send the HTable Get.
     LOG.debug("Sending HBase Get: " + hbaseGet);
-    Result result;
-    if (null == hbaseGet) {
-      result = new Result();
-    } else {
-      result = mTable.getHTable().get(hbaseGet);
-    }
+    final Result result = hbaseGet.hasFamilies() ? mTable.getHTable().get(hbaseGet) : new Result();
 
     // Parse the result.
     return new HBaseKijiRowData(entityId, dataRequest, mTable, result);

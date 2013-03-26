@@ -82,6 +82,10 @@ public final class KijiTableLayouts {
   public static final String SIMPLE =
       "org/kiji/schema/layout/simple.json";
 
+  /** Layout of a table with no family. */
+  public static final String NOFAMILY =
+      "org/kiji/schema/layout/nofamily.json";
+
   /** A simple unhashed layout file example (bare minimum). */
   public static final String SIMPLE_UNHASHED =
       "org/kiji/schema/layout/simple-unhashed.json";

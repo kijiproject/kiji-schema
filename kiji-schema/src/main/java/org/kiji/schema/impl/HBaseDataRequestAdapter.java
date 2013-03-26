@@ -75,7 +75,7 @@ public class HBaseDataRequestAdapter {
    *
    * @param tableLayout The layout of the Kiji table to read from.  This is required for
    *     determining the mapping between Kiji columns and HBase columns.
-   * @return An HBase Scan descriptor, or null if no data was requested.
+   * @return An HBase Scan descriptor.
    * @throws IOException If there is an error.
    */
   public Scan toScan(KijiTableLayout tableLayout) throws IOException {
@@ -88,14 +88,11 @@ public class HBaseDataRequestAdapter {
    * @param tableLayout The layout of the Kiji table to read from.  This is required for
    *     determining the mapping between Kiji columns and HBase columns.
    * @param scanOptions Custom options for this scan.
-   * @return An HBase Scan descriptor, or null if no data was requested.
+   * @return An HBase Scan descriptor.
    * @throws IOException If there is an error.
    */
   public Scan toScan(KijiTableLayout tableLayout, HBaseScanOptions scanOptions) throws IOException {
-    if (mKijiDataRequest.isEmpty()) {
-      return null;
-    }
-    Scan scan = new Scan(toGet(HBaseEntityId.fromHBaseRowKey(new byte[0]), tableLayout));
+    final Scan scan = new Scan(toGet(HBaseEntityId.fromHBaseRowKey(new byte[0]), tableLayout));
     configureScan(scan, scanOptions);
     return scan;
   }
@@ -111,12 +108,7 @@ public class HBaseDataRequestAdapter {
    * @throws IOException If there is an error.
    */
   public void applyToScan(Scan scan, KijiTableLayout tableLayout) throws IOException {
-    Scan newScan = toScan(tableLayout);
-
-    // Don't bother adding new columns if no columns are requested by the scan.
-    if (newScan == null) {
-      return;
-    }
+    final Scan newScan = toScan(tableLayout);
 
     // It's okay to put columns into the Scan that are already there.
     for (Map.Entry<byte[], NavigableSet<byte[]>> columnRequest
@@ -147,23 +139,20 @@ public class HBaseDataRequestAdapter {
    * @param entityId The row to build an HBase Get request for.
    * @param tableLayout The layout of the Kiji table to read from.  This is required for
    *     determining the mapping between Kiji columns and HBase columns.
-   * @return An HBase Get descriptor, or null if no data was requested.
+   * @return An HBase Get descriptor.
    * @throws IOException If there is an error.
    */
   public Get toGet(EntityId entityId, KijiTableLayout tableLayout)
       throws IOException {
-    if (mKijiDataRequest.isEmpty()) {
-      return null;
-    }
 
-    Get get = new Get(entityId.getHBaseRowKey());
+    final Get get = new Get(entityId.getHBaseRowKey());
     FilterList filterList = new FilterList(FilterList.Operator.MUST_PASS_ONE);
     ColumnNameTranslator columnTranslator = new ColumnNameTranslator(tableLayout);
 
     // There's a shortcoming in the HBase API that doesn't allow us to specify per-column
     // filters for timestamp ranges and max versions.  We need to generate a request that
     // will include all versions that we need, and add filters for the individual columns.
-    int largestMaxVersions = 0;
+    int largestMaxVersions = 1;
     // If every column is paged, we should add a keyonly filter to a single column, so we can have
     // access to entityIds in our KijiRowData that is constructed.
     boolean completelyPaged = mKijiDataRequest.isPagingEnabled() ? true : false;
@@ -206,12 +195,6 @@ public class HBaseDataRequestAdapter {
       // a KijiRowData.
       filterList.addFilter(new FirstKeyOnlyFilter());
       largestMaxVersions = sampleColumnRequest.getMaxVersions();
-    }
-
-    if (!get.hasFamilies()) {
-      // There was nothing added to the request. Return null to signal that no get() RPC
-      // is necessary.
-      return null;
     }
 
     get.setFilter(filterList);

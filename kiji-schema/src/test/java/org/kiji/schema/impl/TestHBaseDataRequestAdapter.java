@@ -20,7 +20,7 @@
 package org.kiji.schema.impl;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertFalse;
 
 import java.io.IOException;
 
@@ -97,7 +97,7 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
   public void testDataRequestToScanEmpty() throws IOException {
     KijiDataRequest request = KijiDataRequest.builder().build();
     HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(request);
-    assertNull(hbaseDataRequest.toScan(mTableLayout));
+    assertFalse(hbaseDataRequest.toScan(mTableLayout).hasFamilies());
   }
 
   @Test
@@ -131,7 +131,7 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
   public void testDataRequestToGetEmpty() throws IOException {
     KijiDataRequest request = KijiDataRequest.builder().build();
     HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(request);
-    assertNull(
-        hbaseDataRequest.toGet(mEntityIdFactory.getEntityId("entity"), mTableLayout));
+    assertFalse(
+        hbaseDataRequest.toGet(mEntityIdFactory.getEntityId("entity"), mTableLayout).hasFamilies());
   }
 }

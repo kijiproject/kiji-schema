@@ -210,25 +210,39 @@ public class TestLsTool extends KijiClientTest {
                 .withFamily("family").withQualifier("column").withValue(1L, "string-value")
         .build();
 
-    final KijiTable table = kiji.openTable(layout.getName());
-
     final KijiTableLayout layoutTwo = KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST);
     kiji.createTable(layoutTwo.getDesc());
-    final KijiTable tableTwo = kiji.openTable(layoutTwo.getName());
 
+    final KijiTable table = kiji.openTable(layout.getName());
     try {
-      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), table.getURI().toString(),
-          tableTwo.getURI().toString()));
-      assertEquals(9, mToolOutputLines.length);
-      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), kiji.getURI().toString()));
-      assertEquals(2, mToolOutputLines.length);
-      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), kiji.getURI().toString(),
-          table.getURI().toString()));
-      assertEquals(3, mToolOutputLines.length);
-      //assertEquals(2, mToolOutputLines.length);
+      final KijiTable tableTwo = kiji.openTable(layoutTwo.getName());
+      try {
+        assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), table.getURI().toString(),
+            tableTwo.getURI().toString()));
+        assertEquals(9, mToolOutputLines.length);
+        assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), kiji.getURI().toString()));
+        assertEquals(2, mToolOutputLines.length);
+        assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), kiji.getURI().toString(),
+            table.getURI().toString()));
+        assertEquals(3, mToolOutputLines.length);
+      } finally {
+        tableTwo.release();
+      }
     } finally {
-      ResourceUtils.releaseOrLog(table);
-      ResourceUtils.releaseOrLog(tableTwo);
+      table.release();
+    }
+  }
+
+  @Test
+  public void testTableNoFamilies() throws Exception {
+    final Kiji kiji = new InstanceBuilder(getKiji())
+        .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.NOFAMILY))
+        .build();
+    final KijiTable table = kiji.openTable("nofamily");
+    try {
+      assertEquals(BaseTool.SUCCESS, runTool(new LsTool(), table.getURI().toString()));
+    } finally {
+      table.release();
     }
   }
 }

@@ -99,9 +99,8 @@ public class TestScanTool extends KijiClientTest {
   @Test
   public void testScanTable() throws Exception {
     final Kiji kiji = getKiji();
-    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE);
-    kiji.createTable(layout.getName(), layout);
-    final KijiTable table = kiji.openTable(layout.getName());
+    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
+    final KijiTable table = kiji.openTable("table");
     try {
       // Table is empty:
       assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), table.getURI().toString()));
@@ -211,6 +210,7 @@ public class TestScanTool extends KijiClientTest {
       ResourceUtils.releaseOrLog(table);
     }
   }
+
   @Test
   public void testRangeScanFormattedRKF() throws Exception {
     final Kiji kiji = getKiji();
@@ -249,6 +249,19 @@ public class TestScanTool extends KijiClientTest {
           ));
     } finally {
       ResourceUtils.releaseOrLog(table);
+    }
+  }
+
+  @Test
+  public void testTableNoFamilies() throws Exception {
+    final Kiji kiji = new InstanceBuilder(getKiji())
+        .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.NOFAMILY))
+        .build();
+    final KijiTable table = kiji.openTable("nofamily");
+    try {
+      assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(), table.getURI().toString()));
+    } finally {
+      table.release();
     }
   }
 }
