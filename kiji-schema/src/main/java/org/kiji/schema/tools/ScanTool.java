@@ -69,7 +69,7 @@ public final class ScanTool extends BaseTool {
   private static final Logger LOG = LoggerFactory.getLogger(ScanTool.class);
 
   @Flag(name="start-row",
-      usage="HBase row to stop scanning at (exclusive).\n"
+      usage="HBase row to start scanning at (inclusive).\n"
           + "\tEither 'kiji=<Kiji row key>' or 'hbase=<HBase row key>'.\n"
           + ("\tHBase row keys are specified as bytes:\n"
               + "\t\tby default as UTF-8 strings, or prefixed as in 'utf8:encoded\\x0astring';\n"
@@ -168,8 +168,7 @@ public final class ScanTool extends BaseTool {
         if ((mMaxRows != 0) && (++rowsOutput > mMaxRows)) {
           break;
         }
-        if (hasVerboseDebug()
-            && (!ToolUtils.formatEntityId(row.getEntityId()).startsWith("hbase="))) {
+        if (hasVerboseDebug() && (!row.getEntityId().toShellString().startsWith("hbase="))) {
           getPrintStream().printf("entity-id=%s%s%n", ToolUtils.HBASE_ROW_KEY_SPEC_PREFIX,
               Bytes.toStringBinary((row.getEntityId().getHBaseRowKey())));
         }
