@@ -25,40 +25,62 @@ import java.util.Iterator;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
+import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 
 /**
- * <p> Manages retrieving pages of values from a column in a Kiji table. This is useful when you
- * are requesting a large number of values from a column.</p>
+ * Retrieves pages of values from a column in a Kiji table.
  *
- * <p> To get a KijiPager, first configure the default page size for the column on the corresponding
- * {@link KijiDataRequest.Column}. Then call {@link KijiRowData#getPager(java.lang.String)} on the
- * the {@link KijiRowData} constructed with your data request</p>
- *
- * <p> For example, you could request two versions per page, and a maximum of 5 versions for the
- *   whole request:
- *
- * <pre>
- *   KijiDataRequestBuilder builder = KijiDataRequest.builder();
- *   builder.newColumnsDef().withMaxVersions(5).withPageSize(2).add("info", "name");
- *   final KijiDataRequest dataRequest = builder.build();
- * </pre>
+ * <p> KijiPager is useful when requesting a large number of values from a column.
+ *   The page size is an upper limit to the number of cells retrieved from the region servers
+ *   at a time, to bound the amount of memory consumed on the client machine.
  * </p>
- *
- * <p>
- * The row data constructed using this data request may then be used to retrieve a pager and
- * process results:
- * <pre>
- *   final KijiPager pager = myRowData.getPager("info", "name");
- *   try  {
- *     while(pager.hasNext()) {
- *       final NavigableMap<Long, CharSequence> resultMap = pager.next().getValues("info", "name");
- *       // ...
+ * <p> To enable paging on a column, use {@link ColumnsDef#withPageSize(int)} when building a
+ *   {@link KijiDataRequest}.
+ *   For example, using a group type column <code>"info:name"</code>,
+ *   you may request a maximum of 2 versions per page,
+ *   with a maximum of 5 versions per qualifier as follows.
+ *   <pre>
+ *     final KijiDataRequest dataRequest = KijiDataRequest.builder()
+ *         .addColumnsDef(ColumnsDef.create()
+ *             .withMaxVersions(5)  // at most 5 versions per column qualifier
+ *             .withPageSize(2)     // at most 2 cells per page
+ *             .add("info", "name"))
+ *         .build();
+ *   </pre>
+ * </p>
+ * <p> To get a {@link KijiPager}, call {@link KijiRowData#getPager(java.lang.String)} or
+ *   {@link KijiRowData#getPager(String, String)} on a {@link KijiRowData} constructed with paging
+ *   enabled:
+ *   <pre>
+ *     final KijiTableReader reader = ...
+ *     final EntityId entityId = ...
+ *     final KijiRowData row = reader.get(entityId, dataRequest);
+ *     final KijiPager pager = row.getPager("info", "name");
+ *     try  {
+ *       while(pager.hasNext()) {
+ *         final KijiRowData page = pager.next();
+ *         // Use: page.getValues("info", "name")
+ *         // ...
+ *       }
+ *     } finally {
+ *       pager.close();
  *     }
- *   } finally {
- *     pager.close();
- *   }
- * </pre>
+ *   </pre>
  * </p>
+ *
+ * Notes:
+ * <ul>
+ *   <li> The page size in an upper bound to the number of cells retrieved in a page.
+ *     Concretely, a page of cells returned by {@link KijiPager#next()} or
+ *     {@link KijiPager#next(int)} may contain less cells than the page size, even if there are
+ *     more pages coming.
+ *   </li>
+ *   <li> When paging over a map type family, the maximum number of versions configured through
+ *     {@link ColumnsDef#withMaxVersions(int)} applies to each qualifier individually.
+ *     In particular, the maximum number of versions does <b>not</b> bound the total number of
+ *     qualifiers or of cells returned for the entire map-type family.
+ *   </li>
+ * </ul>
  */
 @ApiAudience.Public
 @ApiStability.Experimental

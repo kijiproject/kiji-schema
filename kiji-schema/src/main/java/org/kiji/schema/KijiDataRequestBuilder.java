@@ -184,9 +184,22 @@ public final class KijiDataRequestBuilder {
     }
 
     /**
-     * Sets the maximum number of the most recent versions to return.
+     * Sets the maximum number of the most recent versions of a particular column to return.
      *
-     * @param maxVersions The maximum number of versions of the cell to read.
+     * <p> For a map type column family, the maximum number of versions applies to each qualifier
+     *   individually.  In particular, the maximum number of versions does not limit the total
+     *   number of qualifiers or of versions returned for the entire family.
+     * </p>
+     *
+     * <p> Note: the maximum number of versions is currently not working properly when using
+     *   a {@link KijiPager} to page through a map-type family.
+     *   In particular, when the maximum number of versions is greater than the page size,
+     *   the total number of cells returned for a qualifier may exceed the configured maximum.
+     *   Please see <a href="https://jira.kiji.org/browse/SCHEMA-282">SCHEMA-282</a> for more
+     *   details.
+     * </p>
+     *
+     * @param maxVersions The maximum number of versions per column qualifier to return.
      * @return This column request builder instance.
      */
     public ColumnsDef withMaxVersions(int maxVersions) {
@@ -218,9 +231,14 @@ public final class KijiDataRequestBuilder {
     }
 
     /**
-     * Sets the page size (i.e. the maximum number of cells per page).
+     * Configures paging and sets the page size (i.e. the maximum number of cells per page).
      *
-     * Defaults to zero, which means paging is disabled.
+     * <p>
+     *   The page size is an upper limit to the number of cells retrieved from the region servers
+     *   at a time, to bound the amount of memory consumed on the client machine.
+     *   See {@link KijiPager} for more details.
+     * </p>
+     * <p> Defaults to zero, which means paging is disabled. </p>
      *
      * @param pageSize The maximum number of cells to return in each page of results.
      *     Use 0 to disable paging and return all results at once.

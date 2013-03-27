@@ -84,9 +84,11 @@ import org.kiji.annotations.Inheritance;
  * <p>
  *   Rows in Kiji tables may contain large amounts of data. In some cases, this is caused by
  *   storing many versions of a cell with different timestamps in a row. This can become a
- *   problem when the size of a row/cell exceeds the amount of RAM available. To deal with
- *   this, {@link KijiPager}s can be used. See the documentation for {@link KijiPager} for
- *   more information.
+ *   problem when the size of a row/cell exceeds the amount of RAM available.
+ *   To deal with large rows, you may use paging through a {@link KijiPager}.
+ *   When paging is enabled on a column, cells from that column may only be accessed through
+ *   {@link #getPager(String)} and {@link #getPager(String, String)}.
+ *   See the documentation for {@link KijiPager} for more information.
  * </p>
  */
 @ApiAudience.Public
