@@ -25,7 +25,6 @@ import java.util.Iterator;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
-import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 
 /**
  * Retrieves pages of values from a column in a Kiji table.
