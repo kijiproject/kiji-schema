@@ -45,7 +45,7 @@ import org.kiji.schema.util.ResourceUtils;
 public class TestStripValueRowFilter extends KijiClientTest {
   /** Verifies that values has been stripped if the StripValueRowFilter has been applied. */
   @Test
-  public void testStripValuesFilter() throws Exception {
+  public void testStripValueRowFilter() throws Exception {
     final Kiji kiji = getKiji();
 
     kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
@@ -97,5 +97,15 @@ public class TestStripValueRowFilter extends KijiClientTest {
     } finally {
       table.release();
     }
+  }
+
+  @Test
+  public void testEqualsAndHashCode() {
+    final StripValueRowFilter filter1 = new StripValueRowFilter();
+    final StripValueRowFilter filter2 = new StripValueRowFilter();
+
+    assertEquals(filter1, filter2);
+
+    assertEquals(filter1.hashCode(), filter2.hashCode());
   }
 }

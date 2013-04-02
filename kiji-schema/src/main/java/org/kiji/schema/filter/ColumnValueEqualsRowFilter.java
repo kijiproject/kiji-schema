@@ -21,6 +21,7 @@ package org.kiji.schema.filter;
 
 import java.io.IOException;
 
+import com.google.common.base.Objects;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
@@ -100,5 +101,24 @@ public final class ColumnValueEqualsRowFilter extends KijiRowFilter {
 
     // Skip the entire row if the filter does not allow the column value.
     return new SkipFilter(filter);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof ColumnValueEqualsRowFilter)) {
+      return false;
+    } else {
+      final ColumnValueEqualsRowFilter otherFilter = (ColumnValueEqualsRowFilter) other;
+      return Objects.equal(otherFilter.mFamily, this.mFamily)
+          && Objects.equal(otherFilter.mQualifier, this.mQualifier)
+          && Objects.equal(otherFilter.mValue, this.mValue);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(mFamily, mQualifier, mValue);
   }
 }

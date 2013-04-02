@@ -48,4 +48,18 @@ public final class StripValueRowFilter extends KijiRowFilter {
   public Filter toHBaseFilter(Context context) throws IOException {
     return new KeyOnlyFilter();
   }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean equals(Object other) {
+    // All StripValueRowFilters are the same.
+    return other instanceof StripValueRowFilter;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    // All StripValueRowFilters are the same.
+    return 358912958;
+  }
 }

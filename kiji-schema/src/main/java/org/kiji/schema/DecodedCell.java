@@ -94,14 +94,10 @@ public final class DecodedCell<T> {
     return data.equals(otherData);
   }
 
-  /**
-   * This operation is not supported.
-   *
-   * @return Nothing. Does not return since this operation is unsupported.
-   */
+  /** {@inheritDoc} */
   @Override
   public int hashCode() {
-    throw new UnsupportedOperationException();
+    return Objects.hashCode(getWriterSchema(), getData());
   }
 
   /** {@inheritDoc} */

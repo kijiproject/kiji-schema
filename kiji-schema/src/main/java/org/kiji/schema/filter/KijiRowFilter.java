@@ -34,6 +34,9 @@ import org.kiji.schema.hbase.HBaseColumnName;
 
 /**
  * The abstract base class for filters that exclude data from KijiRows.
+ *
+ * <p>Classes extending KijiRowFilter must implement the <code>hashCode</code> and
+ * <code>equals</code> methods.</p>
  */
 @ApiAudience.Public
 @ApiStability.Evolving

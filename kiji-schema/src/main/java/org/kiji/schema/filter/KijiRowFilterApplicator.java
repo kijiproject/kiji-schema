@@ -43,8 +43,8 @@ import org.kiji.schema.layout.impl.ColumnNameTranslator;
 /**
  * Applies a KijiRowFilter to various row-savvy objects.
  *
- * There are several limitations when filtering cells this way, as the filter relies on byte
- * comparisons, which does not play well with Avro records.
+ * <p>There are several limitations when filtering cells this way, as the filter relies on byte
+ * comparisons, which does not play well with Avro records.</p>
  */
 @ApiAudience.Framework
 @ApiStability.Evolving

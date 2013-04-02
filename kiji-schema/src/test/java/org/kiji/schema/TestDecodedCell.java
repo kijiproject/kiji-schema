@@ -19,9 +19,6 @@
 
 package org.kiji.schema;
 
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.core.Is.is;
-import static org.hamcrest.core.IsNot.not;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
@@ -35,19 +32,30 @@ public class TestDecodedCell {
   private static final Schema SCHEMA_STRING = Schema.create(Schema.Type.STRING);
 
   @Test
-  public void testEquals() {
-    final DecodedCell<Integer> int1 = new DecodedCell<Integer>(SCHEMA_INT, 5);
-    final DecodedCell<Integer> int2 = new DecodedCell<Integer>(SCHEMA_INT, 5);
-    final DecodedCell<Integer> int3 = new DecodedCell<Integer>(SCHEMA_INT, 6);
+  public void testEqualsAndHashCode() {
+    final DecodedCell<Integer> int5a = new DecodedCell<Integer>(SCHEMA_INT, 5);
+    final DecodedCell<Integer> int5b = new DecodedCell<Integer>(SCHEMA_INT, 5);
+    final DecodedCell<Integer> int6 = new DecodedCell<Integer>(SCHEMA_INT, 6);
     final DecodedCell<Long> long1 = new DecodedCell<Long>(SCHEMA_LONG, 5L);
-
-    assertEquals(int1, int2);
-    assertThat(int1, is(not(int3)));
-    assertFalse(int1.equals(long1));
-
-    final DecodedCell<CharSequence> cs1 = new DecodedCell<CharSequence>(SCHEMA_STRING, "foo");
-    final DecodedCell<CharSequence> cs2 =
+    final DecodedCell<CharSequence> csFoo1 = new DecodedCell<CharSequence>(SCHEMA_STRING, "foo");
+    final DecodedCell<CharSequence> csFoo2 =
         new DecodedCell<CharSequence>(SCHEMA_STRING, new Utf8("foo"));
-    assertEquals(cs1, cs2);
+    final DecodedCell<CharSequence> csBar =
+        new DecodedCell<CharSequence>(SCHEMA_STRING, new Utf8("bar"));
+
+    assertEquals(int5a, int5b);
+
+    assertEquals(csFoo1, csFoo2);
+
+    assertFalse(csFoo1.equals(csBar));
+    assertFalse(int5a.equals(int6));
+
+    // Cells with different schema are not equal.
+    assertFalse(int5a.equals(long1));
+    assertFalse(csFoo1.equals(int5a));
+
+    // Cells that are equal have the same hashcode.
+    assertEquals(int5a.hashCode(), int5b.hashCode());
+    assertEquals(csFoo1.hashCode(), csFoo2.hashCode());
   }
 }

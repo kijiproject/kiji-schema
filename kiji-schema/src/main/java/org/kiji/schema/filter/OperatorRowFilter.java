@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.common.base.Objects;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 
@@ -87,6 +88,24 @@ class OperatorRowFilter extends KijiRowFilter {
       hbaseFilters.add(filter.toHBaseFilter(context));
     }
     return new FilterList(toHBaseFilterOperator(mOperator), hbaseFilters);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean equals(Object other) {
+    if (null == other || other.getClass() != getClass()) {
+      return false;
+    } else {
+      final OperatorRowFilter otherFilter = (OperatorRowFilter) other;
+      return Objects.equal(otherFilter.mOperator, mOperator)
+          && Objects.equal(otherFilter.mFilters, mFilters);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(mOperator, mFilters);
   }
 
   /**

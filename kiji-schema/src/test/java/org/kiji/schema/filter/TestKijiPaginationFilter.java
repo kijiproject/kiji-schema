@@ -20,6 +20,7 @@
 package org.kiji.schema.filter;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
@@ -161,5 +162,17 @@ public class TestKijiPaginationFilter extends KijiClientTest {
         resultMap.get("b").get(3L).toString());
     assertEquals("Incorrect second value of first page:", "always coming in 4th",
         resultMap.get("b").get(2L).toString());
+  }
+
+  @Test
+  public void testEqualsAndHashCode() {
+    final KijiPaginationFilter filter1 = new KijiPaginationFilter(2, 1);
+    final KijiPaginationFilter filter2 = new KijiPaginationFilter(2, 1);
+    final KijiPaginationFilter differentFilter = new KijiPaginationFilter(4, 2);
+
+    assertEquals(filter1, filter2);
+    assertFalse(filter1.equals(differentFilter));
+
+    assertEquals(filter1.hashCode(), filter2.hashCode());
   }
 }

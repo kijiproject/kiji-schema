@@ -41,6 +41,9 @@ import org.kiji.schema.hbase.HBaseColumnName;
  * <p>KijiColumnFilters filter cells from a column, in contrast with KijiRowFilters, which
  * filters rows from a table.</p>
  *
+ * <p>Classes extending KijiColumnFilter must implement the <code>hashCode</code> and
+ * <code>equals</code> methods.</p>
+ *
  * @see org.kiji.schema.filter.KijiRowFilter
  * @see org.kiji.schema.KijiDataRequestBuilder.ColumnsDef#withFilter(KijiColumnFilter)
  */

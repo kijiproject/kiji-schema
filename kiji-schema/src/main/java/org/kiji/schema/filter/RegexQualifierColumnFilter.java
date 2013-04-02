@@ -22,6 +22,7 @@ package org.kiji.schema.filter;
 import java.io.IOException;
 import java.util.regex.Pattern;
 
+import com.google.common.base.Objects;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
@@ -62,5 +63,22 @@ public final class RegexQualifierColumnFilter extends KijiColumnFilter {
     HBaseColumnName columnName = context.getHBaseColumnName(kijiColumnName);
     return new QualifierFilter(CompareFilter.CompareOp.EQUAL,
         new RegexStringComparator(columnName.getQualifierAsString() + mRegularExpression));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof RegexQualifierColumnFilter)) {
+      return false;
+    } else {
+      final RegexQualifierColumnFilter otherFilter = (RegexQualifierColumnFilter) other;
+      return Objects.equal(otherFilter.mRegularExpression, mRegularExpression);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    return mRegularExpression.hashCode();
   }
 }

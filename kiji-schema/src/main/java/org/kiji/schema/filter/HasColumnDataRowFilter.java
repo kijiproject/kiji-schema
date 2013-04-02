@@ -21,6 +21,7 @@ package org.kiji.schema.filter;
 
 import java.io.IOException;
 
+import com.google.common.base.Objects;
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
@@ -106,5 +107,23 @@ public final class HasColumnDataRowFilter extends KijiRowFilter {
     filter.setFilterIfMissing(true);
 
     return filter;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof HasColumnDataRowFilter)) {
+      return false;
+    } else {
+      final HasColumnDataRowFilter otherFilter = (HasColumnDataRowFilter) other;
+      return Objects.equal(otherFilter.mFamily, mFamily)
+          && Objects.equal(otherFilter.mQualifier, mQualifier);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(mFamily, mQualifier);
   }
 }

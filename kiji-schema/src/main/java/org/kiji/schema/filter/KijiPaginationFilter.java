@@ -21,6 +21,7 @@ package org.kiji.schema.filter;
 
 import java.io.IOException;
 
+import com.google.common.base.Objects;
 import org.apache.hadoop.hbase.filter.ColumnPaginationFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
@@ -81,4 +82,22 @@ public class KijiPaginationFilter extends KijiColumnFilter {
     return requestFilter;
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public boolean equals(Object other) {
+    if (!(other instanceof KijiPaginationFilter)) {
+      return false;
+    } else {
+      final KijiPaginationFilter otherFilter = (KijiPaginationFilter) other;
+      return Objects.equal(otherFilter.mLimit, mLimit)
+          && Objects.equal(otherFilter.mOffset, mOffset)
+          && Objects.equal(otherFilter.mInputFilter, mInputFilter);
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(mLimit, mOffset, mInputFilter);
+  }
 }
