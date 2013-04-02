@@ -135,7 +135,7 @@ public class KijiClientTest {
   public final void teardownKijiTest() throws Exception {
     LOG.debug("Tearing down {}", mTestId);
     for (Kiji kiji : mKijis) {
-      mKiji.release();
+      kiji.release();
       KijiInstaller.get().uninstall(kiji.getURI(), mConf);
     }
     mKijis = null;
