@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.0
+  * SCHEMA-227. Fix get/scan behavior on tables with no families.
+  * SCHEMA-284. Fix usage doc string for kiji scan --start-row/limit-row flags.
   * SCHEMA-37. Adds stability annotations to all classes.
   * SCHEMA-280. Removes deprecated close() method from KijiTable.  Use
       table.release().
