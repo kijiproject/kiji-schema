@@ -77,10 +77,7 @@ public final class DecodedCell<T> {
       return false;
     }
     final DecodedCell<?> other = (DecodedCell<?>) obj;
-
-    final Schema schema = getWriterSchema();
-    final Schema otherSchema = other.getWriterSchema();
-    if ((schema != otherSchema) || !getWriterSchema().equals(other.getWriterSchema())) {
+    if (!Objects.equal(this.getWriterSchema(), other.getWriterSchema())) {
       return false;
     }
 

@@ -113,6 +113,26 @@ public final class KijiCell<T> {
 
   /** {@inheritDoc} */
   @Override
+  public boolean equals(Object object) {
+    if (object instanceof KijiCell) {
+      final KijiCell<?> that = (KijiCell<?>) object;
+      return this.mFamily.equals(that.mFamily)
+          && this.mQualifier.equals(that.mQualifier)
+          && (this.mTimestamp == that.mTimestamp)
+          && this.mDecodedCell.equals(that.mDecodedCell);
+    } else {
+      return false;
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    return Objects.hashCode(mFamily, mQualifier, mTimestamp, mDecodedCell);
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public String toString() {
     return Objects.toStringHelper(KijiCell.class)
         .add("family", mFamily)
