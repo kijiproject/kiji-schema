@@ -2,6 +2,8 @@
 
                               Kiji Schema Release Notes
 
+Version 1.0.2
+
 Version 1.0.1
   * SCHEMA-254. Adds cellList methods to KijiRowData.
   * SCHEMA-296. Adds hashCode and equals methods for Filters.
