@@ -85,7 +85,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
       throw new InternalKijiError(e);
     }
     // Send the HTable Get.
-    LOG.debug("Sending HBase Get: " + hbaseGet);
+    LOG.debug("Sending HBase Get: {}", hbaseGet);
     final Result result = hbaseGet.hasFamilies() ? mTable.getHTable().get(hbaseGet) : new Result();
 
     // Parse the result.

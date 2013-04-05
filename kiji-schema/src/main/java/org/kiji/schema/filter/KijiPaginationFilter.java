@@ -22,6 +22,7 @@ package org.kiji.schema.filter;
 import java.io.IOException;
 
 import com.google.common.base.Objects;
+
 import org.apache.hadoop.hbase.filter.ColumnPaginationFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
@@ -37,12 +38,14 @@ import org.kiji.schema.KijiColumnName;
 public class KijiPaginationFilter extends KijiColumnFilter {
   private static final long serialVersionUID = 1L;
 
-  /* The max number of versions to return. */
+  /** The max number of versions to return. */
   private final int mLimit;
-  /* How many version back in history to start looking. */
+
+  /** How many versions back in history to start looking. */
   private final int mOffset;
-  /* Other filters to be checked before the pagination filter. */
-  private KijiColumnFilter mInputFilter;
+
+  /** Other filters to be checked before the pagination filter. */
+  private final KijiColumnFilter mInputFilter;
 
   /**
    * Initialize pagination filter with limit, offset, and other filters to fold in.
@@ -70,6 +73,7 @@ public class KijiPaginationFilter extends KijiColumnFilter {
     mInputFilter = filter;
   }
 
+  /** {@inheritDoc} */
   @Override
   public Filter toHBaseFilter(KijiColumnName kijiColumnName, Context context) throws IOException {
     FilterList requestFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
@@ -99,5 +103,15 @@ public class KijiPaginationFilter extends KijiColumnFilter {
   @Override
   public int hashCode() {
     return Objects.hashCode(mLimit, mOffset, mInputFilter);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(KijiPaginationFilter.class)
+        .add("limit", mLimit)
+        .add("offset", mOffset)
+        .add("filter", mInputFilter)
+        .toString();
   }
 }
