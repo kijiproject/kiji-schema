@@ -37,7 +37,7 @@
   <properties>
     <kiji-delegation.version>1.0.0</kiji-delegation.version>
     <kiji-platforms.version>1.0.0</kiji-platforms.version>
-    <fake-hbase.version>0.0.5-SNAPSHOT</fake-hbase.version>
+    <fake-hbase.version>0.0.5</fake-hbase.version>
   </properties>
 
   <modules>
