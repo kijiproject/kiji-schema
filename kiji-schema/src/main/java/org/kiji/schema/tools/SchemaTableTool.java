@@ -280,7 +280,7 @@ public final class SchemaTableTool extends BaseTool {
     Preconditions.checkArgument(nonFlagArgs.size() != 0, "Specify the KijiURI of your target "
         + "instance with `kiji get kiji://hbase-cluster/instance`");
     mURI = KijiURI.newBuilder(Preconditions.checkNotNull(nonFlagArgs.get(0))).build();
-    mKiji = Kiji.Factory.open(mURI);
+    mKiji = Kiji.Factory.open(mURI, getConf());
     try {
       if (mRegisterFlag != null && !mRegisterFlag.isEmpty()) {
         return registerSchema();

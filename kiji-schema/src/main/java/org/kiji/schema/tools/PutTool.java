@@ -118,7 +118,7 @@ public final class PutTool extends BaseTool {
         + "--target=kiji://hbase-address/kiji-instance/table/family:qualifier",
         mColumnURI);
 
-    mKiji = Kiji.Factory.open(mColumnURI);
+    mKiji = Kiji.Factory.open(mColumnURI, getConf());
     mTable = mKiji.openTable(mColumnURI.getTable());
   }
 

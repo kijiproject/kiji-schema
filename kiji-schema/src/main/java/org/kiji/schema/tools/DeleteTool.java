@@ -324,7 +324,7 @@ public final class DeleteTool extends BaseTool {
       return deleteInstance(mTargetURI);
     }
 
-    final Kiji kiji = Kiji.Factory.open(mTargetURI);
+    final Kiji kiji = Kiji.Factory.open(mTargetURI, getConf());
     try {
       final List<KijiColumnName> columns = mTargetURI.getColumns();  // never null
 

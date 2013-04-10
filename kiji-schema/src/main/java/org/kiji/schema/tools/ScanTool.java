@@ -232,7 +232,7 @@ public final class ScanTool extends BaseTool {
       return FAILURE;
     }
 
-    final Kiji kiji = Kiji.Factory.open(argURI);
+    final Kiji kiji = Kiji.Factory.open(argURI, getConf());
     try {
       final KijiTable table = kiji.openTable(argURI.getTable());
       try {

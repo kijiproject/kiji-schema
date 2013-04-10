@@ -119,7 +119,7 @@ public class SystemTableTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    mKiji = Kiji.Factory.open(mKijiURI);
+    mKiji = Kiji.Factory.open(mKijiURI, getConf());
     try {
       mTable = mKiji.getSystemTable();
       switch (mDoMode) {

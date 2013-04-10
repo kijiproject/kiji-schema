@@ -219,7 +219,7 @@ public final class LsTool extends BaseTool {
       return listInstances(argURI);
     }
 
-    final Kiji kiji = Kiji.Factory.open(argURI);
+    final Kiji kiji = Kiji.Factory.open(argURI, getConf());
     try {
       if (argURI.getTable() == null) {
         // List tables in this kiji instance.

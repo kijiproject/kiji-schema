@@ -51,6 +51,7 @@ public class TestSystemTableTool extends KijiClientTest {
     mToolOutputBytes.reset();
     final PrintStream pstream = new PrintStream(mToolOutputBytes);
     tool.setPrintStream(pstream);
+    tool.setConf(getConf());
     try {
       LOG.info("Running tool: '{}' with parameters {}", tool.getName(),
           arguments);

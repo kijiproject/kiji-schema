@@ -89,7 +89,7 @@ public final class IncrementTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final Kiji kiji = Kiji.Factory.open(mCellURI);
+    final Kiji kiji = Kiji.Factory.open(mCellURI, getConf());
     try {
       final KijiTable table = kiji.openTable(mCellURI.getTable());
       try {

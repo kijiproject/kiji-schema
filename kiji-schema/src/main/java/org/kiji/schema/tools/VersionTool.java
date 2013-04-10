@@ -81,7 +81,7 @@ public final class VersionTool extends BaseTool {
     final ProtocolVersion clientDataVersion = VersionInfo.getClientDataVersion();
     getPrintStream().println("kiji client data version: " + clientDataVersion);
 
-    final Kiji kiji = Kiji.Factory.open(mKijiURI);
+    final Kiji kiji = Kiji.Factory.open(mKijiURI, getConf());
     try {
       final ProtocolVersion clusterDataVersion = VersionInfo.getClusterDataVersion(kiji);
       getPrintStream().println("kiji cluster data version: " + clusterDataVersion);

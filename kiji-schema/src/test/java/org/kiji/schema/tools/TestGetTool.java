@@ -60,6 +60,7 @@ public class TestGetTool extends KijiClientTest {
     mToolOutputBytes.reset();
     final PrintStream pstream = new PrintStream(mToolOutputBytes);
     tool.setPrintStream(pstream);
+    tool.setConf(getConf());
     try {
       LOG.info("Running tool: '{}' with parameters {}", tool.getName(), arguments);
       return tool.toolMain(Lists.newArrayList(arguments));

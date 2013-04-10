@@ -183,7 +183,7 @@ public final class MetadataTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    final Kiji kiji = Kiji.Factory.open(mKijiURI);
+    final Kiji kiji = Kiji.Factory.open(mKijiURI, getConf());
     try {
       if ((mOutFile != null) && !mOutFile.isEmpty()) {
         try {

@@ -124,7 +124,7 @@ public final class CreateTableTool extends BaseTool {
   @Override
   protected void setup() throws Exception {
     super.setup();
-    mKiji = Kiji.Factory.open(mTableURI);
+    mKiji = Kiji.Factory.open(mTableURI, getConf());
   }
 
   /** {@inheritDoc} */
