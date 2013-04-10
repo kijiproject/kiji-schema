@@ -195,9 +195,10 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
       KijiPager pager = row1.getPager("family");
       fail("Didn't throw an exception!");
     } catch (IllegalStateException ex) {
-      assertEquals("getPager(String family) is only enabled on map"
-        + " type column families. The column family [family], is a group type column family. Please"
-        + " use the getPager(String family, String qualifier) method.", ex.getMessage());
+      assertEquals("getPager(String family) is only enabled on map type column families. "
+        + "The column family 'family' is a group type column family. "
+        + "Please use the getPager(String family, String qualifier) method.",
+        ex.getMessage());
     }
   }
 }

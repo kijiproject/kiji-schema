@@ -711,10 +711,10 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> NavigableMap<String, T> getMostRecentValues(String family) throws IOException {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
-        String.format("getMostRecentValues(String family) is only enabled"
+        "getMostRecentValues(String family) is only enabled"
         + " on map type column families. The column family [%s], is a group type column family."
         + " Please use the getMostRecentValues(String family, String qualifier) method.",
-        family));
+        family);
     final NavigableMap<String, T> result = Maps.newTreeMap();
     for (String qualifier : getQualifiers(family)) {
       final T value = getMostRecentValue(family, qualifier);
@@ -739,10 +739,10 @@ public final class HBaseKijiRowData implements KijiRowData {
   public <T> NavigableMap<String, NavigableMap<Long, T>> getValues(String family)
       throws IOException {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
-        String.format("getValues(String family) is only enabled on map "
+        "getValues(String family) is only enabled on map "
         + "type column families. The column family [%s], is a group type column family. Please use "
         + "the getValues(String family, String qualifier) method.",
-        family));
+        family);
     final NavigableMap<String, NavigableMap<Long, T>> result = Maps.newTreeMap();
     for (String qualifier : getQualifiers(family)) {
       final NavigableMap<Long, T> timeseries = getValues(family, qualifier);
@@ -769,10 +769,10 @@ public final class HBaseKijiRowData implements KijiRowData {
   public <T> NavigableMap<String, KijiCell<T>> getMostRecentCells(String family)
       throws IOException {
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
-        String.format("getMostRecentCells(String family) is only enabled"
+        "getMostRecentCells(String family) is only enabled"
         + " on map type column families. The column family [%s], is a group type column family."
         + " Please use the getMostRecentCells(String family, String qualifier) method.",
-        family));
+        family);
     final NavigableMap<String, KijiCell<T>> result = Maps.newTreeMap();
     for (String qualifier : getQualifiers(family)) {
       final KijiCell<T> cell = getMostRecentCell(family, qualifier);
@@ -862,21 +862,18 @@ public final class HBaseKijiRowData implements KijiRowData {
   public KijiPager getPager(String family, String qualifier)
     throws KijiColumnPagingNotEnabledException {
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
-    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable,  kijiColumnName);
+    return new HBaseVersionPager(mEntityId, mDataRequest, mTable,  kijiColumnName);
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
+    final KijiColumnName kijiFamily = new KijiColumnName(family, null);
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
-        String.format("getPager(String family) is only enabled on map"
-        + " type column families. The column family [%s], is a group type column family. Please use"
-        + " the getPager(String family, String qualifier) method.",
-        family));
-    final KijiColumnName kijiFamily = new KijiColumnName(family);
-    if (kijiFamily.isFullyQualified()) {
-      throw new IllegalArgumentException("Family name (" + family + ") had a colon ':' in it");
-    }
+        "getPager(String family) is only enabled on map type column families. "
+        + "The column family '%s' is a group type column family. "
+        + "Please use the getPager(String family, String qualifier) method.",
+        family);
     return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable, kijiFamily);
   }
 

@@ -85,15 +85,39 @@ import org.kiji.annotations.Inheritance;
 @ApiStability.Experimental
 @Inheritance.Sealed
 public interface KijiPager extends Iterator<KijiRowData>, Closeable {
+  /**
+   * Fetches the next page of cells from the Kiji table using the configured page size.
+   *
+   * <ul>
+   *   <li> The page size is an upper bound to the number of cells retrieved from the table. </li>
+   *   <li> The page may contain less cells than the specified page size.
+   *        In particular, the page can sometimes be empty, even though more pages follow. </li>
+   * </ul>
+   *
+   * @return the next page of cells as a {@link KijiRowData}.
+   *     Never null, but potentially empty.
+   */
+  KijiRowData next();
 
   /**
-  * Gets the next page of results, with specified page size, for a column or family. The
-  * KijiRowData returned may potentially have no values. This method does not throw a
-  * NoSuchElementException.
-  *
-  * @param pageSize The number of cells to retrieve for this page.
-  * @return The HBase result containing the next page of data, or an empty {@link KijiRowData}
-  * if there is no more data.
-  */
+   * Fetches the next page of cells from the Kiji table using the specified page size.
+   *
+   * <ul>
+   *   <li> The page size is an upper bound to the number of cells retrieved from the table. </li>
+   *   <li> The page may contain less cells than the specified page size.
+   *        In particular, the page can sometimes be empty, even though more pages follow. </li>
+   * </ul>
+   *
+   * @param pageSize The maximum number of cells to retrieve for this page.
+   * @return the next page of data as a {@link KijiRowData}.
+   *     Never null, but potentially empty.
+   */
   KijiRowData next(int pageSize);
+
+  /**
+   * Throws {@link UnsupportedOperationException}.
+   *
+   * <p> Pagers do not support remove(). </p>.
+   */
+  void remove();
 }
