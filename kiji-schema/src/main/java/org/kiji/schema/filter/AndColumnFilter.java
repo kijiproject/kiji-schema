@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -25,28 +25,30 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 
 /**
- * Combines a list of row filters using a logical OR operator.
+ * Combines a list of column filters using a logical AND operator.
  *
  * <p> Column filters are applied in order and lazily. </p>
  */
 @ApiAudience.Public
 @ApiStability.Evolving
-public final class OrRowFilter extends OperatorRowFilter {
+public final class AndColumnFilter extends OperatorColumnFilter {
+  private static final long serialVersionUID = 1L;
+
   /**
-   * Creates a row filter that combines a list of row filters with an OR operator.
+   * Creates a column filter that combines a list of column filters with an AND operator.
    *
-   * @param filters Row filters to combine with a logical OR.
+   * @param filters Column filters to combine with a logical AND.
    */
-  public OrRowFilter(List<? extends KijiRowFilter> filters) {
-    super(OperatorRowFilter.Operator.OR, filters.toArray(new KijiRowFilter[filters.size()]));
+  public AndColumnFilter(List<? extends KijiColumnFilter> filters) {
+    super(Operator.AND, filters.toArray(new KijiColumnFilter[filters.size()]));
   }
 
   /**
-   * Creates a row filter that combines a list of row filters with an OR operator.
+   * Creates a column filter that combines a list of column filters with an AND operator.
    *
-   * @param filters Row filters to combine with a logical OR.
+   * @param filters Column filters to combine with a logical AND.
    */
-  public OrRowFilter(KijiRowFilter... filters) {
-    super(OperatorRowFilter.Operator.OR, filters);
+  public AndColumnFilter(KijiColumnFilter... filters) {
+    super(Operator.AND, filters);
   }
 }

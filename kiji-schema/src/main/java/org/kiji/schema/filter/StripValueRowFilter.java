@@ -21,6 +21,7 @@ package org.kiji.schema.filter;
 
 import java.io.IOException;
 
+import com.google.common.base.Objects;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 
@@ -61,5 +62,11 @@ public final class StripValueRowFilter extends KijiRowFilter {
   public int hashCode() {
     // All StripValueRowFilters are the same.
     return 358912958;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(StripValueRowFilter.class).toString();
   }
 }

@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -24,18 +24,18 @@ import static org.junit.Assert.assertFalse;
 
 import org.junit.Test;
 
-public class TestOperatorRowFilter {
+public class TestOperatorColumnFilter {
 
   @Test
   public void testEqualsAndHashCode() {
-    final KijiRowFilter fStrip = new StripValueRowFilter();
-    final KijiRowFilter fHasCol = new HasColumnDataRowFilter("family", "qualifier");
+    final KijiColumnFilter fColRange = KijiColumnRangeFilter.greaterThan("a");
+    final KijiColumnFilter fPage = new KijiPaginationFilter(5, 0, null);
 
-    final OperatorRowFilter andFilter1 = new AndRowFilter(fStrip);
-    final OperatorRowFilter andFilter2a = new AndRowFilter(fStrip, fHasCol);
-    final OperatorRowFilter andFilter2b = new AndRowFilter(fStrip, fHasCol);
-    final OperatorRowFilter andFilter2Reversed = new AndRowFilter(fHasCol, fStrip);
-    final OperatorRowFilter orFilter = new OrRowFilter(fStrip, fHasCol);
+    final OperatorColumnFilter andFilter1 = new AndColumnFilter(fColRange);
+    final OperatorColumnFilter andFilter2a = new AndColumnFilter(fColRange, fPage);
+    final OperatorColumnFilter andFilter2b = new AndColumnFilter(fColRange, fPage);
+    final OperatorColumnFilter andFilter2Reversed = new AndColumnFilter(fPage, fColRange);
+    final OperatorColumnFilter orFilter = new OrColumnFilter(fColRange, fPage);
 
     assertEquals(andFilter2a, andFilter2b);
     assertFalse(andFilter1.equals(andFilter2a));

@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -31,20 +31,23 @@ import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiColumnName;
 
 /**
- * Row filter that combines a list of row filters using some boolean logical operator.
+ * Column filter that combines a list of columns filter using some boolean logical operator.
  *
- * <p> Users should use {@link AndRowFilter} or {@link OrRowFilter} instead of this class. </p>.
+ * <p> Users should use {@link AndColumnFilter} or {@link OrColumnFilter} instead of this class.
+ * </p>.
  */
 @ApiAudience.Private
-class OperatorRowFilter extends KijiRowFilter {
-  /** The operator to use on the filter operands. */
+class OperatorColumnFilter extends KijiColumnFilter {
+  private static final long serialVersionUID = 1L;
+
+  /** Logical operator to use on the filter operands. */
   private final Operator mOperator;
 
-  /** The filters that should be used in the operands. */
-  private final KijiRowFilter[] mFilters;
+  /** Column filters to combine. */
+  private final KijiColumnFilter[] mFilters;
 
   /** Available logical operators. */
   public static enum Operator {
@@ -78,7 +81,7 @@ class OperatorRowFilter extends KijiRowFilter {
    * @param operator The operator to use for joining the filters into a logical expression.
    * @param filters The filters that should be used in the filter conjunction.
    */
-  OperatorRowFilter(Operator operator, KijiRowFilter... filters) {
+  OperatorColumnFilter(Operator operator, KijiColumnFilter[] filters) {
     Preconditions.checkArgument(filters.length > 0, "filters must be non-empty");
     mOperator = operator;
     mFilters = filters;
@@ -86,31 +89,21 @@ class OperatorRowFilter extends KijiRowFilter {
 
   /** {@inheritDoc} */
   @Override
-  public KijiDataRequest getDataRequest() {
-    KijiDataRequest dataRequest = KijiDataRequest.builder().build();
-    for (KijiRowFilter filter : mFilters) {
-      dataRequest = dataRequest.merge(filter.getDataRequest());
-    }
-    return dataRequest;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public Filter toHBaseFilter(Context context) throws IOException {
+  public Filter toHBaseFilter(KijiColumnName kijiColumnName, Context context) throws IOException {
     final List<Filter> hbaseFilters = Lists.newArrayList();
-    for (KijiRowFilter filter : mFilters) {
-      hbaseFilters.add(filter.toHBaseFilter(context));
+    for (KijiColumnFilter filter : mFilters) {
+      hbaseFilters.add(filter.toHBaseFilter(kijiColumnName, context));
     }
     return new FilterList(mOperator.getFilterListOp(), hbaseFilters);
   }
 
   /** {@inheritDoc} */
   @Override
-  public boolean equals(Object object) {
-    if ((null == object) || (object.getClass() != getClass())) {
+  public boolean equals(Object other) {
+    if ((null == other) || (other.getClass() != getClass())) {
       return false;
     }
-    final OperatorRowFilter that = (OperatorRowFilter) object;
+    final OperatorColumnFilter that = (OperatorColumnFilter) other;
     return Objects.equal(this.mOperator, that.mOperator)
         && Arrays.equals(this.mFilters, that.mFilters);
   }

@@ -25,20 +25,28 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 
 /**
- * A KijiRowFilter for a conjunction (AND operator) of other filters.
+ * Combines a list of row filters using a logical AND operator.
  *
- * <p>If a row <i>R</i> is accepted by both filter <i>A</i> and <i>B</i>, <i>R</i>
- * will be accepted by AndRowFilter(<i>A</i>, <i>B</i>).</p>
+ * <p> Column filters are applied in order and lazily. </p>
  */
 @ApiAudience.Public
 @ApiStability.Evolving
 public final class AndRowFilter extends OperatorRowFilter {
   /**
-   * Creates a new <code>AndRowFilter</code> instance.
+   * Creates a row filter that combines a list of row filters with an AND operator.
    *
-   * @param filters The filters that should be used in the filter conjunction.
+   * @param filters Row filters to combine with a logical OR.
    */
   public AndRowFilter(List<? extends KijiRowFilter> filters) {
+    super(OperatorRowFilter.Operator.AND, filters.toArray(new KijiRowFilter[filters.size()]));
+  }
+
+  /**
+   * Creates a row filter that combines a list of row filters with an AND operator.
+   *
+   * @param filters Row filters to combine with a logical AND.
+   */
+  public AndRowFilter(KijiRowFilter... filters) {
     super(OperatorRowFilter.Operator.AND, filters);
   }
 }
