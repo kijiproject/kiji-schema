@@ -430,7 +430,7 @@ public final class KijiTablePool implements Closeable {
         if (currentTime - connection.getLastAccessTime() > idleTimeout) {
           LOG.info("Closing idle KijiTable connection to {}.", connection.getName());
           iterator.remove();
-          ResourceUtils.releaseOrLog(connection.mTable);
+          ResourceUtils.releaseOrLog(connection);
           mPoolSize--;
         }
       }
