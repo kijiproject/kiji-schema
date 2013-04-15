@@ -347,7 +347,7 @@ public final class KijiTablePool implements Closeable {
    * connections in use, and a queue of available ones for re-use.
    */
   private final class Pool implements Closeable {
-    private final Queue<Connection> mConnections;
+    private final Queue<PooledKijiTable> mConnections;
     // The total pool size is the total number of tables in use and available connections.
     private int mPoolSize;
 
@@ -359,7 +359,7 @@ public final class KijiTablePool implements Closeable {
      * @param tableName The name of the table that this pool is for.
      */
     private Pool(String tableName) {
-      mConnections = new ArrayDeque<Connection>();
+      mConnections = new ArrayDeque<PooledKijiTable>();
       mPoolSize = 0;
       mTableName = tableName;
     }
@@ -373,19 +373,19 @@ public final class KijiTablePool implements Closeable {
      *     pool to open a new connection.
      */
     public synchronized KijiTable getTable() throws IOException {
-      Connection availableConnection = mConnections.poll();
+      PooledKijiTable availableConnection = mConnections.poll();
       if (null == availableConnection) {
         if (mPoolSize >= mMaxSize) {
           throw new NoCapacityException("Reached max pool size for table " + mTableName + ". There"
             + " are " + mPoolSize + " tables in the pool.");
         }
         LOG.debug("Cache miss for table {}", mTableName);
-        KijiTable tableConnection = new Connection(mTableFactory.openTable(mTableName), this);
+        KijiTable tableConnection = new PooledKijiTable(mTableFactory.openTable(mTableName), this);
         mPoolSize++;
         if (mPoolSize < mMinSize) {
           LOG.debug("Below the min pool size for table {}. Adding to the pool.", mTableName);
           while (mPoolSize < mMinSize) {
-            mConnections.add(new Connection(mTableFactory.openTable(mTableName), this));
+            mConnections.add(new PooledKijiTable(mTableFactory.openTable(mTableName), this));
             mPoolSize++;
           }
         }
@@ -406,7 +406,7 @@ public final class KijiTablePool implements Closeable {
      *
      * @param table The table to return back into the pool.
      */
-    private synchronized void returnConnection(Connection table) {
+    private synchronized void returnConnection(PooledKijiTable table) {
       mConnections.add(table);
     }
 
@@ -424,9 +424,9 @@ public final class KijiTablePool implements Closeable {
      */
     public synchronized void clean(long idleTimeout) {
       long currentTime = mClock.getTime();
-      Iterator<Connection> iterator = mConnections.iterator();
+      Iterator<PooledKijiTable> iterator = mConnections.iterator();
       while (iterator.hasNext() && mPoolSize > mMinSize) {
-        Connection connection = iterator.next();
+        PooledKijiTable connection = iterator.next();
         if (currentTime - connection.getLastAccessTime() > idleTimeout) {
           LOG.info("Closing idle KijiTable connection to {}.", connection.getName());
           iterator.remove();
@@ -457,11 +457,8 @@ public final class KijiTablePool implements Closeable {
   /**
    * A connection in the pool.  This class wraps a KijiTable, and {@link #release()} can be
    * called to return this connection to the pool.
-   *
-   * {@link #retain()} and {@link #close()} throw UnsupportedOptionException to avoid
-   * improper states.
    */
-  private static class Connection implements KijiTable {
+  private static class PooledKijiTable implements KijiTable {
     private final KijiTable mTable;
     private long mLastAccessTime;
     private Pool mPool;
@@ -474,7 +471,7 @@ public final class KijiTablePool implements Closeable {
      * @param table The table connection to wrap.
      * @param pool The pool that this Connection is associated with.
      */
-    public Connection(KijiTable table, Pool pool) {
+    public PooledKijiTable(KijiTable table, Pool pool) {
       mTable = table;
       mPool = pool;
       mLastAccessTime = pool.getClock().getTime();
