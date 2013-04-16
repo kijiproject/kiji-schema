@@ -54,7 +54,7 @@ abstract class OperatorRowFilter extends KijiRowFilter {
   /** The operator to use on the filter operands. */
   private final Operator mOperator;
 
-  /** The filters that should be used in the operands. */
+  /** The filters that should be used in the operands. May contain nulls. */
   private final KijiRowFilter[] mFilters;
 
   /** Available logical operators. */
@@ -88,6 +88,7 @@ abstract class OperatorRowFilter extends KijiRowFilter {
    *
    * @param operator The operator to use for joining the filters into a logical expression.
    * @param filters The filters that should be used in the filter conjunction.
+   *     Nulls are filtered out.
    */
   OperatorRowFilter(Operator operator, KijiRowFilter... filters) {
     Preconditions.checkArgument(filters.length > 0, "filters must be non-empty");
@@ -100,7 +101,9 @@ abstract class OperatorRowFilter extends KijiRowFilter {
   public KijiDataRequest getDataRequest() {
     KijiDataRequest dataRequest = KijiDataRequest.builder().build();
     for (KijiRowFilter filter : mFilters) {
-      dataRequest = dataRequest.merge(filter.getDataRequest());
+      if (filter != null) {
+        dataRequest = dataRequest.merge(filter.getDataRequest());
+      }
     }
     return dataRequest;
   }
@@ -110,7 +113,9 @@ abstract class OperatorRowFilter extends KijiRowFilter {
   public Filter toHBaseFilter(Context context) throws IOException {
     final List<Filter> hbaseFilters = Lists.newArrayList();
     for (KijiRowFilter filter : mFilters) {
-      hbaseFilters.add(filter.toHBaseFilter(context));
+      if (filter != null) {
+        hbaseFilters.add(filter.toHBaseFilter(context));
+      }
     }
     return new FilterList(mOperator.getFilterListOp(), hbaseFilters);
   }
@@ -148,7 +153,9 @@ abstract class OperatorRowFilter extends KijiRowFilter {
     root.put(OPERATOR_NODE, mOperator.name());
     final ArrayNode filters = root.arrayNode();
     for (KijiRowFilter filter : mFilters) {
-      filters.add(filter.toJson());
+      if (filter != null) {
+        filters.add(filter.toJson());
+      }
     }
     root.put(FILTERS_NODE, filters);
     return root;

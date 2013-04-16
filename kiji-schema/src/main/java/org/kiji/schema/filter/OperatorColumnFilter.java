@@ -46,7 +46,7 @@ class OperatorColumnFilter extends KijiColumnFilter {
   /** Logical operator to use on the filter operands. */
   private final Operator mOperator;
 
-  /** Column filters to combine. */
+  /** Column filters to combine. May contain nulls. */
   private final KijiColumnFilter[] mFilters;
 
   /** Available logical operators. */
@@ -80,6 +80,7 @@ class OperatorColumnFilter extends KijiColumnFilter {
    *
    * @param operator The operator to use for joining the filters into a logical expression.
    * @param filters The filters that should be used in the filter conjunction.
+   *     Nulls are filtered out.
    */
   OperatorColumnFilter(Operator operator, KijiColumnFilter[] filters) {
     Preconditions.checkArgument(filters.length > 0, "filters must be non-empty");
@@ -92,7 +93,9 @@ class OperatorColumnFilter extends KijiColumnFilter {
   public Filter toHBaseFilter(KijiColumnName kijiColumnName, Context context) throws IOException {
     final List<Filter> hbaseFilters = Lists.newArrayList();
     for (KijiColumnFilter filter : mFilters) {
-      hbaseFilters.add(filter.toHBaseFilter(kijiColumnName, context));
+      if (filter != null) {
+        hbaseFilters.add(filter.toHBaseFilter(kijiColumnName, context));
+      }
     }
     return new FilterList(mOperator.getFilterListOp(), hbaseFilters);
   }

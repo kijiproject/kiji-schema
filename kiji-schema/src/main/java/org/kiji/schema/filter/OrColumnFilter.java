@@ -38,8 +38,9 @@ public final class OrColumnFilter extends OperatorColumnFilter {
    * Creates a column filter that combines a list of column filters with a logical OR operator.
    *
    * @param filters Column filters to combine with a logical OR.
+   *     Nulls are filtered out.
    */
-  public OrColumnFilter(List<? extends KijiColumnFilter> filters) {
+  OrColumnFilter(List<? extends KijiColumnFilter> filters) {
     super(Operator.OR, filters.toArray(new KijiColumnFilter[filters.size()]));
   }
 
@@ -47,8 +48,9 @@ public final class OrColumnFilter extends OperatorColumnFilter {
    * Creates a column filter that combines a list of column filters with a logical OR operator.
    *
    * @param filters Column filters to combine with a logical OR.
+   *     Nulls are filtered out.
    */
-  public OrColumnFilter(KijiColumnFilter... filters) {
+  OrColumnFilter(KijiColumnFilter... filters) {
     super(Operator.OR, filters);
   }
 }

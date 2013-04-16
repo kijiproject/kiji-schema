@@ -38,7 +38,10 @@ public final class OrRowFilter extends OperatorRowFilter {
    * Creates a row filter that combines a list of row filters with an OR operator.
    *
    * @param filters Row filters to combine with a logical OR.
+   *     Nulls are filtered out.
+   * @deprecated Use {@link Filters#or(KijiRowFilter...)}.
    */
+  @Deprecated
   public OrRowFilter(List<? extends KijiRowFilter> filters) {
     super(OperatorRowFilter.Operator.OR, filters.toArray(new KijiRowFilter[filters.size()]));
   }
@@ -47,7 +50,10 @@ public final class OrRowFilter extends OperatorRowFilter {
    * Creates a row filter that combines a list of row filters with an OR operator.
    *
    * @param filters Row filters to combine with a logical OR.
+   *     Nulls are filtered out.
+   * @deprecated Use {@link Filters#or(KijiRowFilter...)}.
    */
+  @Deprecated
   public OrRowFilter(KijiRowFilter... filters) {
     super(OperatorRowFilter.Operator.OR, filters);
   }

@@ -38,7 +38,10 @@ public final class AndRowFilter extends OperatorRowFilter {
    * Creates a row filter that combines a list of row filters with an AND operator.
    *
    * @param filters Row filters to combine with a logical OR.
+   *     Nulls are filtered out.
+   * @deprecated Use {@link Filters#and(KijiRowFilter...)}.
    */
+  @Deprecated
   public AndRowFilter(List<? extends KijiRowFilter> filters) {
     super(OperatorRowFilter.Operator.AND, filters.toArray(new KijiRowFilter[filters.size()]));
   }
@@ -47,7 +50,10 @@ public final class AndRowFilter extends OperatorRowFilter {
    * Creates a row filter that combines a list of row filters with an AND operator.
    *
    * @param filters Row filters to combine with a logical AND.
+   *     Nulls are filtered out.
+   * @deprecated Use {@link Filters#and(KijiRowFilter...)}.
    */
+  @Deprecated
   public AndRowFilter(KijiRowFilter... filters) {
     super(OperatorRowFilter.Operator.AND, filters);
   }

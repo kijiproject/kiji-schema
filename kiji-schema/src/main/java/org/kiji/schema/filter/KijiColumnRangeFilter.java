@@ -24,15 +24,15 @@ import java.io.IOException;
 import com.google.common.base.Objects;
 import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.filter.Filter;
-import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.NoSuchColumnException;
 
-/**
- * Column filter that bounds the range of returned qualifiers.
- */
-@ApiAudience.Private
+/** Column filter that bounds the range of returned qualifiers within a map-type family. */
+@ApiAudience.Public
+@ApiStability.Experimental
 public class KijiColumnRangeFilter extends KijiColumnFilter {
   private static final long serialVersionUID = 1L;
 
@@ -103,12 +103,30 @@ public class KijiColumnRangeFilter extends KijiColumnFilter {
     return new KijiColumnRangeFilter(null, false, qualifier, true);
   }
 
+  /**
+   * Gets the UTF-8 encoded byte representation of a Kiji column qualifier, potentially null.
+   *
+   * @param context Column filter context.
+   * @param family Kiji column family.
+   * @param qualifier Kiji column qualifier, potentially null.
+   * @return the HBase qualifier for the specified Kiji column, or null.
+   * @throws NoSuchColumnException if there is no such column.
+   */
+  private static byte[] toHBaseQualifierBytesOrNull(
+      Context context, String family, String qualifier) throws NoSuchColumnException {
+    if (qualifier == null) {
+      return null;
+    }
+    return context.getHBaseColumnName(new KijiColumnName(family, qualifier)).getQualifier();
+  }
+
   /** {@inheritDoc} */
   @Override
   public Filter toHBaseFilter(KijiColumnName kijiColumnName, Context context) throws IOException {
+    final String family = kijiColumnName.getFamily();
     return new ColumnRangeFilter(
-        Bytes.toBytes(mMinQualifier), mIncludeMin,
-        Bytes.toBytes(mMaxQualifier), mIncludeMax);
+        toHBaseQualifierBytesOrNull(context, family, mMinQualifier), mIncludeMin,
+        toHBaseQualifierBytesOrNull(context, family, mMaxQualifier), mIncludeMax);
   }
 
   /** {@inheritDoc} */

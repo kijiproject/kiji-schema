@@ -38,8 +38,9 @@ public final class AndColumnFilter extends OperatorColumnFilter {
    * Creates a column filter that combines a list of column filters with an AND operator.
    *
    * @param filters Column filters to combine with a logical AND.
+   *     Nulls are filtered out.
    */
-  public AndColumnFilter(List<? extends KijiColumnFilter> filters) {
+  AndColumnFilter(List<? extends KijiColumnFilter> filters) {
     super(Operator.AND, filters.toArray(new KijiColumnFilter[filters.size()]));
   }
 
@@ -47,8 +48,9 @@ public final class AndColumnFilter extends OperatorColumnFilter {
    * Creates a column filter that combines a list of column filters with an AND operator.
    *
    * @param filters Column filters to combine with a logical AND.
+   *     Nulls are filtered out.
    */
-  public AndColumnFilter(KijiColumnFilter... filters) {
+  AndColumnFilter(KijiColumnFilter... filters) {
     super(Operator.AND, filters);
   }
 }
