@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.0.2
+  * SCHEMA-303. Allows proper serialization of row filters.
+      Contributed by Jeff Kolesky (jeff.kolesky@gmail.com).
 
 Version 1.0.1
   * SCHEMA-254. Adds cellList methods to KijiRowData.
