@@ -22,17 +22,27 @@ package org.kiji.schema.filter;
 import java.io.IOException;
 
 import com.google.common.base.Objects;
+
+import org.apache.avro.Schema;
+
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.filter.SkipFilter;
+
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.node.JsonNodeFactory;
+import org.codehaus.jackson.node.ObjectNode;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.DecodedCell;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.util.FromJson;
+import org.kiji.schema.util.ToJson;
 
 /**
  * A KijiRowFilter that only includes rows where a specific column's most recent value
@@ -44,6 +54,21 @@ import org.kiji.schema.hbase.HBaseColumnName;
 @ApiAudience.Public
 @ApiStability.Evolving
 public final class ColumnValueEqualsRowFilter extends KijiRowFilter {
+  /** The name of the family node. */
+  private static final String FAMILY_NODE = "family";
+
+  /** The name of the qualifier node. */
+  private static final String QUALIFIER_NODE = "qualifier";
+
+  /** The name of the value node. */
+  private static final String VALUE_NODE = "value";
+
+  /** The name of the writer schema node. */
+  private static final String SCHEMA_NODE = "writerSchema";
+
+  /** The name of the data node. */
+  private static final String DATA_NODE = "data";
+
   /** The name of the column family to check for data in. */
   private final String mFamily;
 
@@ -120,5 +145,49 @@ public final class ColumnValueEqualsRowFilter extends KijiRowFilter {
   @Override
   public int hashCode() {
     return Objects.hashCode(mFamily, mQualifier, mValue);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected JsonNode toJsonNode() {
+    final ObjectNode root = JsonNodeFactory.instance.objectNode();
+    root.put(FAMILY_NODE, mFamily);
+    root.put(QUALIFIER_NODE, mQualifier);
+    final ObjectNode value = root.with(VALUE_NODE);
+    // Schema's documentation for toString says it is rendered as JSON.
+    value.put(SCHEMA_NODE, mValue.getWriterSchema().toString());
+    try {
+      value.put(DATA_NODE, ToJson.toAvroJsonString(mValue.getData(), mValue.getWriterSchema()));
+    } catch (IOException ioe) {
+      throw new KijiIOException(ioe);
+    }
+    return root;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected Class<? extends KijiRowFilterDeserializer> getDeserializerClass() {
+    return ColumnValueEqualsRowFilterDeserializer.class;
+  }
+
+  /** Deserializes {@code ColumnValueEqualsRowFilter}. */
+  public static final class ColumnValueEqualsRowFilterDeserializer
+      implements KijiRowFilterDeserializer {
+    /** {@inheritDoc} */
+    @Override
+    public KijiRowFilter createFromJson(JsonNode root) {
+      final String family = root.path(FAMILY_NODE).getTextValue();
+      final String qualifier = root.path(QUALIFIER_NODE).getTextValue();
+      final String schema = root.path(VALUE_NODE).path(SCHEMA_NODE).getTextValue();
+      final Schema writerSchema = (new Schema.Parser()).parse(schema);
+      final String data = root.path(VALUE_NODE).path(DATA_NODE).getTextValue();
+      try {
+        final DecodedCell cell = new DecodedCell(writerSchema,
+            FromJson.fromAvroJsonString(data, writerSchema));
+        return new ColumnValueEqualsRowFilter(family, qualifier, cell);
+      } catch (IOException ioe) {
+        throw new KijiIOException(ioe);
+      }
+    }
   }
 }

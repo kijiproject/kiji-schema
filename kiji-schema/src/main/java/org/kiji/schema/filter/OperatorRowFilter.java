@@ -30,6 +30,11 @@ import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.node.ArrayNode;
+import org.codehaus.jackson.node.JsonNodeFactory;
+import org.codehaus.jackson.node.ObjectNode;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiDataRequest;
 
@@ -39,7 +44,13 @@ import org.kiji.schema.KijiDataRequest;
  * <p> Users should use {@link AndRowFilter} or {@link OrRowFilter} instead of this class. </p>.
  */
 @ApiAudience.Private
-class OperatorRowFilter extends KijiRowFilter {
+abstract class OperatorRowFilter extends KijiRowFilter {
+  /** The name of the node holding the operator. */
+  private static final String OPERATOR_NODE = "operator";
+
+  /** The name of the node holding the filters. */
+  private static final String FILTERS_NODE = "filters";
+
   /** The operator to use on the filter operands. */
   private final Operator mOperator;
 
@@ -128,5 +139,38 @@ class OperatorRowFilter extends KijiRowFilter {
         .add("operator", mOperator)
         .add("filters", mFilters)
         .toString();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected JsonNode toJsonNode() {
+    final ObjectNode root = JsonNodeFactory.instance.objectNode();
+    root.put(OPERATOR_NODE, mOperator.name());
+    final ArrayNode filters = root.arrayNode();
+    for (KijiRowFilter filter : mFilters) {
+      filters.add(filter.toJson());
+    }
+    root.put(FILTERS_NODE, filters);
+    return root;
+  }
+
+  /**
+   * Deserializes the filters that are internal to this filter.
+   *
+   * @param root The {@code JsonNode} that holds the internal fields for this
+   *        filter
+   * @return A list of the filters that are internal to this filter
+   */
+  protected static List<KijiRowFilter> parseFilterList(JsonNode root) {
+    final JsonNode filtersNode = root.path(FILTERS_NODE);
+    Preconditions.checkArgument(filtersNode.isArray(),
+        "Node 'filters' is not an array: %s", filtersNode);
+    final List<KijiRowFilter> filters = Lists.newArrayList();
+    for (JsonNode filterNode : filtersNode) {
+      Preconditions.checkArgument(filterNode.isObject(),
+          "filter node is not an object: %s", filterNode);
+      filters.add(KijiRowFilter.toFilter(filterNode));
+    }
+    return filters;
   }
 }

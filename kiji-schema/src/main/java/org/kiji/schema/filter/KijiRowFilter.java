@@ -23,12 +23,18 @@ import java.io.IOException;
 
 import org.apache.hadoop.hbase.filter.Filter;
 
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.node.JsonNodeFactory;
+import org.codehaus.jackson.node.ObjectNode;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.schema.DecodedCell;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 
@@ -42,6 +48,56 @@ import org.kiji.schema.hbase.HBaseColumnName;
 @ApiStability.Evolving
 @Inheritance.Extensible
 public abstract class KijiRowFilter {
+  /** The JSON node name used for the deserializer class. */
+  private static final String DESERIALIZER_CLASS_NODE = "filterDeserializerClass";
+
+  /** The JSON node name used for the filter fields. */
+  private static final String FILTER_NODE = "filter";
+
+  /**
+   * Deserialize a {@code KijiRowFilter} from JSON that has been constructed
+   * using {@link #toJson}.
+   *
+   * @param json A JSON String created by {@link #toJson}
+   * @return A {@code KijiRowFilter} represented by the JSON
+   * @throws KijiIOException in case the json cannot be read or the filter
+   *     cannot be instantiated
+   */
+  public static KijiRowFilter toFilter(String json) {
+    final ObjectMapper mapper = new ObjectMapper();
+    try {
+      final JsonNode root = mapper.readTree(json);
+      return toFilter(root);
+    } catch (IOException ioe) {
+      throw new KijiIOException(ioe);
+    }
+  }
+
+  /**
+   * Deserialize a {@code KijiRowFilter} from JSON that has been constructed
+   * using {@link #toJson}.
+   *
+   * @param root A {@code JsonNode} created by {@link #toJson}
+   * @return A {@code KijiRowFilter} represented by the JSON
+   * @throws KijiIOException in case the filter cannot be instantiated
+   */
+  public static KijiRowFilter toFilter(JsonNode root) {
+    final String filterDeserializerClassName = root.path(DESERIALIZER_CLASS_NODE).getTextValue();
+    try {
+      final Class filterDeserializerClass = Class.forName(filterDeserializerClassName);
+      final KijiRowFilterDeserializer filterDeserializer =
+          (KijiRowFilterDeserializer) filterDeserializerClass.newInstance();
+      final KijiRowFilter filter = filterDeserializer.createFromJson(root.path(FILTER_NODE));
+      return filter;
+    } catch (ClassNotFoundException cnfe) {
+      throw new KijiIOException(cnfe);
+    } catch (IllegalAccessException iae) {
+      throw new KijiIOException(iae);
+    } catch (InstantiationException ie) {
+      throw new KijiIOException(ie);
+    }
+  }
+
   /**
    * A helper class for converting between Kiji objects and their HBase counterparts.
    */
@@ -124,4 +180,37 @@ public abstract class KijiRowFilter {
    * @throws IOException If there is an error.
    */
   public abstract Filter toHBaseFilter(Context context) throws IOException;
+
+  /**
+   * Constructs a {@code JsonNode} that describes the filter so that it may be
+   * serialized.
+   *
+   * @return A {@code JsonNode} describing the filter
+   */
+  public final JsonNode toJson() {
+    ObjectNode root = JsonNodeFactory.instance.objectNode();
+    root.put(DESERIALIZER_CLASS_NODE, getDeserializerClass().getName());
+    root.put(FILTER_NODE, toJsonNode());
+    return root;
+  }
+
+  /**
+   * Constructs a {@code JsonNode} that holds the data structures specific to
+   * the filter.  Implementing classes should include in the return node only
+   * their own fields.
+   *
+   * @return A {@code JsonNode} containing the filter's fields
+   */
+  protected abstract JsonNode toJsonNode();
+
+  /**
+   * Returns {@code Class} that is responsible for deserializing the filter.
+   * Subclasses that want to have non-default constructors with final fields can
+   * define a different class to deserialize it; typically the deserializer
+   * class will be a static inner class.
+   *
+   * @return a {@code KijiRowFilterDeserializer} class that will be responsible
+   *     for deserializing this filter
+   */
+  protected abstract Class<? extends KijiRowFilterDeserializer> getDeserializerClass();
 }

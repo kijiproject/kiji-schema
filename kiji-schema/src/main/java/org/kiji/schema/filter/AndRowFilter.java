@@ -21,6 +21,8 @@ package org.kiji.schema.filter;
 
 import java.util.List;
 
+import org.codehaus.jackson.JsonNode;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 
@@ -48,5 +50,21 @@ public final class AndRowFilter extends OperatorRowFilter {
    */
   public AndRowFilter(KijiRowFilter... filters) {
     super(OperatorRowFilter.Operator.AND, filters);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected Class<? extends KijiRowFilterDeserializer> getDeserializerClass() {
+    return AndRowFilterDeserializer.class;
+  }
+
+  /** Deserializes {@code AndRowFilter}. */
+  public static final class AndRowFilterDeserializer implements KijiRowFilterDeserializer {
+    /** {@inheritDoc} */
+    @Override
+    public KijiRowFilter createFromJson(JsonNode root) {
+      final List<KijiRowFilter> filters = OperatorRowFilter.parseFilterList(root);
+      return new AndRowFilter(filters);
+    }
   }
 }

@@ -25,6 +25,9 @@ import com.google.common.base.Objects;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.node.JsonNodeFactory;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiDataRequest;
@@ -68,5 +71,26 @@ public final class StripValueRowFilter extends KijiRowFilter {
   @Override
   public String toString() {
     return Objects.toStringHelper(StripValueRowFilter.class).toString();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected JsonNode toJsonNode() {
+    return JsonNodeFactory.instance.nullNode();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected Class<? extends KijiRowFilterDeserializer> getDeserializerClass() {
+    return StripValueRowFilterDeserializer.class;
+  }
+
+  /** Deserializes {@code StripValueRowFilter}. */
+  public static class StripValueRowFilterDeserializer implements KijiRowFilterDeserializer {
+    /** {@inheritDoc} */
+    @Override
+    public KijiRowFilter createFromJson(JsonNode root) {
+      return new StripValueRowFilter();
+    }
   }
 }

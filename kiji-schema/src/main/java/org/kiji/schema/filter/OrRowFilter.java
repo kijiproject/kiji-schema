@@ -21,6 +21,8 @@ package org.kiji.schema.filter;
 
 import java.util.List;
 
+import org.codehaus.jackson.JsonNode;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 
@@ -48,5 +50,21 @@ public final class OrRowFilter extends OperatorRowFilter {
    */
   public OrRowFilter(KijiRowFilter... filters) {
     super(OperatorRowFilter.Operator.OR, filters);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected Class<? extends KijiRowFilterDeserializer> getDeserializerClass() {
+    return OrRowFilterDeserializer.class;
+  }
+
+  /** Deserializes {@code OrRowFilter}. */
+  public static final class OrRowFilterDeserializer implements KijiRowFilterDeserializer {
+    /** {@inheritDoc} */
+    @Override
+    public KijiRowFilter createFromJson(JsonNode root) {
+      final List<KijiRowFilter> filters = OperatorRowFilter.parseFilterList(root);
+      return new OrRowFilter(filters);
+    }
   }
 }

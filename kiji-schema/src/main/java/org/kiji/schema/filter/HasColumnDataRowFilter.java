@@ -22,9 +22,14 @@ package org.kiji.schema.filter;
 import java.io.IOException;
 
 import com.google.common.base.Objects;
+
 import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
+
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.node.JsonNodeFactory;
+import org.codehaus.jackson.node.ObjectNode;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
@@ -39,6 +44,12 @@ import org.kiji.schema.hbase.HBaseColumnName;
 @ApiAudience.Public
 @ApiStability.Evolving
 public final class HasColumnDataRowFilter extends KijiRowFilter {
+  /** The name of the family node. */
+  private static final String FAMILY_NODE = "family";
+
+  /** The name of the qualifier node. */
+  private static final String QUALIFIER_NODE = "qualifier";
+
   /** The name of the column family to check for data in. */
   private final String mFamily;
 
@@ -125,5 +136,32 @@ public final class HasColumnDataRowFilter extends KijiRowFilter {
   @Override
   public int hashCode() {
     return Objects.hashCode(mFamily, mQualifier);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected JsonNode toJsonNode() {
+    final ObjectNode root = JsonNodeFactory.instance.objectNode();
+    root.put(FAMILY_NODE, mFamily);
+    root.put(QUALIFIER_NODE, mQualifier);
+    return root;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected Class<? extends KijiRowFilterDeserializer> getDeserializerClass() {
+    return HasColumnDataRowFilterDeserializer.class;
+  }
+
+  /** Deserializes {@code HasColumnDataRowFilter}. */
+  public static final class HasColumnDataRowFilterDeserializer
+      implements KijiRowFilterDeserializer {
+    /** {@inheritDoc} */
+    @Override
+    public KijiRowFilter createFromJson(JsonNode root) {
+      final String family = root.path(FAMILY_NODE).getTextValue();
+      final String qualifier = root.path(QUALIFIER_NODE).getTextValue();
+      return new HasColumnDataRowFilter(family, qualifier);
+    }
   }
 }

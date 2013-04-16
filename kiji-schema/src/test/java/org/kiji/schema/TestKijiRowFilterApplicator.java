@@ -31,11 +31,16 @@ import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+
+import org.codehaus.jackson.JsonNode;
+import org.codehaus.jackson.node.JsonNodeFactory;
+
 import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.filter.KijiRowFilter;
 import org.kiji.schema.filter.KijiRowFilterApplicator;
+import org.kiji.schema.filter.KijiRowFilterDeserializer;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.HBaseDataRequestAdapter;
@@ -78,7 +83,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
    * A dumb kiji row filter that doesn't return anything useful, but makes sure that we
    * can use the context object to translate between kiji objects and their hbase counterparts.
    */
-  public class MyKijiRowFilter extends KijiRowFilter {
+  public class MyKijiRowFilter extends KijiRowFilter implements KijiRowFilterDeserializer {
     @Override
     public KijiDataRequest getDataRequest() {
       return KijiDataRequest.create("family", "new");
@@ -104,6 +109,21 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
           context.getHBaseCellValue(column, kijiCell));
 
       return mHBaseFilter;
+    }
+
+    @Override
+    protected JsonNode toJsonNode() {
+      return JsonNodeFactory.instance.nullNode();
+    }
+
+    @Override
+    protected Class<? extends KijiRowFilterDeserializer> getDeserializerClass() {
+      return getClass();
+    }
+
+    @Override
+    public KijiRowFilter createFromJson(JsonNode root) {
+      return this;
     }
   }
 
