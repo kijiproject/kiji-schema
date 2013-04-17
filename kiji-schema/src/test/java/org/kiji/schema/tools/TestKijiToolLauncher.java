@@ -21,6 +21,7 @@ package org.kiji.schema.tools;
 
 import static org.junit.Assert.*;
 
+import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
 
 public class TestKijiToolLauncher {
@@ -39,5 +40,22 @@ public class TestKijiToolLauncher {
   public void testGetMissingTool() {
     KijiTool tool = new KijiToolLauncher().getToolForName("this-tool/can't1`exist");
     assertNull(tool);
+  }
+
+  @Test
+  public void testSetsOptionsParsedFlag() throws Exception {
+    Configuration conf = new Configuration();
+
+    assertFalse(conf.getBoolean("mapred.used.genericoptionsparser", false));
+    assertFalse(conf.getBoolean("mapreduce.client.genericoptionsparser.used", false));
+
+    KijiToolLauncher launcher = new KijiToolLauncher();
+    launcher.setConf(conf);
+    KijiTool tool = launcher.getToolForName("help");
+    launcher.run(tool, new String[0]);
+
+    // Make sure Hadoop 1.x and Hadoop 2.x flags are both enabled by the launcher.
+    assertTrue(conf.getBoolean("mapred.used.genericoptionsparser", false));
+    assertTrue(conf.getBoolean("mapreduce.client.genericoptionsparser.used", false));
   }
 }
