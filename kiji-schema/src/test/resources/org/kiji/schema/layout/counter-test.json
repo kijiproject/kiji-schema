@@ -18,11 +18,7 @@
  */
 {
   name : "user",
-  keys_format : {
-    encoding : "HASH",
-    hash_type : "MD5",
-    hash_size : 16
-  },
+  keys_format : {'org.kiji.schema.avro.RowKeyFormat2': { encoding : "RAW" }},
   locality_groups : [ {
     name : "default",
     description : "Default data stored forever on disk.",
@@ -57,5 +53,5 @@
       }
     } ]
   } ],
-  version : "layout-1.0"
+  version : "layout-1.1.0"
 }

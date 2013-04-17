@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
-import org.kiji.schema.util.ResourceUtils;
 
 public class TestHBaseKijiBufferedWriter extends KijiClientTest {
   private static final Logger LOG =
@@ -46,7 +45,7 @@ public class TestHBaseKijiBufferedWriter extends KijiClientTest {
   private KijiTableReader mReader;
 
   @Before
-  public void setupEnvironment() throws Exception {
+  public final void setupEnvironment() throws Exception {
     // Get the test table layouts.
     final KijiTableLayout layout = KijiTableLayout.newLayout(
         KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST));
@@ -70,10 +69,10 @@ public class TestHBaseKijiBufferedWriter extends KijiClientTest {
   }
 
   @After
-  public void cleanupEnvironment() throws IOException {
-    ResourceUtils.closeOrLog(mBufferedWriter);
-    ResourceUtils.closeOrLog(mReader);
-    ResourceUtils.releaseOrLog(mTable);
+  public final void cleanupEnvironment() throws IOException {
+    mBufferedWriter.close();
+    mReader.close();
+    mTable.release();
     mKiji.release();
   }
 
