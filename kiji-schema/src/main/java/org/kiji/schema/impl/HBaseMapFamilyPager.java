@@ -19,13 +19,11 @@
 
 package org.kiji.schema.impl;
 
-import java.io.Closeable;
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.base.Preconditions;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
@@ -38,26 +36,36 @@ import org.kiji.schema.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.KijiIOException;
+import org.kiji.schema.KijiPager;
+import org.kiji.schema.KijiRowData;
 import org.kiji.schema.filter.Filters;
 import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.filter.KijiColumnRangeFilter;
 import org.kiji.schema.filter.KijiPaginationFilter;
 import org.kiji.schema.filter.StripValueColumnFilter;
-import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.Debug;
 
 /**
- * Pages through the many qualifiers of a map-type family.
+ * HBase implementation of KijiPager for map-type families.
  *
  * <p>
- *   The max-versions parameter on a map-type family applies on a per-qualifier basis.
- *   This does not limit the total number of versions returned for the entire map-type family.
+ *   This pager lists the qualifiers in the map-type family and nothing else.
+ *   In particular, the cells content is not retrieved.
  * </p>
+ *
+ * <p>
+ *   This pager conforms to the KijiPager interface, in order to implement
+ *   {@link KijiRowData#getPager(String)}.
+ *   More straightforward interfaces are available using {@link HBaseQualifierPager} and
+ *   {@link HBaseQualifierIterator}.
+ * </p>
+ *
+ * @see HBaseQualifierPager
+ * @see HBaseQualifierIterator
  */
 @ApiAudience.Private
-public final class HBaseQualifierPager implements Iterator<String[]>, Closeable {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseQualifierPager.class);
+public final class HBaseMapFamilyPager implements KijiPager {
+  private static final Logger LOG = LoggerFactory.getLogger(HBaseMapFamilyPager.class);
 
   /** Entity ID of the row being paged through. */
   private final EntityId mEntityId;
@@ -74,8 +82,8 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
   /** Column data request for the map-type family to page through. */
   private final KijiDataRequest.Column mColumnRequest;
 
-  /** Converts HBase and Kiji column names. */
-  private final ColumnNameTranslator mColumnNameTranslator;
+  /** Flag to determine if the pager is open or closed. */
+  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
 
   /** True only if there is another page of data to read through {@link #next()}. */
   private boolean mHasNext;
@@ -87,7 +95,11 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
   private String mMinQualifier = null;
 
   /**
-   * Initializes a qualifier pager.
+   * Initializes a pager for a map-type family.
+   *
+   * <p>
+   *   To get a pager for a column with paging enabled, use {@link KijiRowData#getPager(String)}.
+   * </p>
    *
    * @param entityId The entityId of the row.
    * @param dataRequest The requested data.
@@ -95,7 +107,7 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
    * @param family Iterate through the qualifiers from this map-type family.
    * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the specified family.
    */
-  public HBaseQualifierPager(
+  HBaseMapFamilyPager(
       EntityId entityId,
       KijiDataRequest dataRequest,
       HBaseKijiTable table,
@@ -117,10 +129,10 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
     mTable = table;
     mHasNext = true;  // there might be no page to read, but we don't know until we issue an RPC
 
-    mColumnNameTranslator = new ColumnNameTranslator(mTable.getLayout());
-
     // Only retain the table if everything else ran fine:
     mTable.retain();
+
+    mIsOpen.set(true);
   }
 
   /** {@inheritDoc} */
@@ -131,17 +143,13 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
 
   /** {@inheritDoc} */
   @Override
-  public String[] next() {
+  public KijiRowData next() {
     return next(mColumnRequest.getPageSize());
   }
 
-  /**
-   * Fetches another page of qualifiers.
-   *
-   * @param pageSize Maximum number of qualifiers to retrieve in the page.
-   * @return the next page of qualifiers.
-   */
-  public String[] next(int pageSize) {
+  /** {@inheritDoc} */
+  @Override
+  public KijiRowData next(int pageSize) {
     if (!mHasNext) {
       throw new NoSuchElementException();
     }
@@ -176,14 +184,7 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
       final Result result = mTable.getHTable().get(hbaseGet);
       LOG.debug("Got {} cells over {} requested", result.size(), pageSize);
 
-      final KeyValue[] kvs = result.raw();
-      final String[] qualifiers = new String[kvs.length];
-      for (int i = 0; i < kvs.length; ++i) {
-        final HBaseColumnName hbaseColumn =
-            new HBaseColumnName(kvs[i].getFamily(), kvs[i].getQualifier());
-        final KijiColumnName kijiColumn = mColumnNameTranslator.toKijiColumnName(hbaseColumn);
-        qualifiers[i] = kijiColumn.getQualifier();
-      }
+      final KijiRowData page = new HBaseKijiRowData(mEntityId, nextPageDataRequest, mTable, result);
 
       // There is an HBase bug that leads to less KeyValue being returned than expected.
       // An empty result appears to be a reliable way to detect the end of the iteration.
@@ -191,17 +192,17 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
         mHasNext = false;
       } else {
         // Update the low qualifier bound for the next iteration:
-        mMinQualifier = qualifiers[qualifiers.length - 1];
+        mMinQualifier = page.getQualifiers(mFamily.getFamily()).last();
       }
 
-      return qualifiers;
+      return page;
 
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
   }
 
-  /** {@inheritDoc} */
+   /** {@inheritDoc} */
   @Override
   public void remove() {
     throw new UnsupportedOperationException("KijiPager.remove() is not supported.");
@@ -210,6 +211,8 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
+    final boolean closing = mIsOpen.compareAndSet(true, false);
+    Preconditions.checkState(closing, "Cannot close pager: pager is not open.");
     mTable.release();
   }
 }

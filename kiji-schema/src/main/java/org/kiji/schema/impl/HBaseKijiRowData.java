@@ -800,6 +800,6 @@ public final class HBaseKijiRowData implements KijiRowData {
         + "The column family '%s' is a group type column family. "
         + "Please use the getPager(String family, String qualifier) method.",
         family);
-    return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable, kijiFamily);
+    return new HBaseMapFamilyPager(mEntityId, mDataRequest, mTable, kijiFamily);
   }
 }

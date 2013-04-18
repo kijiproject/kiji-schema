@@ -22,9 +22,9 @@ package org.kiji.schema.filter;
 import java.io.IOException;
 
 import com.google.common.base.Objects;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
-
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.node.JsonNodeFactory;
 
@@ -41,6 +41,11 @@ import org.kiji.schema.KijiDataRequest;
 @ApiAudience.Public
 @ApiStability.Evolving
 public final class StripValueRowFilter extends KijiRowFilter {
+
+  /** All StripValueRowFilter instances are the same: generate hash-code ahead of time. */
+  private static final int HASH_CODE =
+      new HashCodeBuilder().append(StripValueRowFilter.class).toHashCode();
+
   /** {@inheritDoc} */
   @Override
   public KijiDataRequest getDataRequest() {
@@ -63,8 +68,7 @@ public final class StripValueRowFilter extends KijiRowFilter {
   /** {@inheritDoc} */
   @Override
   public int hashCode() {
-    // All StripValueRowFilters are the same.
-    return 358912958;
+    return HASH_CODE;
   }
 
   /** {@inheritDoc} */

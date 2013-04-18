@@ -62,6 +62,7 @@ import org.kiji.annotations.Inheritance;
  *         // ...
  *       }
  *     } finally {
+ *       // Always close pagers:
  *       pager.close();
  *     }
  *   </pre>
@@ -71,13 +72,16 @@ import org.kiji.annotations.Inheritance;
  * <ul>
  *   <li> The page size in an upper bound to the number of cells retrieved in a page.
  *     Concretely, a page of cells returned by {@link KijiPager#next()} or
- *     {@link KijiPager#next(int)} may contain less cells than the page size, even if there are
- *     more pages coming.
+ *     {@link KijiPager#next(int)} may contain less cells than the page size,
+ *     even if there are more pages coming.
+ *     In particular, there may be empty pages even when more pages follow.
+ *     Use {@link KijiPager#hasNext()} to determine if more pages follow.
  *   </li>
- *   <li> When paging over a map type family, the maximum number of versions configured through
- *     {@link ColumnsDef#withMaxVersions(int)} applies to each qualifier individually.
- *     In particular, the maximum number of versions does <b>not</b> bound the total number of
- *     qualifiers or of cells returned for the entire map-type family.
+ *   <li> When paging over a map-type family, retrieved pages only contain the qualifiers
+ *     in the family, and no cell content.
+ *     You may retrieve the cell content with a get request with the qualifiers from the pager.
+ *     If you need to retrieve many versions for all these qualifier, you may combine the
+ *     map-family pager with per-qualifier pagers.
  *   </li>
  * </ul>
  */
@@ -90,8 +94,9 @@ public interface KijiPager extends Iterator<KijiRowData>, Closeable {
    *
    * <ul>
    *   <li> The page size is an upper bound to the number of cells retrieved from the table. </li>
-   *   <li> The page may contain less cells than the specified page size.
+   *   <li> The page may contain fewer cells than the specified page size.
    *        In particular, the page can sometimes be empty, even though more pages follow. </li>
+   *        Use {@link KijiPager#hasNext()} to determine if more pages follow.
    * </ul>
    *
    * @return the next page of cells as a {@link KijiRowData}.
@@ -106,6 +111,7 @@ public interface KijiPager extends Iterator<KijiRowData>, Closeable {
    *   <li> The page size is an upper bound to the number of cells retrieved from the table. </li>
    *   <li> The page may contain less cells than the specified page size.
    *        In particular, the page can sometimes be empty, even though more pages follow. </li>
+   *        Use {@link KijiPager#hasNext()} to determine if more pages follow.
    * </ul>
    *
    * @param pageSize The maximum number of cells to retrieve for this page.

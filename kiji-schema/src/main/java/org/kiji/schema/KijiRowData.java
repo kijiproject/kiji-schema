@@ -298,12 +298,20 @@ public interface KijiRowData {
   /**
    * Gets a KijiPager for the specified column.
    *
+   * <p>
+   *   The pager for a fully-qualified column allows one to list the versions of the column.
+   *   Versions are retrieved in order (most recent first), one page at a time and include
+   *   the cell content for each version (ie. for each timestamp).
+   * </p>
+   * <p> See {@link KijiPager} for more details on pagers. </p>
+   *
    * @param family Desired column family.
    * @param qualifier Desired column qualifier.
    * @return A pager for the specified column.
    * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the
    *     specified column.
-   * @see KijiPager For more information about paging.
+   *
+   * @see KijiPager
    */
   KijiPager getPager(String family, String qualifier)
       throws KijiColumnPagingNotEnabledException;
@@ -311,11 +319,19 @@ public interface KijiRowData {
   /**
    * Gets a KijiPager for the specified column family.
    *
+   * <p>
+   *   The pager for a column family allows one to list the qualifiers in the column family.
+   *   Qualifiers are retrieved in order, one page at a time.
+   *   No actual cell content is retrieved when using this pager.
+   * </p>
+   * <p> See {@link KijiPager} for more details on pagers. </p>
+   *
    * @param family Desired map type column family.
    * @return A pager for the specified column.
    * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the
    *     specified column family.
-   * @see KijiPager For more information about paging.
+   *
+   * @see KijiPager
    */
   KijiPager getPager(String family)
       throws KijiColumnPagingNotEnabledException;
