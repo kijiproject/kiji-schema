@@ -57,7 +57,10 @@ public final class HBaseVersionPager implements KijiPager {
   private final EntityId mEntityId;
 
   /** Data request template for the column being paged through. */
-  private final KijiDataRequest mColumnDataRequest;
+  private final KijiDataRequest mDataRequest;
+
+  /** Data request details for the fully-qualified column. */
+  private final KijiDataRequest.Column mColumnRequest;
 
   /** HBase KijiTable to read from. */
   private final HBaseKijiTable mTable;
@@ -74,7 +77,7 @@ public final class HBaseVersionPager implements KijiPager {
   /** Number of versions returned so far. */
   private int mVersionsCount = 0;
 
-  /** Page offset (in number of cells). */
+  /** Max timestamp bound on the versions to fetch. */
   private long mPageMaxTimestamp;
 
   /** True only if there is another page of data to read through {@link #next()}. */
@@ -109,10 +112,9 @@ public final class HBaseVersionPager implements KijiPager {
       throws KijiColumnPagingNotEnabledException {
     Preconditions.checkArgument(colName.isFullyQualified());
 
-    final KijiDataRequest.Column columnRequest =
-        dataRequest.getColumn(colName.getFamily(), colName.getQualifier());
+    mColumnRequest = dataRequest.getColumn(colName.getFamily(), colName.getQualifier());
 
-    if (!columnRequest.isPagingEnabled()) {
+    if (!mColumnRequest.isPagingEnabled()) {
       throw new KijiColumnPagingNotEnabledException(
         String.format("Paging is not enabled for column '%s'.", colName));
     }
@@ -120,17 +122,17 @@ public final class HBaseVersionPager implements KijiPager {
     // Construct a data request for only this column.
     final KijiDataRequestBuilder builder = KijiDataRequest.builder()
         .withTimeRange(dataRequest.getMinTimestamp(), dataRequest.getMaxTimestamp());
-    builder.newColumnsDef(columnRequest);
+    builder.newColumnsDef(mColumnRequest);
 
     mColumnName = colName;
-    mColumnDataRequest = builder.build();
-    mDefaultPageSize = columnRequest.getPageSize();
+    mDataRequest = builder.build();
+    mDefaultPageSize = mColumnRequest.getPageSize();
     mEntityId = entityId;
     mTable = table;
     mHasNext = true;  // there might be no page to read, but we don't know until we issue an RPC
 
-    mPageMaxTimestamp = dataRequest.getMaxTimestamp();
-    mTotalVersions = columnRequest.getMaxVersions();
+    mPageMaxTimestamp = mDataRequest.getMaxTimestamp();
+    mTotalVersions = mColumnRequest.getMaxVersions();
     mVersionsCount = 0;
 
     // Only retain the table if everything else ran fine:
@@ -157,16 +159,13 @@ public final class HBaseVersionPager implements KijiPager {
       throw new NoSuchElementException();
     }
 
-    final KijiDataRequest.Column columnReq =
-        mColumnDataRequest.getColumn(mColumnName.getFamily(), mColumnName.getQualifier());
-
     final int maxVersions = Math.min(mTotalVersions - mVersionsCount, pageSize);
 
     // Clone the column data request template, but adjust the max-timestamp and the max-versions:
     final KijiDataRequest nextPageDataRequest = KijiDataRequest.builder()
-        .withTimeRange(mColumnDataRequest.getMinTimestamp(), mPageMaxTimestamp)
+        .withTimeRange(mDataRequest.getMinTimestamp(), mPageMaxTimestamp)
         .addColumns(ColumnsDef.create()
-            .withFilter(columnReq.getFilter())
+            .withFilter(mColumnRequest.getFilter())
             .withMaxVersions(maxVersions)
             .add(mColumnName))
         .build();
@@ -188,7 +187,7 @@ public final class HBaseVersionPager implements KijiPager {
         mPageMaxTimestamp = last.getTimestamp();  // max-timestamp is exclusive
         mVersionsCount += result.raw().length;
 
-        if ((mPageMaxTimestamp <= mColumnDataRequest.getMinTimestamp())
+        if ((mPageMaxTimestamp <= mDataRequest.getMinTimestamp())
             || (mVersionsCount >= mTotalVersions)) {
           mHasNext = false;
         }

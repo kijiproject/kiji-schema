@@ -26,6 +26,8 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
+import org.apache.hadoop.hbase.HConstants;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -80,11 +82,10 @@ public class TestHBaseQualifierPager extends KijiClientTest {
   public void testQualifiersPager() throws IOException {
     final EntityId eid = mTable.getEntityId("me");
 
-    final int maxVersions = 5;  // == actual number of versions in the column
 
     final KijiDataRequest dataRequest = KijiDataRequest.builder()
         .addColumns(ColumnsDef.create()
-            .withMaxVersions(maxVersions).withPageSize(2).addFamily("jobs"))
+            .withMaxVersions(HConstants.ALL_VERSIONS).withPageSize(2).addFamily("jobs"))
         .build();
 
     final HBaseQualifierPager pager =
