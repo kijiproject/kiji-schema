@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
-
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -42,6 +41,7 @@ import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiRegion;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
@@ -212,7 +212,11 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public KijiTableReader openTableReader() {
-    return new HBaseKijiTableReader(this);
+    try {
+      return new HBaseKijiTableReader(this);
+    } catch (IOException ioe) {
+      throw new KijiIOException(ioe);
+    }
   }
 
   /** {@inheritDoc} */

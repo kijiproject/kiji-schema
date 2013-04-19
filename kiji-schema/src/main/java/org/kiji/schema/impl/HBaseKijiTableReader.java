@@ -23,7 +23,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
+import com.google.common.collect.Maps;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
@@ -33,17 +35,20 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.InternalKijiError;
+import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestValidator;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.filter.KijiRowFilter;
 import org.kiji.schema.filter.KijiRowFilterApplicator;
 import org.kiji.schema.hbase.HBaseScanOptions;
+import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.util.ResourceUtils;
+import org.kiji.schema.layout.impl.CellDecoderProvider;
 
 /**
  * Reads from a kiji table by sending the requests directly to the HBase tables.
@@ -52,17 +57,40 @@ import org.kiji.schema.util.ResourceUtils;
 public class HBaseKijiTableReader implements KijiTableReader {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTableReader.class);
 
-  /** The kiji table instance. */
+  /** HBase KijiTable to read from. */
   private final HBaseKijiTable mTable;
+
+  /** Provider for cell decoders. */
+  private final CellDecoderProvider mCellDecoderProvider;
 
   /**
    * Creates a new <code>HBaseKijiTableReader</code> instance that sends the read requests
    * directly to HBase.
    *
    * @param table The kiji table to read from.
+   * @throws IOException on I/O error.
    */
-  public HBaseKijiTableReader(HBaseKijiTable table) {
+  public HBaseKijiTableReader(HBaseKijiTable table) throws IOException {
+    this(table, Maps.<KijiColumnName, CellSpec>newHashMap());
+  }
+
+  /**
+   * Creates a new <code>HBaseKijiTableReader</code> instance that sends the read requests
+   * directly to HBase.
+   *
+   * @param table The kiji table to read from.
+   * @param layoutOverride Map of column layout overrides.
+   * @throws IOException on I/O error.
+   */
+  public HBaseKijiTableReader(
+      HBaseKijiTable table,
+      Map<KijiColumnName, CellSpec> layoutOverride)
+      throws IOException {
     mTable = table;
+    mCellDecoderProvider =
+        new CellDecoderProvider(mTable, SpecificCellDecoderFactory.get(), layoutOverride);
+
+    // Retain the table only when everything succeeds:
     mTable.retain();
   }
 
@@ -89,7 +117,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
     final Result result = hbaseGet.hasFamilies() ? mTable.getHTable().get(hbaseGet) : new Result();
 
     // Parse the result.
-    return new HBaseKijiRowData(entityId, dataRequest, mTable, result);
+    return new HBaseKijiRowData(mTable, dataRequest, entityId, result, mCellDecoderProvider);
   }
 
   /** {@inheritDoc} */
@@ -208,10 +236,10 @@ public class HBaseKijiTableReader implements KijiTableReader {
         hbaseGetList.add(hbaseRequestAdapter.toGet(entityId, tableLayout));
       }
       return hbaseGetList;
-    } catch (InvalidLayoutException e) {
+    } catch (InvalidLayoutException ile) {
       // The table layout should never be invalid at this point, since we got it from a valid
       // opened table.  If it is, there's something seriously wrong.
-      throw new InternalKijiError(e);
+      throw new InternalKijiError(ile);
     }
   }
 
@@ -233,7 +261,8 @@ public class HBaseKijiTableReader implements KijiTableReader {
 
   /** {@inheritDoc} */
   @Override
-  public void close() {
-    ResourceUtils.releaseOrLog(mTable);
+  public void close() throws IOException {
+    // TODO(SCHEMA-333): Ensure the reader is closed explicitly.
+    mTable.release();
   }
 }

@@ -161,6 +161,10 @@ public final class KijiTableLayouts {
   public static final String WRITER_SCHEMA_TEST =
       "org/kiji/schema/layout/writer-schema.json";
 
+  /** Layout for table 'reader_schema' to test messing with reader schemas. */
+  public static final String READER_SCHEMA_TEST =
+      "org/kiji/schema/layout/reader-schema.json";
+
   /** Test layout with hashing disabled. */
   public static TableLayoutDesc getFooUnhashedTestLayout() throws IOException {
     final TableLayoutDesc desc = getLayout(FOO_TEST);

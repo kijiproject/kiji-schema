@@ -25,7 +25,9 @@ import org.apache.avro.specific.SpecificData;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
@@ -57,6 +59,9 @@ public final class CellSpec {
 
   /** Schema table to resolve schema hashes or UIDs. */
   private KijiSchemaTable mSchemaTable;
+
+  /** Factory for cell decoders (either specific or generic). */
+  private KijiCellDecoderFactory mDecoderFactory = SpecificCellDecoderFactory.get();
 
   /**
    * Returns a new CellSpec for a counter cell.
@@ -175,6 +180,26 @@ public final class CellSpec {
   public CellSpec setSchemaTable(KijiSchemaTable schemaTable) {
     mSchemaTable = schemaTable;
     return this;
+  }
+
+  /**
+   * Sets the factory for cell decoders (either specific or generic).
+   *
+   * @param decoderFactory Factory for cell decoders (either specific or generic).
+   * @return this CellSpec.
+   */
+  public CellSpec setDecoderFactory(KijiCellDecoderFactory decoderFactory) {
+    mDecoderFactory = decoderFactory;
+    return this;
+  }
+
+  /**
+   * Returns the factory for cell decoders to use for this column.
+   *
+   * @return the factory for cell decoders to use for this column.
+   */
+  public KijiCellDecoderFactory getDecoderFactory() {
+    return mDecoderFactory;
   }
 
   /**

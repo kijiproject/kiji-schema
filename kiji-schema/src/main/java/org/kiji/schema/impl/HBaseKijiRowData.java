@@ -40,22 +40,20 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellDecoder;
-import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiPager;
 import org.kiji.schema.KijiRowData;
-import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.impl.CellDecoderProvider;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.TimestampComparator;
 
@@ -81,97 +79,80 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** The HBase result providing the data of this object. */
   private Result mResult;
 
-  /** A Kiji cell decoder factory. */
-  private final KijiCellDecoderFactory mCellDecoderFactory;
-
-  /** Schema table to resolve schema hashes or IDs. */
-  private final KijiSchemaTable mSchemaTable;
+  /** Provider for cell decoders. */
+  private final CellDecoderProvider mDecoderProvider;
 
   /** A map from kiji family to kiji qualifier to timestamp to raw encoded cell values. */
   private NavigableMap<String, NavigableMap<String, NavigableMap<Long, byte[]>>> mFilteredMap;
 
   /**
-   * Initializes a row data.
+   * Initializes a row data from an HBase Result.
    *
-   * @param entityId Entity ID of the row.
-   * @param request Data request to build the row.
-   * @param decoderFactory Factory for cell decoders.
-   * @param layout Layout of the table the row belongs to.
-   * @param result HTable result with the encoded row content.
-   * @param schemaTable Schema table.
-   */
-  // TODO: Delete after tests are refactored.
-  @Deprecated
-  public HBaseKijiRowData(
-      EntityId entityId,
-      KijiDataRequest request,
-      KijiCellDecoderFactory decoderFactory,
-      KijiTableLayout layout,
-      Result result,
-      KijiSchemaTable schemaTable) {
-    mEntityId = entityId;
-    mDataRequest = request;
-    mTableLayout = layout;
-    mResult = result;
-    mCellDecoderFactory = decoderFactory;
-    mTable = null;
-    mSchemaTable = schemaTable;
-  }
-
-  /**
-   * Initializes a row data.
-   *
-   * The entity ID is constructed from the HTable encoded result.
-   * This may fail if the table uses hashed row keys.
-   *
-   * @param request Data request to build the row.
-   * @param decoderFactory Factory for cell decoders.
-   * @param layout Layout of the table the row belongs to.
-   * @param result HTable result with the encoded row content.
-   * @param schemaTable Schema table.
-   */
-  // TODO: Delete after tests are refactored.
-  @Deprecated
-  public HBaseKijiRowData(
-      KijiDataRequest request,
-      KijiCellDecoderFactory decoderFactory,
-      KijiTableLayout layout,
-      Result result,
-      KijiSchemaTable schemaTable) {
-    this(
-        EntityIdFactory.getFactory(layout).getEntityIdFromHBaseRowKey(result.getRow()),
-        request,
-        decoderFactory,
-        layout,
-        result,
-        schemaTable);
-  }
-
-  /**
-   * Initializes a row data.
-   *
-   * @param entityId The entityId of the row.
-   * @param request The requested data.
-   * @param table The Kiji table that this row belongs to.
-   * @param result The HBase result containing the row data.
+   * @param entityId This row entity ID.
+   * @param dataRequest Data requested for this row.
+   * @param table Kiji table containing this row.
+   * @param result HBase result containing the requested cells (and potentially more).
    * @throws IOException on I/O error.
+   *
+   * @deprecated Use the other constructor.
    */
+  @Deprecated
   public HBaseKijiRowData(
       EntityId entityId,
-      KijiDataRequest request,
+      KijiDataRequest dataRequest,
       HBaseKijiTable table,
       Result result)
       throws IOException {
-    mEntityId = entityId;
-    mDataRequest = request;
-    mTableLayout = table.getLayout();
-    mResult = result;
-    mCellDecoderFactory = SpecificCellDecoderFactory.get();
-    mSchemaTable = table.getKiji().getSchemaTable();
-    mTable = table;
+    this(table, dataRequest, entityId, result, null);
+  }
 
-    // Compute this lazily.
-    mFilteredMap = null;
+  /**
+   * Creates a provider for cell decoders.
+   *
+   * <p> The provider creates decoders for specific Avro records. </p>
+   *
+   * @param table HBase KijiTable to create a CellDecoderProvider for.
+   * @return a new CellDecoderProvider for the specified HBase KijiTable.
+   * @throws IOException on I/O error.
+   */
+  private static CellDecoderProvider createCellProvider(HBaseKijiTable table) throws IOException {
+    return new CellDecoderProvider(
+        table,
+        SpecificCellDecoderFactory.get(),
+        Maps.<KijiColumnName, CellSpec>newHashMap());
+  }
+
+  /**
+   * Initializes a row data from an HBase Result.
+   *
+   * <p>
+   *   The HBase Result may contain more cells than are requested by the user.
+   *   KijiDataRequest is more expressive than HBase Get/Scan requests.
+   *   Currently, {@link #getMap()} attempts to complete the filtering to meet the data request
+   *   requirements expressed by the user, but this can be inaccurate.
+   * </p>
+   *
+   * @param table Kiji table containing this row.
+   * @param dataRequest Data requested for this row.
+   * @param entityId This row entity ID.
+   * @param result HBase result containing the requested cells (and potentially more).
+   * @param decoderProvider Provider for cell decoders.
+   *     Null means the row creates its own provider for cell decoders (not recommended).
+   * @throws IOException on I/O error.
+   */
+  public HBaseKijiRowData(
+      HBaseKijiTable table,
+      KijiDataRequest dataRequest,
+      EntityId entityId,
+      Result result,
+      CellDecoderProvider decoderProvider)
+      throws IOException {
+    mTable = table;
+    mTableLayout = table.getLayout();
+    mDataRequest = dataRequest;
+    mEntityId = entityId;
+    mResult = result;
+    mDecoderProvider = (decoderProvider != null) ? decoderProvider : createCellProvider(table);
   }
 
   /**
@@ -213,7 +194,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       // Initialize column name translator.
       mColumnNameTranslator = new ColumnNameTranslator(rowdata.mTableLayout);
       // Get cell decoder.
-      mDecoder = rowdata.getDecoder(mColumn.getFamily(), mColumn.getQualifier());
+      mDecoder = rowdata.mDecoderProvider.getDecoder(mColumn.getFamily(), mColumn.getQualifier());
       // Get info about the data request for this column.
       KijiDataRequest.Column columnRequest = rowdata.mDataRequest.getColumn(mColumn.getFamily(),
           mColumn.getQualifier());
@@ -423,15 +404,6 @@ public final class HBaseKijiRowData implements KijiRowData {
   }
 
   /**
-   * Gets the schema table this kiji row data uses for decoding.
-   *
-   * @return The schema table.
-   */
-  public KijiSchemaTable getSchemaTable() {
-    return mSchemaTable;
-  }
-
-  /**
    * Gets a map from kiji family to qualifier to timestamp to raw kiji-encoded bytes of a cell.
    *
    * @return The map.
@@ -635,7 +607,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> T getValue(String family, String qualifier, long timestamp) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(family, qualifier);
+    final KijiCellDecoder<T> decoder = mDecoderProvider.getDecoder(family, qualifier);
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     return decoder.decodeValue(bytes);
   }
@@ -644,7 +616,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> KijiCell<T> getCell(String family, String qualifier, long timestamp)
       throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(family, qualifier);
+    final KijiCellDecoder<T> decoder = mDecoderProvider.getDecoder(family, qualifier);
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     return new KijiCell<T>(family, qualifier, timestamp, decoder.decodeCell(bytes));
   }
@@ -652,7 +624,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> T getMostRecentValue(String family, String qualifier) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(family, qualifier);
+    final KijiCellDecoder<T> decoder = mDecoderProvider.getDecoder(family, qualifier);
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
     if (null == tmap) {
       return null;
@@ -708,7 +680,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> KijiCell<T> getMostRecentCell(String family, String qualifier) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+    final KijiCellDecoder<T> decoder = mDecoderProvider.getDecoder(family,  qualifier);
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
     if (null == tmap) {
       return null;
@@ -739,7 +711,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> NavigableMap<Long, KijiCell<T>> getCells(String family, String qualifier)
       throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(family,  qualifier);
+    final KijiCellDecoder<T> decoder = mDecoderProvider.getDecoder(family,  qualifier);
 
     final NavigableMap<Long, KijiCell<T>> result = Maps.newTreeMap(TimestampComparator.INSTANCE);
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
@@ -829,24 +801,5 @@ public final class HBaseKijiRowData implements KijiRowData {
         + "Please use the getPager(String family, String qualifier) method.",
         family);
     return new HBaseKijiPager(mEntityId, mDataRequest, mTableLayout, mTable, kijiFamily);
-  }
-
-  /**
-   * Creates a decoder for the specified column.
-   *
-   * @param family Name of the column family.
-   * @param qualifier Column qualifier.
-   * @return a decoder for the specific column.
-   * @throws IOException on I/O error.
-   *
-   * @param <T> type of the value to decode.
-   */
-  private <T> KijiCellDecoder<T> getDecoder(String family, String qualifier)
-      throws IOException {
-    // TODO: there is a need for caching decoders, or at least cell specs, as building the cell
-    //     spec causes parsing a JSON schema or looking up a class by name.
-    final CellSpec cellSpec = mTableLayout.getCellSpec(new KijiColumnName(family, qualifier))
-        .setSchemaTable(mSchemaTable);
-    return mCellDecoderFactory.create(cellSpec);
   }
 }

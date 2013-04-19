@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2013 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -30,30 +30,21 @@
     families: [ {
       name: "family",
       columns: [ {
-        name: "empty",
-        column_schema: {type: "INLINE", value: '"string"'}
-      }, {
-        name: "qual0",
-        column_schema: {type: "INLINE", value: '"string"'}
-      }, {
-        name: "qual1",
-        column_schema: {type: "INLINE", value: '"string"'}
-      }, {
-        name: "qual2",
-        column_schema: {type: "INLINE", value: '"string"'}
-      }, {
-        name: "qual3",
+        name: "integer",
         column_schema: {type: "INLINE", value: '"int"'}
       }, {
-        name: "nodequal0",
-        column_schema: {type: "CLASS", value: "org.kiji.schema.avro.Node"}
+        name: "empty",
+        column_schema: {type: "CLASS", value: 'org.kiji.schema.avro.EmptyRecord'}
       }, {
-        name: "nodequal1",
-        column_schema: {type: "CLASS", value: "org.kiji.schema.avro.Node"}
+        name: "record1",
+        column_schema: {type: "CLASS", value: 'org.kiji.schema.avro.TestRecord1'}
+      }, {
+        name: "record2",
+        column_schema: {type: "CLASS", value: 'org.kiji.schema.avro.TestRecord2'}
+      }, {
+        name: "record3",
+        column_schema: {type: "CLASS", value: 'org.kiji.schema.avro.TestRecord3'}
       } ]
-    }, {
-      name: "map",
-      map_schema: {type: "INLINE", value: '"int"'}
     } ]
   } ],
   version: "layout-1.1.0"
