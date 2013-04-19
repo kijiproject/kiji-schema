@@ -2,6 +2,10 @@
 
                               Kiji Schema Release Notes
 
+Version 1.1.0
+  * SCHEMA-324. bin/kiji supports loading Hadoop distro-specific dependencies
+      by inferring from "bin/hadoop version" or $KIJI_HADOOP_DISTRO_VER.
+
 Version 1.0.2
   * SCHEMA-317. Silence spurious warning about not using GenericOptionsParser.
   * SCHEMA-318. Fixes a bug when closing KijiBufferedWriters.

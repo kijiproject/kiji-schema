@@ -44,3 +44,9 @@ ENVIRONMENT VARIABLES
                       included with your hadoop distribution to the JVM. By default
                       JAVA_LIBRARY_PATH is empty.
 
+  KIJI_HADOOP_DISTRO_VER
+                      May optionally specify a subdirectory of $KIJI_HOME/lib/distribution
+                      to include on the classpath. e.g., "hadoop2". Hadoop version-specific
+                      Kiji jars are typically automatically inferred by running
+                      'bin/hadoop version'. You should set this environment variable only
+                      if the auto-detection logic fails to recognize your Hadoop version.

@@ -117,10 +117,32 @@ fi
 # Gather the kiji dependency jars.
 libjars="${KIJI_HOME}/lib/*"
 
+# We may have Hadoop distribution-specific jars to load in
+# $KIJI_HOME/lib/distribution/hadoopN, where N is the major digit of the Hadoop
+# version. Only load at most one such set of jars.
+
+# Detect and extract the current Hadoop version number. e.g. "Hadoop 2.x-..." -> "2"
+# You can override this with $KIJI_HADOOP_DISTRO_VER (e.g. "hadoop1" or "hadoop2").
+hadoop_major_version=`$HADOOP_HOME/bin/hadoop version | head -1 | cut -c 8`
+if [ -z "$hadoop_major_version" -a -z "$KIJI_HADOOP_DISTRO_VER" ]; then
+  echo "Warning: Unknown Hadoop version. May not be able to load all Kiji jars."
+  echo "Set KIJI_HADOOP_DISTRO_VER to 'hadoop1' or 'hadoop2' to load these."
+else
+  KIJI_HADOOP_DISTRO_VER=${KIJI_HADOOP_DISTRO_VER:-"hadoop$hadoop_major_version"}
+fi
+
+distrodir="$KIJI_HOME/lib/distribution/$KIJI_HADOOP_DISTRO_VER"
+if [ -d "$distrodir" ]; then
+  distrojars="$distrodir/*"
+fi
+
 # If KIJI_MR_HOME is set and is not equal to KIJI_HOME, add jars in
 # $KIJI_MR_HOME/lib to classpath.
 if [[ -n "$KIJI_MR_HOME" && "$KIJI_HOME" != "$KIJI_MR_HOME" ]]; then
   libjars="${libjars}:${KIJI_MR_HOME}/lib/*"
+  if [ -d "$KIJI_MR_HOME/lib/distribution/$KIJI_HADOOP_DISTRO_VER" ]; then
+    distrojars="${distrojars}:$KIJI_MR_HOME/lib/distribution/$KIJI_HADOOP_DISTRO_VER/*"
+  fi
 fi
 
 # Gather the HBase classpath.
@@ -135,7 +157,7 @@ schema_jar="$KIJI_HOME/lib/kiji-schema-${project.version}.jar"
 # Note that we put the libjars before the hbase jars, in case there are conflicts.
 kiji_conf=$KIJI_HOME/conf
 # We put $KIJI_CLASSPATH at the beginning classpath to allow users to win when there are conflicts.
-kiji_cp="$schema_jar:$KIJI_CLASSPATH:$kiji_conf:$libjars:$hadoop_cp:$hbase_cp"
+kiji_cp="$schema_jar:$KIJI_CLASSPATH:$kiji_conf:$libjars:$distrojars:$hadoop_cp:$hbase_cp"
 
 # Determine location of Hadoop native libraries and set java.library.path.
 if [ -d "${HADOOP_HOME}/lib/native" ]; then
