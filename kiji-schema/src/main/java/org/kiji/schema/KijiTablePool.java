@@ -569,6 +569,12 @@ public final class KijiTablePool implements Closeable {
 
     /** {@inheritDoc} */
     @Override
+    public KijiReaderFactory getReaderFactory() throws IOException {
+      return mTable.getReaderFactory();
+    }
+
+    /** {@inheritDoc} */
+    @Override
     public KijiWriterFactory getWriterFactory() throws IOException {
       return mTable.getWriterFactory();
     }

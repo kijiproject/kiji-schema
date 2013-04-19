@@ -133,6 +133,16 @@ public interface KijiTable extends ReferenceCountable<KijiTable> {
   KijiTableReader openTableReader();
 
   /**
+   * Gets a KijiReaderFactory for this table.
+   *
+   * <p> The returned reader factory is valid as long as the caller retains the table. </p>
+   *
+   * @throws IOException in case of an error.
+   * @return A KijiReaderFactory.
+   */
+  KijiReaderFactory getReaderFactory() throws IOException;
+
+  /**
    * Opens a KijiTableWriter for this table.
    *
    * <p> The caller of this method is responsible for closing the returned writer.
@@ -148,7 +158,9 @@ public interface KijiTable extends ReferenceCountable<KijiTable> {
   KijiTableWriter openTableWriter();
 
   /**
-   * Gets the KijiWriterFactory from this table.
+   * Gets a KijiWriterFactory for this table.
+   *
+   * <p> The returned writer factory is valid as long as the caller retains the table. </p>
    *
    * @throws IOException in case of an error.
    * @return A KijiWriterFactory.

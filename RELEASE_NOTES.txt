@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.1.0
+  * SCHEMA-323. Adds KijiTable.getReaderFactory() to provide custom readers.
   * SCHEMA-327. AvroCellEncoder uses the proper writer schema,
       instead of the reader schema.
   * SCHEMA-187. Allows decoding records with the writer schema when no

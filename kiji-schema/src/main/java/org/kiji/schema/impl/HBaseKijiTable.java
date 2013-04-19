@@ -42,6 +42,7 @@ import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiIOException;
+import org.kiji.schema.KijiReaderFactory;
 import org.kiji.schema.KijiRegion;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
@@ -105,6 +106,9 @@ public final class HBaseKijiTable implements KijiTable {
   /** Writer factory for this table. */
   private final KijiWriterFactory mWriterFactory;
 
+  /** Reader factory for this table. */
+  private final KijiReaderFactory mReaderFactory;
+
   /**
    * Construct an opened Kiji table stored in HBase.
    *
@@ -139,6 +143,7 @@ public final class HBaseKijiTable implements KijiTable {
     mTableURI = KijiURI.newBuilder(mKiji.getURI()).withTableName(mName).build();
     mTableLayout = mKiji.getMetaTable().getTableLayout(name);
     mWriterFactory = new HBaseKijiWriterFactory(this);
+    mReaderFactory = new HBaseKijiReaderFactory(this);
     mHTableFactory = htableFactory;
     mConf = conf;
     try {
@@ -223,6 +228,12 @@ public final class HBaseKijiTable implements KijiTable {
   @Override
   public KijiTableWriter openTableWriter() {
     return new HBaseKijiTableWriter(this);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiReaderFactory getReaderFactory() throws IOException {
+    return mReaderFactory;
   }
 
   /** {@inheritDoc} */
