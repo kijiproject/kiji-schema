@@ -53,7 +53,19 @@ public abstract class AvroCellDecoder<T> implements KijiCellDecoder<T> {
   /** Schema decoder. */
   private final SchemaDecoder mSchemaDecoder;
 
-  /** Reader Avro schema. */
+  /**
+   * Reader Avro schema. Null means use the writer schema.
+   *
+   * <p>
+   *   May currently be null if the specific class for an Avro record is not available.
+   *   This behavior is not intended and will be removed in the future.
+   * </p>
+   *
+   * <p>
+   *   With SCHEMA-295, users will be able to override the reader schema.
+   *   Null allows a user to request the actual writer schema.
+   * </p>
+   */
   private final Schema mReaderSchema;
 
   // -----------------------------------------------------------------------------------------------
@@ -172,7 +184,7 @@ public abstract class AvroCellDecoder<T> implements KijiCellDecoder<T> {
     mCellSpec = Preconditions.checkNotNull(cellSpec);
     Preconditions.checkArgument(mCellSpec.isAvro());
     mSchemaDecoder = createSchemaDecoder(cellSpec);
-    mReaderSchema = Preconditions.checkNotNull(mCellSpec.getAvroSchema());
+    mReaderSchema = mCellSpec.getAvroSchema();
   }
 
   /**
@@ -211,9 +223,10 @@ public abstract class AvroCellDecoder<T> implements KijiCellDecoder<T> {
   private DecodedCell<T> decode(byte[] bytes, T reuse) throws IOException {
     final ByteStreamArray byteStream = new ByteStreamArray(bytes);
     final Schema writerSchema = mSchemaDecoder.decode(byteStream);
+    final Schema readerSchema = (mReaderSchema != null) ? mReaderSchema : writerSchema;
     final ByteBuffer binaryData =
         ByteBuffer.wrap(bytes, byteStream.getOffset(), bytes.length - byteStream.getOffset());
-    final T data = decodeAvro(binaryData, writerSchema, mReaderSchema, reuse);
+    final T data = decodeAvro(binaryData, writerSchema, readerSchema, reuse);
     return new DecodedCell<T>(writerSchema, data);
   }
 

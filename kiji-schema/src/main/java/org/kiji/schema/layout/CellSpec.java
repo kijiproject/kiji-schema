@@ -48,7 +48,10 @@ public final class CellSpec {
   /** Avro record specifying the cell encoding. */
   private CellSchema mCellSchema;
 
-  /** For Avro encoded cells, decode the cell content in this reader schema. */
+  /**
+   * For Avro-encoded cells, decode the cell content in this reader schema.
+   * Null for non Avro-encoded cells, or to use the writer schema.
+   */
   private Schema mReaderSchema;
 
   /** Schema table to resolve schema hashes or UIDs. */
@@ -114,7 +117,11 @@ public final class CellSpec {
   public CellSpec setCellSchema(CellSchema cellSchema) throws InvalidLayoutException {
     mCellSchema = cellSchema;
     if (isAvro()) {
-      setReaderSchema(readAvroSchema(cellSchema));
+      try {
+        setReaderSchema(readAvroSchema(cellSchema));
+      } catch (SchemaClassNotFoundException scnfe) {
+        setReaderSchema(null);  // use writer schema
+      }
     }
     return this;
   }
@@ -147,7 +154,7 @@ public final class CellSpec {
   /**
    * Sets the Avro reader schema.
    *
-   * <p> Does not make sense for counter cells. </p>
+   * <p> Invalid for counter cells. </p>
    *
    * @param readerSchema Avro reader schema.
    * @return this CellSpec.

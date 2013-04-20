@@ -54,7 +54,7 @@ public final class SpecificCellDecoderFactory implements KijiCellDecoderFactory 
     switch (cellSpec.getCellSchema().getType()) {
     case CLASS:
     case INLINE:
-      return new SpecificCellDecoder(cellSpec);
+      return new SpecificCellDecoder<T>(cellSpec);
     case COUNTER:
       // purposefully forget the type (long) param of cell decoders for counters.
       return (KijiCellDecoder<T>) CounterCellDecoder.get();

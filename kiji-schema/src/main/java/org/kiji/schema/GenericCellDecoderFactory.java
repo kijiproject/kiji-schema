@@ -54,7 +54,7 @@ public final class GenericCellDecoderFactory implements KijiCellDecoderFactory {
     switch (cellSpec.getCellSchema().getType()) {
     case CLASS:
     case INLINE:
-      return new GenericCellDecoder(cellSpec);
+      return new GenericCellDecoder<T>(cellSpec);
     case COUNTER:
       // purposefully forget the type (long) param of cell decoders for counters.
       return (KijiCellDecoder<T>) CounterCellDecoder.get();
