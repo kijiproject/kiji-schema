@@ -29,7 +29,6 @@ import org.kiji.schema.avro.Edge;
 import org.kiji.schema.avro.Node;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.util.ResourceUtils;
 
 /** Tests the schema validation on write. */
 public class TestSchemaValidationOnWrite extends KijiClientTest {
@@ -43,60 +42,65 @@ public class TestSchemaValidationOnWrite extends KijiClientTest {
     kiji.createTable(layoutDesc);
 
     final KijiTable table = kiji.openTable("user");
-    final KijiTableWriter writer = table.openTableWriter();
-
-    final EntityId eid = table.getEntityId("row-key");
-
-    // info:name is typed as "string" and must be a CharSequence:
-    writer.put(eid, "info", "name", "The user name");
     try {
-      writer.put(eid, "info", "name", 1L);
-      fail("Writing a long instead of a string should fail.");
-    } catch (KijiEncodingException kee) {
-      LOG.info("Expected error: " + kee);
-    }
+      final KijiTableWriter writer = table.openTableWriter();
+      try {
+        final EntityId eid = table.getEntityId("row-key");
 
-    // recommendations:product must be a Node record:
-    final Node node = Node.newBuilder()
-        .setLabel("label")
-        .setWeight(1.0)
-        .setEdges(null)
-        .setAnnotations(null)
-        .build();
-    final Edge edge = Edge.newBuilder()
-        .setLabel("label")
-        .setWeight(1.0)
-        .setTarget(node)
-        .setAnnotations(null)
-        .build();
+        // info:name is typed as "string" and must be a CharSequence:
+        writer.put(eid, "info", "name", "The user name");
+        try {
+          writer.put(eid, "info", "name", 1L);
+          fail("Writing a long instead of a string should fail.");
+        } catch (KijiEncodingException kee) {
+          LOG.info("Expected error: {}", kee.getMessage());
+        }
 
-    writer.put(eid, "recommendations", "product", node);
-    try {
-      writer.put(eid, "recommendations", "product", "a bogus value");
-      fail("Writing a string instead of a Node should fail.");
-    } catch (KijiEncodingException kee) {
-      LOG.info("Expected error: " + kee);
-    }
-    try {
-      writer.put(eid, "recommendations", "product", 1L);
-      fail("Writing a long instead of a Node should fail.");
-    } catch (KijiEncodingException kee) {
-      LOG.info("Expected error: " + kee);
-    }
-    try {
-      writer.put(eid, "recommendations", "product", table.getLayout().getDesc());
-      fail("Writing an TableLayoutDesc instead of a Node should fail.");
-    } catch (KijiEncodingException kee) {
-      LOG.info("Expected error: " + kee);
-    }
-    try {
-      writer.put(eid, "recommendations", "product", edge);
-      fail("Writing an Edge instead of a Node should fail.");
-    } catch (KijiEncodingException kee) {
-      LOG.info("Expected error: " + kee);
-    }
+        // recommendations:product must be a Node record:
+        final Node node = Node.newBuilder()
+            .setLabel("label")
+            .setWeight(1.0)
+            .setEdges(null)
+            .setAnnotations(null)
+            .build();
+        final Edge edge = Edge.newBuilder()
+            .setLabel("label")
+            .setWeight(1.0)
+            .setTarget(node)
+            .setAnnotations(null)
+            .build();
 
-    ResourceUtils.closeOrLog(writer);
-    ResourceUtils.releaseOrLog(table);
+        writer.put(eid, "recommendations", "product", node);
+        try {
+          writer.put(eid, "recommendations", "product", "a bogus value");
+          fail("Writing a string instead of a Node should fail.");
+        } catch (KijiEncodingException kee) {
+          LOG.info("Expected error: {}", kee.getMessage());
+        }
+        try {
+          writer.put(eid, "recommendations", "product", 1L);
+          fail("Writing a long instead of a Node should fail.");
+        } catch (KijiEncodingException kee) {
+          LOG.info("Expected error: {}", kee.getMessage());
+        }
+        try {
+          writer.put(eid, "recommendations", "product", table.getLayout().getDesc());
+          fail("Writing an TableLayoutDesc instead of a Node should fail.");
+        } catch (KijiEncodingException kee) {
+          LOG.info("Expected error: {}", kee.getMessage());
+        }
+        try {
+          writer.put(eid, "recommendations", "product", edge);
+          fail("Writing an Edge instead of a Node should fail.");
+        } catch (KijiEncodingException kee) {
+          LOG.info("Expected error: {}", kee.getMessage());
+        }
+
+      } finally {
+        writer.close();
+      }
+    } finally {
+      table.release();
+    }
   }
 }

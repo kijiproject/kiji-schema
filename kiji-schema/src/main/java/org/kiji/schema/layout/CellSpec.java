@@ -49,8 +49,9 @@ public final class CellSpec {
   private CellSchema mCellSchema;
 
   /**
-   * For Avro-encoded cells, decode the cell content in this reader schema.
-   * Null for non Avro-encoded cells, or to use the writer schema.
+   * For Avro-encoded cells, decode the cell content with this reader schema.
+   * Null means use the writer schema.
+   * Also null for non Avro-encoded cells.
    */
   private Schema mReaderSchema;
 

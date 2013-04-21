@@ -157,6 +157,10 @@ public final class KijiTableLayouts {
   public static final String TWO_COLUMN_DIFFERENT_TYPES =
       "org/kiji/schema/layout/two-column-different-types.json";
 
+  /** Layout for table 'writer_schema' to test when a column class is not found. */
+  public static final String WRITER_SCHEMA_TEST =
+      "org/kiji/schema/layout/writer-schema.json";
+
   /** Test layout with hashing disabled. */
   public static TableLayoutDesc getFooUnhashedTestLayout() throws IOException {
     final TableLayoutDesc desc = getLayout(FOO_TEST);
