@@ -4,10 +4,15 @@
 
 Version 1.0.2
   * SCHEMA-317. Silence spurious warning about not using GenericOptionsParser.
+  * SCHEMA-318. Fixes a bug when closing KijiBufferedWriters.
+  * SCHEMA-306. Fixes a bug on KijiPager on fully-qualified columns.
+      There is a known issue with the versions returned from a map family.
   * SCHEMA-314. Row filters constructors are being replaced with
       factory methods such Filters.and(...) and Filters.or(...).
   * SCHEMA-303. Allows proper serialization of row filters.
       Contributed by Jeff Kolesky (jeff.kolesky@gmail.com).
+  * SCHEMA-304. Adds additional column filters.
+  * SCHEMA-297. Adds KijiCell.equals() and .hashCode().
 
 Version 1.0.1
   * SCHEMA-254. Adds cellList methods to KijiRowData.
