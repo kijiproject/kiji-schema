@@ -54,7 +54,11 @@ public final class CellSpec {
   /** Schema table to resolve schema hashes or UIDs. */
   private KijiSchemaTable mSchemaTable;
 
-  /** @return a new CellSpec for a counter cell. */
+  /**
+   * Returns a new CellSpec for a counter cell.
+   *
+   * @return a new CellSpec for a counter cell.
+   */
   public static CellSpec newCounter() {
     return new CellSpec()
         .setType(SchemaType.COUNTER);
@@ -85,12 +89,18 @@ public final class CellSpec {
         .setCellSchema(cellSchema);
   }
 
-  /** @return a new, unspecified CellSpec. */
+  /**
+   * Returns a new unspecified CellSpec.
+   *
+   * <p> Use the setters to populate the necessary fields. </p>
+   *
+   * @return a new unspecified CellSpec.
+   */
   public static CellSpec create() {
     return new CellSpec();
   }
 
-  /** Initializes a new, unspecified CellSpec. */
+  /** Initializes a new unspecified CellSpec. */
   private CellSpec() {
   }
 
@@ -112,7 +122,7 @@ public final class CellSpec {
   /**
    * Sets the schema storage.
    *
-   * Does not make sense for counter cells.
+   * <p> Does not make sense for counter cells. </p>
    *
    * @param schemaStorage Schema storage (hash, UID or final).
    * @return this.
@@ -124,7 +134,7 @@ public final class CellSpec {
   }
 
   /**
-   * Sets the cell type.
+   * Sets the cell type (counter, inline Avro or Avro class).
    *
    * @param schemaType Cell type (counter, inline Avro or Avro class).
    * @return this.
@@ -137,10 +147,10 @@ public final class CellSpec {
   /**
    * Sets the Avro reader schema.
    *
-   * Does not make sense for counter cells.
+   * <p> Does not make sense for counter cells. </p>
    *
    * @param readerSchema Avro reader schema.
-   * @return this.
+   * @return this CellSpec.
    */
   public CellSpec setReaderSchema(Schema readerSchema) {
     mReaderSchema = readerSchema;
@@ -149,40 +159,60 @@ public final class CellSpec {
   }
 
   /**
-   * Sets the schema table.
+   * Sets the table to resolve Avro schemas.
    *
-   * @param schemaTable Schema table.
-   * @return this.
+   * @param schemaTable Table to resolve Avro schemas.
+   * @return this CellSpec.
    */
   public CellSpec setSchemaTable(KijiSchemaTable schemaTable) {
     mSchemaTable = schemaTable;
     return this;
   }
 
-  /** @return the schema table to resolve schema hashes or IDs. */
+  /**
+   * Returns the schema table to resolve schema hashes or IDs.
+   *
+   * @return the schema table to resolve schema hashes or IDs.
+   */
   public KijiSchemaTable getSchemaTable() {
     return mSchemaTable;
   }
 
-  /** @return whether this cell is a counter. */
+  /**
+   * Returns whether this cell is a counter.
+   *
+   * @return whether this cell is a counter.
+   */
   public boolean isCounter() {
     Preconditions.checkNotNull(mCellSchema);
     return mCellSchema.getType() == SchemaType.COUNTER;
   }
 
-  /** @return whether this cell is encoded with Avro. */
+  /**
+   * Returns whether this cell is encoded with Avro.
+   *
+   * @return whether this cell is encoded with Avro.
+   */
   public boolean isAvro() {
     Preconditions.checkNotNull(mCellSchema);
     return (mCellSchema.getType() == SchemaType.INLINE)
         || (mCellSchema.getType() == SchemaType.CLASS);
   }
 
-  /** @return the underlying CellSchema Avro record. May be null. */
+  /**
+   * Returns the underlying CellSchema Avro record. May be null.
+   *
+   * @return the underlying CellSchema Avro record. May be null.
+   */
   public CellSchema getCellSchema() {
     return mCellSchema;
   }
 
-  /** @return the underlying CellSchema Avro record, creating it if necessary. */
+  /**
+   * Returns the underlying CellSchema Avro record, creating it if necessary.
+   *
+   * @return the underlying CellSchema Avro record, creating it if necessary.
+   */
   private CellSchema getOrCreateCellSchema() {
     if (null == mCellSchema) {
       mCellSchema = new CellSchema();
@@ -191,7 +221,11 @@ public final class CellSpec {
   }
 
 
-  /** @return the cell Avro schema. Valid for Avro cells only. */
+  /**
+   * Returns the cell Avro schema. Valid for Avro cells only.
+   *
+   * @return the cell Avro schema. Valid for Avro cells only.
+   */
   public Schema getAvroSchema() {
     Preconditions.checkState(isAvro());
     return mReaderSchema;
@@ -203,6 +237,7 @@ public final class CellSpec {
    * @param cellSchema The portion of the table layout record to read from.
    * @return the Avro schema, or null for a counter.
    * @throws InvalidLayoutException if the specification or the schema is invalid.
+   * @throws SchemaClassNotFoundException if the class for a specific Avro record is not found.
    */
   public static Schema readAvroSchema(CellSchema cellSchema) throws InvalidLayoutException {
     switch (cellSchema.getType()) {
