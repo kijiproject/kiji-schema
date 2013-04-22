@@ -20,11 +20,8 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
@@ -37,7 +34,6 @@ import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -433,48 +429,6 @@ public final class HBaseKijiRowData implements KijiRowData {
    */
   public KijiSchemaTable getSchemaTable() {
     return mSchemaTable;
-  }
-
-  /**
-   * Merges in the data from another HBaseKijiRowData instance.
-   *
-   * @param kijiRowData The data to merge in.
-   */
-  public synchronized void merge(HBaseKijiRowData kijiRowData) {
-    merge(kijiRowData.mResult.list());
-  }
-
-  /**
-   * Merges in the data an HBase Put object.
-   *
-   * @param put The data to merge in.
-   */
-  public synchronized void merge(Put put) {
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Merging in fresh data from put: " + put.toString());
-    }
-    List<KeyValue> keyValues = new ArrayList<KeyValue>();
-    for (List<KeyValue> newKeyValues : put.getFamilyMap().values()) {
-      keyValues.addAll(newKeyValues);
-    }
-    merge(keyValues);
-  }
-
-  /**
-   * Merges in the data from a collection of KeyValues.
-   *
-   * @param keyValues The data to merge in.
-   */
-  public synchronized void merge(Collection<KeyValue> keyValues) {
-    // All we have to do is put the KeyValues into the Result.
-    List<KeyValue> existingKvs = mResult.list();
-    List<KeyValue> merged
-        = existingKvs != null ? new ArrayList<KeyValue>(existingKvs) : new ArrayList<KeyValue>();
-    merged.addAll(keyValues);
-    mResult = new Result(merged);
-
-    // Invalidate the cached filtered map.
-    mFilteredMap = null;
   }
 
   /**

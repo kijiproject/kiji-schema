@@ -33,7 +33,6 @@ import java.util.NavigableMap;
 
 import org.apache.avro.Schema;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
@@ -521,71 +520,6 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     assertTrue(input.containsColumn("family", "nodequal0"));
     Node actual = input.getMostRecentValue("family", "nodequal0");
     assertEquals("foo", actual.getLabel().toString());
-  }
-
-  @Test
-  public void testMergePut() throws IOException {
-    List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.getEntityId("row0");
-    byte[] hbaseRowKey = row0.getHBaseRowKey();
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, encodeStr("value0")));
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, encodeStr("value1")));
-    Result result = new Result(kvs);
-
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
-    KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().add("family", "qual0");
-    builder.newColumnsDef().add("family", "qual1");
-    builder.newColumnsDef().add("family", "qual2");
-    KijiDataRequest dataRequest = builder.build();
-    HBaseKijiRowData rowData = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
-        tableLayout, result, getKiji().getSchemaTable());
-
-    Put put = new Put(hbaseRowKey);
-    put.add(mHBaseFamily, mHBaseQual2, encodeStr("value2"));
-    rowData.merge(put);
-
-    assertTrue(rowData.containsColumn("family", "qual2"));
-    CharSequence string0 = rowData.getMostRecentValue("family", "qual0");
-    assertEquals("value0", string0.toString());
-    CharSequence string1 = rowData.getMostRecentValue("family", "qual1");
-    assertEquals("value1", string1.toString());
-    CharSequence string2 = rowData.getMostRecentValue("family", "qual2");
-    assertEquals("value2", string2.toString());
-  }
-
-  @Test
-  public void testMergeHBaseKijiRowData() throws IOException {
-    List<KeyValue> kvs = new ArrayList<KeyValue>();
-    EntityId row0 = mEntityIdFactory.getEntityId("row0");
-    byte[] hbaseRowKey = row0.getHBaseRowKey();
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual0, encodeStr("value0")));
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual1, encodeStr("value1")));
-    Result result = new Result(kvs);
-
-    KijiTableLayout tableLayout = getKiji().getMetaTable().getTableLayout("table");
-    KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().add("family", "qual0")
-        .add("family", "qual1")
-        .add("family", "qual2");
-    KijiDataRequest dataRequest = builder.build();
-    HBaseKijiRowData rowData = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
-        tableLayout, result, getKiji().getSchemaTable());
-
-    kvs = new ArrayList<KeyValue>();
-    kvs.add(new KeyValue(hbaseRowKey, mHBaseFamily, mHBaseQual2, encodeStr("value2")));
-    Result anotherResult = new Result(kvs);
-    HBaseKijiRowData anotherRowData = new HBaseKijiRowData(dataRequest, mCellDecoderFactory,
-        tableLayout, anotherResult, getKiji().getSchemaTable());
-    rowData.merge(anotherRowData);
-
-    assertTrue(rowData.containsColumn("family", "qual2"));
-    CharSequence string0 = rowData.getMostRecentValue("family", "qual0");
-    assertEquals("value0", string0.toString());
-    CharSequence string1 = rowData.getMostRecentValue("family", "qual1");
-    assertEquals("value1", string1.toString());
-    CharSequence string2 = rowData.getMostRecentValue("family", "qual2");
-    assertEquals("value2", string2.toString());
   }
 
   @Test
