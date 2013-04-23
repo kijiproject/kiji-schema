@@ -25,7 +25,7 @@
   "doc": "A weighted node in a graph (directedness is up to the user's interpretation).",
   "fields": [
     { "type": "string", "name": "label", "doc": "Label of the graph node." },
-    { "type": "double", "name": "weight", "doc": "Weight of the graph node." },
+    { "type": "double", "name": "weight", "doc": "Weight of the graph node.", "default": 0.0 },
     {
       "type": [
         {
@@ -41,17 +41,19 @@
                 "name": "label",
                 "doc": "Optional label of the graph edge."
               },
-              { "type": "double", "name": "weight", "doc": "Weight of the graph edge" },
+              { "type": "double", "name": "weight", "doc": "Weight of the graph edge", "default": 0.0 },
               {
                 "type": [ "Node", "null" ],
                 "name": "target",
-                "doc": "Node the edge connects to."
+                "doc": "Node the edge connects to.",
+                "default": null
               },
               {
                 "type": [ { "type": "map", "values": "string" }, "null" ],
                 "name": "annotations",
                 "order": "ignore",
-                "doc": "Additional string annotations associated with the edge."
+                "doc": "Additional string annotations associated with the edge.",
+                "default": null
               }
             ]
           }
@@ -59,13 +61,15 @@
         "null"
       ],
       "name": "edges",
-      "doc": "Array of outgoing edges from the node."
+      "doc": "Array of outgoing edges from the node.",
+      "default": null
     },
     {
       "type": [ { "type": "map", "values": "string" }, "null" ],
       "name": "annotations",
       "order": "ignore",
-      "doc": "Additional string annotations associated with the node."
+      "doc": "Additional string annotations associated with the node.",
+      "default": null
     }
   ]
 },
@@ -79,7 +83,8 @@
     {
       "type": [ { "type": "array", "items": "Edge" }, "null" ],
       "name": "edges",
-      "doc": "The ordered edges of the path."
+      "doc": "The ordered edges of the path.",
+      "default": null
     }
   ]
 }
