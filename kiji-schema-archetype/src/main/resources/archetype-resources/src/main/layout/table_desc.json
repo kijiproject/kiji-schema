@@ -1,0 +1,47 @@
+#set( $symbol_pound = '#' )
+#set( $symbol_dollar = '$' )
+#set( $symbol_escape = '\' )
+// JSON definition of example table.
+// You should not edit or write JSON files yourself, instead, use the kiji-schema-shell DDL.
+// See table_desc.ddl for the DDL equivalent.
+
+{
+  name: "users",
+  description: "example for maven archetype",
+  version: "kiji-1.0.0",
+  keys_format: {
+    encoding: "HASH_PREFIX",
+    hash_type: "MD5",
+    hash_size: 2
+  },
+  locality_groups: [ {
+    name: "default",
+    description: "main storage",
+    max_versions: 10,
+    ttl_seconds: 2147483647,
+    in_memory: false,
+    compression_type: "GZ",
+    families: [ {
+      name: "info",
+      description: "information about the user",
+      columns: [ {
+        name: "name",
+        description: "name of user",
+        column_schema: {
+          storage: "UID",
+          type: "INLINE",
+          value: '"string"'
+          }
+      }, {
+        name: "example_record",
+        description: "Our avro record",
+        column_schema: {
+          storage: "UID",
+          type: "CLASS",
+          value: "${package}.ExampleRecord"
+        }
+      } ]
+    } ]
+  } ]
+}
+

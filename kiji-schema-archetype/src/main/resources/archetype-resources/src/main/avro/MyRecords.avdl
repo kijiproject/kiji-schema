@@ -1,0 +1,11 @@
+#set( $symbol_pound = '#' )
+#set( $symbol_dollar = '$' )
+#set( $symbol_escape = '\' )
+@namespace("${package}")
+/** Example avro protocol. */
+protocol MyRecords {
+  /** Example record. */
+  record ExampleRecord {
+    string id;
+  }
+}

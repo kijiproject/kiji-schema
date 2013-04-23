@@ -62,6 +62,7 @@
 
     <module>kiji-schema</module>
     <module>kiji-schema-extras</module>
+    <module>kiji-schema-archetype</module>
   </modules>
 
   <build>
