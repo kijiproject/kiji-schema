@@ -47,6 +47,7 @@
     <module>hadoop1-bridge</module>
 
     <module>kiji-schema</module>
+    <module>kiji-schema-extras</module>
   </modules>
 
   <build>
