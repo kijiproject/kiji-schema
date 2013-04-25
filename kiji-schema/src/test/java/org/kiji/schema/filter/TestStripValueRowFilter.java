@@ -28,6 +28,7 @@ import java.util.NavigableSet;
 
 import org.junit.Test;
 
+import org.kiji.schema.EntityId;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiDataRequest;
@@ -39,7 +40,6 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.util.ResourceUtils;
 
 /** Tests the StripValueRowFilter. */
 public class TestStripValueRowFilter extends KijiClientTest {
@@ -47,22 +47,26 @@ public class TestStripValueRowFilter extends KijiClientTest {
   @Test
   public void testStripValueRowFilter() throws Exception {
     final Kiji kiji = getKiji();
+    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
 
-    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
-
-    final KijiTable table = kiji.openTable("foo");
+    final KijiTable table = kiji.openTable("table");
     try {
+      final EntityId eid = table.getEntityId("eid");
+
       {
         final KijiTableWriter writer = table.openTableWriter();
-        writer.put(table.getEntityId("me"), "info", "name", 1L, "me");
-        writer.put(table.getEntityId("me"), "info", "name", 2L, "me-too");
-        ResourceUtils.closeOrLog(writer);
+        try {
+          writer.put(eid, "family", "column", 1L, "me");
+          writer.put(eid, "family", "column", 2L, "me-too");
+        } finally {
+          writer.close();
+        }
       }
 
       final KijiTableReader reader = table.openTableReader();
       try {
         final KijiDataRequest dataRequest = KijiDataRequest.builder()
-            .addColumns(ColumnsDef.create().withMaxVersions(2).add("info", "name"))
+            .addColumns(ColumnsDef.create().withMaxVersions(2).add("family", "column"))
             .build();
         final KijiRowFilter rowFilter = new StripValueRowFilter();
         final KijiScannerOptions scannerOptions =
@@ -71,15 +75,15 @@ public class TestStripValueRowFilter extends KijiClientTest {
         final KijiRowScanner scanner = reader.getScanner(dataRequest, scannerOptions);
         try {
           for (KijiRowData row : scanner) {
-            final NavigableSet<String> qualifiers = row.getQualifiers("info");
+            final NavigableSet<String> qualifiers = row.getQualifiers("family");
             assertEquals(1, qualifiers.size());
-            assertTrue(qualifiers.contains("name"));
+            assertTrue(qualifiers.contains("column"));
 
             // Ensure that we can use getTimestamps() to count.
-            assertEquals(2, row.getTimestamps("info", "name").size());
+            assertEquals(2, row.getTimestamps("family", "column").size());
             try {
               // Cell value is stripped, hence IOException on the wrong schema hash:
-              row.getMostRecentValue("info", "name");
+              row.getMostRecentValue("family", "column");
               fail("row.getMostRecentValue() did not throw IOException.");
             } catch (IOException ioe) {
               assertTrue(ioe.getMessage(),
@@ -103,9 +107,7 @@ public class TestStripValueRowFilter extends KijiClientTest {
   public void testEqualsAndHashCode() {
     final StripValueRowFilter filter1 = new StripValueRowFilter();
     final StripValueRowFilter filter2 = new StripValueRowFilter();
-
     assertEquals(filter1, filter2);
-
     assertEquals(filter1.hashCode(), filter2.hashCode());
   }
 }

@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.1.0
+  * SCHEMA-339. JVM System property to configure KijiClientTest to use a
+      real HBase instance.
   * SCHEMA-322. Restrict behavior of KijiPager on map-type families.
       Paging on a map-type family yields qualifiers only, no actual cell.
   * SCHEMA-323. Adds KijiTable.getReaderFactory() to provide custom readers.

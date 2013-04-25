@@ -41,7 +41,17 @@ import org.kiji.schema.util.TestingFileUtils;
 
 /**
  * Base class for tests that interact with kiji as a client.
- * Provides MetaTable and KijiSchemaTable access.
+ *
+ * <p> Provides MetaTable and KijiSchemaTable access. </p>
+ * <p>
+ *   By default, this base class generate fake HBase instances, for testing.
+ *   By setting a JVM system property, this class may be configured to use a real HBase instance.
+ *   For example, to use an HBase mini-cluster running on <code>localhost:2181</code>, you may use:
+ *   <pre>
+ *     mvn clean test \
+ *         -DargLine="-Dorg.kiji.schema.KijiClientTest.HBASE_ADDRESS=localhost:2181"
+ *   </pre>
+ * </p>
  */
 public class KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(KijiClientTest.class);
@@ -49,6 +59,13 @@ public class KijiClientTest {
   static {
     SchemaPlatformBridge.get().initializeHadoopResources();
   }
+
+  /**
+   * Externally configured address of an HBase cluster to use for testing.
+   * Null when unspecified, which means use fake HBase instances.
+   */
+  private static final String HBASE_ADDRESS =
+      System.getProperty("org.kiji.schema.KijiClientTest.HBASE_ADDRESS", null);
 
   // JUnit requires public, checkstyle disagrees:
   // CSOFF: VisibilityModifierCheck
@@ -117,7 +134,9 @@ public class KijiClientTest {
     final String instanceName =
         String.format("%s_%s", getClass().getSimpleName(), mTestName.getMethodName());
     final String hbaseAddress =
-        String.format(".fake.%s-%d", instanceName, fakeHBaseCounter);
+        (HBASE_ADDRESS != null)
+        ? HBASE_ADDRESS
+        : String.format(".fake.%s-%d", instanceName, fakeHBaseCounter);
     final KijiURI uri =
         KijiURI.newBuilder(String.format("kiji://%s/%s", hbaseAddress, instanceName)).build();
     KijiInstaller.get().install(uri, mConf);

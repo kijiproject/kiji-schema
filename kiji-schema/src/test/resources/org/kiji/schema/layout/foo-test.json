@@ -28,7 +28,7 @@
     name : "default",
     in_memory : false,
     max_versions : 1,
-    ttl_seconds : 7776000,
+    ttl_seconds : 2147483647,
     compression_type : "GZ",
     families : [ {
       name : "info",

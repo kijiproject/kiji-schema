@@ -74,7 +74,9 @@ public class TestHBaseSchemaTable extends KijiClientTest {
     assertEquals(SCHEMA_DOUBLE, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_DOUBLE)));
     assertEquals(SCHEMA_BOOLEAN, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_BOOLEAN)));
     assertEquals(SCHEMA_NULL, schemaTable.getSchema(schemaTable.getSchemaHash(SCHEMA_NULL)));
-    assertNull(schemaTable.getSchema(new BytesKey(new byte[]{})));
+
+    // There is no hash composed of a single byte 0:
+    assertNull(schemaTable.getSchema(new BytesKey(new byte[]{0})));
 
     // Re-creating existing schemas are no-ops:
     assertEquals(
