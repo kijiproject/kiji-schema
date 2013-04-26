@@ -28,36 +28,25 @@ import org.kiji.annotations.ApiStability;
 public final class Filters {
 
   /**
-   * Combines row filters using a logical AND.
-   *
-   * @param filters Ordered list of row filters to combine using a logical AND.
-   *     Nulls are filtered out.
-   * @return a row filter combining the specified row filters using a logical AND.
-   */
-  public static KijiRowFilter or(KijiRowFilter... filters) {
-    return new OrRowFilter(filters);
-  }
-
-  /**
    * Combines row filters using a logical OR.
    *
    * @param filters Ordered list of row filters to combine using a logical OR.
    *     Nulls are filtered out.
    * @return a row filter combining the specified row filters using a logical OR.
    */
-  public static KijiRowFilter and(KijiRowFilter... filters) {
-    return new AndRowFilter(filters);
+  public static KijiRowFilter or(KijiRowFilter... filters) {
+    return new OrRowFilter(filters);
   }
 
   /**
-   * Combines column filters using a logical AND.
+   * Combines row filters using a logical AND.
    *
-   * @param filters Ordered list of column filters to combine using a logical AND.
+   * @param filters Ordered list of row filters to combine using a logical AND.
    *     Nulls are filtered out.
-   * @return a column filter combining the specified column filters using a logical AND.
+   * @return a row filter combining the specified row filters using a logical AND.
    */
-  public static KijiColumnFilter or(KijiColumnFilter... filters) {
-    return new OrColumnFilter(filters);
+  public static KijiRowFilter and(KijiRowFilter... filters) {
+    return new AndRowFilter(filters);
   }
 
   /**
@@ -66,6 +55,17 @@ public final class Filters {
    * @param filters Ordered list of column filters to combine using a logical OR.
    *     Nulls are filtered out.
    * @return a column filter combining the specified column filters using a logical OR.
+   */
+  public static KijiColumnFilter or(KijiColumnFilter... filters) {
+    return new OrColumnFilter(filters);
+  }
+
+  /**
+   * Combines column filters using a logical AND.
+   *
+   * @param filters Ordered list of column filters to combine using a logical AND.
+   *     Nulls are filtered out.
+   * @return a column filter combining the specified column filters using a logical AND.
    */
   public static KijiColumnFilter and(KijiColumnFilter... filters) {
     return new AndColumnFilter(filters);
