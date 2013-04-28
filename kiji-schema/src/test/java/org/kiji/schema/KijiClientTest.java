@@ -114,7 +114,6 @@ public class KijiClientTest {
     mLocalTempDir = TestingFileUtils.createTempDir(mTestId, "temp-dir");
     mConf = HBaseConfiguration.create();
     mConf.set("fs.defaultFS", "file://" + mLocalTempDir);
-    mConf.set("fs.default.name", "file://" + mLocalTempDir);
     mConf.set("mapred.job.tracker", "local");
     mKiji = null;  // lazily initialized
   }

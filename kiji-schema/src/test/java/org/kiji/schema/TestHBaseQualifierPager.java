@@ -20,14 +20,16 @@
 package org.kiji.schema;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.NoSuchElementException;
 
+import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.HConstants;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -82,10 +84,10 @@ public class TestHBaseQualifierPager extends KijiClientTest {
   public void testQualifiersPager() throws IOException {
     final EntityId eid = mTable.getEntityId("me");
 
-
+    final int pageSize = 2;
     final KijiDataRequest dataRequest = KijiDataRequest.builder()
         .addColumns(ColumnsDef.create()
-            .withMaxVersions(HConstants.ALL_VERSIONS).withPageSize(2).addFamily("jobs"))
+            .withMaxVersions(HConstants.ALL_VERSIONS).withPageSize(pageSize).addFamily("jobs"))
         .build();
 
     final HBaseQualifierPager pager =
@@ -93,14 +95,22 @@ public class TestHBaseQualifierPager extends KijiClientTest {
             eid, dataRequest, (HBaseKijiTable) mTable, new KijiColumnName("jobs"));
     try {
       assertTrue(pager.hasNext());
-      assertTrue(pager.hasNext());
-      assertArrayEquals(new String[]{"j0", "j1"}, pager.next());
-      assertTrue(pager.hasNext());
-      assertArrayEquals(new String[]{"j2", "j3"}, pager.next());
-      assertTrue(pager.hasNext());
-      assertArrayEquals(new String[]{"j4"}, pager.next());
-      assertTrue(pager.hasNext());
-      assertArrayEquals(new String[]{}, pager.next());
+
+      final List<String> qualifiers = Lists.newArrayList();
+      int npage = 0;
+      while (pager.hasNext()) {
+        // Note: we cannot validate individual pages as their boundaries depend on HBase version.
+        final List<String> page = Lists.newArrayList(pager.next());
+        LOG.info("Page #{}: {}", npage, page);
+        assertTrue(page.size() <= pageSize);
+        qualifiers.addAll(page);
+        npage++;
+      }
+
+      final List<String> expected = Lists.newArrayList("j0", "j1", "j2", "j3", "j4");
+      assertTrue(npage >= 3);  // at least 3 pages
+      assertEquals(expected, qualifiers);
+
       assertFalse(pager.hasNext());
       try {
         pager.next();
@@ -118,9 +128,10 @@ public class TestHBaseQualifierPager extends KijiClientTest {
   public void testQualifiersPagerWithUserFilterEmpty() throws IOException {
     final EntityId eid = mTable.getEntityId("me");
 
+    final int pageSize = 2;
     final KijiDataRequest dataRequest = KijiDataRequest.builder()
         .addColumns(ColumnsDef.create()
-            .withPageSize(2)
+            .withPageSize(pageSize)
             .withFilter(new KijiColumnRangeFilter("j12", true, "j13", true))
             .addFamily("jobs"))
         .build();
@@ -148,9 +159,10 @@ public class TestHBaseQualifierPager extends KijiClientTest {
   public void testQualifiersPagerWithUserFilter() throws IOException {
     final EntityId eid = mTable.getEntityId("me");
 
+    final int pageSize = 2;
     final KijiDataRequest dataRequest = KijiDataRequest.builder()
         .addColumns(ColumnsDef.create()
-            .withPageSize(2)
+            .withPageSize(pageSize)
             .withFilter(new KijiColumnRangeFilter("j1", true, "j2", true))
             .addFamily("jobs"))
         .build();
@@ -160,9 +172,22 @@ public class TestHBaseQualifierPager extends KijiClientTest {
             eid, dataRequest, (HBaseKijiTable) mTable, new KijiColumnName("jobs"));
     try {
       assertTrue(pager.hasNext());
-      assertArrayEquals(new String[]{"j1", "j2"}, pager.next());
-      assertTrue(pager.hasNext());
-      assertArrayEquals(new String[]{}, pager.next());
+
+      final List<String> qualifiers = Lists.newArrayList();
+      int npage = 0;
+      while (pager.hasNext()) {
+        // Note: we cannot validate individual pages as their boundaries depend on HBase version.
+        final List<String> page = Lists.newArrayList(pager.next());
+        LOG.info("Page #{}: {}", npage, page);
+        assertTrue(page.size() <= pageSize);
+        qualifiers.addAll(page);
+        npage++;
+      }
+
+      final List<String> expected = Lists.newArrayList("j1", "j2");
+      assertTrue(npage >= 1);  // at least 1 page
+      assertEquals(expected, qualifiers);
+
       assertFalse(pager.hasNext());
       try {
         pager.next();
@@ -180,9 +205,10 @@ public class TestHBaseQualifierPager extends KijiClientTest {
   public void testQualifiersPagerWithUserFilter2() throws IOException {
     final EntityId eid = mTable.getEntityId("me");
 
+    final int pageSize = 2;
     final KijiDataRequest dataRequest = KijiDataRequest.builder()
         .addColumns(ColumnsDef.create()
-            .withPageSize(2)
+            .withPageSize(pageSize)
             .withFilter(new KijiColumnRangeFilter("j1", true, null, true))
             .addFamily("jobs"))
         .build();
@@ -192,11 +218,22 @@ public class TestHBaseQualifierPager extends KijiClientTest {
             eid, dataRequest, (HBaseKijiTable) mTable, new KijiColumnName("jobs"));
     try {
       assertTrue(pager.hasNext());
-      assertArrayEquals(new String[]{"j1", "j2"}, pager.next());
-      assertTrue(pager.hasNext());
-      assertArrayEquals(new String[]{"j3", "j4"}, pager.next());
-      assertTrue(pager.hasNext());
-      assertArrayEquals(new String[]{}, pager.next());
+
+      final List<String> qualifiers = Lists.newArrayList();
+      int npage = 0;
+      while (pager.hasNext()) {
+        // Note: we cannot validate individual pages as their boundaries depend on HBase version.
+        final List<String> page = Lists.newArrayList(pager.next());
+        LOG.info("Page #{}: {}", npage, page);
+        assertTrue(page.size() <= pageSize);
+        qualifiers.addAll(page);
+        npage++;
+      }
+
+      final List<String> expected = Lists.newArrayList("j1", "j2", "j3", "j4");
+      assertTrue(npage >= 2);  // at least 2 pages
+      assertEquals(expected, qualifiers);
+
       assertFalse(pager.hasNext());
       try {
         pager.next();

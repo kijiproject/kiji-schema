@@ -115,22 +115,19 @@ public class TestHBaseVersionPager extends KijiClientTest {
 
     try {
       assertTrue(pager.hasNext());
-      final KijiRowData page1 = pager.next();
-      final List<KijiCell<CharSequence>> cells1 =
-          Lists.newArrayList(page1.<CharSequence>asIterable("info", "name"));
-      assertEquals(2, cells1.size());
 
-      assertTrue(pager.hasNext());
-      final KijiRowData page2 = pager.next();
-      final List<KijiCell<CharSequence>> cells2 =
-          Lists.newArrayList(page2.<CharSequence>asIterable("info", "name"));
-      assertEquals(2, cells2.size());
-
-      assertTrue(pager.hasNext());
-      final KijiRowData page3 = pager.next();
-      final List<KijiCell<CharSequence>> cells3 =
-          Lists.newArrayList(page3.<CharSequence>asIterable("info", "name"));
-      assertEquals(1, cells3.size());
+      final List<KijiCell<CharSequence>> cells = Lists.newArrayList();
+      final List<Integer> pageSizes = Lists.newArrayList();
+      int npage = 0;
+      while (pager.hasNext()) {
+        final KijiRowData page = pager.next();
+        final List<KijiCell<CharSequence>> pageCells =
+            Lists.newArrayList(page.<CharSequence>asIterable("info", "name"));
+        cells.addAll(pageCells);
+        LOG.info("Page #{}: {}", npage, pageCells);
+        npage += 1;
+        pageSizes.add(pageCells.size());
+      }
 
       assertFalse(pager.hasNext());
       try {
@@ -140,11 +137,7 @@ public class TestHBaseVersionPager extends KijiClientTest {
         // Expected!
       }
 
-      final List<KijiCell<CharSequence>> cells = Lists.newArrayList();
-      cells.addAll(cells1);
-      cells.addAll(cells2);
-      cells.addAll(cells3);
-
+      assertEquals(Lists.newArrayList(2, 2, 1), pageSizes);
       assertEquals(maxVersions, cells.size());
       int counter = 5;
       for (KijiCell<CharSequence> cell : cells) {
@@ -178,16 +171,19 @@ public class TestHBaseVersionPager extends KijiClientTest {
 
     try {
       assertTrue(pager.hasNext());
-      final KijiRowData page1 = pager.next();
-      final List<KijiCell<CharSequence>> cells1 =
-          Lists.newArrayList(page1.<CharSequence>asIterable("info", "name"));
-      assertEquals(2, cells1.size());
 
-      assertTrue(pager.hasNext());
-      final KijiRowData page2 = pager.next();
-      final List<KijiCell<CharSequence>> cells2 =
-          Lists.newArrayList(page2.<CharSequence>asIterable("info", "name"));
-      assertEquals(1, cells2.size());
+      final List<KijiCell<CharSequence>> cells = Lists.newArrayList();
+      final List<Integer> pageSizes = Lists.newArrayList();
+      int npage = 0;
+      while (pager.hasNext()) {
+        final KijiRowData page = pager.next();
+        final List<KijiCell<CharSequence>> pageCells =
+            Lists.newArrayList(page.<CharSequence>asIterable("info", "name"));
+        cells.addAll(pageCells);
+        LOG.info("Page #{}: {}", npage, pageCells);
+        npage += 1;
+        pageSizes.add(pageCells.size());
+      }
 
       assertFalse(pager.hasNext());
       try {
@@ -197,10 +193,7 @@ public class TestHBaseVersionPager extends KijiClientTest {
         // Expected!
       }
 
-      final List<KijiCell<CharSequence>> cells = Lists.newArrayList();
-      cells.addAll(cells1);
-      cells.addAll(cells2);
-
+      assertEquals(Lists.newArrayList(2, 1), pageSizes);
       assertEquals(maxVersions, cells.size());
       int counter = 5;
       for (KijiCell<CharSequence> cell : cells) {
@@ -235,23 +228,21 @@ public class TestHBaseVersionPager extends KijiClientTest {
 
     try {
       assertTrue(pager.hasNext());
-      final KijiRowData page1 = pager.next();
-      final List<KijiCell<CharSequence>> cells1 =
-          Lists.newArrayList(page1.<CharSequence>asIterable("info", "name"));
-      assertEquals(2, cells1.size());
 
-      assertTrue(pager.hasNext());
-      final KijiRowData page2 = pager.next();
-      final List<KijiCell<CharSequence>> cells2 =
-          Lists.newArrayList(page2.<CharSequence>asIterable("info", "name"));
-      assertEquals(2, cells2.size());
+      final List<KijiCell<CharSequence>> cells = Lists.newArrayList();
+      final List<Integer> pageSizes = Lists.newArrayList();
+      int npage = 0;
+      while (pager.hasNext()) {
+        final KijiRowData page = pager.next();
+        final List<KijiCell<CharSequence>> pageCells =
+            Lists.newArrayList(page.<CharSequence>asIterable("info", "name"));
+        cells.addAll(pageCells);
+        LOG.info("Page #{}: {}", npage, pageCells);
+        npage += 1;
+        pageSizes.add(pageCells.size());
+      }
 
-      assertTrue(pager.hasNext());
-      final KijiRowData page3 = pager.next();
-      final List<KijiCell<CharSequence>> cells3 =
-          Lists.newArrayList(page3.<CharSequence>asIterable("info", "name"));
-      assertEquals(1, cells3.size());
-
+      assertEquals(Lists.newArrayList(2, 2, 1), pageSizes);
       assertFalse(pager.hasNext());
       try {
         pager.next();
@@ -260,11 +251,7 @@ public class TestHBaseVersionPager extends KijiClientTest {
         // Expected!
       }
 
-      final List<KijiCell<CharSequence>> cells = Lists.newArrayList();
-      cells.addAll(cells1);
-      cells.addAll(cells2);
-      cells.addAll(cells3);
-
+      assertEquals(Lists.newArrayList(2, 2, 1), pageSizes);
       assertEquals(actualVersions, cells.size());
       int counter = 5;
       for (KijiCell<CharSequence> cell : cells) {
