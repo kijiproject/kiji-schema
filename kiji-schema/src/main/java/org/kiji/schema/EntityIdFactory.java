@@ -23,6 +23,7 @@ import java.util.List;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
@@ -223,7 +224,10 @@ public abstract class EntityIdFactory {
       Preconditions.checkNotNull(componentList);
       Preconditions.checkArgument(componentList.size() > 0);
       Preconditions.checkNotNull(componentList.get(0));
-      return FormattedEntityId.getEntityId(componentList, mRowKeyFormat);
+
+      // Ensuring the list is copied here since the getEntityId method may modify the
+      // list in case of data type mismatches (Int to Long promotion in some cases)
+      return FormattedEntityId.getEntityId(Lists.newArrayList(componentList), mRowKeyFormat);
     }
 
     /** {@inheritDoc} */

@@ -33,6 +33,7 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -146,7 +147,9 @@ final class FormattedEntityId extends EntityId {
   /**
    * Creates a FormattedEntityId from the specified Kiji row key.
    *
-   * @param kijiRowKey An ordered list of objects of row key components.
+   * @param kijiRowKey An ordered <b>mutable</b> list of objects of row key components. The
+   *    contents of this list may be modified in case of any type promotions from
+   *    Integer to Long.
    * @param format The RowKeyFormat2 as specified in the layout file.
    * @return a new FormattedEntityId with the specified Kiji row key.
    */
@@ -154,6 +157,7 @@ final class FormattedEntityId extends EntityId {
       RowKeyFormat2 format) {
     Preconditions.checkNotNull(format);
     Preconditions.checkNotNull(kijiRowKey);
+
     // Validity check for kiji  Row Key.
     if (kijiRowKey.size() > format.getComponents().size()) {
       throw new EntityIdException("Too many components in kiji Row Key");
