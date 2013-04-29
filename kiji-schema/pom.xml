@@ -263,18 +263,21 @@
           <artifactId>hadoop-core</artifactId>
           <scope>compile</scope>
           <optional>true</optional>
+          <version>${cdh4-hadoop.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-client</artifactId>
           <scope>compile</scope>
           <optional>true</optional>
+          <version>${cdh4-hadoop.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-minicluster</artifactId>
           <scope>test</scope>
           <optional>true</optional>
+          <version>${cdh4-hadoop.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hbase</groupId>
@@ -282,12 +285,14 @@
           <type>test-jar</type>
           <scope>test</scope>
           <optional>true</optional>
+          <version>${cdh4-hbase.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hbase</groupId>
           <artifactId>hbase</artifactId>
           <scope>compile</scope>
           <optional>true</optional>
+          <version>${cdh4-hbase.version}</version>
         </dependency>
       </dependencies>
     </profile>

@@ -41,7 +41,6 @@ import org.kiji.schema.KijiRowData;
 import org.kiji.schema.filter.Filters;
 import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.filter.KijiColumnRangeFilter;
-import org.kiji.schema.filter.KijiPaginationFilter;
 import org.kiji.schema.filter.StripValueColumnFilter;
 import org.kiji.schema.util.Debug;
 
@@ -161,7 +160,7 @@ public final class HBaseMapFamilyPager implements KijiPager {
     final KijiColumnFilter filter = Filters.and(
         new KijiColumnRangeFilter(mMinQualifier, false, null, false),  // qualifier > mMinQualifier
         mColumnRequest.getFilter(),  // user filter
-        new KijiPaginationFilter(pageSize, 0, null),  // max # of qualifier
+        new KijiPaginationFilter(),  // Select at most one version / qualifier.
         new StripValueColumnFilter());  // discard the cell content, we just need the qualifiers
 
     final KijiDataRequest nextPageDataRequest = KijiDataRequest.builder()

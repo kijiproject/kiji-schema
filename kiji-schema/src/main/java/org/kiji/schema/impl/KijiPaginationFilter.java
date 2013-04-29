@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.filter;
+package org.kiji.schema.impl;
 
 import java.io.IOException;
 
@@ -29,47 +29,46 @@ import org.apache.hadoop.hbase.filter.FilterList;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.filter.KijiColumnFilter;
 
 /**
- * A KijiColumnFilter that allows for pagination of results given an offset, limit, and
+ * A KijiColumnFilter that allows for pagination over the qualifiers in a row, along with
  * other filters that are and-ed together.
+ *
+ * <p>Note that starting in HBase 0.94, this will only return at most one value, regardless
+ * of where maxVersions is set to (because the HBase Filter return code is set to
+ * INCLUDE_AND_NEXT_COL semantics). Because of this, we have enforced a lack of options
+ * regarding maxVersions for this filter.</p>
+ *
+ * <p>This should only be used internally e.g. in HBaseQualifierPager to retrieve qualifiers
+ * or other single-valued output.</p>
  */
 @ApiAudience.Private
 public class KijiPaginationFilter extends KijiColumnFilter {
   private static final long serialVersionUID = 1L;
 
   /** The max number of versions to return. */
-  private final int mLimit;
+  private final int mLimit = 1;
 
   /** How many versions back in history to start looking. */
-  private final int mOffset;
+  private final int mOffset = 0;
 
   /** Other filters to be checked before the pagination filter. */
   private final KijiColumnFilter mInputFilter;
 
   /**
-   * Initialize pagination filter with limit, offset, and other filters to fold in.
-   *
-   * @param limit The max number of versions to return.
-   * @param offset How many versions back in history to begin looking.
-   * Write unit tests that verify these. HBase's docs are not specific
+   * Initialize pagination filter with default settings.
    */
-  public KijiPaginationFilter(int limit, int offset) {
-    mLimit = limit;
-    mOffset = offset;
+  public KijiPaginationFilter() {
     mInputFilter = null;
   }
 
   /**
-   * Initialize pagination filter with limit, offset, and other filters to fold in.
+   * Initialize pagination filter with other filters to fold in.
    *
-   * @param limit The max number of versions to return.
-   * @param offset How many versions back in history to begin looking.
    * @param filter Other filter that will precede
    */
-  public KijiPaginationFilter(int limit, int offset, KijiColumnFilter filter) {
-    mLimit = limit;
-    mOffset = offset;
+  public KijiPaginationFilter(KijiColumnFilter filter) {
     mInputFilter = filter;
   }
 

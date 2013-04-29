@@ -61,7 +61,7 @@ import org.kiji.schema.util.InstanceBuilder;
 public class TestHBaseKijiRowData extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestHBaseKijiRowData.class);
 
-  private static final String TABLE_NAME = "table";
+  private static final String TABLE_NAME = "row_data_test_table";
 
   private byte[] mHBaseFamily;
   private byte[] mHBaseQual0;
@@ -490,34 +490,27 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
   @Test
   public void testContainsColumn() throws Exception {
-    // Create a different Kiji instance.
-    // This is required as table layout SIMPLE also has name 'table'
-    // which collides with the table creates in the setup function.
-    final Kiji kiji = new InstanceBuilder()
+    final Kiji kiji = new InstanceBuilder(getKiji())
         .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE))
             .withRow("row1")
                .withFamily("family")
                   .withQualifier("column").withValue(1, "foo1")
         .build();
+    final KijiTable table = kiji.openTable("table");
     try {
-      final KijiTable table = kiji.openTable("table");
+      final KijiTableReader reader = table.openTableReader();
       try {
-        final KijiTableReader reader = table.openTableReader();
-        try {
-          final KijiRowData row1 = reader.get(table.getEntityId("row1"),
-              KijiDataRequest.create("family", "column"));
-          assertTrue(row1.containsCell("family", "column", 1L));
-          assertFalse(row1.containsCell("family", "column", 2L));
-          assertFalse(row1.containsCell("blope", "column", 1L));
-          assertFalse(row1.containsCell("family", "blope", 1L));
-        } finally {
-          reader.close();
-        }
+        final KijiRowData row1 = reader.get(table.getEntityId("row1"),
+            KijiDataRequest.create("family", "column"));
+        assertTrue(row1.containsCell("family", "column", 1L));
+        assertFalse(row1.containsCell("family", "column", 2L));
+        assertFalse(row1.containsCell("blope", "column", 1L));
+        assertFalse(row1.containsCell("family", "blope", 1L));
       } finally {
-        table.release();
+        reader.close();
       }
     } finally {
-      kiji.release();
+      table.release();
     }
   }
 
@@ -706,6 +699,67 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         Lists.newArrayList(input.<CharSequence>asIterable("family", "qual0"));
     final int cellCount = cells.size();
     assertEquals("Wrong number of cells returned by asIterable.", 3, cellCount);
+  }
+
+  @Test
+  public void testReadMiddleTimestamp() throws IOException {
+    // Test that we can select a timestamped value that is not the most recent value.
+    new InstanceBuilder(getKiji())
+        .withTable(mTable)
+            .withRow("row1")
+                .withFamily("family")
+                    .withQualifier("qual0")
+                        .withValue(4L, "oldest")
+                        .withValue(6L, "middle")
+                        .withValue(8L, "newest")
+                    .withQualifier("qual1")
+                        .withValue(1L, "one")
+                        .withValue(2L, "two")
+                        .withValue(3L, "three")
+                        .withValue(4L, "four")
+                        .withValue(8L, "eight")
+                    .withQualifier("qual2")
+                        .withValue(3L, "q2-three")
+                        .withValue(4L, "q2-four")
+                        .withValue(6L, "q2-six")
+        .build();
+
+    final KijiDataRequest dataRequest = KijiDataRequest.builder()
+        .withTimeRange(2L, 7L)
+        .addColumns(ColumnsDef.create().add("family", "qual0"))
+        .addColumns(ColumnsDef.create().withMaxVersions(2).add("family", "qual1"))
+        .addColumns(ColumnsDef.create().withMaxVersions(3).add("family", "qual2"))
+        .build();
+
+    final KijiTableReader reader = mTable.openTableReader();
+    try {
+      final KijiRowData row1 = reader.get(mTable.getEntityId("row1"), dataRequest);
+
+      // This should be "middle" based on the time range of the data request.
+      final String qual0val = row1.getMostRecentValue("family", "qual0").toString();
+      assertEquals("Didn't get the middle value for family:qual0", "middle", qual0val);
+
+      // We always optimize maxVersions=1 to actually return exactly 1 value, even of
+      // we requested more versions of other columns.
+      final NavigableMap<Long, CharSequence> q0vals = row1.getValues("family", "qual0");
+      assertEquals("qual0 should only return one thing", 1, q0vals.size());
+      assertEquals("Newest (only) value in q0 should be 'middle'.",
+          "middle", q0vals.firstEntry().getValue().toString());
+
+      // qual1 should see at least two versions, but no newer than 7L.
+      final NavigableMap<Long, CharSequence> q1vals = row1.getValues("family", "qual1");
+      assertEquals("qual1 getValues should have exactly two items", 2, q1vals.size());
+      assertEquals("Newest value in q1 should be 'four'.",
+          "four", q1vals.firstEntry().getValue().toString());
+
+      // qual2 should see exactly three versions.
+      final NavigableMap<Long, CharSequence> q2vals = row1.getValues("family", "qual2");
+      assertEquals("qual2 getValues should have exactly three items", 3, q2vals.size());
+      assertEquals("Newest value in q2 should be 'q2-six'.",
+          "q2-six", q2vals.firstEntry().getValue().toString());
+    } finally {
+      reader.close();
+    }
   }
 
   @Test

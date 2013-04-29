@@ -24,6 +24,7 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiTable;
@@ -31,13 +32,13 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 
-public class TestInstanceBuilder {
+public class TestInstanceBuilder extends KijiClientTest {
   @Test
   public void testBuilder() throws Exception {
     final KijiTableLayout layout =
         KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
 
-    final Kiji kiji = new InstanceBuilder()
+    final Kiji kiji = new InstanceBuilder(getKiji())
         .withTable("table", layout)
             .withRow("row1")
                 .withFamily("family")
@@ -62,6 +63,5 @@ public class TestInstanceBuilder {
 
     ResourceUtils.closeOrLog(reader);
     ResourceUtils.releaseOrLog(table);
-    ResourceUtils.releaseOrLog(kiji);
   }
 }

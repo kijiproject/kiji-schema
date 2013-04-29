@@ -3,6 +3,15 @@
                               Kiji Schema Release Notes
 
 Version 1.1.0
+  * SCHEMA-354. Change use of filters to comply with HBase 0.92 and 0.94 semantics.
+    This provides experimental support for HBase 0.94, though this is not the
+    default.  KijiSchema uses HBase filters to convert KijiDataRequests into the
+    smallest possible HBase request. Where columns have a different maxVersions,
+    columns with maxVersions not equal to 1 may communicate more values across
+    the wire than are requested; the actual amount of data transferred may be as
+    many as the largest maxVersions observed in the data request.  Previously
+    (<= 0.92) all per-column maxVersions could be respected on the wire in
+    addition to within KijiRowData.
   * SCHEMA-283. Add more table and and locality group properties to
       TableLayoutDesc. These properties control e.g. max HFile size and bloom
       filter usage. You must use layout version "layout-1.2.0" to expose

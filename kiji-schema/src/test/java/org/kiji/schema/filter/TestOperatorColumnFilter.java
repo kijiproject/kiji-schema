@@ -24,12 +24,14 @@ import static org.junit.Assert.assertFalse;
 
 import org.junit.Test;
 
+import org.kiji.schema.impl.KijiPaginationFilter;
+
 public class TestOperatorColumnFilter {
 
   @Test
   public void testEqualsAndHashCode() {
     final KijiColumnFilter fColRange = KijiColumnRangeFilter.greaterThan("a");
-    final KijiColumnFilter fPage = new KijiPaginationFilter(5, 0, null);
+    final KijiColumnFilter fPage = new KijiPaginationFilter();
 
     final OperatorColumnFilter andFilter1 = new AndColumnFilter(fColRange);
     final OperatorColumnFilter andFilter2a = new AndColumnFilter(fColRange, fPage);

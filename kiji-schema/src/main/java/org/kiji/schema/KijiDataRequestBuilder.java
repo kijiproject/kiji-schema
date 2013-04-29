@@ -19,6 +19,7 @@
 
 package org.kiji.schema;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -107,8 +108,13 @@ import org.kiji.schema.filter.KijiColumnFilter;
 @ApiStability.Evolving
 public final class KijiDataRequestBuilder {
 
-  /** Column builders associated with this data request builder. */
-  private Set<ColumnsDef> mColumnsDefs = Sets.newHashSet();
+  /**
+   * Column builders associated with this data request builder.
+   *
+   * <p>We use a linked set so we construct KijiDataRequests in a stable order.
+   * This is necessary for testing HBaseDataRequestAdapter.</p>
+   */
+  private LinkedHashSet<ColumnsDef> mColumnsDefs = Sets.newLinkedHashSet();
 
   /** The minimum timestamp of cells to be read (inclusive). */
   private long mMinTimestamp = KConstants.BEGINNING_OF_TIME;
@@ -450,6 +456,7 @@ public final class KijiDataRequestBuilder {
     final Set<String> familiesOfColumns = Sets.newHashSet();
 
     final List<KijiDataRequest.Column> requestedColumns = Lists.newArrayList();
+    // Iterate over the ColumnsDefs in the order they were added (mColumnsDef is a LinkedHashSet).
     for (ColumnsDef columnsDef : mColumnsDefs) {
       for (KijiDataRequest.Column column : columnsDef.buildColumns()) {
         if (column.getQualifier() == null) {

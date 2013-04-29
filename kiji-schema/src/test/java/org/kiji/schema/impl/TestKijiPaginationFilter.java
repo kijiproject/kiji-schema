@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.filter;
+package org.kiji.schema.impl;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -41,6 +41,8 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.filter.KijiColumnFilter;
+import org.kiji.schema.filter.RegexQualifierColumnFilter;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -75,18 +77,16 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "info", "name", 4L, "me-four");
     writer.put(id, "info", "name", 5L, "me-five");
     ResourceUtils.closeOrLog(writer);
-    final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 1);
+    final KijiColumnFilter columnFilter = new KijiPaginationFilter();
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
     EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     final NavigableMap<Long, CharSequence> resultMap = myRowData.getValues("info", "name");
-    assertEquals("The number of returned values is incorrect:", 2, resultMap.size());
-    assertTrue(null != resultMap.get(4L));
-    assertEquals("me-four", resultMap.get(4L).toString());
-    assertTrue(null != resultMap.get(3L));
-    assertEquals("me-three", resultMap.get(3L).toString());
+    assertEquals("The number of returned values is incorrect:", 1, resultMap.size());
+    assertTrue(null != resultMap.get(5L));
+    assertEquals("me-five", resultMap.get(5L).toString());
   }
 
   @Test
@@ -99,18 +99,16 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "info", "name", 4L, "me-four");
     writer.put(id, "info", "name", 5L, "me-five");
     ResourceUtils.closeOrLog(writer);
-    final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 0);
+    final KijiColumnFilter columnFilter = new KijiPaginationFilter();
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
     EntityId meId = mTable.getEntityId("me");
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     final NavigableMap<Long, CharSequence> resultMap = myRowData.getValues("info", "name");
-    assertEquals("The number of returned values is incorrect:", 2, resultMap.size());
+    assertEquals("The number of returned values is incorrect:", 1, resultMap.size());
     assertTrue(null != resultMap.get(5L));
     assertEquals("me-five", resultMap.get(5L).toString());
-    assertTrue(null != resultMap.get(4L));
-    assertEquals("me-four", resultMap.get(4L).toString());
   }
 
   @Test
@@ -123,7 +121,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "jobs", "b", 4L, "always coming in 2nd");
     writer.put(id, "jobs", "a", 5L, "always coming in 1st");
     ResourceUtils.closeOrLog(writer);
-    final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 1);
+    final KijiColumnFilter columnFilter = new KijiPaginationFilter();
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
     final KijiDataRequest dataRequest = builder.build();
@@ -131,11 +129,9 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     final NavigableMap<String, NavigableMap<Long, CharSequence>> resultMap
         = myRowData.<CharSequence>getValues("jobs");
-    assertEquals("The number of returned values is incorrect:", 2, resultMap.size());
-    assertTrue(null != resultMap.get("b"));
-    assertEquals("always coming in 2nd", resultMap.get("b").get(4L).toString());
-    assertTrue(null != resultMap.get("c"));
-    assertEquals("always coming in 3rd", resultMap.get("c").get(3L).toString());
+    assertEquals("The number of returned values is incorrect:", 1, resultMap.size());
+    assertTrue(null != resultMap.get("a"));
+    assertEquals("always coming in 1st", resultMap.get("a").get(5L).toString());
   }
 
   @Test
@@ -148,7 +144,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "jobs", "a", 4L, "always coming in 2nd");
     writer.put(id, "jobs", "a", 5L, "always coming in 1st");
     ResourceUtils.closeOrLog(writer);
-    final KijiColumnFilter columnFilter = new KijiPaginationFilter(2, 0,
+    final KijiColumnFilter columnFilter = new KijiPaginationFilter(
         new RegexQualifierColumnFilter("b"));
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
@@ -157,18 +153,18 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     final NavigableMap<String, NavigableMap<Long, CharSequence>> resultMap
         = myRowData.<CharSequence>getValues("jobs");
-    assertEquals("The number of returned values is incorrect: ", 2, resultMap.get("b").size());
+    assertEquals("The number of returned values is incorrect: ", 1, resultMap.get("b").size());
     assertEquals("Incorrect first value of first page:", "always coming in 3rd",
         resultMap.get("b").get(3L).toString());
-    assertEquals("Incorrect second value of first page:", "always coming in 4th",
-        resultMap.get("b").get(2L).toString());
   }
 
   @Test
   public void testEqualsAndHashCode() {
-    final KijiPaginationFilter filter1 = new KijiPaginationFilter(2, 1);
-    final KijiPaginationFilter filter2 = new KijiPaginationFilter(2, 1);
-    final KijiPaginationFilter differentFilter = new KijiPaginationFilter(4, 2);
+    final KijiPaginationFilter filter1 = new KijiPaginationFilter(
+        new RegexQualifierColumnFilter("b"));
+    final KijiPaginationFilter filter2 = new KijiPaginationFilter(
+        new RegexQualifierColumnFilter("b"));
+    final KijiPaginationFilter differentFilter = new KijiPaginationFilter();
 
     assertEquals(filter1, filter2);
     assertFalse(filter1.equals(differentFilter));

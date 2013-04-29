@@ -45,11 +45,6 @@
       </plugin>
 
       <plugin>
-        <groupId>org.kiji.maven.plugins</groupId>
-        <artifactId>hbase-maven-plugin</artifactId>
-      </plugin>
-
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
       </plugin>

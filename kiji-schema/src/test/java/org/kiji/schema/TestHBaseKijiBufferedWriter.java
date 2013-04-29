@@ -51,7 +51,7 @@ public class TestHBaseKijiBufferedWriter extends KijiClientTest {
         KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST));
 
     // Populate the environment.
-    mKiji = new InstanceBuilder()
+    mKiji = new InstanceBuilder(getKiji())
         .withTable("user", layout)
             .withRow("foo")
                 .withFamily("info")
@@ -73,7 +73,6 @@ public class TestHBaseKijiBufferedWriter extends KijiClientTest {
     mBufferedWriter.close();
     mReader.close();
     mTable.release();
-    mKiji.release();
   }
 
   @Test

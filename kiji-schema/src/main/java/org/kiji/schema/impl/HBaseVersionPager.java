@@ -175,7 +175,7 @@ public final class HBaseVersionPager implements KijiPager {
       final Get hbaseGet = adapter.toGet(mEntityId, mTable.getLayout());
       LOG.debug("Sending HBase Get: {}", hbaseGet);
       final Result result = mTable.getHTable().get(hbaseGet);
-      LOG.debug("{} cells were requested, {} cells were received.", result.size(), pageSize);
+      LOG.debug("{} cells were requested, {} cells were received.", pageSize, result.size());
 
       if (result.size() < maxVersions) {
         // We got fewer versions than the number we expected, that means there are no more

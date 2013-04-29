@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 {
-  name: "table",
+  name: "row_data_test_table",
   keys_format : {'org.kiji.schema.avro.RowKeyFormat2': {
     encoding : "RAW"
   }},
