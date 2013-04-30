@@ -181,7 +181,6 @@ public class InstanceBuilder {
     // TODO(KIJIMR-19): remove this, InstanceBuilder should not be concerned by configuration.
     //     This is a temporary fix until all job builders have a withConf() setter.
     final String tmpDir = "file:///tmp/hdfs-testing-" + System.nanoTime();
-    conf.set("fs.default.name", tmpDir);
     conf.set("fs.default.FS", tmpDir);
     conf.set("mapred.job.tracker", "local");
 

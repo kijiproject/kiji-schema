@@ -28,21 +28,20 @@ import org.junit.Test;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
-import org.kiji.schema.util.ResourceUtils;
 
-public class TestHBaseKijiTableReader {
+public class TestHBaseKijiTableReader extends KijiClientTest {
   private Kiji mKiji;
   private KijiTable mTable;
   private KijiTableReader mReader;
 
   @Before
-  public void setupEnvironment() throws Exception {
+  public final void setupEnvironment() throws Exception {
     // Get the test table layouts.
     final KijiTableLayout layout = KijiTableLayout.newLayout(
         KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST));
 
     // Populate the environment.
-    mKiji = new InstanceBuilder()
+    mKiji = new InstanceBuilder(getKiji())
         .withTable("user", layout)
             .withRow("foo")
                 .withFamily("info")
@@ -60,10 +59,9 @@ public class TestHBaseKijiTableReader {
   }
 
   @After
-  public void cleanupEnvironment() throws Exception {
-    ResourceUtils.closeOrLog(mReader);
-    ResourceUtils.releaseOrLog(mTable);
-    ResourceUtils.releaseOrLog(mKiji);
+  public final void cleanupEnvironment() throws Exception {
+    mReader.close();
+    mTable.release();
   }
 
   @Test
