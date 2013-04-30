@@ -1,1 +1,2 @@
+org.kiji.schema.extra.tools.HFileTool
 org.kiji.schema.extra.tools.InspectFileTool

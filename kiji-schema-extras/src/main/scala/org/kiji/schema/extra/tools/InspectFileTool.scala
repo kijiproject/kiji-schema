@@ -56,7 +56,7 @@ class InspectFileTool extends BaseTool {
   var format: String = null
 
   @Flag(name="path",
-      usage="Optional path to the sequence file to inspect.")
+      usage="Path of the file to dump. May also be specified as an unnamed positional argument.")
   var pathFlag: String = null
 
   override def getName(): String = {
@@ -68,12 +68,12 @@ class InspectFileTool extends BaseTool {
   }
 
   override def getDescription(): String = {
-    return "Inspects the content of a file."
+    return "Dumps the content of a file."
   }
 
   override def getUsageString(): String = {
     return """Usage:
-        |    kiji inspect-file <path> [--format=(text|seq|avro|map|hfile)]
+        |    kiji cat [--path=]<path> [--format=(text|seq|avro|map|hfile)]
         |"""
         .stripMargin
   }
@@ -283,9 +283,7 @@ class InspectFileTool extends BaseTool {
    *
    * @param args is the array of command-line arguments.
    */
-  override def run(args: java.util.List[String]): Int = {
-    val unparsed =
-        FlagParser.init(InspectFileTool.this, args.toArray(new Array[String](args.size)))
+  override def run(unparsed: java.util.List[String]): Int = {
     // Requires either --path=<path> or a single unnamed argument <path> (exclusive OR):
     if (!((unparsed.size == 1) ^ ((pathFlag != null) && unparsed.isEmpty))) {
       FlagParser.printUsage(this, Console.out)
