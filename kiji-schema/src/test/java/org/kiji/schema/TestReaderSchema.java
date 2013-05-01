@@ -25,9 +25,13 @@ import static org.junit.Assert.assertTrue;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import org.apache.avro.AvroTypeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.hadoop.hbase.HConstants;
+import org.codehaus.jackson.node.IntNode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -40,8 +44,6 @@ import org.kiji.schema.avro.EmptyRecord;
 import org.kiji.schema.avro.TestRecord1;
 import org.kiji.schema.avro.TestRecord2;
 import org.kiji.schema.avro.TestRecord3;
-import org.kiji.schema.impl.HBaseKijiTable;
-import org.kiji.schema.impl.HBaseKijiTableReader;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayouts;
 
@@ -50,18 +52,18 @@ public class TestReaderSchema extends KijiClientTest {
 
   private static final String TABLE_NAME = "table";
 
-  /** HBase KijiTable used for the test (named TABLE_NAME). */
-  private HBaseKijiTable mTable;
+  /** KijiTable used for the test (named TABLE_NAME). */
+  private KijiTable mTable;
 
   /** Requests all columns in family "family". */
   private static final KijiDataRequest DATA_REQUEST = KijiDataRequest.builder()
-      .addColumns(ColumnsDef.create().addFamily("family"))
+      .addColumns(ColumnsDef.create().withMaxVersions(HConstants.ALL_VERSIONS).addFamily("family"))
       .build();
 
   @Before
   public final void setupTestHBaseKijiRowData() throws Exception {
     getKiji().createTable(KijiTableLayouts.getLayout(KijiTableLayouts.READER_SCHEMA_TEST));
-    mTable = HBaseKijiTable.downcast(getKiji().openTable(TABLE_NAME));
+    mTable = getKiji().openTable(TABLE_NAME);
 
     final EmptyRecord emptyRecord = EmptyRecord.newBuilder().build();
     final TestRecord1 record1 = TestRecord1.newBuilder().setInteger(1).build();
@@ -80,6 +82,11 @@ public class TestReaderSchema extends KijiClientTest {
       writer.put(eid, "family", "record2", 1L, record2);
       writer.put(eid, "family", "record3", 1L, record3);
 
+      // TODO(): For now, we cannot write a record whose schema does not match exactly:
+      // writer.put(eid, "family", "records", 1L, record1);
+      // writer.put(eid, "family", "records", 2L, record2);
+      writer.put(eid, "family", "records", 3L, record3);
+
     } finally {
       writer.close();
     }
@@ -93,56 +100,53 @@ public class TestReaderSchema extends KijiClientTest {
 
   // -----------------------------------------------------------------------------------------------
 
+  /** Decode an EmptyRecord as a specific TestRecord1. */
   @Test
   public void testDecodeEmptyAsRecord1() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    // Decode EmptyRecord as TestRecord1:
-    {
-      final KijiColumnName colEmpty = new KijiColumnName("family", "empty");
-      final Map<KijiColumnName, CellSpec> overrides =
-          ImmutableMap.<KijiColumnName, CellSpec>builder()
-              .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
-                  .setReaderSchema(TestRecord1.SCHEMA$))
-              .build();
-      final KijiTableReader reader = new HBaseKijiTableReader(mTable, overrides);
-      try {
-        final KijiRowData row = reader.get(eid, DATA_REQUEST);
-        final TestRecord1 read = row.getMostRecentValue("family", "empty");
-        // Field 'integer' does not exist in EmptyRecord and must be decoded as its default value:
-        assertEquals(-1, (int) read.getInteger());
-      } finally {
-        reader.close();
-      }
+    final KijiColumnName colEmpty = new KijiColumnName("family", "empty");
+    final Map<KijiColumnName, CellSpec> overrides =
+        ImmutableMap.<KijiColumnName, CellSpec>builder()
+            .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
+                .setReaderSchema(TestRecord1.SCHEMA$))
+            .build();
+    final KijiTableReader reader = mTable.getReaderFactory().openTableReader(overrides);
+    try {
+      final KijiRowData row = reader.get(eid, DATA_REQUEST);
+      final TestRecord1 read = row.getMostRecentValue("family", "empty");
+      // Field 'integer' does not exist in EmptyRecord and must be decoded as its default value:
+      assertEquals(-1, (int) read.getInteger());
+    } finally {
+      reader.close();
     }
   }
 
+  /** Decode a TestRecord1 as a specific TestRecord2 using CellSpec.setSpecificRecord(Class). */
   @Test
   public void testDecodeRecord1AsRecord2() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    // Decode TestRecord1 as TestRecord2:
-    {
-      final KijiColumnName colEmpty = new KijiColumnName("family", "record1");
-      final Map<KijiColumnName, CellSpec> overrides =
-          ImmutableMap.<KijiColumnName, CellSpec>builder()
-              .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
-                  .setReaderSchema(TestRecord2.SCHEMA$))
-              .build();
-      final KijiTableReader reader = new HBaseKijiTableReader(mTable, overrides);
-      try {
-        final KijiRowData row = reader.get(eid, DATA_REQUEST);
-        final TestRecord2 read = row.getMostRecentValue("family", "record1");
-        assertEquals(1, (int) read.getInteger());
+    final KijiColumnName colEmpty = new KijiColumnName("family", "record1");
+    final Map<KijiColumnName, CellSpec> overrides =
+        ImmutableMap.<KijiColumnName, CellSpec>builder()
+            .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
+                .setSpecificRecord(TestRecord2.class))
+            .build();
+    final KijiTableReader reader = mTable.getReaderFactory().openTableReader(overrides);
+    try {
+      final KijiRowData row = reader.get(eid, DATA_REQUEST);
+      final TestRecord2 read = row.getMostRecentValue("family", "record1");
+      assertEquals(1, (int) read.getInteger());
 
-        // Field 'text' does not exist in record1, so must be decoded using its default value:
-        assertEquals("record2", read.getText());
-      } finally {
-        reader.close();
-      }
+      // Field 'text' does not exist in record1, so must be decoded using its default value:
+      assertEquals("record2", read.getText());
+    } finally {
+      reader.close();
     }
   }
 
+  /** Decode a TestRecord2 as a specific TestRecord1 using CellSpec.setReaderSchema(Schema). */
   @Test
   public void testDecodeRecord2AsRecord1() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
@@ -153,7 +157,7 @@ public class TestReaderSchema extends KijiClientTest {
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
                 .setReaderSchema(TestRecord1.SCHEMA$))
             .build();
-    final KijiTableReader reader = new HBaseKijiTableReader(mTable, overrides);
+    final KijiTableReader reader = mTable.getReaderFactory().openTableReader(overrides);
     try {
       final KijiRowData row = reader.get(eid, DATA_REQUEST);
       final TestRecord1 read = row.getMostRecentValue("family", "record2");
@@ -163,6 +167,7 @@ public class TestReaderSchema extends KijiClientTest {
     }
   }
 
+  /** Decode a TestRecord2 as a specific TestRecord3. */
   @Test
   public void testDecodeRecord2AsRecord3() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
@@ -171,9 +176,9 @@ public class TestReaderSchema extends KijiClientTest {
     final Map<KijiColumnName, CellSpec> overrides =
         ImmutableMap.<KijiColumnName, CellSpec>builder()
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
-                .setReaderSchema(TestRecord3.SCHEMA$))
+                .setSpecificRecord(TestRecord3.class))
             .build();
-    final KijiTableReader reader = new HBaseKijiTableReader(mTable, overrides);
+    final KijiTableReader reader = mTable.getReaderFactory().openTableReader(overrides);
     try {
       final KijiRowData row = reader.get(eid, DATA_REQUEST);
       final TestRecord3 read = row.getMostRecentValue("family", "record2");
@@ -186,6 +191,7 @@ public class TestReaderSchema extends KijiClientTest {
     }
   }
 
+  /** Decode a TestRecord2 as a generic TestRecord3. */
   @Test
   public void testDecodeRecord2AsRecord3Generic() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
@@ -197,7 +203,7 @@ public class TestReaderSchema extends KijiClientTest {
                 .setReaderSchema(TestRecord3.SCHEMA$)
                 .setDecoderFactory(GenericCellDecoderFactory.get()))
             .build();
-    final KijiTableReader reader = new HBaseKijiTableReader(mTable, overrides);
+    final KijiTableReader reader = mTable.getReaderFactory().openTableReader(overrides);
     try {
       final KijiRowData row = reader.get(eid, DATA_REQUEST);
       final GenericData.Record read = row.getMostRecentValue("family", "record2");
@@ -210,6 +216,7 @@ public class TestReaderSchema extends KijiClientTest {
     }
   }
 
+  /** Decode an integer as a long. */
   @Test
   public void testDecodeIntAsLong() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
@@ -220,7 +227,7 @@ public class TestReaderSchema extends KijiClientTest {
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
                 .setReaderSchema(Schema.create(Schema.Type.LONG)))
             .build();
-    final KijiTableReader reader = new HBaseKijiTableReader(mTable, overrides);
+    final KijiTableReader reader = mTable.getReaderFactory().openTableReader(overrides);
     try {
       final KijiRowData row = reader.get(eid, DATA_REQUEST);
       final Long read = row.getMostRecentValue("family", "integer");
@@ -231,6 +238,7 @@ public class TestReaderSchema extends KijiClientTest {
     }
   }
 
+  /** Decode an integer as a string should fail. */
   @Test
   public void testDecodeIntAsStringFails() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
@@ -241,7 +249,7 @@ public class TestReaderSchema extends KijiClientTest {
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
                 .setReaderSchema(Schema.create(Schema.Type.STRING)))
             .build();
-    final KijiTableReader reader = new HBaseKijiTableReader(mTable, overrides);
+    final KijiTableReader reader = mTable.getReaderFactory().openTableReader(overrides);
     try {
       final KijiRowData row = reader.get(eid, DATA_REQUEST);
       try {
@@ -257,6 +265,7 @@ public class TestReaderSchema extends KijiClientTest {
     }
   }
 
+  /** Decode an int as TestRecord2 should fail. */
   @Test
   public void testDecodeIntAsRecord2Fails() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
@@ -267,7 +276,7 @@ public class TestReaderSchema extends KijiClientTest {
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
                 .setReaderSchema(TestRecord2.SCHEMA$))
             .build();
-    final KijiTableReader reader = new HBaseKijiTableReader(mTable, overrides);
+    final KijiTableReader reader = mTable.getReaderFactory().openTableReader(overrides);
     try {
       final KijiRowData row = reader.get(eid, DATA_REQUEST);
       try {
@@ -280,6 +289,75 @@ public class TestReaderSchema extends KijiClientTest {
 
     } finally {
       reader.close();
+    }
+  }
+
+  /** Decode using the writer schema (this forces generic records). */
+  @Test
+  public void testDecodeWithWriterSchema() throws Exception {
+    final EntityId eid = mTable.getEntityId("eid");
+
+    final KijiColumnName colEmpty = new KijiColumnName("family", "records");
+    final Map<KijiColumnName, CellSpec> overrides =
+        ImmutableMap.<KijiColumnName, CellSpec>builder()
+            .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
+                .setUseWriterSchema())
+            .build();
+    final KijiTableReader reader = mTable.getReaderFactory().openTableReader(overrides);
+    try {
+      final KijiRowData row = reader.get(eid, DATA_REQUEST);
+      final GenericData.Record read = row.getMostRecentValue("family", "records");
+      assertEquals((Integer) 3, (Integer) read.get("integer"));
+
+    } finally {
+      reader.close();
+    }
+  }
+
+  /**
+   * Decode using the writer schema.
+   *
+   * TODO(SCHEMA-326): Validate using writer schemas properly once we can write different schemas.
+   */
+  @Test
+  public void testDecodeWriterSchema() throws Exception {
+    final EntityId eid = mTable.getEntityId("eid");
+
+    // Writing records with different schemas is not allowed for now,
+    // until we have proper validation:
+
+    final TestRecord1 record1 = TestRecord1.newBuilder().setInteger(1).build();
+
+    // Create a generic record with a schema compatible with TestRecord3, but different:
+    final Schema schema3 = Schema.createRecord("TestRecord3", null, "org.kiji.schema.avro", false);
+    schema3.setFields(Lists.newArrayList(
+        new Schema.Field("integer", Schema.create(Schema.Type.INT), null, new IntNode(-1))));
+    final GenericData.Record record3 = new GenericRecordBuilder(schema3)
+        .build();
+
+    final KijiTableWriter writer = mTable.openTableWriter();
+    try {
+      // Write different records in the same column to test reading with the writer schemas:
+
+      // Try writing a TestRecord1:
+      try {
+        writer.put(eid, "family", "records", 1L, record1);
+        Assert.fail("Should not be allowed to write Record1 in place of Record3");
+      } catch (KijiEncodingException kee) {
+        // Expected for now:
+        assertTrue(kee.getMessage().contains("Incompatible reader/writer schema"));
+      }
+
+      // Try writing a generic record (similar to TestRecord1, but named 'TestRecord3'):
+      try {
+        writer.put(eid, "family", "records", 1L, record3);
+        Assert.fail("Should not be allowed to write generic record in place of Record3");
+      } catch (KijiEncodingException kee) {
+        // Expected for now:
+        assertTrue(kee.getMessage().contains("Incompatible reader/writer schema"));
+      }
+    } finally {
+      writer.close();
     }
   }
 

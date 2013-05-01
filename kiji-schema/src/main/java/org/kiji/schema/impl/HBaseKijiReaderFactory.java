@@ -20,10 +20,13 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiReaderFactory;
 import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.layout.CellSpec;
 
 /** Factory for Table Writers. */
 @ApiAudience.Private
@@ -47,4 +50,10 @@ public final class HBaseKijiReaderFactory implements KijiReaderFactory {
     return new HBaseKijiTableReader(mTable);
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public KijiTableReader openTableReader(Map<KijiColumnName, CellSpec> overrides)
+      throws IOException {
+    return new HBaseKijiTableReader(mTable, overrides);
+  }
 }

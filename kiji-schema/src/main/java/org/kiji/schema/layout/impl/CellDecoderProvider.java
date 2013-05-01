@@ -119,6 +119,9 @@ public final class CellDecoderProvider {
       CellSpec cellSpec = cellSpecs.get(column);
       if (null == cellSpec) {
         cellSpec = mLayout.getCellSpec(column);
+      } else {
+        // Deep-copy the user-provided CellSpec:
+        cellSpec = CellSpec.copy(cellSpec);
       }
 
       // Fills in the missing details to build the decoder:

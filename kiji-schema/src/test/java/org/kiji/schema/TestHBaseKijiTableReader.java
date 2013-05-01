@@ -95,4 +95,5 @@ public class TestHBaseKijiTableReader extends KijiClientTest {
     assertEquals("foo-val", actual1);
     assertEquals("bar-val", actual2);
   }
+
 }

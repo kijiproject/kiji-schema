@@ -22,9 +22,11 @@ package org.kiji.schema.layout;
 import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificData;
+import org.apache.avro.specific.SpecificRecord;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.schema.GenericCellDecoderFactory;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.SpecificCellDecoderFactory;
@@ -109,6 +111,21 @@ public final class CellSpec {
     return new CellSpec();
   }
 
+  /**
+   * Makes a copy of an existing CellSpec.
+   *
+   * @param spec Existing CellSpec to copy.
+   * @return a copy of the specified CellSpec.
+   */
+  public static CellSpec copy(CellSpec spec) {
+    final CellSpec copy = new CellSpec();
+    copy.mCellSchema = CellSchema.newBuilder(spec.mCellSchema).build();
+    copy.mReaderSchema = spec.mReaderSchema;
+    copy.mSchemaTable = spec.mSchemaTable;
+    copy.mDecoderFactory = spec.mDecoderFactory;
+    return copy;
+  }
+
   /** Initializes a new unspecified CellSpec. */
   private CellSpec() {
   }
@@ -166,9 +183,54 @@ public final class CellSpec {
    * @return this CellSpec.
    */
   public CellSpec setReaderSchema(Schema readerSchema) {
-    mReaderSchema = readerSchema;
     Preconditions.checkState(!isCounter());
+    mReaderSchema = readerSchema;
     return this;
+  }
+
+  /**
+   * Configures this column to decode cells using Avro writer schemas.
+   *
+   * <p> This forces the use of generic records. </p>
+   * <p> Invalid for counter cells. </p>
+   *
+   * @return this CellSpec.
+   */
+  public CellSpec setUseWriterSchema() {
+    Preconditions.checkState(!isCounter());
+    mReaderSchema = null;
+    return setDecoderFactory(GenericCellDecoderFactory.get());
+  }
+
+  /**
+   * Configures this column to decode cells using Avro specific records.
+   *
+   * <p> Invalid for counter cells. </p>
+   *
+   * @param klass Avro generated class of the specific record to decode this column to.
+   * @return this CellSpec.
+   * @throws InvalidLayoutException of the specified class is not a valid Avro specific record.
+   */
+  public CellSpec setSpecificRecord(Class<? extends SpecificRecord> klass)
+      throws InvalidLayoutException {
+    try {
+      final java.lang.reflect.Field field = klass.getField("SCHEMA$");
+      final Schema schema = (Schema) field.get(klass);
+      if (!klass.getName().equals(schema.getFullName())) {
+        throw new InvalidLayoutException(String.format(
+            "Specific record class name '%s' does not match schema name '%s'.",
+            klass.getName(), schema.getFullName()));
+      }
+      return setReaderSchema(schema)
+          .setDecoderFactory(SpecificCellDecoderFactory.get());
+
+    } catch (IllegalAccessException iae) {
+      throw new InvalidLayoutException(String.format(
+          "Invalid specific record class '%s': %s", klass.getName(), iae.getMessage()));
+    } catch (NoSuchFieldException nsfe) {
+      throw new InvalidLayoutException(String.format(
+          "Invalid specific record class '%s': %s", klass.getName(), nsfe.getMessage()));
+    }
   }
 
   /**

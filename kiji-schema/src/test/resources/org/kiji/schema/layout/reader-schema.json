@@ -44,6 +44,9 @@
       }, {
         name: "record3",
         column_schema: {type: "CLASS", value: 'org.kiji.schema.avro.TestRecord3'}
+      }, {
+        name: "records",
+        column_schema: {type: "CLASS", value: 'org.kiji.schema.avro.TestRecord3'}
       } ]
     } ]
   } ],
