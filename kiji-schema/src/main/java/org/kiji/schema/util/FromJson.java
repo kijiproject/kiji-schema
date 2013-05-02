@@ -77,7 +77,7 @@ public final class FromJson {
       return json.getIntValue();
     }
     case LONG: {
-      if (!json.isLong()) {
+      if (!json.isLong() && !json.isInt()) {
         throw new IOException(String.format(
             "Avro schema specifies '%s' but got JSON value: '%s'.",
             schema, json));

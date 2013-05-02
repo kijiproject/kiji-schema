@@ -28,7 +28,8 @@ import org.kiji.annotations.ApiAudience;
 
 /**
  * Comparator for HColumnDescriptors.  They are sorted by name, then
- * by max versions, ttl, and whether it is in memory.
+ * by max versions, ttl, whether it is in memory, the bloom filter type
+ * and, finally, the compression type.
  */
 @ApiAudience.Private
 public class HColumnDescriptorComparator implements Comparator<HColumnDescriptor> {
@@ -50,7 +51,14 @@ public class HColumnDescriptorComparator implements Comparator<HColumnDescriptor
     if (inMemoryResult != 0) {
       return inMemoryResult;
     }
-    // TODO: Add things like bloomfiltertype as necessary.
+    int blockSizeResult = Integer.valueOf(o1.getBlocksize()).compareTo(o2.getBlocksize());
+    if (blockSizeResult != 0) {
+      return blockSizeResult;
+    }
+    int bloomTypeResult = o1.getBloomFilterType().compareTo(o2.getBloomFilterType());
+    if (bloomTypeResult != 0) {
+      return bloomTypeResult;
+    }
     return o1.getCompressionType().toString().compareTo(o2.getCompressionType().toString());
   }
 }

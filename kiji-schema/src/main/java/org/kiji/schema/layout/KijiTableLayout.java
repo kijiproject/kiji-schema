@@ -261,7 +261,12 @@ public final class KijiTableLayout {
   // ProtocolVersions specifying when different features were added to layout functionality.
 
   /** Maximum layout version we can recognize. */
-  private static final ProtocolVersion MAX_LAYOUT_VER = ProtocolVersion.parse("layout-1.1.0");
+  private static final ProtocolVersion MAX_LAYOUT_VER = ProtocolVersion.parse("layout-1.2.0");
+
+  /** First version where {@link org.kiji.schema.avro.BloomType}, max_filesize,
+      memstore_flushsize and block_size were supported. */
+  private static final ProtocolVersion BLOCK_SIZE_LAYOUT_VER =
+    ProtocolVersion.parse("layout-1.2.0");
 
   /** First version where {@link RowKeyFormat2} was supported. */
   private static final ProtocolVersion RKF2_LAYOUT_VER = ProtocolVersion.parse("layout-1.1.0");
@@ -1047,6 +1052,31 @@ public final class KijiTableLayout {
           + MIN_LAYOUT_VER + "; this layout requires " + layoutVersion);
     }
 
+    // max_filesize and memstore_flushsize were introduced in version 1.2.
+    if (BLOCK_SIZE_LAYOUT_VER.compareTo(layoutVersion) > 0) {
+      if (mDesc.getMaxFilesize() != null) {
+        // Cannot use max_filesize if this is the case.
+        throw new InvalidLayoutException(
+          "Support for specifying max_filesize begins with layout version "
+            + BLOCK_SIZE_LAYOUT_VER.toString());
+      }
+
+      if (mDesc.getMemstoreFlushsize() != null) {
+        // Cannot use memstore_flushsize if this is the case.
+        throw new InvalidLayoutException(
+          "Support for specifying memstore_flushsize begins with layout version "
+            + BLOCK_SIZE_LAYOUT_VER.toString());
+      }
+    } else {
+      if (mDesc.getMaxFilesize() != null && mDesc.getMaxFilesize() <= 0) {
+        throw new InvalidLayoutException("max_filesize must be greater than 0");
+      }
+
+      if (mDesc.getMemstoreFlushsize() != null && mDesc.getMemstoreFlushsize() <= 0) {
+        throw new InvalidLayoutException("memstore_flushsize must be greater than 0");
+      }
+    }
+
     // Composite keys and RowKeyFormat2 was introduced in version 1.1.
     if (RKF2_LAYOUT_VER.compareTo(layoutVersion) > 0
          && mDesc.getKeysFormat() instanceof RowKeyFormat2) {
@@ -1153,6 +1183,26 @@ public final class KijiTableLayout {
         }
         itLGDesc.remove();
         continue;
+      }
+
+      // BloomType, block_size were introduced in version 1.2.
+      if (BLOCK_SIZE_LAYOUT_VER.compareTo(layoutVersion) > 0) {
+        if (lgDesc.getBlockSize() != null) {
+          // Cannot use max_filesize if this is the case.
+          throw new InvalidLayoutException(
+            "Support for specifying block_size begins with layout version "
+              + BLOCK_SIZE_LAYOUT_VER.toString());
+        }
+        if (lgDesc.getBloomType() != null) {
+          // Cannot use bloom_type if this is the case.
+          throw new InvalidLayoutException(
+            "Support for specifying bloom_type begins with layout version "
+              + BLOCK_SIZE_LAYOUT_VER.toString());
+        }
+      } else {
+        if (lgDesc.getBlockSize() != null && lgDesc.getBlockSize() <= 0) {
+          throw new InvalidLayoutException("block_size must be greater than 0");
+        }
       }
 
       final LocalityGroupLayout lgLayout = new LocalityGroupLayout(lgDesc, refLGLayout);

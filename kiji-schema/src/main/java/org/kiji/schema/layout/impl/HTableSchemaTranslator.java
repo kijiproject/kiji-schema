@@ -23,6 +23,8 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.avro.LocalityGroupDesc;
+import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
@@ -55,6 +57,14 @@ public final class HTableSchemaTranslator {
     final KijiManagedHBaseTableName hbaseTableName =
         KijiManagedHBaseTableName.getKijiTableName(kijiInstanceName, tableName);
     final HTableDescriptor tableDescriptor = new HTableDescriptor(hbaseTableName.toString());
+      TableLayoutDesc tableLayoutDesc = tableLayout.getDesc();
+
+    if (tableLayoutDesc.getMaxFilesize() != null) {
+        tableDescriptor.setMaxFileSize(tableLayoutDesc.getMaxFilesize());
+    }
+    if (tableLayoutDesc.getMemstoreFlushsize() != null) {
+        tableDescriptor.setMemStoreFlushSize(tableLayoutDesc.getMemstoreFlushsize());
+    }
 
     // Add the columns.
     for (LocalityGroupLayout localityGroup : tableLayout.getLocalityGroupMap().values()) {
@@ -71,13 +81,18 @@ public final class HTableSchemaTranslator {
    * @return The HColumnDescriptor to use for storing the data in the locality group.
    */
   private static HColumnDescriptor toHColumnDescriptor(LocalityGroupLayout localityGroup) {
+    LocalityGroupDesc groupDesc = localityGroup.getDesc();
     return new HColumnDescriptor(
         localityGroup.getId().toByteArray(),  // HBase family name
-        localityGroup.getDesc().getMaxVersions(),
-        localityGroup.getDesc().getCompressionType().toString(),
-        localityGroup.getDesc().getInMemory(),
+        groupDesc.getMaxVersions(),
+        groupDesc.getCompressionType().toString(),
+        groupDesc.getInMemory(),
         true,  // block cache
-        localityGroup.getDesc().getTtlSeconds(),
-        HColumnDescriptor.DEFAULT_BLOOMFILTER);
+        groupDesc.getBlockSize() != null ? groupDesc.getBlockSize()
+          : HColumnDescriptor.DEFAULT_BLOCKSIZE,
+        groupDesc.getTtlSeconds(),
+        groupDesc.getBloomType() != null ? groupDesc.getBloomType().toString()
+          : HColumnDescriptor.DEFAULT_BLOOMFILTER,
+        HColumnDescriptor.DEFAULT_REPLICATION_SCOPE);
   }
 }

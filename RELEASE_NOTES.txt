@@ -3,6 +3,10 @@
                               Kiji Schema Release Notes
 
 Version 1.1.0
+  * SCHEMA-283. Add more table and and locality group properties to
+      TableLayoutDesc. These properties control e.g. max HFile size and bloom
+      filter usage. You must use layout version "layout-1.2.0" to expose
+      these properties.
   * SCHEMA-339. JVM System property to configure KijiClientTest to use a
       real HBase instance.
   * SCHEMA-322. Restrict behavior of KijiPager on map-type families.

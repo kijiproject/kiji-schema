@@ -19,8 +19,10 @@
 
 package org.kiji.schema.layout;
 
+import static org.hamcrest.text.StringContains.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -35,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.avro.BloomType;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
 import org.kiji.schema.avro.ComponentType;
@@ -55,7 +58,9 @@ import org.kiji.schema.util.ToJson;
 public class TestKijiTableLayout {
   private static final Logger LOG = LoggerFactory.getLogger(TestKijiTableLayout.class);
 
-  private static final String TABLE_LAYOUT_VERSION = "layout-1.1";
+  private static final String TABLE_LAYOUT_VERSION = "layout-1.2";
+  private static final String TABLE_LAYOUT_1_1 = "layout-1.1";
+  public static final String TABLE_LAYOUT_1_2 = "layout-1.2.0";
 
   private RowKeyFormat makeHashedRKF1() {
     return RowKeyFormat.newBuilder()
@@ -364,13 +369,13 @@ public class TestKijiTableLayout {
         .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
-            LocalityGroupDesc.newBuilder()
-                .setName("locality_group_name")
-                .setInMemory(false)
-                .setTtlSeconds(84600)
-                .setMaxVersions(1)
-                .setCompressionType(CompressionType.GZ)
-                .build()))
+          LocalityGroupDesc.newBuilder()
+            .setName("locality_group_name")
+            .setInMemory(false)
+            .setTtlSeconds(84600)
+            .setMaxVersions(1)
+            .setCompressionType(CompressionType.GZ)
+            .build()))
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     final KijiTableLayout.LocalityGroupLayout lgLayout =
@@ -430,26 +435,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
-            LocalityGroupDesc.newBuilder()
-                .setName("locality_group_name")
-                .setInMemory(false)
-                .setTtlSeconds(84600)
-                .setMaxVersions(1)
-                .setCompressionType(CompressionType.GZ)
-                .setFamilies(Lists.newArrayList(
-                    FamilyDesc.newBuilder()
-                        .setName("family_name")
-                        .setColumns(Lists.newArrayList(
-                            ColumnDesc.newBuilder()
-                                .setName("column_name")
-                                .setColumnSchema(CellSchema.newBuilder()
-                                    .setStorage(SchemaStorage.UID)
-                                    .setType(SchemaType.INLINE)
-                                    .setValue("\"string\"")
-                                    .build())
-                                .build()))
-                        .build()))
-                .build()))
+          makeMinimalLocalityGroup()))
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     final KijiTableLayout.LocalityGroupLayout.FamilyLayout fLayout =
@@ -477,26 +463,7 @@ public class TestKijiTableLayout {
         .setKeysFormat(format)
         .setVersion(TABLE_LAYOUT_VERSION)
         .setLocalityGroups(Lists.newArrayList(
-            LocalityGroupDesc.newBuilder()
-            .setName("locality_group_name")
-            .setInMemory(false)
-            .setTtlSeconds(84600)
-            .setMaxVersions(1)
-            .setCompressionType(CompressionType.GZ)
-            .setFamilies(Lists.newArrayList(
-                FamilyDesc.newBuilder()
-                    .setName("family_name")
-                    .setColumns(Lists.newArrayList(
-                        ColumnDesc.newBuilder()
-                            .setName("column_name")
-                            .setColumnSchema(CellSchema.newBuilder()
-                                 .setStorage(SchemaStorage.UID)
-                                 .setType(SchemaType.INLINE)
-                                 .setValue("\"string\"")
-                                 .build())
-                            .build()))
-                    .build()))
-            .build()))
+          makeMinimalLocalityGroup()))
         .build();
     final KijiTableLayout refLayout = KijiTableLayout.newLayout(refDesc);
 
@@ -636,11 +603,11 @@ public class TestKijiTableLayout {
         .build();
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals(
-        layout.getLocalityGroupMap().get("locality_group_name"),
-        layout.getLocalityGroupMap().get("locality_group_alias1"));
+      layout.getLocalityGroupMap().get("locality_group_name"),
+      layout.getLocalityGroupMap().get("locality_group_alias1"));
     assertEquals(
-        layout.getLocalityGroupMap().get("locality_group_name"),
-        layout.getLocalityGroupMap().get("locality_group_alias2"));
+      layout.getLocalityGroupMap().get("locality_group_name"),
+      layout.getLocalityGroupMap().get("locality_group_alias2"));
 
     assertEquals(
         layout.getFamilyMap().get("family_name"),
@@ -662,13 +629,13 @@ public class TestKijiTableLayout {
   public void testFromJsonAndToJson() throws Exception {
     final KijiTableLayout layout =
         KijiTableLayout.createFromEffectiveJsonResource(
-            "/org/kiji/schema/layout/full-featured-layout.json");
+          "/org/kiji/schema/layout/full-featured-layout.json");
 
     final String effectiveLayout = ToJson.toJsonString(layout.getDesc());
     LOG.info(effectiveLayout);
     final KijiTableLayout reparsed =
         KijiTableLayout.createFromEffectiveJson(
-            new ByteArrayInputStream(effectiveLayout.getBytes()));
+          new ByteArrayInputStream(effectiveLayout.getBytes()));
     final String reserialized = ToJson.toJsonString(reparsed.getDesc());
     assertEquals(effectiveLayout, reserialized);
   }
@@ -690,34 +657,34 @@ public class TestKijiTableLayout {
                 .setMaxVersions(1)
                 .setCompressionType(CompressionType.GZ)
                 .setFamilies(Lists.newArrayList(
-                    FamilyDesc.newBuilder()
-                        .setName("family_name")
-                        .setColumns(Lists.newArrayList(
-                            ColumnDesc.newBuilder()
-                                .setName("column_name")
-                                .setColumnSchema(CellSchema.newBuilder()
-                                     .setStorage(SchemaStorage.UID)
-                                     .setType(SchemaType.INLINE)
-                                     .setValue("\"string\"")
-                                     .build())
-                                .build(),
-                                ColumnDesc.newBuilder()
-                                .setName("column2_name")
-                                .setColumnSchema(CellSchema.newBuilder()
-                                     .setStorage(SchemaStorage.UID)
-                                     .setType(SchemaType.INLINE)
-                                     .setValue("\"bytes\"")
-                                     .build())
-                                .build()
-                        ))
+                  FamilyDesc.newBuilder()
+                    .setName("family_name")
+                    .setColumns(Lists.newArrayList(
+                      ColumnDesc.newBuilder()
+                        .setName("column_name")
+                        .setColumnSchema(CellSchema.newBuilder()
+                          .setStorage(SchemaStorage.UID)
+                          .setType(SchemaType.INLINE)
+                          .setValue("\"string\"")
+                          .build())
                         .build(),
-                    FamilyDesc.newBuilder()
-                        .setName("family2_name")
-                        .setMapSchema(CellSchema.newBuilder()
-                            .setStorage(SchemaStorage.FINAL)
-                            .setType(SchemaType.COUNTER)
-                            .build())
+                      ColumnDesc.newBuilder()
+                        .setName("column2_name")
+                        .setColumnSchema(CellSchema.newBuilder()
+                          .setStorage(SchemaStorage.UID)
+                          .setType(SchemaType.INLINE)
+                          .setValue("\"bytes\"")
+                          .build())
                         .build()
+                    ))
+                    .build(),
+                  FamilyDesc.newBuilder()
+                    .setName("family2_name")
+                    .setMapSchema(CellSchema.newBuilder()
+                      .setStorage(SchemaStorage.FINAL)
+                      .setType(SchemaType.COUNTER)
+                      .build())
+                    .build()
                 ))
                 .build(),
             LocalityGroupDesc.newBuilder()
@@ -778,34 +745,34 @@ public class TestKijiTableLayout {
                 .setMaxVersions(1)
                 .setCompressionType(CompressionType.GZ)
                 .setFamilies(Lists.newArrayList(
-                    FamilyDesc.newBuilder()
-                        .setName("family_name")
-                        .setColumns(Lists.newArrayList(
-                            ColumnDesc.newBuilder()
-                                .setName("column_name")
-                                .setColumnSchema(CellSchema.newBuilder()
-                                     .setStorage(SchemaStorage.UID)
-                                     .setType(SchemaType.INLINE)
-                                     .setValue("\"string\"")
-                                     .build())
-                                .build(),
-                                ColumnDesc.newBuilder()
-                                .setName("column2_name")
-                                .setColumnSchema(CellSchema.newBuilder()
-                                     .setStorage(SchemaStorage.UID)
-                                     .setType(SchemaType.INLINE)
-                                     .setValue("\"bytes\"")
-                                     .build())
-                                .build()
-                        ))
+                  FamilyDesc.newBuilder()
+                    .setName("family_name")
+                    .setColumns(Lists.newArrayList(
+                      ColumnDesc.newBuilder()
+                        .setName("column_name")
+                        .setColumnSchema(CellSchema.newBuilder()
+                          .setStorage(SchemaStorage.UID)
+                          .setType(SchemaType.INLINE)
+                          .setValue("\"string\"")
+                          .build())
                         .build(),
-                    FamilyDesc.newBuilder()
-                        .setName("family2_name")
-                        .setMapSchema(CellSchema.newBuilder()
-                            .setStorage(SchemaStorage.FINAL)
-                            .setType(SchemaType.COUNTER)
-                            .build())
+                      ColumnDesc.newBuilder()
+                        .setName("column2_name")
+                        .setColumnSchema(CellSchema.newBuilder()
+                          .setStorage(SchemaStorage.UID)
+                          .setType(SchemaType.INLINE)
+                          .setValue("\"bytes\"")
+                          .build())
                         .build()
+                    ))
+                    .build(),
+                  FamilyDesc.newBuilder()
+                    .setName("family2_name")
+                    .setMapSchema(CellSchema.newBuilder()
+                      .setStorage(SchemaStorage.FINAL)
+                      .setType(SchemaType.COUNTER)
+                      .build())
+                    .build()
                 ))
                 .build(),
             LocalityGroupDesc.newBuilder()
@@ -833,6 +800,240 @@ public class TestKijiTableLayout {
       // Expected:
       LOG.info("Expected duplicate family error: " + ile);
       assertTrue(ile.getMessage().contains("duplicate family name 'family_name'"));
+    }
+  }
+
+  @Test
+  public void testZeroMaxFilesize() throws Exception {
+    // Simple layout with minimal config
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder(makeMinimalValidLayout())
+      .setMaxFilesize(0L)
+      .build();
+    try {
+      KijiTableLayout.newLayout(desc);
+      fail("max_filesize of 0 didn't throw exception.");
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      LOG.info("Expected max_filesize validation error: " + ile);
+      assertThat(ile.getMessage(), containsString("max_filesize must be greater than 0"));
+    }
+  }
+
+  /**
+   * Convenience method to be a minimal and valid table layout that can then be used to
+   * build one with a specific condition.
+   * @return a valid table layout with one locality group and one column
+   */
+  private TableLayoutDesc makeMinimalValidLayout() {
+    RowKeyFormat2 format = makeHashPrefixedRowKeyFormat();
+
+    makeHashPrefixedRowKeyFormat();
+    return TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(format)
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .setLocalityGroups(Lists.newArrayList(
+          makeMinimalLocalityGroup()
+        ))
+        .build();
+  }
+
+  private LocalityGroupDesc makeMinimalLocalityGroup() {
+    return LocalityGroupDesc.newBuilder()
+      .setName("locality_group_name")
+      .setInMemory(false)
+      .setTtlSeconds(84600)
+      .setMaxVersions(1)
+      .setCompressionType(CompressionType.GZ)
+      .setFamilies(Lists.newArrayList(
+        FamilyDesc.newBuilder()
+          .setName("family_name")
+          .setColumns(Lists.newArrayList(
+            ColumnDesc.newBuilder()
+              .setName("column_name")
+              .setColumnSchema(CellSchema.newBuilder()
+                .setStorage(SchemaStorage.UID)
+                .setType(SchemaType.INLINE)
+                .setValue("\"string\"")
+                .build())
+              .build()
+          ))
+          .build()
+      ))
+      .build();
+  }
+
+  @Test
+  public void testNegativeMaxFilesize() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder(makeMinimalValidLayout())
+      .setMaxFilesize(-1L)
+      .build();
+
+    try {
+      KijiTableLayout.newLayout(desc);
+      fail("Negative max_filesize didn't throw exception.");
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      LOG.info("Expected max_filesize validation error: " + ile);
+      assertThat(ile.getMessage(), containsString("max_filesize must be greater than 0"));
+    }
+  }
+
+  @Test
+  public void testZeroMemstoreFlushsize() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder(makeMinimalValidLayout())
+      .setMemstoreFlushsize(0L)
+      .build();
+
+    try {
+      KijiTableLayout.newLayout(desc);
+      fail("Negative memstore_flushsize didn't throw exception.");
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      LOG.info("Expected memstore_flushsize validation error: " + ile);
+      assertThat(ile.getMessage(), containsString("memstore_flushsize must be greater than 0"));
+    }
+  }
+
+  @Test
+  public void testNegativeMemstoreFlushsize() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder(makeMinimalValidLayout())
+      .setMemstoreFlushsize(-1L)
+      .build();
+
+    try {
+      KijiTableLayout.newLayout(desc);
+      fail("Negative memstore_flushsize didn't throw exception.");
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      LOG.info("Expected memstore_flushsize validation error: " + ile);
+      assertThat(ile.getMessage(), containsString("memstore_flushsize must be greater than 0"));
+    }
+  }
+
+  @Test
+  public void testMaxfilesizeOnOlderLayoutVersion() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder(makeMinimalValidLayout())
+      .setMaxFilesize(10L)
+      .setVersion(TABLE_LAYOUT_1_1)
+      .build();
+
+    try {
+      KijiTableLayout.newLayout(desc);
+      fail(String.format("Expected exception because max_filesize is set on a table layout "
+        + "with version prior to %s.", TABLE_LAYOUT_1_2));
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      LOG.info("Expected layout version validation error: " + ile);
+      assertThat(ile.getMessage(), containsString("begins with layout version "
+        + TABLE_LAYOUT_1_2));
+    }
+  }
+
+  @Test
+  public void testMemstoreFlushsizeOnOlderLayoutVersion() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder(makeMinimalValidLayout())
+      .setMemstoreFlushsize(10L)
+      .setVersion(TABLE_LAYOUT_1_1)
+      .build();
+
+    try {
+      KijiTableLayout.newLayout(desc);
+      fail(String.format("Expected exception because memstore_flushsize is set on a table "
+        + "layout with version prior to %s.", TABLE_LAYOUT_1_2));
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      LOG.info("Expected layout version validation error: " + ile);
+      assertThat(ile.getMessage(), containsString("begins with layout version "
+        + TABLE_LAYOUT_1_2));
+    }
+  }
+
+  @Test
+  public void testZeroBlockSize() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder(makeMinimalValidLayout())
+      .setLocalityGroups(
+        Lists.newArrayList(
+          LocalityGroupDesc.newBuilder(makeMinimalLocalityGroup())
+            .setBlockSize(0)
+            .build()))
+      .build();
+
+    try {
+      KijiTableLayout.newLayout(desc);
+      fail("block_size of 0 didn't throw exception.");
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      LOG.info("Expected layout version validation error: " + ile);
+      assertThat(ile.getMessage(), containsString("block_size must be greater than 0"));
+    }
+  }
+
+  @Test
+  public void testNegativeBlockSize() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder(makeMinimalValidLayout())
+      .setLocalityGroups(
+        Lists.newArrayList(
+          LocalityGroupDesc.newBuilder(makeMinimalLocalityGroup())
+            .setBlockSize(-1)
+            .build()))
+      .build();
+
+    try {
+      KijiTableLayout.newLayout(desc);
+      fail("Negative block_size didn't throw exception.");
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      LOG.info("Expected layout version validation error: " + ile);
+      assertThat(ile.getMessage(), containsString("block_size must be greater than 0"));
+    }
+  }
+
+  @Test
+  public void testBlockSizeOnOlderLayoutVersion() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder(makeMinimalValidLayout())
+      .setVersion(TABLE_LAYOUT_1_1)
+      .setLocalityGroups(
+        Lists.newArrayList(
+          LocalityGroupDesc.newBuilder(makeMinimalLocalityGroup())
+            .setBlockSize(10)
+            .build()))
+      .build();
+
+    try {
+      KijiTableLayout.newLayout(desc);
+      String failureMsg = String.format("Expected exception because block_size is set on a "
+        + "locality group for a table layout with version prior to %s.", TABLE_LAYOUT_1_2);
+      fail(failureMsg);
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      LOG.info("Expected layout version validation error: " + ile);
+      assertThat(ile.getMessage(), containsString("begins with layout version "
+        + TABLE_LAYOUT_1_2));
+    }
+  }
+
+  @Test
+  public void testBloomTypeOnOlderLayoutVersion() throws Exception {
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder(makeMinimalValidLayout())
+      .setVersion(TABLE_LAYOUT_1_1)
+      .setLocalityGroups(
+        Lists.newArrayList(
+          LocalityGroupDesc.newBuilder(makeMinimalLocalityGroup())
+            .setBloomType(BloomType.ROWCOL)
+            .build()))
+      .build();
+
+    try {
+      KijiTableLayout.newLayout(desc);
+      String failureMsg = String.format("Expected exception because bloom_type is set on a "
+        + "locality group for a table layout with version prior to %s.", TABLE_LAYOUT_1_2);
+      fail(failureMsg);
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      LOG.info("Expected layout version validation error: " + ile);
+      assertThat(ile.getMessage(), containsString("begins with layout version "
+        + TABLE_LAYOUT_1_2));
     }
   }
 

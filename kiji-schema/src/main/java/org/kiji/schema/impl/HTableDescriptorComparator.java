@@ -29,8 +29,8 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 
 /**
  * Compares {@link org.apache.hadoop.hbase.HTableDescriptor}s.  They
- * are equal if they have the same HTable name with the same column
- * families.
+ * are equal if they have the same HTable name, same max file size,
+ * memstore flushsize with the same column families.
  */
 @ApiAudience.Private
 public class HTableDescriptorComparator implements Comparator<HTableDescriptor> {
@@ -39,6 +39,15 @@ public class HTableDescriptorComparator implements Comparator<HTableDescriptor> 
     int nameResult = o1.getNameAsString().compareTo(o2.getNameAsString());
     if (nameResult != 0) {
       return nameResult;
+    }
+    int maxFileSizeResult = Long.valueOf(o1.getMaxFileSize()).compareTo(o2.getMaxFileSize());
+    if (maxFileSizeResult != 0) {
+          return maxFileSizeResult;
+    }
+    int memstoreFlushSizeResult =
+            Long.valueOf(o1.getMemStoreFlushSize()).compareTo(o2.getMemStoreFlushSize());
+    if (memstoreFlushSizeResult != 0) {
+        return memstoreFlushSizeResult;
     }
     HColumnDescriptor[] families1 = o1.getColumnFamilies();
     HColumnDescriptor[] families2 = o2.getColumnFamilies();

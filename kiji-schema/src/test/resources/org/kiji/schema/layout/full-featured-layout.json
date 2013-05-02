@@ -1,7 +1,7 @@
 /**
  * (c) Copyright 2012 WibiData, Inc.
  *
- * See the NOTICE file distributed with this work for additional
+ * See the NOTICE file distributed with this work for Tadditional
  * information regarding copyright ownership.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +18,8 @@
  */
 {
   name : "user",
+  max_filesize : 10737418240,
+  memstore_flushsize : 268435456,
   keys_format : {
     encoding : "HASH",
     hash_type : "MD5",
@@ -28,6 +30,8 @@
     description : "Default data stored forever on disk.",
     in_memory : false,
     max_versions : 2147483647,
+    block_size : 64,
+    bloom_type : "ROW",
     ttl_seconds : 2147483647,
     compression_type : "GZ",
     families : [ {
@@ -63,5 +67,5 @@
       map_schema : {type : "CLASS", value : "com.acme.purchase.Transaction"}
     } ]
   } ],
-  version : "layout-1.0"
+  version : "layout-1.2"
 }

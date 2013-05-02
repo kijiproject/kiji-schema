@@ -132,6 +132,19 @@ protocol KijiTableLayoutRecords {
     union { null, string } @diff("true") renamed_from = null;
   }
 
+  /** Type of bloom filtering to use. Applies on LocalityGroups (hbase column families) only.
+      See http://hbase.apache.org/book/perf.schema.html#schema.bloom for more details. */
+  enum BloomType {
+    /** Bloomfilters disabled. */
+    NONE,
+
+    /** Bloom enabled with Table row as Key. */
+    ROW,
+
+    /** Bloom enabled with Table row & column (family+qualifier) as Key. */
+    ROWCOL
+  }
+
   /** A group of Kiji column families stored together in a table. */
   record LocalityGroupDesc {
     /** Locality group ID. Not visible to the user. 0 means unset. */
@@ -157,6 +170,14 @@ protocol KijiTableLayoutRecords {
 
     /** Length of time in seconds to retain cells. */
     int ttl_seconds;
+
+    /** Block size, see http://hbase.apache.org/apidocs/org/apache/hadoop/hbase/HColumnDescriptor.html#BLOCKSIZE.
+        Leave null for hbase's default value. */
+    union { null, int } block_size = null;
+
+    /** Type of bloom filtering to use. See http://hbase.apache.org/book/perf.schema.html#schema.bloom
+        for more details. Leave null for hbase's default value. */
+    union { null, BloomType } bloom_type = null;
 
     /** Data compression type. */
     CompressionType compression_type;
@@ -321,6 +342,14 @@ protocol KijiTableLayoutRecords {
     /** Name of the table ([a-zA-Z0-9_]+). */
     string name;
 
+    /** Max file size of an hbase region. See http://hbase.apache.org/apidocs/org/apache/hadoop/hbase/HTableDescriptor.html#setMaxFileSize(long).
+        Leave null for hbase's default value. */
+    union { null, long } max_filesize = null;
+
+    /** Maximum size of the hbase memstore. See http://hbase.apache.org/apidocs/org/apache/hadoop/hbase/HTableDescriptor.html#setMemStoreFlushSize(long).
+        Leave null for hbase's default value. */
+    union { null, long } memstore_flushsize = null;
+
     /** User description of the table. */
     string description = "";
 
@@ -333,7 +362,7 @@ protocol KijiTableLayoutRecords {
     /** Locality groups in the table. */
     array<LocalityGroupDesc> locality_groups = [];
 
-    /** Data layout version (eg. "layout-1.1"). */
+    /** Data layout version (eg. "layout-1.2"). */
     string version;
 
     /** ID of the layout. */

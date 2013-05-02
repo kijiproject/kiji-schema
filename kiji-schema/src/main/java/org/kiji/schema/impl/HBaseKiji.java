@@ -463,8 +463,9 @@ public final class HBaseKiji implements Kiji {
     final KijiManagedHBaseTableName hbaseTableName =
         KijiManagedHBaseTableName.getKijiTableName(mURI.getInstance(), tableName);
     HTableDescriptor currentTableDescriptor = null;
+    byte[] tableNameAsBytes = hbaseTableName.toBytes();
     try {
-      currentTableDescriptor = getHBaseAdmin().getTableDescriptor(hbaseTableName.toBytes());
+      currentTableDescriptor = getHBaseAdmin().getTableDescriptor(tableNameAsBytes);
     } catch (TableNotFoundException tnfe) {
       if (!dryRun) {
         throw tnfe; // Not in dry-run mode; table needs to exist. Rethrow exception.
@@ -523,6 +524,22 @@ public final class HBaseKiji implements Kiji {
         } else {
           LOG.debug("No changes needed for column " + columnName);
         }
+      }
+
+      if (dryRun) {
+        if (newTableDescriptor.getMaxFileSize() != currentTableDescriptor.getMaxFileSize()) {
+          printStream.printf("  Changing max_filesize from %d to %d: %n",
+            currentTableDescriptor.getMaxFileSize(),
+            newTableDescriptor.getMaxFileSize());
+        }
+        if (newTableDescriptor.getMaxFileSize() != currentTableDescriptor.getMaxFileSize()) {
+          printStream.printf("  Changing memstore_flushsize from %d to %d: %n",
+            currentTableDescriptor.getMemStoreFlushSize(),
+            newTableDescriptor.getMemStoreFlushSize());
+        }
+      } else {
+        LOG.debug("Modifying table descriptor");
+        getHBaseAdmin().modifyTable(tableNameAsBytes, newTableDescriptor);
       }
 
       if (!dryRun) {
