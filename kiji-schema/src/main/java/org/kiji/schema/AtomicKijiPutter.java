@@ -37,12 +37,12 @@ import org.kiji.annotations.Inheritance;
  *     // Begin an atomic write transaction on the specified row:
  *     putter.begin(entityId);
  *
- *     // Accumulate a set of puts to write atomically within a locality group:
+ *     // Accumulate a set of puts to write atomically:
  *     putter.put(family, qualifier, "value");
  *     // More puts...
  *
  *     // Write all puts atomically:
- *     putter.commit("locality_group");
+ *     putter.commit();
  *   } finally {
  *     putter.close();
  *   }
@@ -69,21 +69,15 @@ public interface AtomicKijiPutter extends Closeable {
   /**
    * Atomically performs the puts accumulated in the current transaction.
    *
-   * <p> All cells must belong to the same locality group.
-   *
-   * @param localityGroup Name of the locality group of all columns to which to write.
    * @throws IOException in case of an error.
    */
-  void commit(String localityGroup) throws IOException;
+  void commit() throws IOException;
 
   /**
    * Atomically tests the content of a cell for a specific value,
    * and performs the accumulated puts if the test succeeds.
    *
    * <p>
-   *   <li> Cells may be in different locality groups.
-   *   <li> Atomicity is guaranteed within a locality group,
-   *        but not across different locality groups.
    *   <li> If the check fails, the current transaction remains open and unmodified.
    *        It is up to the caller to retry or rollback.
    *   <li> If the commit succeeds, the current transaction is completed and a new transaction

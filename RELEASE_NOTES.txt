@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.1.0
+  * SCHEMA-346. AtomicKijiPutter is no longer restricted to writing within a
+      single locality group.  Calls to commit() no longer accept a locality group name.
   * SCHEMA-354. Change use of filters to comply with HBase 0.92 and 0.94 semantics.
     This provides experimental support for HBase 0.94, though this is not the
     default.  KijiSchema uses HBase filters to convert KijiDataRequests into the

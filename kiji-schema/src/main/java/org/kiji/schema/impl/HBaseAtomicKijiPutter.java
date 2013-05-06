@@ -21,10 +21,8 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -45,11 +43,11 @@ import org.kiji.schema.layout.impl.ColumnNameTranslator;
  * HBase implementation of AtomicKijiPutter.
  *
  * Access via HBaseKijiWriterFactory.openAtomicKijiPutter(), facilitates guaranteed atomic
- * puts in batch on a single row within a single Locality Group.
+ * puts in batch on a single row.
  *
  * Use <code>begin(EntityId)</code> to open a new transaction,
  * <code>put(family, qualifier, value)</code> to stage a put in the transaction,
- * and <code>commit(localityGroup)</code> or <code>checkAndCommit(family, qualifier, value)</code>
+ * and <code>commit()</code> or <code>checkAndCommit(family, qualifier, value)</code>
  * to write all staged puts atomically.
  *
  * This class is not thread-safe.  It is the user's responsibility to protect against
@@ -77,9 +75,6 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** List of HBase KeyValue objects to be written. */
   private ArrayList<KeyValue> mHopper = null;
 
-  /** Set of Locality Group names of pending writes. */
-  private HashSet<String> mLGNames = Sets.newHashSet();
-
   /**
    * Composite Put containing batch puts.
    * mPut is null outside of a begin() — commit()/rollback() transaction.
@@ -106,16 +101,18 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     mEntityId = null;
     mHopper = null;
     mId = null;
-    mLGNames = Sets.newHashSet();
   }
 
   /** {@inheritDoc} */
   @Override
   public void begin(EntityId eid) {
-    Preconditions.checkState(mPut == null,
-        "There is already a transaction in progress on row: %s. "
-        + "Call commit(), checkAndCommit(), or rollback() to clear the Put.",
-        mEntityId);
+    // Preconditions.checkArgument() cannot be used here because mEntityId is null between calls to
+    // begin().
+    if (mPut != null) {
+      throw new IllegalStateException(String.format("There is already a transaction in progress on "
+          + "row: %s. Call commit(), checkAndCommit(), or rollback() to clear the Put.",
+          mEntityId.toShellString()));
+    }
     mEntityId = eid;
     mId = eid.getHBaseRowKey();
     mHopper = new ArrayList<KeyValue>();
@@ -130,13 +127,8 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
 
   /** {@inheritDoc} */
   @Override
-  public void commit(String localityGroup) throws IOException {
-    Preconditions.checkState(mPut != null, "commit must be paired with a call to begin()");
-    Preconditions.checkState(mLGNames.size() == 1,
-        "All writes must be to the same locality group. Locality groups of specified puts: {}",
-        mLGNames);
-    Preconditions.checkArgument(mLGNames.contains(localityGroup),
-        "All writes must be in the given locality group: {}", localityGroup);
+  public void commit() throws IOException {
+    Preconditions.checkState(mPut != null, "commit() must be paired with a call to begin()");
     for (KeyValue kv : mHopper) {
       mPut.add(kv);
     }
@@ -151,7 +143,8 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** {@inheritDoc} */
   @Override
   public <T> boolean checkAndCommit(String family, String qualifier, T value) throws IOException {
-    Preconditions.checkState(mPut != null, "checkAndCommit must be paired with a call to begin()");
+    Preconditions.checkState(mPut != null,
+        "checkAndCommit() must be paired with a call to begin()");
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
     final HBaseColumnName columnName = mTranslator.toHBaseColumnName(kijiColumnName);
 
@@ -201,8 +194,6 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
         .setSchemaTable(mTable.getKiji().getSchemaTable());
     final KijiCellEncoder cellEncoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
     final byte[] encoded = cellEncoder.encode(value);
-
-    mLGNames.add(mTable.getLayout().getFamilyMap().get(family).getLocalityGroup().getName());
 
     mHopper.add(new KeyValue(
         mId, columnName.getFamily(), columnName.getQualifier(), timestamp, encoded));

@@ -76,14 +76,14 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
     final KijiDataRequest request = KijiDataRequest.create("info", "visits");
 
     mPutter.begin(eid);
-    assertEquals(
-        mReader.get(eid, request).getMostRecentCell("info", "visits").getData(), 42L);
+    assertEquals(42L,
+        mReader.get(eid, request).getMostRecentCell("info", "visits").getData());
     mPutter.put("info", "visits", 45L);
-    assertEquals(
-        mReader.get(eid, request).getMostRecentCell("info", "visits").getData(), 42L);
-    mPutter.commit("default");
-    assertEquals(
-        mReader.get(eid, request).getMostRecentCell("info", "visits").getData(), 45L);
+    assertEquals(42L,
+        mReader.get(eid, request).getMostRecentCell("info", "visits").getData());
+    mPutter.commit();
+    assertEquals(45L,
+        mReader.get(eid, request).getMostRecentCell("info", "visits").getData());
   }
 
   @Test
@@ -91,22 +91,22 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
     final EntityId eid = mTable.getEntityId("foo");
     final KijiDataRequest request = KijiDataRequest.create("info", "visits");
 
-    assertEquals(
-        mReader.get(eid, request).getMostRecentCell("info", "visits").getData(), 42L);
+    assertEquals(42L,
+        mReader.get(eid, request).getMostRecentCell("info", "visits").getData());
 
     mPutter.begin(eid);
     mPutter.put("info", "visits", 10L, 45L);
-    mPutter.commit("default");
+    mPutter.commit();
 
-    assertEquals(
-        mReader.get(eid, request).getMostRecentCell("info", "visits").getData(), 45L);
+    assertEquals(45L,
+        mReader.get(eid, request).getMostRecentCell("info", "visits").getData());
 
     mPutter.begin(eid);
     mPutter.put("info", "visits", 5L, 50L);
-    mPutter.commit("default");
+    mPutter.commit();
 
-    assertEquals(
-        mReader.get(eid, request).getMostRecentCell("info", "visits").getData(), 45L);
+    assertEquals(45L,
+        mReader.get(eid, request).getMostRecentCell("info", "visits").getData());
   }
 
   @Test
@@ -118,19 +118,19 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
     assertEquals(
         mReader.get(eid, nameRequest).getMostRecentCell("info", "name").getData().toString(),
         "foo-val");
-    assertEquals(
-        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData(), 42L);
+    assertEquals(42L,
+        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData());
 
     mPutter.begin(eid);
     mPutter.put("info", "name", "foo-name");
     mPutter.put("info", "visits", 45L);
-    mPutter.commit("default");
+    mPutter.commit();
 
     assertEquals(
         mReader.get(eid, nameRequest).getMostRecentCell("info", "name").getData().toString(),
         "foo-name");
-    assertEquals(
-        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData(), 45L);
+    assertEquals(45L,
+        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData());
   }
 
   @Test
@@ -138,45 +138,46 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
     final EntityId eid = mTable.getEntityId("foo");
     final KijiDataRequest visitsRequest = KijiDataRequest.create("info", "visits");
 
-    assertEquals(
-        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData(), 42L);
+    assertEquals(42L,
+        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData());
 
     mPutter.begin(eid);
     mPutter.put("info", "visits", 45L);
     assertFalse(mPutter.checkAndCommit("info", "visits", 43L));
 
-    assertEquals(
-        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData(), 42L);
+    assertEquals(42L,
+        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData());
 
     assertTrue(mPutter.checkAndCommit("info", "visits", 42L));
 
-    assertEquals(
-        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData(), 45L);
+    assertEquals(45L,
+        mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData());
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testSkipBegin() throws Exception {
-    mPutter.put("info", "visits", 45L);
+    try {
+      mPutter.put("info", "visits", 45L);
+    } catch (IllegalStateException ise) {
+      assertEquals("calls to put() must be between calls to begin() and "
+          + "commit(), checkAndCommit(), or rollback()", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testBeginTwice() throws Exception {
     final EntityId eid = mTable.getEntityId("foo");
 
     mPutter.begin(eid);
-    mPutter.begin(eid);
+    try {
+      mPutter.begin(eid);
+    } catch (IllegalStateException ise) {
+      assertEquals("There is already a transaction in progress on row: hbase=foo. "
+          + "Call commit(), checkAndCommit(), or rollback() to clear the Put.", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
-  public void testCrossLocalityGroup() throws Exception {
-    final EntityId eid = mTable.getEntityId("foo");
-
-    mPutter.begin(eid);
-    mPutter.put("info", "visits", 45L);
-    mPutter.commit("notDefault");
-  }
-
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testRollback() throws Exception {
     final EntityId eid = mTable.getEntityId("foo");
 
@@ -186,6 +187,10 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
     mPutter.rollback();
 
     assertEquals(null, mPutter.getEntityId());
-    mPutter.commit("default");
+    try {
+      mPutter.commit();
+    } catch (IllegalStateException ise) {
+      assertEquals("commit() must be paired with a call to begin()", ise.getMessage());
+    }
   }
 }
