@@ -57,6 +57,7 @@ import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /**
  * HBase implementation of a batch KijiTableWriter.  Contains its own HTable connection to optimize
@@ -113,7 +114,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     }
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
 
-    mHTable.setAutoFlush(false);
+    SchemaPlatformBridge.get().setAutoFlush(mHTable, false);
     // Retain the table only after everything else succeeded:
     mTable.retain();
     mIsOpen.set(true);
@@ -401,7 +402,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     if (mCurrentWriteBufferSize > mMaxWriteBufferSize) {
       flush();
     }
-    mHTable.setWriteBufferSize(bufferSize);
+    SchemaPlatformBridge.get().setWriteBufferSize(mHTable, bufferSize);
   }
 
   /** {@inheritDoc} */
