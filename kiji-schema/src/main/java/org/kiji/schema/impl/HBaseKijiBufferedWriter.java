@@ -21,6 +21,8 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.base.Preconditions;
@@ -76,11 +78,11 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   private final ColumnNameTranslator mTranslator;
 
   /** Local write buffers. */
-  private ArrayList<Put> mPutBuffer = Lists.newArrayList();
+  private Map<EntityId, Put> mPutBuffer = new HashMap<EntityId, Put>();
   private ArrayList<Delete> mDeleteBuffer = Lists.newArrayList();
 
   /** Local write buffer size. */
-  private long mMaxWriteBufferSize = 2000000L;
+  private long mMaxWriteBufferSize = 1024L * 1024L * 2L;
   private long mCurrentWriteBufferSize = 0L;
 
   /** Static overhead size of a Delete. */
@@ -111,9 +113,9 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     }
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
 
+    mHTable.setAutoFlush(false);
     // Retain the table only after everything else succeeded:
     mTable.retain();
-
     mIsOpen.set(true);
   }
 
@@ -123,12 +125,26 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   /**
    * Add a Put to the buffer and update the current buffer size.
    *
-   * @param p A put to add to the buffer.
+   * @param entityId the EntityId of the row to put into.
+   * @param family the byte[] representation of the hbase family to write into.
+   * @param qualifier the byte[] representation of the hbase qualifier to write into.
+   * @param timestamp the timestamp at which to write the value.
+   * @param value the byte[] representation of the value to write.
    * @throws IOException in case of an error on flush.
    */
-  private synchronized void updateBuffer(Put p) throws IOException {
-    mPutBuffer.add(p);
-    mCurrentWriteBufferSize += p.heapSize();
+  private synchronized void updateBuffer(EntityId entityId, byte[] family, byte[] qualifier,
+      long timestamp, byte[] value) throws IOException {
+    if (mPutBuffer.containsKey(entityId)) {
+      mCurrentWriteBufferSize -= mPutBuffer.get(entityId).heapSize();
+      mPutBuffer.get(entityId).add(family, qualifier,
+          timestamp, value);
+      mCurrentWriteBufferSize += mPutBuffer.get(entityId).heapSize();
+    } else {
+      final Put put = new Put(entityId.getHBaseRowKey())
+          .add(family, qualifier, timestamp, value);
+      mPutBuffer.put(entityId, put);
+      mCurrentWriteBufferSize += put.heapSize();
+    }
     if (mCurrentWriteBufferSize > mMaxWriteBufferSize) {
       flush();
     }
@@ -159,9 +175,8 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     final KijiCellEncoder cellEncoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
     final byte[] encoded = cellEncoder.encode(value);
 
-    final Put put = new Put(entityId.getHBaseRowKey())
-        .add(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp, encoded);
-    updateBuffer(put);
+    updateBuffer(entityId, hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp,
+        encoded);
   }
 
   // ----------------------------------------------------------------------------------------------
@@ -197,7 +212,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     Preconditions.checkState(mIsOpen.get(),
         "HBaseKijiBufferedWriter for %s is closed.", mTable.getURI());
     final Delete delete = new Delete(entityId.getHBaseRowKey(), upToTimestamp, null);
-    mDeleteBuffer.add(delete);
     updateBuffer(delete);
   }
 
@@ -240,7 +254,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     delete.deleteFamily(hbaseColumnName.getFamily(), upToTimestamp);
 
     // Buffer the delete.
-    mDeleteBuffer.add(delete);
     updateBuffer(delete);
   }
 
@@ -388,6 +401,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     if (mCurrentWriteBufferSize > mMaxWriteBufferSize) {
       flush();
     }
+    mHTable.setWriteBufferSize(bufferSize);
   }
 
   /** {@inheritDoc} */
@@ -400,7 +414,9 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
       mDeleteBuffer.clear();
     }
     if (mPutBuffer.size() > 0) {
-      mHTable.put(mPutBuffer);
+      for (EntityId eid : mPutBuffer.keySet()) {
+        mHTable.put(mPutBuffer.get(eid));
+      }
       mHTable.flushCommits();
       mPutBuffer.clear();
     }
