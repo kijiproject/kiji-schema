@@ -128,8 +128,12 @@ class HFileTool extends BaseTool {
     val conf = HBaseConfiguration.create()
     val cacheConf = new CacheConfig(conf)
     val fs = FileSystem.get(conf)
-    val writer: HFile.Writer =
-        new HFileWriterV2(conf, cacheConf, fs, path, blockSize, compression, null)
+    val writer: HFile.Writer = HFile.getWriterFactory(conf, cacheConf)
+        .withPath(fs, path)
+        .withBlockSize(blockSize)
+        .withCompression(compression)
+        .create()
+
     try {
       val scanner = table.getScanner(new Scan().setMaxVersions())
       try {
@@ -165,15 +169,7 @@ class HFileTool extends BaseTool {
     val conf = HBaseConfiguration.create()
     val cacheConf = new CacheConfig(conf)
     val fs = FileSystem.get(conf)
-
-    val status = fs.getFileStatus(path)
-    val fileSize = status.getLen
-    val istream = fs.open(path)
-    val trailer = FixedFileTrailer.readFromStream(istream, fileSize)
-
-    val closeIStream = true  // let the HFileReader close istream for us
-    val reader: HFile.Reader =
-        new HFileReaderV2(path, trailer, istream, fileSize, closeIStream, cacheConf)
+    val reader: HFile.Reader = HFile.createReader(fs, path, cacheConf)
     try {
       val cacheBlocks = false
       val positionalRead = false
@@ -194,7 +190,7 @@ class HFileTool extends BaseTool {
         hasNext = scanner.next()
       }
     } finally {
-      reader.close()  // closes istream
+      reader.close()
     }
   }
 

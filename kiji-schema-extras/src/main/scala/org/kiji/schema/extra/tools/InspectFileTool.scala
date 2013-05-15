@@ -147,15 +147,7 @@ class InspectFileTool extends BaseTool {
   private def readHFile(path: Path): Unit = {
     val cacheConf = new CacheConfig(getConf)
     val fs = FileSystem.get(getConf)
-
-    val status = fs.getFileStatus(path)
-    val fileSize = status.getLen
-    val istream = fs.open(path)
-    val trailer = FixedFileTrailer.readFromStream(istream, fileSize)
-
-    val closeIStream = true
-    val reader: HFile.Reader =
-        new HFileReaderV2(path, trailer, istream, fileSize, closeIStream, cacheConf)
+    val reader: HFile.Reader = HFile.createReader(fs, path, cacheConf)
     try {
       val cacheBlocks = false
       val positionalRead = false
@@ -180,7 +172,6 @@ class InspectFileTool extends BaseTool {
         hasNext = scanner.next()
       }
       // no need to close scanner
-      // istream is closed by HFile.Reader
     } finally {
       reader.close()
     }
