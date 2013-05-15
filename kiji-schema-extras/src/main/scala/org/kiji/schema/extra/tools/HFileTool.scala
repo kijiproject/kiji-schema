@@ -35,15 +35,14 @@ import org.apache.hadoop.hbase.io.hfile.CacheConfig
 import org.apache.hadoop.hbase.io.hfile.Compression
 import org.apache.hadoop.hbase.io.hfile.FixedFileTrailer
 import org.apache.hadoop.hbase.io.hfile.HFile
-import org.apache.hadoop.hbase.io.hfile.HFileReaderV2
 import org.apache.hadoop.hbase.io.hfile.HFileScanner
-import org.apache.hadoop.hbase.io.hfile.HFileWriterV2
 import org.kiji.common.flags.Flag
 import org.kiji.common.flags.FlagParser
 import org.kiji.schema.Kiji
 import org.kiji.schema.KijiURI
 import org.kiji.schema.hbase.HBaseFactory
 import org.kiji.schema.impl.HBaseKijiTable
+import org.kiji.schema.platform.SchemaPlatformBridge
 import org.kiji.schema.tools.BaseTool
 import org.slf4j.LoggerFactory
 
@@ -128,11 +127,8 @@ class HFileTool extends BaseTool {
     val conf = HBaseConfiguration.create()
     val cacheConf = new CacheConfig(conf)
     val fs = FileSystem.get(conf)
-    val writer: HFile.Writer = HFile.getWriterFactory(conf, cacheConf)
-        .withPath(fs, path)
-        .withBlockSize(blockSize)
-        .withCompression(compression)
-        .create()
+    val writer: HFile.Writer = SchemaPlatformBridge.get().createHFileWriter(
+        conf, fs, path, blockSize, compression, KeyValue.KEY_COMPARATOR)
 
     try {
       val scanner = table.getScanner(new Scan().setMaxVersions())
