@@ -20,6 +20,7 @@
 package org.kiji.schema.tools;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
@@ -40,7 +41,8 @@ import org.kiji.schema.layout.KijiTableLayouts;
 public class TestToolUtils {
   private static final Logger LOG = LoggerFactory.getLogger(TestToolUtils.class);
 
-  public TestToolUtils() throws IOException {}
+  public TestToolUtils() throws IOException {
+  }
 
   private final KijiTableLayout mFormattedLayout =
       KijiTableLayouts.getTableLayout(KijiTableLayouts.FORMATTED_RKF);
@@ -58,26 +60,38 @@ public class TestToolUtils {
 
   /** FormattedEntityId. */
 
-  @Test(expected=EntityIdException.class)
+  @Test
   public void testTooLargeInt() throws Exception {
-    ToolUtils.createEntityIdFromUserInputs(
-        "['dummy', 'str1', 'str2', 2147483648, 10]", mFormattedLayout);
+    try {
+      ToolUtils.createEntityIdFromUserInputs("['dummy', 'str1', 'str2', 2147483648, 10]",
+          mFormattedLayout);
+      fail("Should fail with EntityIdException.");
+    } catch (EntityIdException eie) {
+      assertEquals("Invalid type for component 2147483648 at index 3 in kijiRowKey",
+          eie.getMessage());
+    }
   }
 
-  @Test(expected=IOException.class)
+  @Test
   public void testTooLargeLong() throws Exception {
-    ToolUtils.createEntityIdFromUserInputs("['dummy', 'str1', 'str2', 5, 9223372036854775808]"
-        , mFormattedLayout);
+
+    try {
+      ToolUtils.createEntityIdFromUserInputs("['dummy', 'str1', 'str2', 5, 9223372036854775808]",
+          mFormattedLayout);
+      fail("Should fail with EntityIdException.");
+    } catch (IOException ioe) {
+      assertEquals("Invalid JSON value: '9223372036854775808', expecting string, "
+          + "int, long, or null.", ioe.getMessage());
+    }
   }
 
   @Test
   public void testIntForLong() throws Exception {
-    final EntityIdFactory factory =
-        EntityIdFactory.getFactory((RowKeyFormat2) mFormattedLayout.getDesc().getKeysFormat());
+    final EntityIdFactory factory = EntityIdFactory.getFactory((RowKeyFormat2) mFormattedLayout
+        .getDesc().getKeysFormat());
     final EntityId eid = factory.getEntityId("dummy", "str1", "str2", 5, 10);
 
-    assertEquals(eid,
-        ToolUtils.createEntityIdFromUserInputs("['dummy', 'str1', 'str2', 5, 10]",
+    assertEquals(eid, ToolUtils.createEntityIdFromUserInputs("['dummy', 'str1', 'str2', 5, 10]",
         mFormattedLayout));
   }
 
@@ -91,9 +105,16 @@ public class TestToolUtils {
         ToolUtils.createEntityIdFromUserInputs("['dummy', 'str1', 'str2', 5]", mFormattedLayout));
   }
 
-  @Test(expected=EntityIdException.class)
+  @Test
   public void testNonNullFollowsNull() throws IOException {
-    ToolUtils.createEntityIdFromUserInputs("['dummy', 'str1', 'str2', null, 5]", mFormattedLayout);
+
+    try {
+      ToolUtils
+          .createEntityIdFromUserInputs("['dummy', 'str1', 'str2', null, 5]", mFormattedLayout);
+      fail("Should fail with EntityIdException.");
+    } catch (EntityIdException eie) {
+      assertEquals("Non null component follows null component", eie.getMessage());
+    }
   }
 
   @Test
@@ -102,8 +123,8 @@ public class TestToolUtils {
       EntityIdFactory.getFactory((RowKeyFormat2) mFormattedLayout.getDesc().getKeysFormat());
     final EntityId eid = factory.getEntityId("", "", "", null, null);
 
-    assertEquals(
-        eid, ToolUtils.createEntityIdFromUserInputs("['', '', '', null, null]", mFormattedLayout));
+    assertEquals(eid,
+        ToolUtils.createEntityIdFromUserInputs("['', '', '', null, null]", mFormattedLayout));
   }
 
   @Test
@@ -116,8 +137,8 @@ public class TestToolUtils {
         final EntityId eid = factory.getEntityId(String.format(
             "dumm%sy", new String(new byte[]{b, b2}, "Utf-8")), "str1", "str2", 5, 10L);
 
-        assertEquals(
-          eid, ToolUtils.createEntityIdFromUserInputs(eid.toShellString(), mFormattedLayout));
+        assertEquals(eid,
+            ToolUtils.createEntityIdFromUserInputs(eid.toShellString(), mFormattedLayout));
       }
     }
   }

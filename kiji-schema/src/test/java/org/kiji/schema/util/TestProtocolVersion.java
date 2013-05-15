@@ -19,7 +19,11 @@
 
 package org.kiji.schema.util;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -157,98 +161,197 @@ public class TestProtocolVersion {
     assertEquals(0, pv2.compareTo(pv1));
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoJustProto() {
-    ProtocolVersion.parse("proto");
+    try {
+      ProtocolVersion.parse("proto");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("verString may contain at most one dash character, separating the protocol "
+          + "name from the version number.", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoJustProto2() {
-    ProtocolVersion.parse("proto-");
+    try {
+      ProtocolVersion.parse("proto-");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("verString may contain at most one dash character, separating the protocol "
+          + "name from the version number.", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testDashRequired() {
-    ProtocolVersion.parse("foo1.4");
+    try {
+      ProtocolVersion.parse("foo1.4");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("verString may contain at most one dash character, separating the protocol "
+          + "name from the version number.", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoLeadingDash() {
-    ProtocolVersion.parse("-foo-1.4");
+    try {
+      ProtocolVersion.parse("-foo-1.4");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("verString may not start with a dash", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoMoreThan3() {
-    ProtocolVersion.parse("1.2.3.4");
+    try {
+      ProtocolVersion.parse("1.2.3.4");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Version numbers may have at most three components.", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoMoreThan3withProto() {
-    ProtocolVersion.parse("proto-1.2.3.4");
+    try {
+      ProtocolVersion.parse("proto-1.2.3.4");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Version numbers may have at most three components.", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoLeadingDashWithoutProto() {
-    ProtocolVersion.parse("-1.2.3");
+    try {
+      ProtocolVersion.parse("-1.2.3");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("verString may not start with a dash", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoLeadingDashes() {
-    ProtocolVersion.parse("--1.2.3");
+    try {
+      ProtocolVersion.parse("--1.2.3");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("verString may not start with a dash", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoMultiDash() {
-    ProtocolVersion.parse("proto--1.2.3");
+    try {
+      ProtocolVersion.parse("proto--1.2.3");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("verString may contain at most one dash character, separating the protocol "
+          + "name from the version number.", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoDashInProto() {
-    ProtocolVersion.parse("proto-col-1.2.3");
+    try {
+      ProtocolVersion.parse("proto-col-1.2.3");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("verString may contain at most one dash character, separating the protocol "
+          + "name from the version number.", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoNegativeMinor() {
-    ProtocolVersion.parse("1.-2");
+    try {
+      ProtocolVersion.parse("1.-2");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Minor version number must be non-negative.", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoNegativeRev() {
-    ProtocolVersion.parse("1.2.-3");
+    try {
+      ProtocolVersion.parse("1.2.-3");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Revision number must be non-negative.", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoMultiDots() {
-    ProtocolVersion.parse("1..2");
+    try {
+      ProtocolVersion.parse("1..2");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Could not parse numeric version info in 1..2", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoMultiDots2() {
-    ProtocolVersion.parse("1..2.3");
+    try {
+      ProtocolVersion.parse("1..2.3");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Version numbers may have at most three components.", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoNamedMinor() {
-    ProtocolVersion.parse("1.x");
+    try {
+      ProtocolVersion.parse("1.x");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Could not parse numeric version info in 1.x", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoNamedMinorWithProto() {
-    ProtocolVersion.parse("proto-1.x");
+    try {
+      ProtocolVersion.parse("proto-1.x");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Could not parse numeric version info in proto-1.x", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoLeadingNumber() {
-    ProtocolVersion.parse("2foo-1.3");
+    try {
+      ProtocolVersion.parse("2foo-1.3");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Could not parse numeric version info in 2foo-1.3", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoEmptyString() {
-    ProtocolVersion.parse("");
+    try {
+      ProtocolVersion.parse("");
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("verString may not be empty", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoNull() {
-    ProtocolVersion.parse(null);
+    try {
+      ProtocolVersion.parse(null);
+      fail("Should fail with an IllegalArgumentException");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("verString may not be null", iae.getMessage());
+    }
   }
 }

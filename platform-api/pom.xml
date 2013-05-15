@@ -70,6 +70,18 @@
       <artifactId>kiji-cdh4-platform</artifactId>
       <version>${kiji-platforms.version}</version>
       <scope>provided</scope>
+      <exclusions>
+        <!-- When running in Eclipse, the Jackson in this project was superceding the
+        version used by schema core which was throwing a weird NoSuchMethodException -->
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-mapper-asl</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.codehaus.jackson</groupId>
+          <artifactId>jackson-core-asl</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.kiji.delegation</groupId>

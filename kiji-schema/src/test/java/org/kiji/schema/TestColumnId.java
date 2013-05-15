@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
@@ -28,9 +29,14 @@ import org.junit.Test;
 import org.kiji.schema.layout.impl.ColumnId;
 
 public class TestColumnId {
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNegativeId() {
-    new ColumnId(-1).toByteArray();
+    try {
+      new ColumnId(-1).toByteArray();
+      fail("Should fail with IllegalArgumentException.");
+    } catch (IllegalArgumentException ise) {
+      assertEquals("id may not be negative", ise.getMessage());
+    }
   }
 
   @Test

@@ -24,6 +24,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.List;
@@ -31,6 +32,7 @@ import java.util.SortedMap;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Assert;
 import org.junit.Test;
@@ -438,7 +440,7 @@ public class TestFormattedEntityId extends KijiClientTest {
 
   @Test
   public void testSuppressKeyMaterializationInKiji() throws IOException {
-    final Kiji kiji = getKiji();  // owned by KijiClientTest
+    final Kiji kiji = getKiji(); // owned by KijiClientTest
     kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.HASHED_FORMATTED_RKF));
 
     final KijiTable table = kiji.openTable("table");
@@ -481,91 +483,149 @@ public class TestFormattedEntityId extends KijiClientTest {
     }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testSuppressMaterializationComponentsException() {
     final RowKeyFormat2 format = makeSuppressMaterializationTestRKF();
     FormattedEntityId formattedEntityId = makeId(format, "one", 1, 7L);
-    formattedEntityId.getComponents();
+    try {
+      formattedEntityId.getComponents();
+      fail("Should fail with IllegalStateException");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot retrieve components as materialization is suppressed", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testSuppressMaterializationComponentsByIndexException() {
     final RowKeyFormat2 format = makeSuppressMaterializationTestRKF();
     FormattedEntityId formattedEntityId = makeId(format, "one", 1, 7L);
-    formattedEntityId.getComponentByIndex(0);
+    try {
+      formattedEntityId.getComponentByIndex(0);
+      fail("Should fail with IllegalStateException");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot retrieve components as materialization is suppressed", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testSuppressMaterializationComponentsExceptionFromHbaseKey() {
     final RowKeyFormat2 format = makeSuppressMaterializationTestRKF();
     FormattedEntityId formattedEntityId = makeId(format, "one", 1, 7L);
     byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
     FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
-
-    testEntityId.getComponents();
+    try {
+      testEntityId.getComponents();
+      fail("Should fail with IllegalStateException");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot retrieve components as materialization is suppressed", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testSuppressMaterializationComponentsByIndexExceptionFromHbaseKey() {
     final RowKeyFormat2 format = makeSuppressMaterializationTestRKF();
     FormattedEntityId formattedEntityId = makeId(format, "one", 1, 7L);
     byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
     FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
 
-    testEntityId.getComponentByIndex(0);
+    try {
+      testEntityId.getComponentByIndex(0);
+      fail("Should fail with IllegalStateException");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot retrieve components as materialization is suppressed", ise.getMessage());
+    }
   }
 
-  @Test(expected=EntityIdException.class)
+  @Test
   public void testBadNullFormattedEntityId() {
     final RowKeyFormat2 format = makeRowKeyFormat();
 
     // No non-null component is allowed after a null component:
-    makeId(format, "one", null, 7L);
+    try {
+      makeId(format, "one", null, 7L);
+      fail("Should fail with EntityIdException");
+    } catch (EntityIdException eie) {
+      assertEquals("Non null component follows null component", eie.getMessage());
+    }
   }
 
-  @Test(expected=EntityIdException.class)
+  @Test
   public void testTooManyComponentsFormattedEntityId() {
     final RowKeyFormat2 format = makeRowKeyFormat();
-    makeId(format, "one", 1, 7L, null);
+    try {
+      makeId(format, "one", 1, 7L, null);
+      fail("Should fail with EntityIdException");
+    } catch (EntityIdException eie) {
+      assertEquals("Too many components in kiji Row Key", eie.getMessage());
+    }
+
   }
 
-  @Test(expected=EntityIdException.class)
+  @Test
   public void testWrongComponentTypeFormattedEntityId() {
     final RowKeyFormat2 format = makeRowKeyFormat();
-    // Second component must be an integer:
-    makeId(format, "one", 1L, 7L);
+    try {
+      // Second component must be an integer:
+      makeId(format, "one", 1L, 7L);
+      fail("Should fail with EntityIdException");
+    } catch (EntityIdException eie) {
+      assertEquals("Invalid type for component 1 at index 1 in kijiRowKey", eie.getMessage());
+    }
   }
 
-  @Test(expected=EntityIdException.class)
+  @Test
   public void testUnexpectedNullFormattedEntityId() {
     final RowKeyFormat2 format = makeRowKeyFormatNoNulls();
-    makeId(format, "one", null);
+    try {
+      makeId(format, "one", null);
+      fail("Should fail with EntityIdException");
+    } catch (EntityIdException eie) {
+      assertEquals("Too few components in kiji Row key", eie.getMessage());
+    }
   }
 
-  @Test(expected=EntityIdException.class)
+  @Test
   public void testTooFewComponentsFormattedEntityId() {
     final RowKeyFormat2 format = makeRowKeyFormatNoNulls();
-    makeId(format, "one");
+    try {
+      makeId(format, "one");
+      fail("Should fail with EntityIdException");
+    } catch (EntityIdException eie) {
+      assertEquals("Too few components in kiji Row key", eie.getMessage());
+    }
   }
 
-  @Test(expected=EntityIdException.class)
+  @Test
   public void testBadHbaseKey() {
     final RowKeyFormat2 format = makeIntRowKeyFormat();
-    final byte[] hbkey = new byte[]{ 0x01, 0x02, 0x042, 0x01, 0x02, 0x042, 0x01, 0x02, 0x042, };
-    FormattedEntityId.fromHBaseRowKey(hbkey, format);
+    final byte[] hbkey = new byte[] { 0x01, 0x02, 0x042, 0x01, 0x02, 0x042, 0x01, 0x02, 0x042, };
+
+    try {
+      FormattedEntityId.fromHBaseRowKey(hbkey, format);
+      fail("Should fail with EntityIdException");
+    } catch (EntityIdException eie) {
+      assertEquals("Malformed hbase Row Key", eie.getMessage());
+    }
   }
 
-  @Test(expected=EntityIdException.class)
+  @Test
   public void testUnicodeZeroStringFormattedEntityId() {
     final RowKeyFormat2 format = makeRowKeyFormat();
-    makeId(format, "one\u0000two");
+    try {
+      makeId(format, "one\u0000two");
+      fail("Should fail with EntityIdException");
+    } catch (EntityIdException eie) {
+      assertEquals("String component cannot contain \u0000", eie.getMessage());
+    }
+
   }
 
+  @Test
   public void testNullFormattedEntityId() {
     final RowKeyFormat2 format = makeRowKeyFormat();
     try {
-      makeId(format, new Object[]{null});
-      Assert.fail("Should fail with EntityIdException");
+      makeId(format, new Object[] { null });
+      fail("Should fail with EntityIdException");
     } catch (EntityIdException eie) {
       LOG.info("Expected exception: {}", eie.getMessage());
       assertTrue(eie.getMessage().contains(
@@ -573,19 +633,29 @@ public class TestFormattedEntityId extends KijiClientTest {
     }
   }
 
-  @Test(expected=NullPointerException.class)
+  @Test
   public void testNullInputFormattedEntityId() {
     final RowKeyFormat2 format = makeRowKeyFormat();
-    FormattedEntityId.getEntityId(null,  format);
+    try {
+      FormattedEntityId.getEntityId(null, format);
+      fail("Should fail with NullPointerException");
+    } catch (NullPointerException npe) {
+      assertEquals(null, npe.getMessage());
+    }
   }
 
-  @Test(expected=EntityIdException.class)
+  @Test
   public void testEmptyFormattedEntityId() {
     final RowKeyFormat2 format = makeRowKeyFormat();
-    makeId(format);  // no component specified at all
+    try {
+      makeId(format); // no component specified at all
+      fail("Should fail with EntityIdException");
+    } catch (EntityIdException eie) {
+      assertEquals("Too few components in kiji Row key", eie.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testHashedEntityId() {
     final RowKeyFormat2 format = makeHashedRowKeyFormat();
 
@@ -596,7 +666,12 @@ public class TestFormattedEntityId extends KijiClientTest {
     FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
     assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
 
-    testEntityId.getComponents();
+    try {
+      testEntityId.getComponents();
+      fail("Should fail with IllegalStateException");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot retrieve components as materialization is suppressed", ise.getMessage());
+    }
   }
 
   @Test
