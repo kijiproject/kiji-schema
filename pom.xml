@@ -55,8 +55,10 @@
   <modules>
     <module>build-resources</module>
     <module>platform-api</module>
-    <module>cdh4mr1-bridge</module>
-    <module>hadoop1-bridge</module>
+    <module>cdh41mr1-bridge</module>
+    <module>cdh42mr1-bridge</module>
+    <module>hadoop1-hbase92-bridge</module>
+    <module>hadoop1-hbase94-bridge</module>
 
     <module>kiji-schema</module>
     <module>kiji-schema-extras</module>

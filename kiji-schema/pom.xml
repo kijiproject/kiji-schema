@@ -228,13 +228,25 @@
     <!-- All platform bridge implementations that should be bundled with the redistributable. -->
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>kiji-schema-cdh4mr1-bridge</artifactId>
+      <artifactId>kiji-schema-cdh41mr1-bridge</artifactId>
       <version>${project.version}</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>kiji-schema-hadoop1-bridge</artifactId>
+      <artifactId>kiji-schema-cdh42mr1-bridge</artifactId>
+      <version>${project.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>kiji-schema-hadoop1-hbase92-bridge</artifactId>
+      <version>${project.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>kiji-schema-hadoop1-hbase94-bridge</artifactId>
       <version>${project.version}</version>
       <scope>runtime</scope>
     </dependency>

@@ -1,0 +1,2 @@
+org.kiji.schema.platform.Hadoop1xHBase92SchemaBridgeFactory
+org.kiji.schema.platform.UniversalSchemaBridgeFactory
