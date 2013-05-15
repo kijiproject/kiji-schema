@@ -20,6 +20,7 @@
 package org.kiji.schema.layout;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Before;
@@ -84,53 +85,78 @@ public class TestColumnNameTranslator {
   /**
    * Tests that an exception is thrown when the HBase family doesn't match a Kiji locality group.
    */
-  @Test(expected=NoSuchColumnException.class)
+  @Test
   public void testNoSuchKijiLocalityGroup() throws Exception {
     ColumnNameTranslator translator = new ColumnNameTranslator(mTableLayout);
 
-    translator.toKijiColumnName(getHBaseColumnName("D", "E:E"));
+    try {
+      translator.toKijiColumnName(getHBaseColumnName("D", "E:E"));
+      fail("An exception should have been thrown.");
+    } catch (NoSuchColumnException nsce) {
+      assertEquals("No locality group with ID/HBase family: 'D'.", nsce.getMessage());
+    }
   }
 
   /**
    * Tests that an exception is thrown when the first part of the HBase qualifier doesn't
    * match a Kiji family.
    */
-  @Test(expected=NoSuchColumnException.class)
+  @Test
   public void testNoSuchKijiFamily() throws Exception {
     ColumnNameTranslator translator = new ColumnNameTranslator(mTableLayout);
-
-    translator.toKijiColumnName(getHBaseColumnName("B", "E:E"));
+    try {
+      translator.toKijiColumnName(getHBaseColumnName("C", "E:E"));
+      fail("An exception should have been thrown.");
+    } catch (NoSuchColumnException nsce) {
+      assertEquals("No family with ColumnId 'E' in locality group 'inMemory'.", nsce.getMessage());
+    }
   }
 
   /**
    * Tests that an exception is thrown when the second part of the HBase qualifier doesn't
    * match a Kiji column.
    */
-  @Test(expected=NoSuchColumnException.class)
+  @Test
   public void testNoSuchKijiColumn() throws Exception {
     ColumnNameTranslator translator = new ColumnNameTranslator(mTableLayout);
 
-    translator.toKijiColumnName(getHBaseColumnName("C", "B:E"));
+    try {
+      translator.toKijiColumnName(getHBaseColumnName("C", "B:E"));
+      fail("An exception should have been thrown.");
+    } catch (NoSuchColumnException nsce) {
+      assertEquals("No column with ColumnId 'E' in family 'recommendations'.", nsce.getMessage());
+    }
   }
 
   /**
    * Tests that an exception is thrown when the HBase qualifier is corrupt (no separator).
    */
-  @Test(expected=NoSuchColumnException.class)
+  @Test
   public void testCorruptQualifier() throws Exception {
     ColumnNameTranslator translator = new ColumnNameTranslator(mTableLayout);
 
-    translator.toKijiColumnName(getHBaseColumnName("C", "BE"));
+    try {
+      translator.toKijiColumnName(getHBaseColumnName("C", "BE"));
+      fail("An exception should have been thrown.");
+    } catch (NoSuchColumnException nsce) {
+      assertEquals("Missing separator (:) from HBase qualifier (BE). Unable to parse Kiji "
+          + "family/qualifier pair.", nsce.getMessage());
+    }
   }
 
   /**
    * Tests that an exception is thrown when trying to translate a non-existed Kiji column.
    */
-  @Test(expected=NoSuchColumnException.class)
+  @Test
   public void testNoSuchHBaseColumn() throws Exception {
     ColumnNameTranslator translator = new ColumnNameTranslator(mTableLayout);
 
-    translator.toHBaseColumnName(new KijiColumnName("doesnt:exist"));
+    try {
+      translator.toHBaseColumnName(new KijiColumnName("doesnt:exist"));
+      fail("An exception should have been thrown.");
+    } catch (NoSuchColumnException nsce) {
+      assertEquals("doesnt:exist", nsce.getMessage());
+    }
   }
 
   /**

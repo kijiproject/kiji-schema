@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -211,7 +212,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     assertEquals(Schema.create(Schema.Type.INT), input.getReaderSchema("family", "qual3"));
   }
 
-  @Test(expected=NoSuchColumnException.class)
+  @Test
   public void testGetReaderSchemaNoSuchColumn() throws IOException {
     final Result result = new Result();
     final KijiDataRequest dataRequest = KijiDataRequest.builder().build();
@@ -223,7 +224,20 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         result,
         null);
 
-    input.getReaderSchema("this_family", "does_not_exist");
+    try {
+      input.getReaderSchema("this_family", "does_not_exist");
+      fail("An exception should have been thrown.");
+    } catch (NoSuchColumnException nsce) {
+      assertEquals("Table 'row_data_test_table' has no family 'this_family'.", nsce.getMessage());
+    }
+
+    try {
+      input.getReaderSchema("family", "no_qualifier");
+      fail("An exception should have been thrown.");
+    } catch (NoSuchColumnException nsce) {
+      assertEquals("Table 'row_data_test_table' has no column 'family:no_qualifier'.",
+          nsce.getMessage());
+    }
   }
 
   /**

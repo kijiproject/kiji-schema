@@ -972,7 +972,7 @@ public final class KijiTableLayout {
     if (format.getSalt().getSuppressKeyMaterialization()
         && format.getRangeScanStartIndex() != format.getComponents().size()) {
       throw new InvalidLayoutException("Range scans are not supported if "
-          + "suppress_key_materialization is true. Please set range_scan_start_index"
+          + "suppress_key_materialization is true. Please set range_scan_start_index "
           + "to components.size");
     }
 

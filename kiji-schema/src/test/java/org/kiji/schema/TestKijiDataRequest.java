@@ -26,6 +26,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -147,11 +148,16 @@ public class TestKijiDataRequest {
     assertEquals("Merge must be symmetric", merged, symmetricMerged);
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testInvalidColumnSpec() {
     // The user really wants 'builder.columns().add("family", "qualifier")'.
     // This will throw an exception.
-    KijiDataRequest.builder().newColumnsDef().addFamily("family:qualifier");
+    try {
+      KijiDataRequest.builder().newColumnsDef().addFamily("family:qualifier");
+      fail("An exception should have been thrown.");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Family name cannot contain ':', but got 'family:qualifier'.", iae.getMessage());
+    }
   }
 
   @Test

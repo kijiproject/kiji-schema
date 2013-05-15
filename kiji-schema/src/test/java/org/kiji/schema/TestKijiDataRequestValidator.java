@@ -19,6 +19,8 @@
 
 package org.kiji.schema;
 
+import static org.junit.Assert.assertEquals;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -48,16 +50,20 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
     mValidator.validate(request);
   }
 
-  @Test(expected=KijiDataRequestException.class)
+  @Test
   public void testValidateNoSuchFamily() throws InvalidLayoutException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder().withTimeRange(2, 3);
     builder.newColumnsDef().withMaxVersions(1).add("blahblah", "name");
     KijiDataRequest request = builder.build();
 
-    mValidator.validate(request);
+    try {
+      mValidator.validate(request);
+    } catch (KijiDataRequestException kdre) {
+      assertEquals("Table 'user' has no family named 'blahblah'.", kdre.getMessage());
+    }
   }
 
-  @Test(expected=KijiDataRequestException.class)
+  @Test
   public void testValidateNoSuchColumn() throws InvalidLayoutException {
     KijiDataRequestBuilder builder = KijiDataRequest.builder().withTimeRange(2, 3);
     builder.newColumnsDef().withMaxVersions(1)
@@ -65,6 +71,10 @@ public class TestKijiDataRequestValidator extends KijiClientTest {
         .add("info", "blahblah");
     KijiDataRequest request = builder.build();
 
-    mValidator.validate(request);
+    try {
+      mValidator.validate(request);
+    } catch (KijiDataRequestException kdre) {
+      assertEquals("Table 'user' has no column 'info:blahblah'.", kdre.getMessage());
+    }
   }
 }

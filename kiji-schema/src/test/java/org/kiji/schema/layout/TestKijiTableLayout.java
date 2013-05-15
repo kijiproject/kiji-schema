@@ -201,7 +201,7 @@ public class TestKijiTableLayout {
     // build the row key format
     RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
         .setSalt(HashSpec.newBuilder().build())
-        .setRangeScanStartIndex(0)
+        .setRangeScanStartIndex(1)
         .setComponents(components)
         .build();
 
@@ -221,7 +221,7 @@ public class TestKijiTableLayout {
     // build the row key format
     RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
         .setSalt(hs)
-        .setRangeScanStartIndex(0)
+        .setRangeScanStartIndex(1)
         .setComponents(components)
         .build();
 
@@ -256,7 +256,7 @@ public class TestKijiTableLayout {
     // build the row key format
     RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
         .setSalt(HashSpec.newBuilder().build())
-        .setRangeScanStartIndex(0)
+        .setRangeScanStartIndex(1)
         .setComponents(components)
         .build();
 
@@ -1297,113 +1297,181 @@ public class TestKijiTableLayout {
     final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void testBadSuppressMaterializationRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(badSuppressMaterializationRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals("Range scans are not supported if suppress_key_materialization is true. Please "
+          + "set range_scan_start_index to components.size", ile.getMessage());
+    }
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void testNoComponentsRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(noComponentsRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals("At least 1 component is required in row key format.", ile.getMessage());
+    }
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void testBadNullableIndexRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(badNullableIndexRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals(
+          "Invalid index for nullable component. The second component onwards can be set to null.",
+          ile.getMessage());
+    }
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void badRangeScanIndexRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(badRangeScanIndexRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals(
+          "Invalid range scan index. Range scans are supported starting with the second component.",
+          ile.getMessage());
+    }
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void badCompNameRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(badCompNameRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals("Names should begin with a letter followed by a combination of letters, numbers "
+          + "and underscores.", ile.getMessage());
+    }
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void badHashSizeRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(badHashSizeRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals("Valid hash sizes are between 1 and 16", ile.getMessage());
+    }
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void repeatedNamesRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(repeatedNamesRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals("Component name already used.", ile.getMessage());
+    }
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void tooHighRangeScanIndexRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(tooHighRangeScanIndexRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals(
+          "Invalid range scan index. Range scans are supported starting with the second component.",
+          ile.getMessage());
+    }
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void zeroNullableIndexRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(zeroNullableIndexRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals(
+          "Invalid index for nullable component. The second component onwards can be set to null.",
+          ile.getMessage());
+    }
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void tooHighNullableScanIndexRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(tooHighNullableIndexRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals(
+          "Invalid index for nullable component. The second component onwards can be set to null.",
+          ile.getMessage());
+    }
   }
 
-  @Test(expected=InvalidLayoutException.class)
+  @Test
   public void emptyCompNameRKF() throws InvalidLayoutException {
     final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
         .setName("table_name")
         .setKeysFormat(emptyCompNameRowKeyFormat())
         .setVersion(TABLE_LAYOUT_VERSION)
         .build();
-    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    try {
+      final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+      fail("An exception should have been thrown.");
+    } catch (InvalidLayoutException ile) {
+      assertEquals("Names should begin with a letter followed by a combination of letters, numbers "
+          + "and underscores.", ile.getMessage());
+    }
   }
 }

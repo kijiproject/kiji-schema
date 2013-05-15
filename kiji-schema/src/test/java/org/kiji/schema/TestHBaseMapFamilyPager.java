@@ -51,7 +51,7 @@ public class TestHBaseMapFamilyPager extends KijiClientTest {
   private static final long NTIMESTAMPS = 3;
 
   @Before
-  public final void setupTestKijiPager() throws Exception {
+  public final void setupTestHBaseMapFamilyPager() throws Exception {
     final Kiji kiji = getKiji();
     kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST));
 
@@ -72,7 +72,7 @@ public class TestHBaseMapFamilyPager extends KijiClientTest {
   }
 
   @After
-  public final void teardownTestKijiPager() throws IOException {
+  public final void teardownTestHBaseMapFamilyPager() throws IOException {
     mReader.close();
     mTable.release();
   }

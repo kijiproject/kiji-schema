@@ -22,6 +22,7 @@ package org.kiji.schema;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.util.Arrays;
 
@@ -137,19 +138,37 @@ public class TestKijiURI {
     assertEquals("col", uriTwo.getColumns().get(0).getName());
   }
 
-  @Test(expected = KijiURIException.class)
+  @Test
   public void testNoAuthority() {
-    KijiURI.newBuilder("kiji:///");
+    try {
+      KijiURI.newBuilder("kiji:///");
+      fail("An exception should have been thrown.");
+    } catch (KijiURIException kurie) {
+      assertEquals("Invalid Kiji URI: 'kiji:///' : HBase address missing.", kurie.getMessage());
+    }
   }
 
-  @Test(expected = KijiURIException.class)
+  @Test
   public void testMultipleHostsNoParen() {
-    KijiURI.newBuilder("kiji://zkhost1,zkhost2:1234/instance/table/col");
+    try {
+      KijiURI.newBuilder("kiji://zkhost1,zkhost2:1234/instance/table/col");
+      fail("An exception should have been thrown.");
+    } catch (KijiURIException kurie) {
+      assertEquals("Invalid Kiji URI: 'kiji://zkhost1,zkhost2:1234/instance/table/col' : Multiple "
+          + "zookeeper hosts must be parenthesized.", kurie.getMessage());
+    }
   }
 
-  @Test(expected = KijiURIException.class)
+  @Test
   public void testMultipleHostsMultiplePorts() {
-    KijiURI.newBuilder("kiji://zkhost1:1234,zkhost2:2345/instance/table/col");
+    try {
+      KijiURI.newBuilder("kiji://zkhost1:1234,zkhost2:2345/instance/table/col");
+      fail("An exception should have been thrown.");
+    } catch (KijiURIException kurie) {
+      assertEquals("Invalid Kiji URI: 'kiji://zkhost1:1234,zkhost2:2345/instance/table/col' : "
+          + "Invalid address, expecting 'zookeeper-quorum[:zookeeper-client-port]'",
+          kurie.getMessage());
+    }
   }
 
   @Test
@@ -164,9 +183,16 @@ public class TestKijiURI {
     assertEquals(2, uri.getColumns().size());
   }
 
-  @Test(expected = KijiURIException.class)
+  @Test
   public void testExtraPath() {
-    KijiURI.newBuilder("kiji://(zkhost1,zkhost2):1234/instance/table/col/extra");
+    try {
+      KijiURI.newBuilder("kiji://(zkhost1,zkhost2):1234/instance/table/col/extra");
+      fail("An exception should have been thrown.");
+    } catch (KijiURIException kurie) {
+      assertEquals("Invalid Kiji URI: 'kiji://(zkhost1,zkhost2):1234/instance/table/col/extra' : "
+          + "Invalid path, expecting '/kiji-instance/table-name/(column1, column2, ...)'",
+          kurie.getMessage());
+    }
   }
 
   @Test
@@ -222,10 +248,16 @@ public class TestKijiURI {
     assertEquals("col", resolved.getColumns().get(0).getName());
   }
 
-  @Test(expected = KijiURIException.class)
+  @Test
   public void testInvalidResolution() {
     final KijiURI uri = KijiURI.newBuilder("kiji://zkhost:1234").build();
-     uri.resolve("instance/table/col/extra");
+    try {
+      uri.resolve("instance/table/col/extra");
+      fail("An exception should have been thrown.");
+    } catch (KijiURIException kurie) {
+      assertEquals("Invalid Kiji URI: 'kiji://zkhost:1234/instance/table/col/extra' : Invalid path,"
+          + " expecting '/kiji-instance/table-name/(column1, column2, ...)'", kurie.getMessage());
+    }
   }
 
   @Test
@@ -289,8 +321,8 @@ public class TestKijiURI {
     KijiURI uri = KijiURI.newBuilder().build();
     assertTrue(!uri.getZookeeperQuorum().isEmpty());  // Test cannot be more specific.
     // Test cannot validate the value of uri.getZookeeperClientPort().
-    assertEquals(uri.getInstance(), KConstants.DEFAULT_INSTANCE_NAME);
-    assertEquals(uri.getTable(), null);
+    assertEquals(KConstants.DEFAULT_INSTANCE_NAME, uri.getInstance());
+    assertEquals(null, uri.getTable());
     assertTrue(uri.getColumns().isEmpty());
   }
 

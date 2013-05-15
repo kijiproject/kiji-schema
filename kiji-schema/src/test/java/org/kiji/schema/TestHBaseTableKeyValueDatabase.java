@@ -22,6 +22,7 @@ package org.kiji.schema;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -130,9 +131,15 @@ public class TestHBaseTableKeyValueDatabase extends KijiClientTest {
         .contains("config2"));
   }
 
-  @Test(expected=IOException.class)
+  @Test
   public void testRemoveAllValues() throws IOException {
     mDb.removeAllValues("table1");
-    mDb.getValue("table1", "config1");
+    try {
+      mDb.getValue("table1", "config1");
+      fail("An exception should have been thrown.");
+    } catch (IOException ioe) {
+      assertEquals("Could not find any values associated with table table1 and key config1",
+          ioe.getMessage());
+    }
   }
 }

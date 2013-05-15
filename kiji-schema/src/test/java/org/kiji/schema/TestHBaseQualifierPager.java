@@ -53,7 +53,7 @@ public class TestHBaseQualifierPager extends KijiClientTest {
   private static final long NTIMESTAMPS = 3;
 
   @Before
-  public final void setupTestKijiPager() throws Exception {
+  public final void setupTestHBaseQualifierPager() throws Exception {
     final Kiji kiji = getKiji();
     kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.PAGING_TEST));
 
@@ -74,7 +74,7 @@ public class TestHBaseQualifierPager extends KijiClientTest {
   }
 
   @After
-  public final void teardownTestKijiPager() throws IOException {
+  public final void teardownTestHBaseQualifierPager() throws IOException {
     mReader.close();
     mTable.release();
   }

@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
@@ -77,7 +78,7 @@ public class TestKijiAdmin extends KijiClientTest {
         getLayout("table").getLocalityGroupMap().get("default").getDesc().getMaxVersions());
   }
 
-  @Test(expected=KijiTableNotFoundException.class)
+  @Test
   public void testDeleteTable() throws Exception {
     getKiji().createTable(mLayoutDesc);
     assertNotNull(getLayout("table"));
@@ -86,12 +87,22 @@ public class TestKijiAdmin extends KijiClientTest {
 
     // Make sure it was deleted from the meta table, too.
     // The following line should throw a KijiTableNotFoundException.
-    getLayout("table");
+    try {
+      getLayout("table");
+      fail("An exception should have been thrown.");
+    } catch (KijiTableNotFoundException ktnfe) {
+      assertEquals("Table not found: table", ktnfe.getMessage());
+    }
   }
 
-  @Test(expected=KijiTableNotFoundException.class)
+  @Test
   public void testSetTableLayoutOnATableThatDoesNotExist() throws Exception {
     final TableLayoutDesc tableLayoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
-    getKiji().modifyTableLayout(tableLayoutDesc);
+    try {
+      getKiji().modifyTableLayout(tableLayoutDesc);
+      fail("An exception should have been thrown.");
+    } catch (KijiTableNotFoundException ktnfe) {
+      assertEquals("Table not found: table", ktnfe.getMessage());
+    }
   }
 }

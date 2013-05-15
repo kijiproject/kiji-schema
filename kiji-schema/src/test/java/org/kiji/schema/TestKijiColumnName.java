@@ -24,19 +24,30 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
 public class TestKijiColumnName {
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNull() {
-    new KijiColumnName(null);
+    try {
+      new KijiColumnName(null);
+      fail("An exception should have been thrown.");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Column name may not be null. At least specify family", iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNullFamily() {
-    new KijiColumnName(null, "qualifier");
+    try {
+      new KijiColumnName(null, "qualifier");
+      fail("An exception should have been thrown.");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Family name may not be null.", iae.getMessage());
+    }
   }
 
   @Test
@@ -88,9 +99,14 @@ public class TestKijiColumnName {
     assertFalse(columnName.isFullyQualified());
   }
 
-  @Test(expected=KijiInvalidNameException.class)
+  @Test
   public void testInvalidFamilyName() {
-    new KijiColumnName("1:qualifier");
+    try {
+      new KijiColumnName("1:qualifier");
+      fail("An exception should have been thrown.");
+    } catch (KijiInvalidNameException kine) {
+      assertEquals("Invalid family name: 1", kine.getMessage());
+    }
   }
 
   @Test

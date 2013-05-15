@@ -34,6 +34,7 @@ import java.io.IOException;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.KijiTablePool.NoCapacityException;
 import org.kiji.schema.util.ResourceUtils;
 
 public class TestKijiTablePool extends KijiClientTest {
@@ -44,7 +45,7 @@ public class TestKijiTablePool extends KijiClientTest {
     mTableFactory = createMock(KijiTableFactory.class);
   }
 
-  @Test(expected=IOException.class)
+  @Test
   public void testNoSuchTable() throws IOException {
     KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
 
@@ -54,6 +55,8 @@ public class TestKijiTablePool extends KijiClientTest {
     replay(mTableFactory);
     try {
       pool.get("table doesn't exist");
+    } catch (IOException ioe) {
+      assertEquals("table not found", ioe.getMessage());
     } finally {
       ResourceUtils.closeOrLog(pool);
     }
@@ -101,7 +104,7 @@ public class TestKijiTablePool extends KijiClientTest {
     verify(mTableFactory);
   }
 
-  @Test(expected=KijiTablePool.NoCapacityException.class)
+  @Test
   public void testMaxSize() throws IOException {
     KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory)
         .withMaxSize(1)
@@ -118,7 +121,15 @@ public class TestKijiTablePool extends KijiClientTest {
     KijiTable actual = pool.get("foo");
 
     // The following should fail because the pool is already at max capacity.
-    pool.get("foo");
+    try {
+      pool.get("foo");
+      fail("An exception should have been thrown.");
+    } catch (NoCapacityException nce) {
+      assertEquals("Reached max pool size for table foo. There are 1 tables in the pool.",
+          nce.getMessage());
+    } finally {
+      pool.close();
+    }
   }
 
   @Test

@@ -19,6 +19,9 @@
 
 package org.kiji.schema;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.junit.Test;
@@ -33,25 +36,45 @@ public class TestKijiInstaller {
     KijiInstaller.get().uninstall(uri, conf);
   }
 
-  @Test(expected=KijiInvalidNameException.class)
+  @Test
   public void testInstallNullInstance() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
     final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji-installer/").build();
-    KijiInstaller.get().install(uri, conf);
+    try {
+      KijiInstaller.get().install(uri, conf);
+      fail("An exception should have been thrown.");
+    } catch (KijiInvalidNameException kine) {
+      assertEquals(
+          "Kiji URI 'kiji://.fake.kiji-installer:2181/' does not specify a Kiji instance name",
+          kine.getMessage());
+    }
   }
 
-  @Test(expected=KijiInvalidNameException.class)
+  @Test
   public void testUninstallNullInstance() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
     final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji-installer/").build();
-    KijiInstaller.get().uninstall(uri, conf);
+    try {
+      KijiInstaller.get().uninstall(uri, conf);
+      fail("An exception should have been thrown.");
+    } catch (KijiInvalidNameException kine) {
+      assertEquals(
+          "Kiji URI 'kiji://.fake.kiji-installer:2181/' does not specify a Kiji instance name",
+          kine.getMessage());
+    }
   }
 
-  @Test(expected=KijiNotInstalledException.class)
+  @Test
   public void testUninstallMissingInstance() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
     final KijiURI uri =
         KijiURI.newBuilder("kiji://.fake.kiji-installer/anInstanceThatNeverExisted").build();
-    KijiInstaller.get().uninstall(uri, conf);
+    try {
+      KijiInstaller.get().uninstall(uri, conf);
+      fail("An exception should have been thrown.");
+    } catch (KijiNotInstalledException knie) {
+      assertEquals("Kiji instance 'anInstanceThatNeverExisted' is not installed.",
+          knie.getMessage());
+    }
   }
 }

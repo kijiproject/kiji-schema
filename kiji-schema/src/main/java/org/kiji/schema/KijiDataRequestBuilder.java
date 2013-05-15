@@ -310,7 +310,8 @@ public final class KijiDataRequestBuilder {
      * The definition becomes immutable, and the only method call allowed from there on is build().
      */
     private void seal() {
-      Preconditions.checkState(!mSealed);
+      Preconditions.checkState(!mSealed, "ColumnsDef is sealed.  This usually indicates that the "
+          + "ColumnsDef has been used in the construction of another KijiDataRequest already.");
       mSealed = true;
     }
 

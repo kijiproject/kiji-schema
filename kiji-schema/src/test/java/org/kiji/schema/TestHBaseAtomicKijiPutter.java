@@ -22,6 +22,7 @@ package org.kiji.schema;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
@@ -115,9 +116,8 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
     final KijiDataRequest nameRequest = KijiDataRequest.create("info", "name");
     final KijiDataRequest visitsRequest = KijiDataRequest.create("info", "visits");
 
-    assertEquals(
-        mReader.get(eid, nameRequest).getMostRecentCell("info", "name").getData().toString(),
-        "foo-val");
+    assertEquals("foo-val",
+        mReader.get(eid, nameRequest).getMostRecentCell("info", "name").getData().toString());
     assertEquals(42L,
         mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData());
 
@@ -126,9 +126,8 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
     mPutter.put("info", "visits", 45L);
     mPutter.commit();
 
-    assertEquals(
-        mReader.get(eid, nameRequest).getMostRecentCell("info", "name").getData().toString(),
-        "foo-name");
+    assertEquals("foo-name",
+        mReader.get(eid, nameRequest).getMostRecentCell("info", "name").getData().toString());
     assertEquals(45L,
         mReader.get(eid, visitsRequest).getMostRecentCell("info", "visits").getData());
   }
@@ -158,6 +157,7 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
   public void testSkipBegin() throws Exception {
     try {
       mPutter.put("info", "visits", 45L);
+      fail("An exception should have been thrown.");
     } catch (IllegalStateException ise) {
       assertEquals("calls to put() must be between calls to begin() and "
           + "commit(), checkAndCommit(), or rollback()", ise.getMessage());
@@ -171,6 +171,7 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
     mPutter.begin(eid);
     try {
       mPutter.begin(eid);
+      fail("An exception should have been thrown.");
     } catch (IllegalStateException ise) {
       assertEquals("There is already a transaction in progress on row: hbase=foo. "
           + "Call commit(), checkAndCommit(), or rollback() to clear the Put.", ise.getMessage());
@@ -189,6 +190,7 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
     assertEquals(null, mPutter.getEntityId());
     try {
       mPutter.commit();
+      fail("An exception should have been thrown.");
     } catch (IllegalStateException ise) {
       assertEquals("commit() must be paired with a call to begin()", ise.getMessage());
     }

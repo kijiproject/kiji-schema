@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
@@ -89,11 +90,16 @@ public class TestHBaseKijiTableWriter extends KijiClientTest {
     assertEquals(47L, actual);
   }
 
-  @Test(expected=IOException.class)
+  @Test
   public void testIncrementAColumnThatIsNotACounter() throws Exception {
     // This should throw an exception because we are attempting to increment a column that
     // isn't a counter.
-    mWriter.increment(mTable.getEntityId("foo"), "info", "name", 5L);
+    try {
+      mWriter.increment(mTable.getEntityId("foo"), "info", "name", 5L);
+      fail("An exception should have been thrown.");
+    } catch (IOException ioe) {
+      assertEquals("Column 'info:name' is not a counter", ioe.getMessage());
+    }
   }
 
   @Test

@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -92,68 +93,122 @@ public class TestKijiDataRequestBuilder {
         req1, req2);
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoRedundantColumn() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().add("info", "foo").add("info", "foo");
-    final KijiDataRequest kdr = builder.build();
-    assertEquals(1, kdr.getColumns().size());
+
+    try {
+      builder.build();
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("Duplicate definition for column 'Column{name=info:foo, maxVersions=1, "
+          + "filter=null, pageSize=0}'.", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoRedundantColumnIn2ColBuilders() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().add("info", "foo");
     builder.newColumnsDef().add("info", "foo");
-    builder.build();
+    try {
+      builder.build();
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("Duplicate definition for column 'Column{name=info:foo, maxVersions=1, "
+          + "filter=null, pageSize=0}'.", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoRedundantColumnWithFamily() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().add("info", "foo").addFamily("info");
-    builder.build();
+    try {
+      builder.build();
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("KijiDataRequest may not simultaneously contain definitions for family 'info' "
+          + "and definitions for fully qualified columns in family 'info'.", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoRedundantColumnWithFamilyIn2ColBuilders() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().add("info", "foo");
     builder.newColumnsDef().addFamily("info");
-    builder.build();
+    try {
+      builder.build();
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("KijiDataRequest may not simultaneously contain definitions for family 'info' "
+          + "and definitions for fully qualified columns in family 'info'.", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoRedundantColumnWithFamilyReversed() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().addFamily("info").add("info", "foo");
-    builder.build();
+    try {
+      builder.build();
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("KijiDataRequest may not simultaneously contain definitions for family 'info' "
+          + "and definitions for fully qualified columns 'info:foo'.", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoRedundantColumnWithFamilyIn2ColBuildersReversed() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().addFamily("info");
     builder.newColumnsDef().add("info", "foo");
-    builder.build();
+    try {
+      builder.build();
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("KijiDataRequest may not simultaneously contain definitions for family 'info' "
+          + "and definitions for fully qualified columns 'info:foo'.", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoNegativeMaxVer() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().withMaxVersions(-5).addFamily("info");
+    try {
+      builder.newColumnsDef().withMaxVersions(-5).addFamily("info");
+      fail("An exception should have been thrown.");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Maximum number of versions must be strictly positive, but got: %d [-5]",
+          iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoNegativePageSize() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().withPageSize(-5).addFamily("info");
+    try {
+      builder.newColumnsDef().withPageSize(-5).addFamily("info");
+      fail("An exception should have been thrown.");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Page size must be 0 (disabled) or positive, but got: %d [null]",
+          iae.getMessage());
+    }
   }
 
-  @Test(expected=IllegalArgumentException.class)
+  @Test
   public void testNoZeroMaxVersions() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().withMaxVersions(0).addFamily("info");
+    try {
+      builder.newColumnsDef().withMaxVersions(0).addFamily("info");
+      fail("An exception should have been thrown.");
+    } catch (IllegalArgumentException iae) {
+      assertEquals("Maximum number of versions must be strictly positive, but got: %d [0]",
+          iae.getMessage());
+    }
   }
 
   @Test
@@ -168,54 +223,96 @@ public class TestKijiDataRequestBuilder {
     assertNotNull(KijiDataRequest.builder().build());
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoSettingMaxVerTwice() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().withMaxVersions(2).withMaxVersions(3).addFamily("info");
+    try {
+      builder.newColumnsDef().withMaxVersions(2).withMaxVersions(3).addFamily("info");
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot set max versions to %d, max versions already set to %d. [3, 2]",
+          ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoSettingPageSizeTwice() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().withPageSize(2).withPageSize(3).addFamily("info");
+    try {
+      builder.newColumnsDef().withPageSize(2).withPageSize(3).addFamily("info");
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot set page size to %d, page size already set to %d. [3, 2]",
+          ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoSettingTimeRangeTwice() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.withTimeRange(2, 3).withTimeRange(6, 9);
+    try {
+      builder.withTimeRange(2, 3).withTimeRange(6, 9);
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot set time range more than once.", ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoPropertiesAfterAdd() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().add("info", "foo").withMaxVersions(5);
+    try {
+      builder.newColumnsDef().add("info", "foo").withMaxVersions(5);
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals(
+          "Properties of the columns builder cannot be changed once columns are assigned to it.",
+          ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoAddAfterBuild() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().add("info", "foo").withMaxVersions(5);
+    builder.newColumnsDef().withMaxVersions(5).add("info", "foo");
     builder.build();
-    builder.newColumnsDef().add("info", "bar");
+    try {
+      builder.newColumnsDef().add("info", "bar");
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("KijiDataRequest builder cannot be used after build() is invoked.",
+          ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoPropertiesAfterBuild() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     KijiDataRequestBuilder.ColumnsDef columns = builder.newColumnsDef();
-    columns.add("info", "foo").withMaxVersions(5);
+    columns.withMaxVersions(5).add("info", "foo");
     builder.build();
-    columns.add("info", "bar"); // This should explode.
+    try {
+      columns.add("info", "bar");
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot add more columns to this ColumnsDef after build() has been called.",
+          ise.getMessage());
+    }
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testCannotBuildTwoTimes() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     KijiDataRequestBuilder.ColumnsDef columns = builder.newColumnsDef();
-    columns.add("info", "foo").withMaxVersions(5);
+    columns.withMaxVersions(5).add("info", "foo");
     builder.build();
-    builder.build(); // This should explode.
+    try {
+      builder.build();
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("KijiDataRequest builder cannot be used after build() is invoked.",
+          ise.getMessage());
+    }
   }
 
   @Test
@@ -233,10 +330,16 @@ public class TestKijiDataRequestBuilder {
     assertEquals("details", usersDetailsCol.getQualifier());
   }
 
-  @Test(expected=IllegalStateException.class)
+  @Test
   public void testNoColumnsDefReuse() {
     final ColumnsDef cols = ColumnsDef.create().withMaxVersions(10).addFamily("info");
     KijiDataRequest.builder().addColumns(cols).build();  // seals cols
-    KijiDataRequest.builder().addColumns(cols).build();  // fails as cols is already sealed.
+    try {
+      KijiDataRequest.builder().addColumns(cols).build();  // fails as cols is already sealed.
+      fail("An exception should have been thrown.");
+    } catch (IllegalStateException ise) {
+      assertEquals("ColumnsDef is sealed.  This usually indicates that the ColumnsDef has been "
+          + "used in the construction of another KijiDataRequest already.", ise.getMessage());
+    }
   }
 }
