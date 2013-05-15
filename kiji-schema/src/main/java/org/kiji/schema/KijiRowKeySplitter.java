@@ -27,6 +27,9 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
+import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.util.ByteArrayFormatter;
 
 /**
@@ -54,8 +57,28 @@ public final class KijiRowKeySplitter {
    *
    * @return the number of bytes required by an md5 hash.
    */
+  @Deprecated
   public int getRowKeyResolution() {
     return 16;
+  }
+
+  /**
+   * Gets a table's row-key hash resolution (in number of bytes)
+   * for use in evenly spacing HBase row keys.
+   *
+   * @param tableLayout the layout of the table
+   * @return the table's hash resolution.
+   */
+  public static int getRowKeyResolution(TableLayoutDesc tableLayout) {
+    // Get hashSize from layout.
+    int hashSize = 16;
+    // No assumptions make about the RKF.
+    if (RowKeyFormat.class.equals(tableLayout.getKeysFormat().getClass())) {
+      hashSize = ((RowKeyFormat) tableLayout.getKeysFormat()).getHashSize();
+    } else if (RowKeyFormat2.class.equals(tableLayout.getKeysFormat().getClass())) {
+      hashSize = ((RowKeyFormat2) tableLayout.getKeysFormat()).getSalt().getHashSize();
+    }
+    return hashSize;
   }
 
   /**
@@ -65,17 +88,30 @@ public final class KijiRowKeySplitter {
    * @param numRegions The number of desired regions.
    * @return The row keys that serve as the boundaries between the regions.
    */
+  @Deprecated
   public byte[][] getSplitKeys(int numRegions) {
+    return getSplitKeys(numRegions, getRowKeyResolution());
+  }
+
+  /**
+   * Returns the split keys for the given number of regions.  This assumes that the keys are
+   * byte strings of variable hash size.
+   *
+   * @param numRegions The number of desired regions.
+   * @param hashSize The hashSize appropriate for entityId.
+   * @return The row keys that serve as the boundaries between the regions.
+   */
+  public byte[][] getSplitKeys(int numRegions, int hashSize) {
     if (numRegions < 2) {
       throw new IllegalArgumentException("numRegions must be at least 2, but was " + numRegions);
     }
 
     // Create a byte array of all zeros.
-    byte[] startKey = new byte[getRowKeyResolution()];
+    byte[] startKey = new byte[hashSize];
     Arrays.fill(startKey, (byte) 0x00);
 
     // Create a byte array of all ones.
-    byte[] limitKey = new byte[getRowKeyResolution()];
+    byte[] limitKey = new byte[hashSize];
     Arrays.fill(limitKey, (byte) 0xFF);
 
     // This result includes numRegions + 1 keys in it (includes the startKey and limitKey).

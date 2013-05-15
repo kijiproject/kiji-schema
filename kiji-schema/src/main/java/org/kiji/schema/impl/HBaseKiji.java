@@ -316,7 +316,9 @@ public final class HBaseKiji implements Kiji {
         throw new IllegalArgumentException(
             "May not use numRegions > 1 if row key hashing is disabled in the layout");
       }
-      createTable(tableLayout, KijiRowKeySplitter.get().getSplitKeys(numRegions));
+
+      createTable(tableLayout, KijiRowKeySplitter.get().getSplitKeys(numRegions,
+          KijiRowKeySplitter.getRowKeyResolution(tableLayout)));
     } else {
       createTable(tableLayout, null);
     }
