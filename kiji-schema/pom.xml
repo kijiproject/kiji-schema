@@ -308,8 +308,8 @@
 
       <properties>
         <hadoop.version>1.0.3</hadoop.version>
-        <hbase.version>0.92.1</hbase.version>
-        <hbase-maven-plugin.version>1.0.10-hadoop1</hbase-maven-plugin.version>
+        <hbase.version>0.94.7</hbase.version>
+        <hbase-maven-plugin.version>1.0.11-hadoop1</hbase-maven-plugin.version>
       </properties>
 
       <dependencies>
