@@ -21,6 +21,7 @@ package org.kiji.schema.util;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -70,29 +71,57 @@ public class TestSplitKeyFile {
         SplitKeyFile.decodeRowKey("this is a \\x0a key"));
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testDecodeRowKeyInvalidHexEscape() throws Exception {
-    SplitKeyFile.decodeRowKey("this is a \\xZZ key");
+    try {
+      SplitKeyFile.decodeRowKey("this is a \\xZZ key");
+      fail("An exception should have been thrown.");
+    } catch (IOException ioe) {
+      assertEquals("Invalid hexadecimal escape in encoded row key: 'this is a \\xZZ key'.",
+          ioe.getMessage());
+    }
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testDecodeRowKeyInvalidEscape() throws Exception {
     // \n is escaped as \x0a
-    SplitKeyFile.decodeRowKey("this is a \\n key");
+    try {
+      SplitKeyFile.decodeRowKey("this is a \\n key");
+      fail("An exception should have been thrown.");
+    } catch (IOException ioe) {
+      assertEquals("Invalid escape in encoded row key: 'this is a \\n key'.", ioe.getMessage());
+    }
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testDecodeRowKeyUnterminatedEscape() throws Exception {
-    SplitKeyFile.decodeRowKey("this is a \\");
+    try {
+      SplitKeyFile.decodeRowKey("this is a \\");
+      fail("An exception should have been thrown.");
+    } catch (IOException ioe) {
+      assertEquals("Invalid trailing escape in encoded row key: 'this is a \\'.", ioe.getMessage());
+    }
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testDecodeRowKeyInvalidHex() throws Exception {
-    SplitKeyFile.decodeRowKey("this is a \\x-6");
+    try {
+      SplitKeyFile.decodeRowKey("this is a \\x-6");
+      fail("An exception should have been thrown.");
+    } catch (IOException ioe) {
+      assertEquals("Invalid hexadecimal escape in encoded row key: 'this is a \\x-6'.",
+          ioe.getMessage());
+    }
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testDecodeRowKeyIncompleteHex() throws Exception {
-    SplitKeyFile.decodeRowKey("this is a \\x6");
+    try {
+      SplitKeyFile.decodeRowKey("this is a \\x6");
+      fail("An exception should have been thrown.");
+    } catch (IOException ioe) {
+      assertEquals("Invalid hexadecimal escape in encoded row key: 'this is a \\x6'.",
+          ioe.getMessage());
+    }
   }
 }

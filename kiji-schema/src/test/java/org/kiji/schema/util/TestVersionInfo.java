@@ -26,6 +26,7 @@ import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -81,7 +82,7 @@ public class TestVersionInfo {
     verify(kiji);
   }
 
-  @Test(expected=IncompatibleKijiVersionException.class)
+  @Test
   public void testValidateVersionFail() throws Exception {
     final KijiSystemTable systemTable = createMock(KijiSystemTable.class);
     expect(systemTable.getDataVersion()).andReturn(ProtocolVersion.parse("kiji-0.9")).anyTimes();
@@ -93,7 +94,14 @@ public class TestVersionInfo {
     replay(kiji);
 
     // This should throw an invalid version exception.
-    VersionInfo.validateVersion(kiji);
+    try {
+      VersionInfo.validateVersion(kiji);
+      fail("An exception should have been thrown.");
+    } catch (IncompatibleKijiVersionException ikve) {
+      assertEquals(
+          "Data format of Kiji instance (kiji-0.9) cannot operate with client (system-1.0)",
+          ikve.getMessage());
+    }
   }
 
   @Test
