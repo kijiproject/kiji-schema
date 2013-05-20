@@ -53,6 +53,25 @@ import org.kiji.schema.util.BytesKey;
 @ApiAudience.Private
 public final class AvroCellEncoder implements KijiCellEncoder {
 
+  /** Name of the system property to control schema validation. */
+  public static final String SCHEMA_VALIDATION =
+      "org.kiji.schema.impl.AvroCellEncoder.SCHEMA_VALIDATION";
+
+  /** Schema validation policies, until AVRO-1315 is available. */
+  private enum SchemaValidation {
+    DISABLED,
+    STRICT
+  }
+
+  /**
+   * Reports the schema validation policy.
+   *
+   * @return the schema validation policy.
+   */
+  private static SchemaValidation getSchemaValidation() {
+    return SchemaValidation.valueOf(System.getProperty(SCHEMA_VALIDATION, "STRICT"));
+  }
+
   /** Specification of the column to encode. */
   private final CellSpec mCellSpec;
 
@@ -271,7 +290,15 @@ public final class AvroCellEncoder implements KijiCellEncoder {
     // TODO(SCHEMA-326): reader schema should always be defined, independently of writer schemas:
     final Schema readerSchema = (mReaderSchema != null) ? mReaderSchema : writerSchema;
     // TODO(SCHEMA-326): Validate writer schema thoroughly against the actual reader schema.
-    validate(readerSchema, writerSchema);
+    switch (getSchemaValidation()) {
+    case DISABLED:
+      break;
+    case STRICT:
+      validate(readerSchema, writerSchema);
+      break;
+    default:
+      throw new RuntimeException("Invalid schema validation policy: " + getSchemaValidation());
+    }
 
     // Encode the Avro schema (if necessary):
     mSchemaEncoder.encode(writerSchema);
