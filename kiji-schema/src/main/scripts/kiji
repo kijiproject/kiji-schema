@@ -67,6 +67,7 @@ bin=`dirname "$prgm"`
 bin=`cd "${bin}" && pwd`
 
 KIJI_HOME="${KIJI_HOME:-${bin}/../}"
+BENTO_CHECKIN_SERVER=${BENTO_CHECKIN_SERVER:-"https://updates.kiji.org/api/1.0.0/"}
 
 # If KIJI_MR_HOME is set, jars that are part of the kiji-mapreduce distribution
 # will be added to the classpath.

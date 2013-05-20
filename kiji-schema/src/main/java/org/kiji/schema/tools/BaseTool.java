@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import com.google.common.base.Preconditions;
+
 import org.apache.hadoop.conf.Configured;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,8 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
+import org.kiji.checkin.CommandLogger;
+import org.kiji.checkin.models.KijiCommand;
 import org.kiji.common.flags.Flag;
 import org.kiji.common.flags.FlagParser;
 import org.kiji.schema.KijiNotInstalledException;
@@ -176,13 +179,22 @@ public abstract class BaseTool extends Configured implements KijiTool {
       // Execute custom functionality implemented in subclasses.
       validateFlags();
       boolean exceptionThrown = false;
+      int returnFlag = FAILURE;
+
       try {
         setup();
-        return run(nonFlagArgs);
+        returnFlag = run(nonFlagArgs);
+        return returnFlag;
       } catch (Exception exn) {
         exceptionThrown = true;
         throw exn;
       } finally {
+        final CommandLogger logger = new CommandLogger();
+        logger.logCommand(
+            new KijiCommand.Builder(this.getClass())
+                .withCommandName(this.getClass().getSimpleName())
+                .withSuccess(returnFlag == SUCCESS && !exceptionThrown).build(), true);
+
         if (exceptionThrown) {
           try {
             cleanup();

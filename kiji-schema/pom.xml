@@ -35,6 +35,10 @@
   <description>A schema management layer for Apache HBase</description>
   <inceptionYear>2012</inceptionYear>
 
+  <properties>
+    <kiji-checkin-version>1.0.0-SNAPSHOT</kiji-checkin-version>
+  </properties>
+
   <build>
     <resources>
       <!-- Generate kiji-schema.properties with the project's version ID. -->
@@ -150,6 +154,12 @@
       <groupId>${project.groupId}</groupId>
       <artifactId>kiji-schema-platform-api</artifactId>
       <version>${project.version}</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.kiji.checkin</groupId>
+      <artifactId>kiji-checkin</artifactId>
+      <version>${kiji-checkin-version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>

@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -36,6 +37,7 @@ import org.junit.rules.TestName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.checkin.CheckinUtils;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.TestingFileUtils;
 
@@ -116,6 +118,8 @@ public class KijiClientTest {
     mConf.set("fs.defaultFS", "file://" + mLocalTempDir);
     mConf.set("mapred.job.tracker", "local");
     mKiji = null;  // lazily initialized
+    // Disable logging of comamnds to the upgrade server by accident.
+    System.setProperty(CheckinUtils.DISABLE_CHECKIN_PROP, "true");
   }
 
   /**
