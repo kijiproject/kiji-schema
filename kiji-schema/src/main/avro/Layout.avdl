@@ -132,10 +132,15 @@ protocol KijiTableLayoutRecords {
     union { null, string } @diff("true") renamed_from = null;
   }
 
-  /** Type of bloom filtering to use. Applies on LocalityGroups (hbase column families) only.
-      See http://hbase.apache.org/book/perf.schema.html#schema.bloom for more details. */
+  /**
+   * Type of bloom filtering to use.
+   * Applies on LocalityGroups (HBase column families) only.
+   *
+   * For more details, see:
+   * http://hbase.apache.org/book/perf.schema.html#schema.bloom
+   */
   enum BloomType {
-    /** Bloomfilters disabled. */
+    /** Bloom filters disabled. */
     NONE,
 
     /** Bloom enabled with Table row as Key. */
@@ -171,12 +176,22 @@ protocol KijiTableLayoutRecords {
     /** Length of time in seconds to retain cells. */
     int ttl_seconds;
 
-    /** Block size, see http://hbase.apache.org/apidocs/org/apache/hadoop/hbase/HColumnDescriptor.html#BLOCKSIZE.
-        Leave null for hbase's default value. */
+    /**
+     * Block size.
+     * Leave null for HBase's default value.
+     *
+     * For more details, see:
+     * http://hbase.apache.org/apidocs/org/apache/hadoop/hbase/HColumnDescriptor.html#BLOCKSIZE
+     */
     union { null, int } block_size = null;
 
-    /** Type of bloom filtering to use. See http://hbase.apache.org/book/perf.schema.html#schema.bloom
-        for more details. Leave null for hbase's default value. */
+    /**
+     * Type of bloom filtering to use.
+     * Leave null for HBase's default value.
+     *
+     * For more details, see:
+     * http://hbase.apache.org/book/perf.schema.html#schema.bloom
+     */
     union { null, BloomType } bloom_type = null;
 
     /** Data compression type. */
@@ -202,9 +217,9 @@ protocol KijiTableLayoutRecords {
   }
 
   /**
-   * Row keys can either be raw bytes, hash, hash-prefixed or be formatted. Formatted row keys
-   * are composed of one or more primitive types (string, int, long). By default
-   * they are prefixed by the hash of the first component.
+   * Row keys can either be raw bytes, hash, hash-prefixed or be formatted.
+   * Formatted row keys are composed of one or more primitive types (string, int, long).
+   * By default they are prefixed by an 128 bits MD5 hash of the first component.
    */
   enum RowKeyEncoding {
     /** raw bytes */
@@ -240,7 +255,7 @@ protocol KijiTableLayoutRecords {
     HashType hash_type = "MD5";
 
     /**
-     * Size of the hash. If used for salting purposes, i.e. the hash is not the sole
+     * Size of the hash, in bytes. If used for salting purposes, i.e. the hash is not the sole
      * component of the key, use a smaller hash size.
      */
     int hash_size = 16;
@@ -342,12 +357,22 @@ protocol KijiTableLayoutRecords {
     /** Name of the table ([a-zA-Z0-9_]+). */
     string name;
 
-    /** Max file size of an hbase region. See http://hbase.apache.org/apidocs/org/apache/hadoop/hbase/HTableDescriptor.html#setMaxFileSize(long).
-        Leave null for hbase's default value. */
+    /**
+     * Max file size of an HBase region.
+     * Leave null for HBase's default value.
+     *
+     * For more details, see:
+     * http://hbase.apache.org/apidocs/org/apache/hadoop/hbase/HTableDescriptor.html#setMaxFileSize(long)
+     */
     union { null, long } max_filesize = null;
 
-    /** Maximum size of the hbase memstore. See http://hbase.apache.org/apidocs/org/apache/hadoop/hbase/HTableDescriptor.html#setMemStoreFlushSize(long).
-        Leave null for hbase's default value. */
+    /**
+     * Maximum size of the hbase memstore.
+     * Leave null for HBase's default value.
+     *
+     * For more details, see:
+     * http://hbase.apache.org/apidocs/org/apache/hadoop/hbase/HTableDescriptor.html#setMemStoreFlushSize(long)
+     */
     union { null, long } memstore_flushsize = null;
 
     /** User description of the table. */

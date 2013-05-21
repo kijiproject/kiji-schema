@@ -119,6 +119,29 @@ public class KijiClientTest {
   }
 
   /**
+   * Creates a test HBase URI.
+   *
+   * <p>
+   *   This HBase instance is ideally made unique for each test, but there is no hard guarantee.
+   *   In particular, the HBase instance is shared with other tests when running against an
+   *   external HBase cluster.
+   *   Thus, you must clean after yourself by removing tables you create in your tests.
+   * </p>
+   *
+   * @return the KijiURI of a test HBase instance.
+   */
+  public KijiURI createTestHBaseURI() {
+    final long fakeHBaseCounter = mFakeHBaseInstanceCounter.getAndIncrement();
+    final String testName =
+        String.format("%s_%s", getClass().getSimpleName(), mTestName.getMethodName());
+    final String hbaseAddress =
+        (HBASE_ADDRESS != null)
+        ? HBASE_ADDRESS
+        : String.format(".fake.%s-%d", testName, fakeHBaseCounter);
+    return KijiURI.newBuilder(String.format("kiji://%s", hbaseAddress)).build();
+  }
+
+  /**
    * Opens a new unique test Kiji instance, creating it if necessary.
    *
    * Each call to this method returns a fresh new Kiji instance.
@@ -129,15 +152,10 @@ public class KijiClientTest {
    */
   public Kiji createTestKiji() throws Exception {
     Preconditions.checkNotNull(mConf);
-    final long fakeHBaseCounter = mFakeHBaseInstanceCounter.getAndIncrement();
     final String instanceName =
         String.format("%s_%s", getClass().getSimpleName(), mTestName.getMethodName());
-    final String hbaseAddress =
-        (HBASE_ADDRESS != null)
-        ? HBASE_ADDRESS
-        : String.format(".fake.%s-%d", instanceName, fakeHBaseCounter);
-    final KijiURI uri =
-        KijiURI.newBuilder(String.format("kiji://%s/%s", hbaseAddress, instanceName)).build();
+    final KijiURI hbaseURI = createTestHBaseURI();
+    final KijiURI uri = KijiURI.newBuilder(hbaseURI).withInstanceName(instanceName).build();
     KijiInstaller.get().install(uri, mConf);
     final Kiji kiji = Kiji.Factory.open(uri, mConf);
 

@@ -23,10 +23,12 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Set;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
@@ -56,6 +58,7 @@ import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.avro.TableLayoutsBackup;
 import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 import org.kiji.schema.util.ResourceUtils;
@@ -157,11 +160,19 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   @Override
   public KijiTableLayout updateTableLayout(String tableName, TableLayoutDesc update)
       throws IOException {
-    final List<KijiTableLayout> layouts = getTableLayoutVersions(tableName, 1);
+    // Fetch all the layout history:
+    final List<KijiTableLayout> layouts =
+        getTableLayoutVersions(tableName, HConstants.ALL_VERSIONS);
     final KijiTableLayout currentLayout = layouts.isEmpty() ? null : layouts.get(0);
     final KijiTableLayout tableLayout = KijiTableLayout.createUpdatedLayout(update, currentLayout);
 
     Preconditions.checkArgument(tableName.equals(tableLayout.getName()));
+
+    // Set of all the former layout IDs:
+    final Set<String> layoutIDs = Sets.newHashSet();
+    for (KijiTableLayout layout : layouts) {
+      layoutIDs.add(layout.getDesc().getLayoutId());
+    }
 
     final String refLayoutIdStr = update.getReferenceLayout();
 
@@ -177,6 +188,11 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
     }
 
     final String layoutId = tableLayout.getDesc().getLayoutId();
+
+    if (layoutIDs.contains(layoutId)) {
+      throw new InvalidLayoutException(tableLayout,
+          String.format("Layout ID '%s' already exists", layoutId));
+    }
 
     // Construct the Put request to write the layout to the HTable.
     final byte[] tableNameBytes = Bytes.toBytes(tableName);

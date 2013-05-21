@@ -19,183 +19,161 @@
 
 package org.kiji.schema.layout;
 
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import static org.kiji.schema.util.GetEquals.eqGet;
-import static org.kiji.schema.util.PutEquals.eqPut;
-
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.NavigableMap;
-import java.util.Set;
 
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Get;
+import com.google.common.collect.Lists;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.util.Bytes;
+import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiClientTest;
-import org.kiji.schema.avro.CellSchema;
-import org.kiji.schema.avro.SchemaStorage;
-import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
+import org.kiji.schema.hbase.HBaseFactory;
+import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
 import org.kiji.schema.util.InstanceBuilder;
 
 
 public class TestHBaseTableLayoutDatabase extends KijiClientTest {
-  /** A simple layout file example (bare minimum). */
-
-  private HTableInterface mHTable;
-  private String mFamily;
-  private HBaseTableLayoutDatabase mDb;
-
-  private byte[] encode(TableLayoutDesc desc) throws IOException {
-    final CellSpec cellSpec = CellSpec.create()
-        .setCellSchema(CellSchema.newBuilder()
-            .setStorage(SchemaStorage.HASH)
-            .setType(SchemaType.CLASS)
-            .setValue(TableLayoutDesc.SCHEMA$.getFullName())
-            .build())
-        .setSchemaTable(getKiji().getSchemaTable());
-    final KijiCellEncoder encoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
-    return encoder.encode(desc);
-  }
+  private KijiURI mKijiURI;
+  private HBaseTableLayoutDatabase mTableLayoutDatabase;
 
   @Before
-  public void setupDb() throws IOException {
-    mHTable = createMock(HTableInterface.class);
-    mFamily = "layout";
-    mDb = new HBaseTableLayoutDatabase(mHTable, mFamily, getKiji().getSchemaTable());
+  public final void setupTest() throws IOException {
+    final KijiSchemaTable schemaTable = getKiji().getSchemaTable();
+
+    final KijiURI hbaseURI = createTestHBaseURI();
+    final String instanceName =
+        String.format("%s_%s", getClass().getSimpleName(), mTestName.getMethodName());
+    mKijiURI = KijiURI.newBuilder(hbaseURI).withInstanceName(instanceName).build();
+    final HBaseFactory factory = HBaseFactory.Provider.get();
+    HBaseMetaTable.install(factory.getHBaseAdminFactory(mKijiURI).create(getConf()), mKijiURI);
+
+    final HTableInterface htable =
+        HBaseMetaTable.newMetaTable(
+            mKijiURI, getConf(), factory.getHTableInterfaceFactory(mKijiURI));
+    final String family = "layout";
+    mTableLayoutDatabase = new HBaseTableLayoutDatabase(htable, family, schemaTable);
   }
+
+  @After
+  public final void teardownTest() throws IOException {
+    final HBaseFactory factory = HBaseFactory.Provider.get();
+    HBaseMetaTable.uninstall(factory.getHBaseAdminFactory(mKijiURI).create(getConf()), mKijiURI);
+  }
+
+  // -----------------------------------------------------------------------------------------------
 
   @Test
   public void testSetLayout() throws Exception {
     final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
-    final KijiTableLayout layout = KijiTableLayout.newLayout(layoutDesc);
-
-    final Get expectedGet =
-        new Get(Bytes.toBytes(layout.getDesc().getName()))
-            .addColumn(Bytes.toBytes(mFamily),
-                Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT))
-            .setMaxVersions(1);
-    final Result expectedGetResult = new Result(Collections.<KeyValue>emptyList());
-    expect(mHTable.get(eqGet(expectedGet))).andReturn(expectedGetResult);
-
-    final Put expectedPut =
-        new Put(Bytes.toBytes(layout.getDesc().getName()))
-            .add(Bytes.toBytes(mFamily),
-                Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_UPDATE),
-                encode(layoutDesc))
-            .add(Bytes.toBytes(mFamily),
-                Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT),
-                encode(layout.getDesc()))
-            .add(Bytes.toBytes(mFamily),
-                Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT_ID),
-                Bytes.toBytes("1"));
-    mHTable.put(eqPut(expectedPut));
-
-    replay(mHTable);
-
-    mDb.updateTableLayout(layout.getDesc().getName(), layoutDesc);
-
-    verify(mHTable);
+    final KijiTableLayout expected = KijiTableLayout.newLayout(layoutDesc);
+    final KijiTableLayout result =
+        mTableLayoutDatabase.updateTableLayout(layoutDesc.getName(), layoutDesc);
+    assertEquals(expected, result);
   }
 
   @Test
   public void testGetLayout() throws Exception {
-    final KijiTableLayout version1 =
-        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
+    final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
+    final KijiTableLayout layout =
+        mTableLayoutDatabase.updateTableLayout(layoutDesc.getName(), layoutDesc);
 
-    final Get expectedGet = new Get(Bytes.toBytes(version1.getDesc().getName()))
-        .addColumn(Bytes.toBytes(mFamily), Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT))
-        .setMaxVersions(1);
-    final List<KeyValue> kvs = new ArrayList<KeyValue>();
-    kvs.add(new KeyValue(Bytes.toBytes(version1.getDesc().getName()),
-        Bytes.toBytes(mFamily), Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT), 1L,
-        encode(version1.getDesc())));
-    final Result cannedResult = new Result(kvs);
-    expect(mHTable.get(eqGet(expectedGet))).andReturn(cannedResult);
-
-    replay(mHTable);
-
-    assertEquals(version1, mDb.getTableLayout(version1.getDesc().getName().toString()));
-
-    verify(mHTable);
+    final KijiTableLayout result = mTableLayoutDatabase.getTableLayout(layoutDesc.getName());
+    assertEquals(layout, result);
   }
 
   @Test
   public void testTableExists() throws IOException {
-    final KijiTableLayout simple =
-        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
+    final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
+    final String tableName = layoutDesc.getName();
     final Kiji kiji = new InstanceBuilder(getKiji())
-        .withTable("table", simple).build();
-    assertTrue(kiji.getMetaTable().tableExists(simple.getDesc().getName()));
+        .withTable(layoutDesc)
+        .build();
+    assertTrue(kiji.getMetaTable().tableExists(tableName));
     assertFalse(kiji.getMetaTable().tableExists("faketablename"));
   }
 
   @Test
-  public void testGetMulitipleLayouts() throws Exception {
-    final KijiTableLayout layout1 =
-        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
-    final KijiTableLayout layout2 =
-        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
-    final KijiTableLayout layout3 =
-        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE));
+  public void testGetMultipleLayouts() throws Exception {
+    final TableLayoutDesc layoutDesc1 = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
+    layoutDesc1.setVersion("layout-1.0");
+    final String tableName = layoutDesc1.getName();
+    final KijiTableLayout layout1 = mTableLayoutDatabase.updateTableLayout(tableName, layoutDesc1);
 
-    layout1.getDesc().setVersion("layout-1.0");
-    layout2.getDesc().setVersion("layout-1.0.1");
-    layout3.getDesc().setVersion("layout-1.1");
+    final TableLayoutDesc layoutDesc2 = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
+    layoutDesc2.setVersion("layout-1.0.1");
+    layoutDesc2.setReferenceLayout(layout1.getDesc().getLayoutId());
+    final KijiTableLayout layout2 = mTableLayoutDatabase.updateTableLayout(tableName, layoutDesc2);
 
+    final TableLayoutDesc layoutDesc3 = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
+    layoutDesc3.setVersion("layout-1.1");
+    layoutDesc3.setReferenceLayout(layout2.getDesc().getLayoutId());
+    final KijiTableLayout layout3 = mTableLayoutDatabase.updateTableLayout(tableName, layoutDesc3);
 
-    final Get expectedGet =
-        new Get(Bytes.toBytes(layout1.getDesc().getName()))
-            .addColumn(Bytes.toBytes(mFamily),
-                Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT))
-            .setMaxVersions(2);
+    final NavigableMap<Long, KijiTableLayout> timeSeries =
+        mTableLayoutDatabase.getTimedTableLayoutVersions(tableName, HConstants.ALL_VERSIONS);
+    assertEquals(3, timeSeries.size());
 
-    final List<KeyValue> kvs = new ArrayList<KeyValue>();
-    kvs.add(new KeyValue(Bytes.toBytes(layout3.getDesc().getName()),
-            Bytes.toBytes(mFamily), Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT),
-            3L, encode(layout3.getDesc())));
-    kvs.add(new KeyValue(Bytes.toBytes(layout2.getDesc().getName()),
-            Bytes.toBytes(mFamily), Bytes.toBytes(HBaseTableLayoutDatabase.QUALIFIER_LAYOUT),
-            2L, encode(layout2.getDesc())));
-    Result cannedResult = new Result(kvs);
-    expect(mHTable.get(eqGet(expectedGet))).andReturn(cannedResult);
+    final List<KijiTableLayout> layouts = Lists.newArrayList(timeSeries.values());
+    assertEquals(layout1, layouts.get(0));
+    assertEquals(layout2, layouts.get(1));
+    assertEquals(layout3, layouts.get(2));
+  }
 
-    replay(mHTable);
+  /**
+   * Layout IDs must be unique to guarantee that no race condition may occur when applying
+   * table layout updates.
+   */
+  @Test
+  public void testUniqueLayoutIDs() throws IOException {
+    // Creates a table with a first layout:
+    final TableLayoutDesc layoutDesc1 = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
+    layoutDesc1.setLayoutId("layout-ID");
+    final String tableName = layoutDesc1.getName();
+    mTableLayoutDatabase.updateTableLayout(tableName, layoutDesc1);
 
-    NavigableMap<Long, KijiTableLayout> timedLayouts =
-        mDb.getTimedTableLayoutVersions(layout1.getDesc().getName().toString(), 2);
-    Set<Long> timestamps = timedLayouts.keySet();
-    Iterator<Long> iterator = timestamps.iterator();
+    // Try applying a new layout with the same layout ID the current layout has:
+    final TableLayoutDesc layoutDesc2 = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
+    layoutDesc2.setReferenceLayout("layout-ID");
+    layoutDesc2.setLayoutId("layout-ID");
+    try {
+      // This update must fail due to the duplicate layout ID "layout-ID":
+      mTableLayoutDatabase.updateTableLayout(tableName, layoutDesc2);
+      Assert.fail("layout2 should be invalid : its layout ID is not unique.");
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      assertTrue(ile.getMessage().contains("Layout ID 'layout-ID' already exists"));
+    }
 
-    assertEquals(2, timedLayouts.size());
-    long time2 = iterator.next();
-    long time3 = iterator.next();
-    assertEquals(2L, time2);
-    assertEquals(layout2, timedLayouts.get(time2));
-    assertEquals(3L, time3);
-    assertEquals(layout3, timedLayouts.get(time3));
+    // Applies a new layout with a different ID:
+    layoutDesc2.setLayoutId("layout2-ID");
+    mTableLayoutDatabase.updateTableLayout(tableName, layoutDesc2);
 
-    verify(mHTable);
+    // Finally, try applying a new layout with a layout ID from a former layout:
+    final TableLayoutDesc layoutDesc3 = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
+    layoutDesc3.setReferenceLayout("layout-ID");
+    layoutDesc3.setLayoutId("layout-ID");
+    try {
+      // This update must fail due to the duplicate layout ID "layout-ID":
+      mTableLayoutDatabase.updateTableLayout(tableName, layoutDesc3);
+      Assert.fail("layout3 should be invalid : its layout ID is not unique.");
+    } catch (InvalidLayoutException ile) {
+      // Expected:
+      assertTrue(ile.getMessage().contains("Layout ID 'layout-ID' already exists"));
+    }
   }
 
 }
