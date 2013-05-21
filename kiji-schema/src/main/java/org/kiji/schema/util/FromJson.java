@@ -84,14 +84,21 @@ public final class FromJson {
       }
       return json.getLongValue();
     }
-    case FLOAT:
-    case DOUBLE: {
-      if (!json.isDouble()) {
-        throw new IOException(String.format(
-            "Avro schema specifies '%s' but got JSON value: '%s'.",
-            schema, json));
+    case FLOAT: {
+      if (json.isDouble() || json.isInt() || json.isLong()) {
+        return (float) json.getDoubleValue();
       }
-      return json.getDoubleValue();
+      throw new IOException(String.format(
+          "Avro schema specifies '%s' but got JSON value: '%s'.",
+          schema, json));
+    }
+    case DOUBLE: {
+      if (json.isDouble() || json.isInt() || json.isLong()) {
+        return json.getDoubleValue();
+      }
+      throw new IOException(String.format(
+          "Avro schema specifies '%s' but got JSON value: '%s'.",
+          schema, json));
     }
     case STRING: {
       if (!json.isTextual()) {
