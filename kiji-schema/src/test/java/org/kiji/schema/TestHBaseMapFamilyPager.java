@@ -25,6 +25,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.NavigableSet;
 import java.util.NoSuchElementException;
 
@@ -48,7 +49,7 @@ public class TestHBaseMapFamilyPager extends KijiClientTest {
   private KijiTable mTable;
 
   private static final int NJOBS = 5;
-  private static final long NTIMESTAMPS = 3;
+  private static final long NTIMESTAMPS = 5;
 
   @Before
   public final void setupTestHBaseMapFamilyPager() throws Exception {
@@ -60,7 +61,7 @@ public class TestHBaseMapFamilyPager extends KijiClientTest {
     final KijiTableWriter writer = mTable.openTableWriter();
     try {
       for (int job = 0; job < NJOBS; ++job) {
-        for (long ts = 1; ts < NTIMESTAMPS; ++ts) {
+        for (long ts = 1; ts <= NTIMESTAMPS; ++ts) {
           writer.put(eid, "jobs", String.format("j%d", job), ts, String.format("j%d-t%d", job, ts));
         }
       }
@@ -237,6 +238,62 @@ public class TestHBaseMapFamilyPager extends KijiClientTest {
       }
     } finally {
       pager.close();
+    }
+  }
+
+  /** Test illustrating how paging through all cells in a map-type family works. */
+  @Test
+  public void testFullMapPaging() throws Exception {
+    final EntityId eid = mTable.getEntityId("me");
+
+    final int qualifiersPageSize = 3;
+    final int versionsPageSize = 3;
+
+    final KijiDataRequest qualifiersDataRequest = KijiDataRequest.builder()
+        .addColumns(ColumnsDef.create()
+            .withPageSize(qualifiersPageSize)
+            .addFamily("jobs"))
+        .build();
+
+    final KijiRowData qualifiersRow = mReader.get(eid, qualifiersDataRequest);
+    final KijiPager qualifiersPager = qualifiersRow.getPager("jobs");
+    try {
+      int qualifiersCounter = 0;
+
+      while (qualifiersPager.hasNext()) {
+        final KijiRowData qualifierPage = qualifiersPager.next();
+        LOG.debug("New qualifier page with {} qualifiers",
+            qualifierPage.getQualifiers("jobs").size());
+        for (String qualifier : qualifierPage.getQualifiers("jobs")) {
+          qualifiersCounter += 1;
+          int versionsCounter = 0;
+
+          final KijiDataRequest versionsDataRequest = KijiDataRequest.builder()
+              .addColumns(ColumnsDef.create()
+                  .withPageSize(versionsPageSize)
+                  .withMaxVersions(HConstants.ALL_VERSIONS)
+                  .add("jobs", qualifier))
+              .build();
+          final KijiRowData versionsRow = mReader.get(eid, versionsDataRequest);
+          final KijiPager versionsPager = versionsRow.getPager("jobs", qualifier);
+          while (versionsPager.hasNext()) {
+            final KijiRowData versionsPage = versionsPager.next();
+            LOG.debug("New version page with {} versions",
+                versionsPage.getValues("jobs", qualifier).size());
+            for (Map.Entry<Long, String> entry
+                : versionsPage.<String>getValues("jobs", qualifier).entrySet()) {
+              versionsCounter += 1;
+              LOG.debug("Entry: {} -> {}", entry.getKey(), entry.getValue());
+            }
+          }
+
+          assertEquals(NTIMESTAMPS, versionsCounter);
+        }
+      }
+
+      assertEquals(NJOBS, qualifiersCounter);
+    } finally {
+      qualifiersPager.close();
     }
   }
 }

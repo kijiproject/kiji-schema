@@ -31,7 +31,7 @@ public class TestOperatorColumnFilter {
   @Test
   public void testEqualsAndHashCode() {
     final KijiColumnFilter fColRange = KijiColumnRangeFilter.greaterThan("a");
-    final KijiColumnFilter fPage = new KijiPaginationFilter();
+    final KijiColumnFilter fPage = new KijiPaginationFilter(1);
 
     final OperatorColumnFilter andFilter1 = new AndColumnFilter(fColRange);
     final OperatorColumnFilter andFilter2a = new AndColumnFilter(fColRange, fPage);

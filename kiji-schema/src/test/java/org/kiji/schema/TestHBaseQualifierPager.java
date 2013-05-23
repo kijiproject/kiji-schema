@@ -50,7 +50,7 @@ public class TestHBaseQualifierPager extends KijiClientTest {
   private KijiTable mTable;
 
   private static final int NJOBS = 5;
-  private static final long NTIMESTAMPS = 3;
+  private static final long NTIMESTAMPS = 5;
 
   @Before
   public final void setupTestHBaseQualifierPager() throws Exception {
@@ -62,7 +62,7 @@ public class TestHBaseQualifierPager extends KijiClientTest {
     final KijiTableWriter writer = mTable.openTableWriter();
     try {
       for (int job = 0; job < NJOBS; ++job) {
-        for (long ts = 1; ts < NTIMESTAMPS; ++ts) {
+        for (long ts = 1; ts <= NTIMESTAMPS; ++ts) {
           writer.put(eid, "jobs", String.format("j%d", job), ts, String.format("j%d-t%d", job, ts));
         }
       }

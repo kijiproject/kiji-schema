@@ -77,7 +77,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "info", "name", 4L, "me-four");
     writer.put(id, "info", "name", 5L, "me-five");
     ResourceUtils.closeOrLog(writer);
-    final KijiColumnFilter columnFilter = new KijiPaginationFilter();
+    final KijiColumnFilter columnFilter = new KijiPaginationFilter(1);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
@@ -99,7 +99,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "info", "name", 4L, "me-four");
     writer.put(id, "info", "name", 5L, "me-five");
     ResourceUtils.closeOrLog(writer);
-    final KijiColumnFilter columnFilter = new KijiPaginationFilter();
+    final KijiColumnFilter columnFilter = new KijiPaginationFilter(1);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).add("info", "name");
     final KijiDataRequest dataRequest = builder.build();
@@ -121,7 +121,7 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "jobs", "b", 4L, "always coming in 2nd");
     writer.put(id, "jobs", "a", 5L, "always coming in 1st");
     ResourceUtils.closeOrLog(writer);
-    final KijiColumnFilter columnFilter = new KijiPaginationFilter();
+    final KijiColumnFilter columnFilter = new KijiPaginationFilter(1);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
     final KijiDataRequest dataRequest = builder.build();
@@ -144,8 +144,8 @@ public class TestKijiPaginationFilter extends KijiClientTest {
     writer.put(id, "jobs", "a", 4L, "always coming in 2nd");
     writer.put(id, "jobs", "a", 5L, "always coming in 1st");
     ResourceUtils.closeOrLog(writer);
-    final KijiColumnFilter columnFilter = new KijiPaginationFilter(
-        new RegexQualifierColumnFilter("b"));
+    final KijiColumnFilter columnFilter =
+        new KijiPaginationFilter(new RegexQualifierColumnFilter("b"), 1);
     final KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(5).withFilter(columnFilter).addFamily("jobs");
     final KijiDataRequest dataRequest = builder.build();
@@ -161,10 +161,10 @@ public class TestKijiPaginationFilter extends KijiClientTest {
   @Test
   public void testEqualsAndHashCode() {
     final KijiPaginationFilter filter1 = new KijiPaginationFilter(
-        new RegexQualifierColumnFilter("b"));
+        new RegexQualifierColumnFilter("b"), 1);
     final KijiPaginationFilter filter2 = new KijiPaginationFilter(
-        new RegexQualifierColumnFilter("b"));
-    final KijiPaginationFilter differentFilter = new KijiPaginationFilter();
+        new RegexQualifierColumnFilter("b"), 1);
+    final KijiPaginationFilter differentFilter = new KijiPaginationFilter(1);
 
     assertEquals(filter1, filter2);
     assertFalse(filter1.equals(differentFilter));

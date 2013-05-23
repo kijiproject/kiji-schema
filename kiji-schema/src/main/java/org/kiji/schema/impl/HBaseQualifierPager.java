@@ -152,7 +152,7 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
     final KijiColumnFilter filter = Filters.and(
         new KijiColumnRangeFilter(mMinQualifier, false, null, false),  // qualifier > mMinQualifier
         mColumnRequest.getFilter(),  // user filter
-        new KijiPaginationFilter(),  // Select at most 1 version per qualifier
+        new KijiPaginationFilter(pageSize),  // Select at most 1 version per qualifier
         new StripValueColumnFilter());  // discard the cell content, we just need the qualifiers
 
     final KijiDataRequest nextPageDataRequest = KijiDataRequest.builder()

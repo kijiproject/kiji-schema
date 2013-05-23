@@ -22,7 +22,7 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 
 import com.google.common.base.Objects;
-
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.filter.ColumnPaginationFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
@@ -47,8 +47,8 @@ import org.kiji.schema.filter.KijiColumnFilter;
 public class KijiPaginationFilter extends KijiColumnFilter {
   private static final long serialVersionUID = 1L;
 
-  /** The max number of versions to return. */
-  private final int mLimit = 1;
+  /** The max number of qualifiers to return. */
+  private final int mMaxQualifiers;
 
   /** How many versions back in history to start looking. */
   private final int mOffset = 0;
@@ -58,18 +58,27 @@ public class KijiPaginationFilter extends KijiColumnFilter {
 
   /**
    * Initialize pagination filter with default settings.
+   *
+   * @param maxQualifiers Maximum number of qualifiers to return. Must be >= 1.
    */
-  public KijiPaginationFilter() {
+  public KijiPaginationFilter(int maxQualifiers) {
+    Preconditions.checkArgument(maxQualifiers >= 1,
+        "Invalid maximum number of qualifiers to return: %s", maxQualifiers);
     mInputFilter = null;
+    mMaxQualifiers = maxQualifiers;
   }
 
   /**
    * Initialize pagination filter with other filters to fold in.
    *
    * @param filter Other filter that will precede
+   * @param maxQualifiers Maximum number of qualifiers to return. Must be >= 1.
    */
-  public KijiPaginationFilter(KijiColumnFilter filter) {
+  public KijiPaginationFilter(KijiColumnFilter filter, int maxQualifiers) {
+    Preconditions.checkArgument(maxQualifiers >= 1,
+        "Invalid maximum number of qualifiers to return: %s", maxQualifiers);
     mInputFilter = filter;
+    mMaxQualifiers = maxQualifiers;
   }
 
   /** {@inheritDoc} */
@@ -80,7 +89,7 @@ public class KijiPaginationFilter extends KijiColumnFilter {
     if (mInputFilter != null) {
       requestFilter.addFilter(mInputFilter.toHBaseFilter(kijiColumnName, context));
     }
-    Filter paginationFilter = new ColumnPaginationFilter(mLimit, mOffset);
+    Filter paginationFilter = new ColumnPaginationFilter(mMaxQualifiers, mOffset);
     requestFilter.addFilter(paginationFilter);
     return requestFilter;
   }
@@ -92,7 +101,7 @@ public class KijiPaginationFilter extends KijiColumnFilter {
       return false;
     } else {
       final KijiPaginationFilter otherFilter = (KijiPaginationFilter) other;
-      return Objects.equal(otherFilter.mLimit, mLimit)
+      return Objects.equal(otherFilter.mMaxQualifiers, mMaxQualifiers)
           && Objects.equal(otherFilter.mOffset, mOffset)
           && Objects.equal(otherFilter.mInputFilter, mInputFilter);
     }
@@ -101,14 +110,14 @@ public class KijiPaginationFilter extends KijiColumnFilter {
   /** {@inheritDoc} */
   @Override
   public int hashCode() {
-    return Objects.hashCode(mLimit, mOffset, mInputFilter);
+    return Objects.hashCode(mMaxQualifiers, mOffset, mInputFilter);
   }
 
   /** {@inheritDoc} */
   @Override
   public String toString() {
     return Objects.toStringHelper(KijiPaginationFilter.class)
-        .add("limit", mLimit)
+        .add("max-qualifiers", mMaxQualifiers)
         .add("offset", mOffset)
         .add("filter", mInputFilter)
         .toString();
