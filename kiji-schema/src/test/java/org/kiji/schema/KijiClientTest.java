@@ -79,6 +79,9 @@ public class KijiClientTest {
   /** Counter for fake HBase instances. */
   private final AtomicLong mFakeHBaseInstanceCounter = new AtomicLong();
 
+  /** Counter for test Kiji instances. */
+  private final AtomicLong mKijiInstanceCounter = new AtomicLong();
+
   /** Test identifier, eg. "org_package_ClassName_testMethodName". */
   private String mTestId;
 
@@ -156,8 +159,10 @@ public class KijiClientTest {
    */
   public Kiji createTestKiji() throws Exception {
     Preconditions.checkNotNull(mConf);
-    final String instanceName =
-        String.format("%s_%s", getClass().getSimpleName(), mTestName.getMethodName());
+    final String instanceName = String.format("%s_%s_%d",
+        getClass().getSimpleName(),
+        mTestName.getMethodName(),
+        mKijiInstanceCounter.getAndIncrement());
     final KijiURI hbaseURI = createTestHBaseURI();
     final KijiURI uri = KijiURI.newBuilder(hbaseURI).withInstanceName(instanceName).build();
     KijiInstaller.get().install(uri, mConf);
