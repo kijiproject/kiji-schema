@@ -24,8 +24,10 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.Set;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -113,8 +115,8 @@ public class TestLsTool extends KijiClientTest {
 
     final LsTool ls = new LsTool();
     assertEquals(BaseTool.SUCCESS, runTool(ls, hbaseURI.toString()));
-    assertEquals(1, mToolOutputLines.length);
-    assertEquals(kiji.getURI(), KijiURI.newBuilder(mToolOutputLines[0]).build());
+    final Set<String> instances = Sets.newHashSet(mToolOutputLines);
+    assertTrue(instances.contains(kiji.getURI().toString()));
   }
 
   @Test
