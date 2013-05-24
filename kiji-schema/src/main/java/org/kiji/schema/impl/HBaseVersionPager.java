@@ -39,6 +39,7 @@ import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiPager;
 import org.kiji.schema.KijiRowData;
+import org.kiji.schema.layout.impl.CellDecoderProvider;
 
 /**
  * Pages through the versions of a fully-qualified column.
@@ -64,6 +65,9 @@ public final class HBaseVersionPager implements KijiPager {
 
   /** HBase KijiTable to read from. */
   private final HBaseKijiTable mTable;
+
+  /** Provider for cell decoders. */
+  private final CellDecoderProvider mCellDecoderProvider;
 
   /** Name of the column being paged through. */
   private final KijiColumnName mColumnName;
@@ -102,13 +106,15 @@ public final class HBaseVersionPager implements KijiPager {
    * @param dataRequest The requested data.
    * @param table The Kiji table that this row belongs to.
    * @param colName Name of the paged column.
+   * @param cellDecoderProvider Provider for cell decoders.
    * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the specified column.
    */
   protected HBaseVersionPager(
       EntityId entityId,
       KijiDataRequest dataRequest,
       HBaseKijiTable table,
-      KijiColumnName colName)
+      KijiColumnName colName,
+      CellDecoderProvider cellDecoderProvider)
       throws KijiColumnPagingNotEnabledException {
     Preconditions.checkArgument(colName.isFullyQualified());
 
@@ -129,6 +135,7 @@ public final class HBaseVersionPager implements KijiPager {
     mDefaultPageSize = mColumnRequest.getPageSize();
     mEntityId = entityId;
     mTable = table;
+    mCellDecoderProvider = cellDecoderProvider;
     mHasNext = true;  // there might be no page to read, but we don't know until we issue an RPC
 
     mPageMaxTimestamp = mDataRequest.getMaxTimestamp();
@@ -193,7 +200,8 @@ public final class HBaseVersionPager implements KijiPager {
         }
       }
 
-      return new HBaseKijiRowData(mEntityId, nextPageDataRequest, mTable, result);
+      return new HBaseKijiRowData(
+          mTable, nextPageDataRequest, mEntityId, result, mCellDecoderProvider);
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }

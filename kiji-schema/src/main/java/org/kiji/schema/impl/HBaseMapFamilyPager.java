@@ -183,7 +183,9 @@ public final class HBaseMapFamilyPager implements KijiPager {
       final Result result = mTable.getHTable().get(hbaseGet);
       LOG.debug("Got {} cells over {} requested", result.size(), pageSize);
 
-      final KijiRowData page = new HBaseKijiRowData(mEntityId, nextPageDataRequest, mTable, result);
+      final KijiRowData page =
+          // No cell is being decoded here so we don't need a cell decoder provider:
+          new HBaseKijiRowData(mTable, nextPageDataRequest, mEntityId, result, null);
 
       // There is an HBase bug that leads to less KeyValue being returned than expected.
       // An empty result appears to be a reliable way to detect the end of the iteration.

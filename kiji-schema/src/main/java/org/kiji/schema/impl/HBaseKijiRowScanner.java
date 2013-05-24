@@ -21,6 +21,7 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.client.Result;
@@ -35,8 +36,8 @@ import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
+import org.kiji.schema.layout.impl.CellDecoderProvider;
 import org.kiji.schema.util.Debug;
-import org.kiji.schema.util.ResourceUtils;
 
 /**
  * The internal implementation of KijiRowScanner that reads from HTables.
@@ -51,13 +52,17 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   private final ResultScanner mResultScanner;
 
   /** The request used to fetch the row data. */
-  private final KijiDataRequest mKijiDataRequest;
+  private final KijiDataRequest mDataRequest;
 
   /** The table being scanned. */
   private final HBaseKijiTable mTable;
 
-  /** Whether the writer is open. */
-  private boolean mIsOpen;
+  /** Provider for cell decoders. */
+  private final CellDecoderProvider mCellDecoderProvider;
+
+  /** Whether the scanner is open. */
+  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
+
   /** For debugging finalize(). */
   private String mConstructorStack = "";
 
@@ -68,6 +73,7 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     private ResultScanner mHBaseResultScanner;
     private KijiDataRequest mDataRequest;
     private HBaseKijiTable mTable;
+    private CellDecoderProvider mCellDecoderProvider;
 
     /**
      * Sets the HBase result scanner the KijiRowScanner will wrap.
@@ -103,6 +109,17 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     }
 
     /**
+     * Sets a provider for cell decoders.
+     *
+     * @param cellDecoderProvider Provider for cell decoders.
+     * @return This options instance.
+     */
+    public Options withCellDecoderProvider(CellDecoderProvider cellDecoderProvider) {
+      mCellDecoderProvider = cellDecoderProvider;
+      return this;
+    }
+
+    /**
      * Gets the HBase result scanner.
      *
      * @return The HBase result scanner.
@@ -128,6 +145,15 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     public HBaseKijiTable getTable() {
       return mTable;
     }
+
+    /**
+     * Gets the provider for cell decoders.
+     *
+     * @return the provider for cell decoders.
+     */
+    public CellDecoderProvider getCellDecoderProvider() {
+      return mCellDecoderProvider;
+    }
   }
 
   /**
@@ -136,14 +162,16 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
    * @param options The options for this scanner.
    */
   public HBaseKijiRowScanner(Options options) {
-    mIsOpen = true;
     if (CLEANUP_LOG.isDebugEnabled()) {
       mConstructorStack = Debug.getStackTrace();
     }
 
     mResultScanner = options.getHBaseResultScanner();
-    mKijiDataRequest = options.getDataRequest();
+    mDataRequest = options.getDataRequest();
     mTable = options.getTable();
+    mCellDecoderProvider = options.getCellDecoderProvider();
+
+    mIsOpen.set(true);
   }
 
   /** {@inheritDoc} */
@@ -154,24 +182,25 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
 
   /** {@inheritDoc} */
   @Override
-  public void close() {
-    if (!mIsOpen) {
-      LOG.warn("Called close() on [HBase]KijiRowScanner more than once.");
+  public void close() throws IOException {
+    final boolean wasOpen = mIsOpen.getAndSet(false);
+    if (!wasOpen) {
+      LOG.warn("Called HBaseKijiRowScanner.close() more than once.");
+      LOG.debug("Stacktrace of extra call to HBaseKijiRowScanner.close():\n{}",
+          Debug.getStackTrace());
+      return;
     }
-
-    mIsOpen = false;
-
-    ResourceUtils.closeOrLog(mResultScanner);
+    mResultScanner.close();
   }
 
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    if (mIsOpen) {
-      CLEANUP_LOG.warn("Closing [HBase]KijiRowScanner in finalize().");
-      CLEANUP_LOG.warn("You should close it explicitly.");
-      CLEANUP_LOG.debug("Call stack when this scanner was constructed:");
-      CLEANUP_LOG.debug(mConstructorStack);
+    if (mIsOpen.get()) {
+      CLEANUP_LOG.warn(
+          "Closing HBaseKijiRowScanner in finalize() : please close it explicitly!\n"
+          + "Call stack when the scanner was constructed:\n{}",
+          mConstructorStack);
       close();
     }
     super.finalize();
@@ -211,8 +240,7 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
       final EntityId entityId = EntityIdFactory.getFactory(mTable.getLayout())
           .getEntityIdFromHBaseRowKey(result.getRow());
       try {
-        // TODO: Inject the cell decoder factory in the row data
-        return new HBaseKijiRowData(entityId, mKijiDataRequest, mTable, result);
+        return new HBaseKijiRowData(mTable, mDataRequest, entityId, result, mCellDecoderProvider);
       } catch (IOException ioe) {
         throw new KijiIOException(ioe);
       }

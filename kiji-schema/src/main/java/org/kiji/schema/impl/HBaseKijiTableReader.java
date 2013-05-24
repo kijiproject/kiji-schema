@@ -183,7 +183,8 @@ public class HBaseKijiTableReader implements KijiTableReader {
       return new HBaseKijiRowScanner(new HBaseKijiRowScanner.Options()
           .withHBaseResultScanner(mTable.getHTable().getScanner(scan))
           .withDataRequest(dataRequest)
-          .withTable(mTable));
+          .withTable(mTable)
+          .withCellDecoderProvider(mCellDecoderProvider));
     } catch (InvalidLayoutException e) {
       // The table layout should never be invalid at this point, since we got it from a valid
       // opened table.  If it is, there's something seriously wrong.
@@ -210,9 +211,9 @@ public class HBaseKijiTableReader implements KijiTableReader {
       Result result = results[i];
       EntityId entityId = entityIds.get(i);
 
-      HBaseKijiRowData rowData = (null == result)
+      final HBaseKijiRowData rowData = (null == result)
           ? null
-          : new HBaseKijiRowData(entityId, dataRequest, mTable, result);
+          : new HBaseKijiRowData(mTable, dataRequest, entityId, result, mCellDecoderProvider);
       rowDataList.add(rowData);
     }
     return rowDataList;

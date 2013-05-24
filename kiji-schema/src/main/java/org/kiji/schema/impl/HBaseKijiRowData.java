@@ -86,27 +86,6 @@ public final class HBaseKijiRowData implements KijiRowData {
   private NavigableMap<String, NavigableMap<String, NavigableMap<Long, byte[]>>> mFilteredMap;
 
   /**
-   * Initializes a row data from an HBase Result.
-   *
-   * @param entityId This row entity ID.
-   * @param dataRequest Data requested for this row.
-   * @param table Kiji table containing this row.
-   * @param result HBase result containing the requested cells (and potentially more).
-   * @throws IOException on I/O error.
-   *
-   * @deprecated Use the other constructor.
-   */
-  @Deprecated
-  public HBaseKijiRowData(
-      EntityId entityId,
-      KijiDataRequest dataRequest,
-      HBaseKijiTable table,
-      Result result)
-      throws IOException {
-    this(table, dataRequest, entityId, result, null);
-  }
-
-  /**
    * Creates a provider for cell decoders.
    *
    * <p> The provider creates decoders for specific Avro records. </p>
@@ -788,7 +767,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   public KijiPager getPager(String family, String qualifier)
     throws KijiColumnPagingNotEnabledException {
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
-    return new HBaseVersionPager(mEntityId, mDataRequest, mTable,  kijiColumnName);
+    return new HBaseVersionPager(
+        mEntityId, mDataRequest, mTable,  kijiColumnName, mDecoderProvider);
   }
 
   /** {@inheritDoc} */
