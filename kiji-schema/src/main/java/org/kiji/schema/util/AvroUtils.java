@@ -21,10 +21,13 @@ package org.kiji.schema.util;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+
 import org.apache.avro.Schema;
 import org.apache.avro.io.parsing.ResolvingGrammarGenerator;
 import org.apache.avro.io.parsing.Symbol;
@@ -66,35 +69,74 @@ public final class AvroUtils {
   }
 
   /**
+   * Validates that the provided reader schemas can be used to decode data written with the provided
+   * writer schema.
+   *
+   * @param readers that must be able to be used to decode data encoded with the provided writer
+   *     schema.
+   * @param writer schema to check.
+   * @return a list of compatibility results.
+   */
+  public static SchemaSetCompatibility checkWriterCompatibility(
+      Iterator<Schema> readers,
+      Schema writer) {
+    final List<SchemaPairCompatibility> results = Lists.newArrayList();
+    while (readers.hasNext()) {
+      // Check compatibility between each reader/writer pair.
+      results.add(checkReaderWriterCompatibility(readers.next(), writer));
+    }
+    return new SchemaSetCompatibility(results);
+  }
+
+  /**
+   * Validates that the provided reader schema can read data written with the provided writer
+   * schemas.
+   *
+   * @param reader schema to check.
+   * @param writers that must be compatible with the provided reader schema.
+   * @return a list of compatibility results.
+   */
+  public static SchemaSetCompatibility checkReaderCompatibility(
+      Schema reader,
+      Iterator<Schema> writers) {
+    final List<SchemaPairCompatibility> results = Lists.newArrayList();
+    while (writers.hasNext()) {
+      // Check compatibility between each reader/writer pair.
+      results.add(checkReaderWriterCompatibility(reader, writers.next()));
+    }
+    return new SchemaSetCompatibility(results);
+  }
+
+  /**
    * Validates that the provided reader schema can be used to decode avro data written with the
    * provided writer schema.
    *
-   * @param reader schema to validate.
-   * @param writer schema to validate.
-   * @return a result object identifying any validation errors.
+   * @param reader schema to check.
+   * @param writer schema to check.
+   * @return a result object identifying any compatibility errors.
    */
-  public static ReaderWriterCompatibilityResult checkReaderWriterCompatibility(
+  public static SchemaPairCompatibility checkReaderWriterCompatibility(
       Schema reader,
       Schema writer) {
     try {
       if (symbolHasErrors(new ResolvingGrammarGenerator().generate(writer, reader))) {
-        return new ReaderWriterCompatibilityResult(
-            ReaderWriterCompatibility.INCOMPATIBLE,
+        return new SchemaPairCompatibility(
+            SchemaCompatibilityType.INCOMPATIBLE,
             reader,
             writer,
             String.format("Cannot use reader schema %s to decode data with writer schema %s.",
                 reader.toString(true),
                 writer.toString(true)));
       } else {
-        return new ReaderWriterCompatibilityResult(
-            ReaderWriterCompatibility.COMPATIBLE,
+        return new SchemaPairCompatibility(
+            SchemaCompatibilityType.COMPATIBLE,
             reader,
             writer,
             "Schemas match");
       }
     } catch (IOException ioe) {
-      return new ReaderWriterCompatibilityResult(
-          ReaderWriterCompatibility.INCOMPATIBLE,
+      return new SchemaPairCompatibility(
+          SchemaCompatibilityType.INCOMPATIBLE,
           reader,
           writer,
           ioe.toString());
@@ -166,19 +208,68 @@ public final class AvroUtils {
   }
 
   /**
-   * Identifies the type of a schema validation result.
+   * Identifies the type of a schema compatibility result.
    */
-  public static enum ReaderWriterCompatibility {
+  public static enum SchemaCompatibilityType {
     COMPATIBLE,
     INCOMPATIBLE
   }
 
   /**
-   * Provides information about the compatibility of two Avro schemas.
+   * Provides information about the compatibility of a single schema with a set of schemas.
    */
-  public static final class ReaderWriterCompatibilityResult {
+  public static final class SchemaSetCompatibility {
+    /** Whether or not the schemas are compatible. */
+    private final SchemaCompatibilityType mType;
+
+    /** The compatibilities of each schema pair. */
+    private final List<SchemaPairCompatibility> mCauses;
+
+    /**
+     * Constructs a new instance.
+     *
+     * @param causes identifying the compatibilities of each schema pair.
+     */
+    public SchemaSetCompatibility(List<SchemaPairCompatibility> causes) {
+      SchemaCompatibilityType isCompatible = SchemaCompatibilityType.COMPATIBLE;
+      for (SchemaPairCompatibility compatibility : causes) {
+        if (compatibility.getType() == SchemaCompatibilityType.INCOMPATIBLE) {
+          isCompatible = SchemaCompatibilityType.INCOMPATIBLE;
+          break;
+        }
+      }
+
+      mType = isCompatible;
+      mCauses = causes;
+    }
+
+    /**
+     * Whether or not the schemas are compatible.
+     *
+     * @return whether or not the schemas are compatible.
+     */
+    public SchemaCompatibilityType getType() {
+      return mType;
+    }
+
+    /**
+     * Returns the compatibility of each schema pair.
+     *
+     * @return the compatibility of each schema pair.
+     */
+    public List<SchemaPairCompatibility> getCauses() {
+      return mCauses;
+    }
+  }
+
+  /**
+   * Provides information about the compatibility of a single reader and writer schema pair.
+   *
+   * Note: This class represents a one-way relationship from the reader to the writer schema.
+   */
+  public static final class SchemaPairCompatibility {
     /** The type of this result. */
-    private final ReaderWriterCompatibility mType;
+    private final SchemaCompatibilityType mType;
 
     /** Validated reader schema. */
     private final Schema mReader;
@@ -190,15 +281,15 @@ public final class AvroUtils {
     private final String mDescription;
 
     /**
-     * Constructs a new result.
+     * Constructs a new instance.
      *
-     * @param type of the schema validation result.
+     * @param type of the schema compatibility.
      * @param reader schema that was validated.
      * @param writer schema that was validated.
-     * @param description of this validation result.
+     * @param description of this compatibility result.
      */
-    public ReaderWriterCompatibilityResult(
-        ReaderWriterCompatibility type,
+    public SchemaPairCompatibility(
+        SchemaCompatibilityType type,
         Schema reader,
         Schema writer,
         String description) {
@@ -213,7 +304,7 @@ public final class AvroUtils {
      *
      * @return the type of this result.
      */
-    public ReaderWriterCompatibility getType() {
+    public SchemaCompatibilityType getType() {
       return mType;
     }
 
@@ -258,8 +349,8 @@ public final class AvroUtils {
     /** {@inheritDoc} */
     @Override
     public boolean equals(Object other) {
-      if (null != other && other instanceof ReaderWriterCompatibilityResult) {
-        final ReaderWriterCompatibilityResult result = (ReaderWriterCompatibilityResult) other;
+      if ((null != other) && (other instanceof SchemaPairCompatibility)) {
+        final SchemaPairCompatibility result = (SchemaPairCompatibility) other;
         return Objects.equal(result.mType, mType)
             && Objects.equal(result.mReader, mReader)
             && Objects.equal(result.mWriter, mWriter)

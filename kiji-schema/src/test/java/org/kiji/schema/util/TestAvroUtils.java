@@ -20,10 +20,15 @@
 package org.kiji.schema.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
+import java.util.Set;
 
+import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+
 import org.apache.avro.Schema;
 import org.codehaus.jackson.node.IntNode;
 import org.junit.Test;
@@ -68,9 +73,9 @@ public class TestAvroUtils {
     final List<Schema.Field> readerFields = Lists.newArrayList(
         new Schema.Field("oldfield1", INT_SCHEMA, null, null));
     final Schema reader = Schema.createRecord(readerFields);
-    final AvroUtils.ReaderWriterCompatibilityResult expectedResult =
-        new AvroUtils.ReaderWriterCompatibilityResult(
-            AvroUtils.ReaderWriterCompatibility.COMPATIBLE,
+    final AvroUtils.SchemaPairCompatibility expectedResult =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
             reader,
             WRITER_SCHEMA,
             "Schemas match");
@@ -84,9 +89,9 @@ public class TestAvroUtils {
     final List<Schema.Field> readerFields = Lists.newArrayList(
         new Schema.Field("oldfield2", STRING_SCHEMA, null, null));
     final Schema reader = Schema.createRecord(readerFields);
-    final AvroUtils.ReaderWriterCompatibilityResult expectedResult =
-        new AvroUtils.ReaderWriterCompatibilityResult(
-            AvroUtils.ReaderWriterCompatibility.COMPATIBLE,
+    final AvroUtils.SchemaPairCompatibility expectedResult =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
             reader,
             WRITER_SCHEMA,
             "Schemas match");
@@ -101,9 +106,9 @@ public class TestAvroUtils {
         new Schema.Field("oldfield1", INT_SCHEMA, null, null),
         new Schema.Field("oldfield2", STRING_SCHEMA, null, null));
     final Schema reader = Schema.createRecord(readerFields);
-    final AvroUtils.ReaderWriterCompatibilityResult expectedResult =
-        new AvroUtils.ReaderWriterCompatibilityResult(
-            AvroUtils.ReaderWriterCompatibility.COMPATIBLE,
+    final AvroUtils.SchemaPairCompatibility expectedResult =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
             reader,
             WRITER_SCHEMA,
             "Schemas match");
@@ -118,9 +123,9 @@ public class TestAvroUtils {
         new Schema.Field("oldfield1", INT_SCHEMA, null, null),
         new Schema.Field("newfield1", INT_SCHEMA, null, IntNode.valueOf(42)));
     final Schema reader = Schema.createRecord(readerFields);
-    final AvroUtils.ReaderWriterCompatibilityResult expectedResult =
-        new AvroUtils.ReaderWriterCompatibilityResult(
-            AvroUtils.ReaderWriterCompatibility.COMPATIBLE,
+    final AvroUtils.SchemaPairCompatibility expectedResult =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
             reader,
             WRITER_SCHEMA,
             "Schemas match");
@@ -135,9 +140,9 @@ public class TestAvroUtils {
         new Schema.Field("oldfield1", INT_SCHEMA, null, null),
         new Schema.Field("newfield1", INT_SCHEMA, null, null));
     final Schema reader = Schema.createRecord(readerFields);
-    final AvroUtils.ReaderWriterCompatibilityResult expectedResult =
-        new AvroUtils.ReaderWriterCompatibilityResult(
-            AvroUtils.ReaderWriterCompatibility.INCOMPATIBLE,
+    final AvroUtils.SchemaPairCompatibility expectedResult =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.INCOMPATIBLE,
             reader,
             WRITER_SCHEMA,
             String.format("Cannot use reader schema %s to decode data with writer schema %s.",
@@ -152,15 +157,15 @@ public class TestAvroUtils {
   public void testValidateArrayWriterSchema() throws Exception {
     final Schema validReader = Schema.createArray(STRING_SCHEMA);
     final Schema invalidReader = Schema.createMap(STRING_SCHEMA);
-    final AvroUtils.ReaderWriterCompatibilityResult validResult =
-        new AvroUtils.ReaderWriterCompatibilityResult(
-            AvroUtils.ReaderWriterCompatibility.COMPATIBLE,
+    final AvroUtils.SchemaPairCompatibility validResult =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
             validReader,
             ARRAY_SCHEMA,
             "Schemas match");
-    final AvroUtils.ReaderWriterCompatibilityResult invalidResult =
-        new AvroUtils.ReaderWriterCompatibilityResult(
-            AvroUtils.ReaderWriterCompatibility.INCOMPATIBLE,
+    final AvroUtils.SchemaPairCompatibility invalidResult =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.INCOMPATIBLE,
             invalidReader,
             ARRAY_SCHEMA,
             String.format("Cannot use reader schema %s to decode data with writer schema %s.",
@@ -178,15 +183,15 @@ public class TestAvroUtils {
   @Test
   public void testValidatePrimitiveWriterSchema() throws Exception {
     final Schema validReader = Schema.create(Schema.Type.STRING);
-    final AvroUtils.ReaderWriterCompatibilityResult validResult =
-        new AvroUtils.ReaderWriterCompatibilityResult(
-            AvroUtils.ReaderWriterCompatibility.COMPATIBLE,
+    final AvroUtils.SchemaPairCompatibility validResult =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
             validReader,
             STRING_SCHEMA,
             "Schemas match");
-    final AvroUtils.ReaderWriterCompatibilityResult invalidResult =
-        new AvroUtils.ReaderWriterCompatibilityResult(
-            AvroUtils.ReaderWriterCompatibility.INCOMPATIBLE,
+    final AvroUtils.SchemaPairCompatibility invalidResult =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.INCOMPATIBLE,
             INT_SCHEMA,
             STRING_SCHEMA,
             String.format("Cannot use reader schema %s to decode data with writer schema %s.",
@@ -199,5 +204,135 @@ public class TestAvroUtils {
     assertEquals(
         invalidResult,
         AvroUtils.checkReaderWriterCompatibility(INT_SCHEMA, STRING_SCHEMA));
+  }
+
+  @Test
+  public void testCheckWriterCompatibility() throws Exception {
+    // Setup schema fields.
+    final List<Schema.Field> writerFields = Lists.newArrayList(
+        new Schema.Field("oldfield1", INT_SCHEMA, null, null),
+        new Schema.Field("oldfield2", STRING_SCHEMA, null, null));
+    final List<Schema.Field> readerFields1 = Lists.newArrayList(
+        new Schema.Field("oldfield1", INT_SCHEMA, null, null),
+        new Schema.Field("newfield1", INT_SCHEMA, null, IntNode.valueOf(42)));
+    final List<Schema.Field> readerFields2 = Lists.newArrayList(
+        new Schema.Field("oldfield1", INT_SCHEMA, null, null),
+        new Schema.Field("oldfield2", STRING_SCHEMA, null, null),
+        new Schema.Field("newfield1", INT_SCHEMA, null, IntNode.valueOf(42)));
+    final List<Schema.Field> readerFields3 = Lists.newArrayList(
+        new Schema.Field("oldfield1", INT_SCHEMA, null, null),
+        new Schema.Field("oldfield2", STRING_SCHEMA, null, null));
+    final List<Schema.Field> readerFields4 = Lists.newArrayList(
+        new Schema.Field("oldfield1", INT_SCHEMA, null, null),
+        new Schema.Field("newfield1", INT_SCHEMA, null, null));
+
+    // Setup schemas.
+    final Schema writer = Schema.createRecord(writerFields);
+    final Schema reader1 = Schema.createRecord(readerFields1);
+    final Schema reader2 = Schema.createRecord(readerFields2);
+    final Schema reader3 = Schema.createRecord(readerFields3);
+    final Schema reader4 = Schema.createRecord(readerFields4);
+    final Set<Schema> readers = Sets.newHashSet(
+        reader1,
+        reader2,
+        reader3,
+        reader4);
+
+    // Setup expectations.
+    final AvroUtils.SchemaPairCompatibility result1 =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
+            reader1,
+            writer,
+            "Schemas match");
+    final AvroUtils.SchemaPairCompatibility result2 =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
+            reader2,
+            writer,
+            "Schemas match");
+    final AvroUtils.SchemaPairCompatibility result3 =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
+            reader3,
+            writer,
+            "Schemas match");
+    final AvroUtils.SchemaPairCompatibility result4 =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.INCOMPATIBLE,
+            reader4,
+            writer,
+            String.format("Cannot use reader schema %s to decode data with writer schema %s.",
+                reader4.toString(true),
+                writer.toString(true)));
+
+    // Perform the check.
+    final AvroUtils.SchemaSetCompatibility results = AvroUtils
+        .checkWriterCompatibility(readers.iterator(), writer);
+
+    // Ensure that the results contain the expected values.
+    assertEquals(AvroUtils.SchemaCompatibilityType.INCOMPATIBLE, results.getType());
+    assertTrue(results.getCauses().contains(result1));
+    assertTrue(results.getCauses().contains(result2));
+    assertTrue(results.getCauses().contains(result3));
+    assertTrue(results.getCauses().contains(result4));
+  }
+
+  @Test
+  public void testCheckReaderCompatibility() throws Exception {
+    // Setup schema fields.
+    final List<Schema.Field> writerFields1 = Lists.newArrayList(
+        new Schema.Field("oldfield1", INT_SCHEMA, null, null),
+        new Schema.Field("oldfield2", STRING_SCHEMA, null, null));
+    final List<Schema.Field> writerFields2 = Lists.newArrayList(
+        new Schema.Field("oldfield1", INT_SCHEMA, null, null),
+        new Schema.Field("oldfield2", STRING_SCHEMA, null, null),
+        new Schema.Field("newfield1", INT_SCHEMA, null, null));
+    final List<Schema.Field> writerFields3 = Lists.newArrayList(
+        new Schema.Field("oldfield1", INT_SCHEMA, null, null),
+        new Schema.Field("newfield1", INT_SCHEMA, null, null));
+    final List<Schema.Field> readerFields = Lists.newArrayList(
+        new Schema.Field("oldfield1", INT_SCHEMA, null, null),
+        new Schema.Field("oldfield2", STRING_SCHEMA, null, null));
+
+    // Setup schemas.
+    final Schema writer1 = Schema.createRecord(writerFields1);
+    final Schema writer2 = Schema.createRecord(writerFields2);
+    final Schema writer3 = Schema.createRecord(writerFields3);
+    final Schema reader = Schema.createRecord(readerFields);
+    final Set<Schema> written = Sets.newHashSet(writer1);
+    final Set<Schema> writers = Sets.newHashSet(writer2, writer3);
+
+    // Setup expectations.
+    final AvroUtils.SchemaPairCompatibility result1 =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
+            reader,
+            writer1,
+            "Schemas match");
+    final AvroUtils.SchemaPairCompatibility result2 =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.COMPATIBLE,
+            reader,
+            writer2,
+            "Schemas match");
+    final AvroUtils.SchemaPairCompatibility result3 =
+        new AvroUtils.SchemaPairCompatibility(
+            AvroUtils.SchemaCompatibilityType.INCOMPATIBLE,
+            reader,
+            writer3,
+            String.format("Cannot use reader schema %s to decode data with writer schema %s.",
+                reader.toString(true),
+                writer3.toString(true)));
+
+    // Perform the check.
+    final AvroUtils.SchemaSetCompatibility results = AvroUtils
+        .checkReaderCompatibility(reader, Iterators.concat(written.iterator(), writers.iterator()));
+
+    // Ensure that the results contain the expected values.
+    assertEquals(AvroUtils.SchemaCompatibilityType.INCOMPATIBLE, results.getType());
+    assertTrue(results.getCauses().contains(result1));
+    assertTrue(results.getCauses().contains(result2));
+    assertTrue(results.getCauses().contains(result3));
   }
 }
