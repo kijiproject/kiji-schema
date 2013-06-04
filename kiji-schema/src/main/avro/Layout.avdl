@@ -32,14 +32,29 @@ protocol KijiTableLayoutRecords {
 
   /** Type of schema for column data. */
   enum SchemaType {
-    /** Column contains data encoded as specified inline. */
+    /**
+     * Column contains data encoded as specified inline.
+     *
+     * Note: Not used in table layout >= 1.2.
+     */
     INLINE,
 
-    /** Column contains Avro records with the specified class name. */
+    /**
+     * Column contains Avro records with the specified class name.
+     *
+     * Note: Not used in table layout >= 1.2.
+     */
     CLASS,
 
     /** Column contains counters. */
-    COUNTER
+    COUNTER,
+
+    /**
+     * Column contains registered writer and reader schemas.
+     *
+     * Note: Schema type 'AVRO' requires table layout version >= 1.2.
+     */
+    AVRO
   }
 
   /** How schemas get encoded in cells. */
@@ -54,21 +69,97 @@ protocol KijiTableLayoutRecords {
     FINAL
   }
 
+  /** How Avro cells are validated. */
+  enum AvroValidationPolicy {
+    /**
+     * Performs schema validation on write. Non-registered writer schemas will fail to pass
+     * validation in all cases.
+     */
+    STRICT,
+
+    /** No schema validation will occur on write. */
+    NONE
+  }
+
   /** Schema of a Kiji cell. */
   record CellSchema {
     /** Schema encoding in cells. Unused if type is COUNTER. */
     SchemaStorage storage = "HASH";
 
-    /** Type of schema. */
+    /**
+     * Type of schema.
+     *
+     * Note: Schema type 'AVRO' requires table layout version >= 1.2.
+     */
     SchemaType type;
 
     /**
      * Schema value, whose interpretation depends on the schema type:
-     *  - inline : immediate Avro schema description, eg. "string";
-     *  - class : Avro schema class name, eg. "org.kiji.avro.Node";
-     *  - counter : unused, must be empty.
+     *  - INLINE : immediate Avro schema description, eg. "string";
+     *  - CLASS : Avro schema class name, eg. "org.kiji.avro.Node";
+     *  - COUNTER : unused, must be null.
+     *  - AVRO : unused, must be null.
+     *
+     * Note: This field is ignored for table layout >= 1.2
      */
     union { null, string } value = null;
+
+    /**
+     * Depends on schema type:
+     *  - INLINE/CLASS/COUNTER : unused, must be null.
+     *  - AVRO : Validation policy to use when writing cells.
+     *
+     * Note: This field is only valid when using a table layout with a version >= 1.2.
+     */
+    AvroValidationPolicy avro_validation_policy = "NONE";
+
+    /**
+     * Depends on schema type:
+     *  - INLINE/CLASS/COUNTER : unused, must be null.
+     *  - AVRO : Contains the fully qualified class name of this cell's specific compiled Avro
+     *        record. This field is only valid if the schema of this cell is a record schema.
+     *
+     * Note: This field is only valid when using a table layout with a version >= 1.2. This field
+     *     is used to provide compatibility with the behavior of KijiSchema 1.0.x (when the user
+     *     doesn't specify a reader schema explicitly).
+     */
+    union { null, string } specific_reader_schema_class = null;
+
+    /**
+     * Depends on schema type:
+     *  - INLINE/CLASS/COUNTER : unused, must be null.
+     *  - AVRO : Contains an UID that addresses the default reader schema for this cell.
+     *
+     * Note: This field is only valid when using a table layout with a version >= 1.2.
+     */
+    union { null, long } default_reader = null;
+
+    /**
+     * Depends on schema type:
+     *  - INLINE/CLASS/COUNTER : unused, must be null.
+     *  - AVRO : Registered reader schema UIDs for this cell.
+     *
+     * Note: This field is only valid when using a table layout with a version >= 1.2.
+     */
+    union { null, array<long> } readers = null;
+
+    /**
+     * Depends on schema type:
+     *  - INLINE/CLASS/COUNTER : unused, must be null.
+     *  - AVRO : UIDs addressing schemas that have already been used to write to this cell's column.
+     *
+     * Note: This field is only valid when using a table layout with a version >= 1.2.
+     */
+    union { null, array<long> } written = null;
+
+    /**
+     * Depends on schema type:
+     *  - INLINE/CLASS/COUNTER : unused, must be null.
+     *  - AVRO : Registered writer schema UIDs for this cell.
+     *
+     * Note: This field is only valid when using a table layout with a version >= 1.2.
+     */
+    union { null, array<long> } writers = null;
   }
 
   /** Column descriptor. */
