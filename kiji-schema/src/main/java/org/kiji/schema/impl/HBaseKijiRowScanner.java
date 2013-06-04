@@ -21,13 +21,17 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
+import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.ScannerTimeoutException;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.actors.threadpool.Arrays;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
@@ -48,8 +52,12 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKijiRowScanner.class.getName());
 
-  /** The HBase result scanner. */
-  private final ResultScanner mResultScanner;
+  public static final String MAX_RETRIES_ON_TIMEOUT_PROPERTY =
+      "org.kiji.schema.impl.HBaseKijiRowScanner.MAX_RETRIES_ON_TIMEOUT";
+
+  /** Maximum number of retries when (re-)opening the HBase scanner. */
+  private static final int MAX_RETRIES_ON_TIMEOUT =
+      Integer.parseInt(System.getProperty(MAX_RETRIES_ON_TIMEOUT_PROPERTY, "3"));
 
   /** The request used to fetch the row data. */
   private final KijiDataRequest mDataRequest;
@@ -57,34 +65,44 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   /** The table being scanned. */
   private final HBaseKijiTable mTable;
 
+  /** HBase scan specification. */
+  private final Scan mScan;
+
   /** Provider for cell decoders. */
   private final CellDecoderProvider mCellDecoderProvider;
 
   /** Whether the scanner is open. */
   private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
 
+  /** Factory for entity IDs. */
+  private final EntityIdFactory mEntityIdFactory;
+
+  /** Whether to reopen the HBase scanner on timeout. */
+  private final boolean mReopenScannerOnTimeout;
+
   /** For debugging finalize(). */
   private String mConstructorStack = "";
+
+  /** Current HBase result scanner. This scanner may timeout. */
+  private ResultScanner mResultScanner = null;
+
+  /** Result to return to the user on the following invocation of next(). */
+  private Result mNextResult = null;
+
+  /** HBase row key of the last result returned to the user. */
+  private byte[] mLastReturnedKey = null;
+
+  // -----------------------------------------------------------------------------------------------
 
   /**
    * A class to encapsulate the various options the HBaseKijiRowScanner constructor requires.
    */
   public static class Options {
-    private ResultScanner mHBaseResultScanner;
     private KijiDataRequest mDataRequest;
     private HBaseKijiTable mTable;
+    private Scan mScan;
     private CellDecoderProvider mCellDecoderProvider;
-
-    /**
-     * Sets the HBase result scanner the KijiRowScanner will wrap.
-     *
-     * @param hbaseResultScanner An HBase result scanner.
-     * @return This options instance.
-     */
-    public Options withHBaseResultScanner(ResultScanner hbaseResultScanner) {
-      mHBaseResultScanner = hbaseResultScanner;
-      return this;
-    }
+    private boolean mReopenScannerOnTimeout;
 
     /**
      * Sets the data request used to generate the KijiRowScanner.
@@ -109,6 +127,28 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     }
 
     /**
+     * Sets the HBase scan specification.
+     *
+     * @param scan HBase scan specification.
+     * @return This options instance.
+     */
+    public Options withScan(Scan scan) {
+      mScan = scan;
+      return this;
+    }
+
+    /**
+     * Sets whether the HBase scanner should be reopened on timeout.
+     *
+     * @param reopenScannerOnTimeout Whether to reopen the HBase scanner on timeout.
+     * @return This options instance.
+     */
+    public Options withReopenScannerOnTimeout(boolean reopenScannerOnTimeout) {
+      mReopenScannerOnTimeout = reopenScannerOnTimeout;
+      return this;
+    }
+
+    /**
      * Sets a provider for cell decoders.
      *
      * @param cellDecoderProvider Provider for cell decoders.
@@ -117,15 +157,6 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     public Options withCellDecoderProvider(CellDecoderProvider cellDecoderProvider) {
       mCellDecoderProvider = cellDecoderProvider;
       return this;
-    }
-
-    /**
-     * Gets the HBase result scanner.
-     *
-     * @return The HBase result scanner.
-     */
-    public ResultScanner getHBaseResultScanner() {
-      return mHBaseResultScanner;
     }
 
     /**
@@ -147,6 +178,15 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     }
 
     /**
+     * Gets the HBase scan specification.
+     *
+     * @return the HBase scan specification.
+     */
+    public Scan getScan() {
+      return mScan;
+    }
+
+    /**
      * Gets the provider for cell decoders.
      *
      * @return the provider for cell decoders.
@@ -154,30 +194,80 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     public CellDecoderProvider getCellDecoderProvider() {
       return mCellDecoderProvider;
     }
+
+    /**
+     * Reports whether the HBase scanner should be re-opened on timeout.
+     *
+     * @return whether the HBase scanner should be re-opened on timeout.
+     */
+    public boolean getReopenScannerOnTimeout() {
+      return mReopenScannerOnTimeout;
+    }
   }
+
+  // -----------------------------------------------------------------------------------------------
 
   /**
    * Creates a new <code>KijiRowScanner</code> instance.
    *
    * @param options The options for this scanner.
+   * @throws IOException on I/O error.
    */
-  public HBaseKijiRowScanner(Options options) {
+  public HBaseKijiRowScanner(Options options) throws IOException {
     if (CLEANUP_LOG.isDebugEnabled()) {
       mConstructorStack = Debug.getStackTrace();
     }
 
-    mResultScanner = options.getHBaseResultScanner();
     mDataRequest = options.getDataRequest();
     mTable = options.getTable();
+    mScan = options.getScan();
     mCellDecoderProvider = options.getCellDecoderProvider();
+    mReopenScannerOnTimeout = options.getReopenScannerOnTimeout();
+
+    mEntityIdFactory = EntityIdFactory.getFactory(mTable.getLayout());
+
+    mResultScanner = mTable.getHTable().getScanner(mScan);
+    mNextResult = getNextResult();
 
     mIsOpen.set(true);
+  }
+
+  /**
+   * Computes the smallest possible HBase row key strictly greater than a given row key.
+   *
+   * @param rowKey A given HBase row key.
+   * @return the smallest possible HBase row key strictly greater than the given row key.
+   */
+  private static byte[] getSmallestHigherThan(byte[] rowKey) {
+    return Arrays.copyOf(rowKey, rowKey.length + 1);
+  }
+
+  /**
+   * Opens a new HBase scanner.
+   *
+   * <p> Adjusts the start scanning row based on the last row returned to the user. </p>
+   *
+   * @return a new HBase scanner.
+   */
+  private ResultScanner openResultScanner() {
+    try {
+      if (mLastReturnedKey != null) {
+        // If we previously returned a row to the user,
+        // start the new scan at the lowest possible next row:
+        mScan.setStartRow(getSmallestHigherThan(mLastReturnedKey));
+      }
+      LOG.debug("Opening HBase result scanner with start row key: '{}'.",
+          Bytes.toStringBinary(mScan.getStartRow()));
+      return mTable.getHTable().getScanner(mScan);
+    } catch (IOException ioe) {
+      throw new KijiIOException(ioe);
+    }
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiRowIterator iterator() {
-    return new KijiRowIterator(mResultScanner.iterator());
+    return new KijiRowIterator();
   }
 
   /** {@inheritDoc} */
@@ -207,39 +297,63 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   }
 
   /**
-   * Class for iterating over a Kiji Table.
+   * Fetches the next HBase result.
+   *
+   * <p> Handles HBase scanner timeouts. </p>
+   *
+   * @return the next HBase result, or null if none.
    */
-  private class KijiRowIterator implements Iterator<KijiRowData> {
-    /** The wrapped HBase results. */
-    private final Iterator<Result> mResults;
+  private Result getNextResult() {
+    for (int nretries = 0; nretries < MAX_RETRIES_ON_TIMEOUT; ++nretries) {
+      try {
+        return mResultScanner.next();
 
-    /**
-     * Creates a new <code>KijiRowIterator</code> instance.
-     *
-     * @param results An Iterator of HBase results.
-     */
-    public KijiRowIterator(Iterator<Result> results) {
-      mResults = Preconditions.checkNotNull(results);
+      } catch (ScannerTimeoutException ste) {
+        if (!mReopenScannerOnTimeout) {
+          LOG.debug("HBase scanner timed out and user disabled automatic scanner reopening.");
+          throw new KijiIOException(
+              "HBase scanner timed out and user disabled automatic scanner reopening.", ste);
+        } else {
+          // The HBase scanner timed out, re-open a new one:
+          LOG.debug("HBase scanner timed out: closing and reopening a new scanner.");
+          mResultScanner.close();
+          mResultScanner = openResultScanner();
+          continue;
+        }
+
+      } catch (IOException ioe) {
+        throw new KijiIOException(ioe);
+      }
     }
+    throw new KijiIOException("Unable to retrieve HBase result from scanner.");
+  }
 
+  // -----------------------------------------------------------------------------------------------
+
+  /** Wraps a Kiji row scanner into a Java iterator. */
+  private class KijiRowIterator implements Iterator<KijiRowData> {
     /** {@inheritDoc} */
     @Override
     public boolean hasNext() {
-      return mResults.hasNext();
+      return (mNextResult != null);
     }
 
     /** {@inheritDoc} */
     @Override
     public KijiRowData next() {
-      final Result result = mResults.next();
-      if (null == result) {
-        return null;
+      if (mNextResult == null) {
+        // Comply with the Iterator interface:
+        throw new NoSuchElementException();
       }
+      final Result result = mNextResult;
+      mLastReturnedKey = result.getRow();
 
-      // Read the entity id from the HBase result.
-      final EntityId entityId = EntityIdFactory.getFactory(mTable.getLayout())
-          .getEntityIdFromHBaseRowKey(result.getRow());
+      // Prefetch the next row for hasNext():
+      mNextResult = getNextResult();
+
+      // Decode the HBase result into a KijiRowData:
       try {
+        final EntityId entityId = mEntityIdFactory.getEntityIdFromHBaseRowKey(result.getRow());
         return new HBaseKijiRowData(mTable, mDataRequest, entityId, result, mCellDecoderProvider);
       } catch (IOException ioe) {
         throw new KijiIOException(ioe);

@@ -155,8 +155,11 @@ public class HBaseKijiTableReader implements KijiTableReader {
 
   /** {@inheritDoc} */
   @Override
-  public KijiRowScanner getScanner(KijiDataRequest dataRequest,
-      KijiScannerOptions kijiScannerOptions) throws IOException {
+  public KijiRowScanner getScanner(
+      KijiDataRequest dataRequest,
+      KijiScannerOptions kijiScannerOptions)
+      throws IOException {
+
     try {
       EntityId startRow = kijiScannerOptions.getStartRow();
       EntityId stopRow = kijiScannerOptions.getStopRow();
@@ -173,6 +176,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
       if (null != stopRow) {
         scan.setStopRow(stopRow.getHBaseRowKey());
       }
+      scan.setCaching(kijiScannerOptions.getRowCaching());
 
       if (null != rowFilter) {
         final KijiRowFilterApplicator applicator = KijiRowFilterApplicator.create(
@@ -181,10 +185,11 @@ public class HBaseKijiTableReader implements KijiTableReader {
       }
 
       return new HBaseKijiRowScanner(new HBaseKijiRowScanner.Options()
-          .withHBaseResultScanner(mTable.getHTable().getScanner(scan))
           .withDataRequest(dataRequest)
           .withTable(mTable)
-          .withCellDecoderProvider(mCellDecoderProvider));
+          .withScan(scan)
+          .withCellDecoderProvider(mCellDecoderProvider)
+          .withReopenScannerOnTimeout(kijiScannerOptions.getReopenScannerOnTimeout()));
     } catch (InvalidLayoutException e) {
       // The table layout should never be invalid at this point, since we got it from a valid
       // opened table.  If it is, there's something seriously wrong.

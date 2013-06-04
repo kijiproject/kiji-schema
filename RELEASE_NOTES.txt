@@ -3,6 +3,15 @@
                               Kiji Schema Release Notes
 
 Version 1.1.0
+  * SCHEMA-388. KijiRowScanner handles HBase scanner timeouts and reopens
+      the scanner as needed. Introduces two scanner options:
+       - KijiScannerOptions.setReopenScannerOnTimeout() is true by default,
+	 which means HBase scanners are automatically reopened on timeouts
+	 instead of throwing a ScannerTimeoutException;
+       - KijiScannerOptions.setRowCaching() configures the number of rows
+	 fetched for each RPC to the region server. By defaults, this has
+	 the of value the configuration property hbase.client.scanner.caching,
+	 which is 1 unless overridden in hbase-site.xml.
   * SCHEMA-380. Version pagers may now be created on fully-qualified columns
       belonging to paging-enabled map-type families.
   * SCHEMA-355. KijiRowKeySplitter is parametrized by row key resolution.

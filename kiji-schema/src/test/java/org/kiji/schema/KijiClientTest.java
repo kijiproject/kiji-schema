@@ -121,7 +121,7 @@ public class KijiClientTest {
     mConf.set("fs.defaultFS", "file://" + mLocalTempDir);
     mConf.set("mapred.job.tracker", "local");
     mKiji = null;  // lazily initialized
-    // Disable logging of comamnds to the upgrade server by accident.
+    // Disable logging of commands to the upgrade server by accident.
     System.setProperty(CheckinUtils.DISABLE_CHECKIN_PROP, "true");
   }
 

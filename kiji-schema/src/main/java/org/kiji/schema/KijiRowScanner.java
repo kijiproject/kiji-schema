@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Iterator;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
@@ -29,25 +30,52 @@ import org.kiji.annotations.Inheritance;
 /**
  * Interface for scanning over rows read from a Kiji table.
  *
- * <p>Because this class implements the Iterable interface, you can write code like this:
- *
- * <pre>
- *   KijiRowScanner scanner = tableReader.getScanner(...);
- *   try {
- *     for (KijiRowData row : scanner) {
- *       process(row);
+ * <p>
+ *   The row scanner behaves like an iterator over the rows in a Kiji table.
+ *   The scanner implements the Java Iterable interface, so you can write code like this:
+ *   <pre>{@code
+ *     KijiRowScanner scanner = tableReader.getScanner(...);
+ *     try {
+ *       for (KijiRowData row : scanner) {
+ *         process(row);
+ *       }
+ *     } finally {
+ *       // Always close resources:
+ *       scanner.close();
  *     }
- *   } finally {
- *     // Don't forget to close it!
- *     scanner.close();
- *   }
- * </pre>
+ *   }</pre>
  * </p>
+ *
+ * <p>
+ *   Note: the scanner is backed by a single iterator:
+ *   {@link KijiRowScanner#iterator()} returns the same iterator always.
+ *   As a result, the scanner and its iterator should not be used simultaneously from multiple
+ *   places (eg. from multiple threads).
+ *   Similarly, when chaining two for loops on the same row scanner, the second for loop will
+ *   restart where the first for loop stopped.
+ * </p>.
  */
 @ApiAudience.Public
 @ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiRowScanner extends Closeable, Iterable<KijiRowData> {
+
+  /**
+   * Returns the iterator over Kiji rows backing this scanner.
+   *
+   * <p>
+   *   Always returns the same iterator.
+   *   As a result, the scanner and its iterator should not be used simultaneously from multiple
+   *   places (eg. from multiple threads).
+   *   Similarly, when chaining two for loops on the same row scanner, the second for loop will
+   *   restart where the first for loop stopped.
+   * </p>
+   *
+   * @return the iterator over Kiji rows backing this scanner.
+   */
+  @Override
+  Iterator<KijiRowData> iterator();
+
   /**
    * Closes this scanner and releases any system resources associated with it.
    *

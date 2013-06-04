@@ -40,7 +40,7 @@ import org.kiji.schema.hbase.HBaseScanOptions;
  *
  * <p>To get the three most recent versions of cell data from a column <code>bar</code> from
  * the family <code>foo</code> within the time range (123, 456):
- * <pre>
+ * <pre>{@code
  *   KijiDataRequestBuilder builder = KijiDataRequest.builder()
  *     .withTimeRange(123L, 456L);
  *     .newColumnsDef()
@@ -50,21 +50,30 @@ import org.kiji.schema.hbase.HBaseScanOptions;
  *
  *   final KijiTableReader reader = myKijiTable.openTableReader();
  *   final KijiRowData data = reader.get(myEntityId, request);
- * </pre>
+ * }</pre>
  * </p>
  *
  * <p>To get a row scanner across many records using the same column and version restrictions
  * from above:
- * <pre>
+ * <pre>{@code
  *   final KijiRowScanner scanner = reader.getScanner(request);
  *
- *   final KijiScannerOptions options = new KijiScannerOptions();
- *   options.setStartRow(myStartRow);
- *   options.setStopRow(myStopRow);
+ *   final KijiScannerOptions options = new KijiScannerOptions()
+ *       .setStartRow(myStartRow)
+ *       .setStopRow(myStopRow);
  *   final KijiRowScanner limitedScanner = reader.getScanner(request, options);
- * </pre>
- *   If a KijiScannerOptions is not set, the scanner will iterate over all rows
- *   in the table (as in the case of <code>scanner</code>
+ * }</pre>
+ *
+ * If a KijiScannerOptions is not set, the scanner will iterate over all rows in the table
+ * (as in the case of <code>scanner</code>).
+ *
+ * By default, Kiji row scanners automatically handle HBase scanner timeouts and reopen the
+ * HBase scanner as needed. This behavior may be disabled using
+ * {@link KijiScannerOptions#setReopenScannerOnTimeout(boolean)}.
+ *
+ * Finally, row caching may be configured via KijiScannerOptions.
+ * By default, row caching is configured from the Hadoop Configuration property
+ * {@code hbase.client.scanner.caching}.
  * </p>
  *
  * Instantiated in Kiji Schema via {@link org.kiji.schema.KijiTable#openTableReader()}.
@@ -130,10 +139,27 @@ public interface KijiTableReader extends Closeable {
   public static final class KijiScannerOptions {
     /** The start row for the scan. */
     private EntityId mStartRow = null;
+
     /** The stop row for the scan. */
     private EntityId mStopRow = null;
+
     /** The row filter for the scan. */
     private KijiRowFilter mRowFilter = null;
+
+    /** When set, re-open scanners automatically on scanner timeout. */
+    private boolean mReopenScannerOnTimeout = true;
+
+    /**
+     * Number of rows to fetch per RPC.
+     * <ul>
+     *   <li> N&gt;1 means fetch N rows per RPC; </li>
+     *   <li> N=1 means no caching; </li>
+     *   <li> N&lt;1 means use the value from the configuration property
+     *        {@code hbase.client.scanner.caching}. </li>
+     * </ul>
+     */
+    private int mRowCaching = -1;
+
     /**
      * The HBaseScanOptions to scan with for KijiRowScanners
      * backed by an HBase scan.
@@ -231,5 +257,68 @@ public interface KijiTableReader extends Closeable {
     public HBaseScanOptions getHBaseScanOptions() {
       return mHBaseScanOptions;
     }
+
+    /**
+     * Configures whether the underlying HBase scanner should be automatically re-opened on timeout.
+     *
+     * <p> By default, timeouts are handled and the HBase scanner is automatically reopened. </p>
+     *
+     * @param reopenScannerOnTimeout True means HBase scanner timeouts are automatically
+     *     handled to reopen new scanners. Otherwise ScannerTimeoutExceptions will be surfaced to
+     *     the user.
+     * @return this KijiScannerOptions.
+     */
+    public KijiScannerOptions setReopenScannerOnTimeout(boolean reopenScannerOnTimeout) {
+      mReopenScannerOnTimeout = reopenScannerOnTimeout;
+      return this;
+    }
+
+    /**
+     * Reports whether the underlying HBase scanner should be reopened on timeout.
+     *
+     * @return whether the underlying HBase scanner should be reopened on timeout.
+     */
+    public boolean getReopenScannerOnTimeout() {
+      return mReopenScannerOnTimeout;
+    }
+
+    /**
+     * Configures the row caching, ie. number of rows to fetch per RPC to the region server.
+     *
+     * <ul>
+     *   <li> N&gt;1 means fetch N rows per RPC; </li>
+     *   <li> N=1 means no caching; </li>
+     *   <li> N&lt;1 means use the value from the configuration property
+     *        {@code hbase.client.scanner.caching}. </li>
+     * </ul>
+     * <p>
+     *   By default, this is the value of the configuration property
+     *   {@code hbase.client.scanner.caching}.
+     * </p>
+     *
+     * @param rowCaching Number of rows to fetch per RPC to the region server.
+     * @return this KijiScannerOptions.
+     */
+    public KijiScannerOptions setRowCaching(int rowCaching) {
+      mRowCaching = rowCaching;
+      return this;
+    }
+
+    /**
+     * Reports the number of rows to fetch per RPC to the region server.
+     *
+     * <ul>
+     *   <li> N&gt;1 means fetch N rows per RPC; </li>
+     *   <li> N=1 means no caching; </li>
+     *   <li> N&lt;1 means use the value from the configuration property
+     *        {@code hbase.client.scanner.caching}. </li>
+     * </ul>
+     *
+     * @return the number of rows to fetch per RPC to the region server.
+     */
+    public int getRowCaching() {
+      return mRowCaching;
+    }
+
   }
 }
