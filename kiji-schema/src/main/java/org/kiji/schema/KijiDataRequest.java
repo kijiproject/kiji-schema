@@ -445,7 +445,7 @@ public final class KijiDataRequest implements Serializable {
    *
    * @param family The requested column family name.
    * @param qualifier The requested column qualifier name.
-   * @return The requested column.
+   * @return The requested column, or null if none exists.
    */
   public Column getColumn(String family, String qualifier) {
     return mColumns.get(qualifier != null ? family + ":" + qualifier : family);

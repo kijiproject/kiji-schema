@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.NavigableMap;
 import java.util.NoSuchElementException;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
@@ -46,6 +47,9 @@ import org.kiji.schema.util.ResourceUtils;
 
 public class TestHBaseVersionPager extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestHBaseVersionPager.class);
+
+  private static final int NJOBS = 5;
+  private static final long NTIMESTAMPS = 5;
 
   private KijiTableReader mReader;
   private KijiTable mTable;
@@ -64,6 +68,13 @@ public class TestHBaseVersionPager extends KijiClientTest {
       writer.put(eid, "info", "name", 3L, "me-three");
       writer.put(eid, "info", "name", 4L, "me-four");
       writer.put(eid, "info", "name", 5L, "me-five");
+
+      for (int job = 0; job < NJOBS; ++job) {
+        for (long ts = 1; ts <= NTIMESTAMPS; ++ts) {
+          writer.put(eid, "jobs", String.format("j%d", job), ts, String.format("j%d-t%d", job, ts));
+        }
+      }
+
     } finally {
       writer.close();
     }
@@ -76,6 +87,8 @@ public class TestHBaseVersionPager extends KijiClientTest {
     mReader.close();
     mTable.release();
   }
+
+  // -----------------------------------------------------------------------------------------------
 
   @Test
   public void testColumnPagingNotEnabled() throws IOException {
@@ -339,4 +352,38 @@ public class TestHBaseVersionPager extends KijiClientTest {
       pager.close();
     }
   }
+
+  /** Test the version pager on a fully-qualified column from a map-type family. */
+  @Test
+  public void testVersionPagerOnMapTypeFamily() throws Exception {
+    final int nversions = 5;
+    final KijiDataRequest dataRequest = KijiDataRequest.builder()
+        .addColumns(ColumnsDef.create()
+            .withMaxVersions(nversions)
+            .withPageSize(2)
+            .addFamily("jobs"))
+        .build();
+    final EntityId eid = mTable.getEntityId(Bytes.toBytes("me"));
+    final KijiRowData row = mReader.get(eid, dataRequest);
+    for (String qualifier : ImmutableList.of("j1", "j3")) {
+      LOG.info("Testing with qualifier: {}", qualifier);
+      final KijiPager pager = row.getPager("jobs", qualifier);
+      try {
+        final List<String> titles = Lists.newArrayList();
+        int npages = 0;
+        while (pager.hasNext()) {
+          final KijiRowData page = pager.next();
+          titles.addAll(page.<String>getValues("jobs", qualifier).values());
+          npages += 1;
+        }
+        // 5 versions with a page size of 2 implies at least 3 pages from the pager:
+        //     [2 versions, 2 versions, 1 version].
+        assertTrue(npages >= 3);
+        assertEquals(nversions, titles.size());
+      } finally {
+        pager.close();
+      }
+    }
+  }
+
 }

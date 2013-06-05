@@ -34,6 +34,7 @@ import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiDataRequest.Column;
 import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.KijiIOException;
@@ -118,11 +119,28 @@ public final class HBaseVersionPager implements KijiPager {
       throws KijiColumnPagingNotEnabledException {
     Preconditions.checkArgument(colName.isFullyQualified());
 
-    mColumnRequest = dataRequest.getColumn(colName.getFamily(), colName.getQualifier());
+    Column columnRequest = dataRequest.getColumn(colName.getFamily(), colName.getQualifier());
+    if (columnRequest == null) {
+      // There is no data request for this fully-qualified column.
+      // However, paging is allowed if this column belongs to a map-type family with paging enabled.
+      columnRequest = dataRequest.getColumn(colName.getFamily(), null);
+      Preconditions.checkArgument(columnRequest != null,
+          "Couldn't create pager: "
+          + "No data request for column {} from table {}.",
+          colName, table.getURI());
+      Preconditions.checkArgument(
+          table.getLayout().getFamilyMap().get(colName.getFamily()).isMapType(),
+          "Couldn't create pager: "
+          + "Can only generate version pagers from a column family data request for map families. "
+          + "Requested paging on qualifier {} from group family {} in table {}.",
+          colName.getQualifier(), colName.getFamily(), table.getURI());
+    }
+    mColumnRequest = columnRequest;
 
     if (!mColumnRequest.isPagingEnabled()) {
       throw new KijiColumnPagingNotEnabledException(
-        String.format("Paging is not enabled for column '%s'.", colName));
+        String.format("Paging is not enabled for column '%s' from table %s.",
+            colName, table.getURI()));
     }
 
     // Construct a data request for only this column.
