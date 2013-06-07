@@ -3,6 +3,9 @@
                               Kiji Schema Release Notes
 
 Version 1.1.0
+  * SCHEMA-405. Adds KijiRowKeyComponents, a way to specify the components
+      of a Kiji row key independent of a RowKeyFormat. May be converted into
+      an EntityId, given a KijiTable or EntityIdFactory.
   * SCHEMA-388. KijiRowScanner handles HBase scanner timeouts and reopens
       the scanner as needed. Introduces two scanner options:
        - KijiScannerOptions.setReopenScannerOnTimeout() is true by default,

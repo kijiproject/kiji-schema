@@ -337,7 +337,7 @@ public abstract class EntityIdFactory {
    *
    * @param components This can be one of the following depending on row key encoding:
    *     <ul>
-   *       <li> Raw, Hash, Hash-Prefix EntityId: A single String or byte array component. </li>
+   *       <li> Raw, Hash, Hash-Prefix EntityId: A single String or byte[] component. </li>
    *       <li> Formatted EntityId: The primitive row key components (string, int, long)
    *            in their expected order in the key. </li>
    *     </ul>
@@ -350,7 +350,7 @@ public abstract class EntityIdFactory {
    *
    * @param componentList This can be one of the following depending on row key encoding:
    *     <ul>
-   *       <li> Raw, Hash, Hash-Prefix EntityId: A single String or byte array component. </li>
+   *       <li> Raw, Hash, Hash-Prefix EntityId: A single String or byte[] component. </li>
    *       <li> Formatted EntityId: The primitive row key components (string, int, long)
    *            in their expected order in the key. </li>
    *     </ul>
@@ -358,6 +358,22 @@ public abstract class EntityIdFactory {
    */
   public EntityId getEntityId(List<Object> componentList) {
     return getEntityId(componentList.toArray());
+  }
+
+  /**
+   * Creates an entity ID from a KijiRowKeyComponents.
+   *
+   * @param kijiRowKeyComponents This should be constructed with one of the following,
+   *     depending on row key encoding:
+   *     <ul>
+   *       <li> Raw, Hash, Hash-Prefix EntityId: A single String or byte[] component. </li>
+   *       <li> Formatted EntityId: The primitive row key components (string, int, long)
+   *            in their expected order in the key. </li>
+   *     </ul>
+   * @return a new EntityId for the specified KijiRowKeyComponents.
+   */
+  public EntityId getEntityId(KijiRowKeyComponents kijiRowKeyComponents) {
+    return getEntityId(kijiRowKeyComponents.getComponents());
   }
 
   /**

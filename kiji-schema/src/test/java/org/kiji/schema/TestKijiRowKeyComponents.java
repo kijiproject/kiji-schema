@@ -1,0 +1,103 @@
+/**
+ * (c) Copyright 2013 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.kiji.schema;
+
+import static org.junit.Assert.assertEquals;
+
+import java.util.List;
+
+import com.google.common.collect.Lists;
+import org.junit.Test;
+
+import org.kiji.schema.avro.ComponentType;
+import org.kiji.schema.avro.HashSpec;
+import org.kiji.schema.avro.RowKeyComponent;
+import org.kiji.schema.avro.RowKeyEncoding;
+import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
+import org.kiji.schema.layout.KijiTableLayouts;
+
+public class TestKijiRowKeyComponents extends KijiClientTest {
+  private RowKeyFormat2 makeFormattedRowKeyFormat() {
+    // components of the row key
+    final List<RowKeyComponent> components = Lists.newArrayList(
+        RowKeyComponent.newBuilder().setName("dummy").setType(ComponentType.STRING).build(),
+        RowKeyComponent.newBuilder().setName("str1").setType(ComponentType.STRING).build(),
+        RowKeyComponent.newBuilder().setName("str2").setType(ComponentType.STRING).build(),
+        RowKeyComponent.newBuilder().setName("anint").setType(ComponentType.INTEGER).build(),
+        RowKeyComponent.newBuilder().setName("along").setType(ComponentType.LONG).build());
+
+    // build the row key format
+    final RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
+        .setSalt(HashSpec.newBuilder().setHashSize(2).build())
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat makeRawRowKeyFormat() {
+    final RowKeyFormat format = RowKeyFormat.newBuilder().setEncoding(RowKeyEncoding.RAW).build();
+    return format;
+  }
+
+  @Test
+  public void testRawKeys() throws Exception {
+    EntityIdFactory factory = EntityIdFactory.getFactory(makeRawRowKeyFormat());
+    KijiRowKeyComponents krkc = KijiRowKeyComponents.fromComponents("skimbleshanks");
+
+    assertEquals(factory.getEntityId("skimbleshanks"), factory.getEntityId(krkc));
+
+    // Install a table with a raw format and ensure that the checks work out.
+    Kiji kiji = getKiji();
+    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE_UNHASHED));
+    KijiTable table = kiji.openTable("table");
+    assertEquals(table.getEntityId("skimbleshanks"), factory.getEntityId(krkc));
+    assertEquals(table.getEntityId("skimbleshanks"), krkc.getEntityIdForTable(table));
+    table.release();
+  }
+
+  @Test
+  public void testFormattedKeys() throws Exception {
+    EntityIdFactory factory = EntityIdFactory.getFactory(makeFormattedRowKeyFormat());
+    KijiRowKeyComponents krkc = KijiRowKeyComponents.fromComponents(
+        "skimbleshanks",
+        "mungojerrie",
+        "rumpelteazer",
+        5
+        /* Last component left as a null */);
+
+    assertEquals(
+        factory.getEntityId("skimbleshanks", "mungojerrie", "rumpelteazer", 5, null),
+        factory.getEntityId(krkc));
+
+    // Install a table with the same key format and ensure that the checks work out.
+    Kiji kiji = getKiji();
+    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.FORMATTED_RKF));
+    KijiTable table = kiji.openTable("table");
+    assertEquals(
+        table.getEntityId("skimbleshanks", "mungojerrie", "rumpelteazer", 5),
+        factory.getEntityId(krkc));
+    assertEquals(
+        table.getEntityId("skimbleshanks", "mungojerrie", "rumpelteazer", 5, null),
+        krkc.getEntityIdForTable(table));
+    table.release();
+  }
+}

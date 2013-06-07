@@ -27,16 +27,19 @@ import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
- * EntityId is used to identify a particular row in a Kiji table.
+ * EntityId is used to identify a particular row under the key format of a Kiji table.
  *
  * There are two name-spaces for rows:
  * <ul>
- *   <li> Kiji rows are primarily indexed by Kiji row keys (arbitrary byte arrays).
+ *   <li> Kiji rows are logically indexed by Kiji row keys (arbitrary byte arrays or a list of
+ *        key components).
  *   <li> Under the hood, rows are indexed by HBase row keys (arbitrary byte arrays).
  * </ul>
  *
  * The translation between Kiji row keys and HBase row keys depends on the layout of the table
- * the row belongs to.
+ * the row belongs to. The same Kiji row key may translate to two different EntityIds on two
+ * different tables, based on their key format. For a representation of row keys which is
+ * agnostic to row key formats, see {@link KijiRowKeyComponents}.
  *
  * There are multiple translation schemes:
  * <ul>
