@@ -84,6 +84,25 @@ import org.kiji.annotations.Inheritance;
  *     map-family pager with per-qualifier pagers.
  *   </li>
  * </ul>
+ *
+ * <p>
+ *   If you don't need access to individual pages, you may use the following iterator/iterable
+ *   helpers:
+ *   <ul>
+ *     <li> {@link ColumnVersionIterator} iterates through the versions in a given column. </li>
+ *     <li>
+ *       {@link MapFamilyQualifierIterator} iterates through the qualifiers in a map-type family.
+ *     </li>
+ *     <li>
+ *       {@link MapFamilyVersionIterator} iterates through the versions in all columns
+ *       from a map-type family.
+ *     </li>
+ *   </ul>
+ * </p>
+ *
+ * @see ColumnVersionIterator
+ * @see MapFamilyQualifierIterator
+ * @see MapFamilyVersionIterator
  */
 @ApiAudience.Public
 @ApiStability.Experimental

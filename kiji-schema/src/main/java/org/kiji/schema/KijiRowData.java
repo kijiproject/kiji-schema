@@ -304,6 +304,10 @@ public interface KijiRowData {
    *   the cell content for each version (ie. for each timestamp).
    * </p>
    * <p> See {@link KijiPager} for more details on pagers. </p>
+   * <p>
+   *   If you don't need access to individual pages, you may use {@link ColumnVersionIterator}
+   *   or {@link MapFamilyVersionIterator} instead.
+   * </p>
    *
    * @param family Desired column family.
    * @param qualifier Desired column qualifier.
@@ -312,6 +316,8 @@ public interface KijiRowData {
    *     specified column.
    *
    * @see KijiPager
+   * @see ColumnVersionIterator
+   * @see MapFamilyVersionIterator
    */
   KijiPager getPager(String family, String qualifier)
       throws KijiColumnPagingNotEnabledException;
@@ -325,6 +331,10 @@ public interface KijiRowData {
    *   No actual cell content is retrieved when using this pager.
    * </p>
    * <p> See {@link KijiPager} for more details on pagers. </p>
+   * <p>
+   *   If you don't need access to individual pages, you may use {@link MapFamilyQualifierIterator}
+   *   or {@link MapFamilyVersionIterator} instead.
+   * </p>
    *
    * @param family Desired map type column family.
    * @return A pager for the specified column.
@@ -332,6 +342,8 @@ public interface KijiRowData {
    *     specified column family.
    *
    * @see KijiPager
+   * @see MapFamilyQualifierIterator
+   * @see MapFamilyVersionIterator
    */
   KijiPager getPager(String family)
       throws KijiColumnPagingNotEnabledException;
