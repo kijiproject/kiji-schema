@@ -310,5 +310,4 @@ public class TestReaderSchema extends KijiClientTest {
       reader.close();
     }
   }
-
 }

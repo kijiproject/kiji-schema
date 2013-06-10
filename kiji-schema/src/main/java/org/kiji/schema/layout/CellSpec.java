@@ -87,7 +87,9 @@ public final class CellSpec {
    * @param schemaTable Schema table to resolve schema hashes or UIDs.
    * @throws InvalidLayoutException if the cell specification is invalid.
    */
-  public static CellSpec fromCellSchema(CellSchema cellSchema, KijiSchemaTable schemaTable)
+  public static CellSpec fromCellSchema(
+      final CellSchema cellSchema,
+      final KijiSchemaTable schemaTable)
       throws InvalidLayoutException {
     return fromCellSchema(cellSchema)
         .setSchemaTable(schemaTable);
@@ -100,7 +102,7 @@ public final class CellSpec {
    * @return a new CellSpec initialized from the given CellSchema.
    * @throws InvalidLayoutException on layout error.
    */
-  public static CellSpec fromCellSchema(CellSchema cellSchema)
+  public static CellSpec fromCellSchema(final CellSchema cellSchema)
       throws InvalidLayoutException {
     return new CellSpec()
         .setCellSchema(cellSchema);
@@ -123,7 +125,7 @@ public final class CellSpec {
    * @param spec Existing CellSpec to copy.
    * @return a copy of the specified CellSpec.
    */
-  public static CellSpec copy(CellSpec spec) {
+  public static CellSpec copy(final CellSpec spec) {
     final CellSpec copy = new CellSpec();
     copy.mCellSchema = CellSchema.newBuilder(spec.mCellSchema).build();
     copy.mReaderSchema = spec.mReaderSchema;
@@ -143,7 +145,7 @@ public final class CellSpec {
    * @return this.
    * @throws InvalidLayoutException on layout error.
    */
-  public CellSpec setCellSchema(CellSchema cellSchema) throws InvalidLayoutException {
+  public CellSpec setCellSchema(final CellSchema cellSchema) throws InvalidLayoutException {
     mCellSchema = cellSchema;
     if (isAvro()) {
       try {
@@ -163,7 +165,7 @@ public final class CellSpec {
    * @param schemaStorage Schema storage (hash, UID or final).
    * @return this.
    */
-  public CellSpec setSchemaStorage(SchemaStorage schemaStorage) {
+  public CellSpec setSchemaStorage(final SchemaStorage schemaStorage) {
     getOrCreateCellSchema().setStorage(schemaStorage);
     Preconditions.checkState(!isCounter());
     return this;
@@ -175,7 +177,7 @@ public final class CellSpec {
    * @param schemaType Cell type (counter, inline Avro or Avro class).
    * @return this.
    */
-  public CellSpec setType(SchemaType schemaType) {
+  public CellSpec setType(final SchemaType schemaType) {
     getOrCreateCellSchema().setType(schemaType);
     return this;
   }
@@ -188,7 +190,7 @@ public final class CellSpec {
    * @param readerSchema Avro reader schema.
    * @return this CellSpec.
    */
-  public CellSpec setReaderSchema(Schema readerSchema) {
+  public CellSpec setReaderSchema(final Schema readerSchema) {
     Preconditions.checkState(!isCounter());
     mReaderSchema = readerSchema;
     return this;
@@ -217,7 +219,7 @@ public final class CellSpec {
    * @return this CellSpec.
    * @throws InvalidLayoutException of the specified class is not a valid Avro specific record.
    */
-  public CellSpec setSpecificRecord(Class<? extends SpecificRecord> klass)
+  public CellSpec setSpecificRecord(final Class<? extends SpecificRecord> klass)
       throws InvalidLayoutException {
     try {
       final java.lang.reflect.Field field = klass.getField("SCHEMA$");
@@ -245,7 +247,7 @@ public final class CellSpec {
    * @param schemaTable Table to resolve Avro schemas.
    * @return this CellSpec.
    */
-  public CellSpec setSchemaTable(KijiSchemaTable schemaTable) {
+  public CellSpec setSchemaTable(final KijiSchemaTable schemaTable) {
     mSchemaTable = schemaTable;
     return this;
   }
@@ -265,7 +267,7 @@ public final class CellSpec {
    * @param decoderFactory Factory for cell decoders (either specific or generic).
    * @return this CellSpec.
    */
-  public CellSpec setDecoderFactory(KijiCellDecoderFactory decoderFactory) {
+  public CellSpec setDecoderFactory(final KijiCellDecoderFactory decoderFactory) {
     mDecoderFactory = decoderFactory;
     return this;
   }
@@ -285,7 +287,7 @@ public final class CellSpec {
    * @param encoderFactory Factory for cell encoders.
    * @return this CellSpec.
    */
-  public CellSpec setEncoderFactory(KijiCellEncoderFactory encoderFactory) {
+  public CellSpec setEncoderFactory(final KijiCellEncoderFactory encoderFactory) {
     mEncoderFactory = encoderFactory;
     return this;
   }
@@ -317,7 +319,8 @@ public final class CellSpec {
   public boolean isAvro() {
     Preconditions.checkNotNull(mCellSchema);
     return (mCellSchema.getType() == SchemaType.INLINE)
-        || (mCellSchema.getType() == SchemaType.CLASS);
+        || (mCellSchema.getType() == SchemaType.CLASS)
+        || (mCellSchema.getType() == SchemaType.AVRO);
   }
 
   /**
@@ -360,7 +363,7 @@ public final class CellSpec {
    * @throws InvalidLayoutException if the specification or the schema is invalid.
    * @throws SchemaClassNotFoundException if the class for a specific Avro record is not found.
    */
-  public static Schema readAvroSchema(CellSchema cellSchema) throws InvalidLayoutException {
+  public static Schema readAvroSchema(final CellSchema cellSchema) throws InvalidLayoutException {
     switch (cellSchema.getType()) {
     case INLINE: {
       try {
@@ -388,6 +391,8 @@ public final class CellSpec {
             "Java class " + cellSchema.getValue() + " was not found on the classpath.");
       }
     }
+    // TODO(SCHEMA-457): This should return the default Avro reader schema.
+    case AVRO:
     case COUNTER: {
       // Counters are coded using a Bytes.toBytes(long) and Bytes.toLong(byte[]):
       return null;

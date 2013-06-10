@@ -46,10 +46,11 @@ public final class DefaultKijiCellEncoderFactory implements KijiCellEncoderFacto
 
   /** {@inheritDoc} */
   @Override
-  public KijiCellEncoder create(CellSpec cellSpec) throws IOException {
+  public KijiCellEncoder create(final CellSpec cellSpec) throws IOException {
     Preconditions.checkNotNull(cellSpec);
     switch (cellSpec.getCellSchema().getType()) {
     case INLINE:
+    case AVRO:
     case CLASS:
       return new AvroCellEncoder(cellSpec);
     case COUNTER:

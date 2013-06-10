@@ -41,7 +41,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
-import org.apache.avro.specific.SpecificData;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +65,6 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.util.FromJson;
 import org.kiji.schema.util.Hasher;
-import org.kiji.schema.util.JavaIdentifiers;
 import org.kiji.schema.util.KijiNameValidator;
 import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.ResourceUtils;
@@ -1364,7 +1362,7 @@ public final class KijiTableLayout {
    */
   public Schema getSchema(KijiColumnName columnName)
       throws InvalidLayoutException, NoSuchColumnException {
-    return readAvroSchema(getCellSchema(columnName));
+    return CellSpec.readAvroSchema(getCellSchema(columnName));
   }
 
   /**
@@ -1464,49 +1462,6 @@ public final class KijiTableLayout {
   }
 
   /**
-   * Reads the Avro schema from the table layout.
-   *
-   * @param avro The portion of the table layout record to read from.
-   * @return The avro schema, or null if the schema is type "counter".
-   * @throws InvalidLayoutException if the table layout is invalid and the schema can't be read.
-   */
-  public static Schema readAvroSchema(CellSchema avro) throws InvalidLayoutException {
-    switch (avro.getType()) {
-    case AVRO:
-      return null;
-    case INLINE:
-      try {
-        return new Schema.Parser().parse(avro.getValue());
-      } catch (RuntimeException e) {
-        throw new InvalidLayoutException("Invalid schema: " + e.getMessage());
-      }
-    case CLASS:
-      String className = avro.getValue();
-      if (!JavaIdentifiers.isValidClassName(className)) {
-        throw new InvalidLayoutException(
-            "Schema with type 'class' must be a valid Java identifier.");
-      }
-      try {
-        Class<?> avroClass = Class.forName(className);
-        try {
-          return SpecificData.get().getSchema(avroClass);
-        } catch (RuntimeException e) {
-          throw new InvalidLayoutException(
-              "Java class is not a valid Avro type: " + avroClass.getName());
-        }
-      } catch (ClassNotFoundException e) {
-        throw new SchemaClassNotFoundException(
-            "Java class " + avro.getValue() + " was not found on the classpath.");
-      }
-    case COUNTER:
-      // Counters are coded using a Bytes.toBytes(long) and Bytes.toLong(byte[]):
-      return null;
-    default:
-      throw new InvalidLayoutException("Invalid schema type: " + avro.getType());
-    }
-  }
-
-  /**
    * Validates a cell schema descriptor.
    *
    * Ignores failures due to specific Avro record classes not being present on the classpath.
@@ -1520,7 +1475,7 @@ public final class KijiTableLayout {
       throws InvalidLayoutException {
     // Validate Avro schema through loading and parsing:
     try {
-      readAvroSchema(schema);
+      CellSpec.readAvroSchema(schema);
     } catch (SchemaClassNotFoundException scnfe) {
       LOG.debug(String.format("Avro schema class '%s' not found.", schema.getValue()));
     }

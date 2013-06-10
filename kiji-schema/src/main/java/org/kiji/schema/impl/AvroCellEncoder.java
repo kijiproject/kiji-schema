@@ -21,10 +21,15 @@ package org.kiji.schema.impl;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericContainer;
@@ -37,6 +42,8 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.DecodedCell;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiEncodingException;
+import org.kiji.schema.avro.AvroValidationPolicy;
+import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.BytesKey;
@@ -52,6 +59,58 @@ import org.kiji.schema.util.BytesKey;
  */
 @ApiAudience.Private
 public final class AvroCellEncoder implements KijiCellEncoder {
+  /** Name of the system property to control schema validation. */
+  public static final String SCHEMA_VALIDATION_POLICY =
+      "org.kiji.schema.impl.AvroCellEncoder.SCHEMA_VALIDATION_POLICY";
+
+  /** Mapping from class names of Avro primitives to their corresponding Avro schemas. */
+  public static final Map<String, Schema> PRIMITIVE_SCHEMAS;
+  static {
+    final Schema booleanSchema = Schema.create(Schema.Type.BOOLEAN);
+    final Schema intSchema = Schema.create(Schema.Type.INT);
+    final Schema longSchema = Schema.create(Schema.Type.LONG);
+    final Schema floatSchema = Schema.create(Schema.Type.FLOAT);
+    final Schema doubleSchema = Schema.create(Schema.Type.DOUBLE);
+    final Schema stringSchema = Schema.create(Schema.Type.STRING);
+
+    // Initialize primitive schema mapping.
+    PRIMITIVE_SCHEMAS = ImmutableMap
+        .<String, Schema>builder()
+        .put(boolean.class.getCanonicalName(), booleanSchema)
+        .put(Boolean.class.getCanonicalName(), booleanSchema)
+        .put(int.class.getCanonicalName(), intSchema)
+        .put(Integer.class.getCanonicalName(), intSchema)
+        .put(long.class.getCanonicalName(), longSchema)
+        .put(Long.class.getCanonicalName(), longSchema)
+        .put(float.class.getCanonicalName(), floatSchema)
+        .put(Float.class.getCanonicalName(), floatSchema)
+        .put(double.class.getCanonicalName(), doubleSchema)
+        .put(Double.class.getCanonicalName(), doubleSchema)
+        .put(String.class.getCanonicalName(), stringSchema)
+        .put(org.apache.avro.util.Utf8.class.getCanonicalName(), stringSchema)
+        .put(java.nio.ByteBuffer.class.getCanonicalName(), Schema.create(Schema.Type.BYTES))
+        .build();
+  }
+
+  /**
+   * Reports the Avro schema validation policy.
+   *
+   * @param cellSpec to get the Avro schema validation policy from.
+   * @return the schema validation policy.
+   */
+  private static AvroValidationPolicy getAvroValidationPolicy(final CellSpec cellSpec) {
+    final String validationPolicy = System.getProperty(SCHEMA_VALIDATION_POLICY);
+    if (validationPolicy != null) {
+      try {
+        return AvroValidationPolicy.valueOf(validationPolicy);
+      } catch (IllegalArgumentException iae) {
+        throw new KijiEncodingException(
+            String.format("Unrecognized validation policy: %s", validationPolicy), iae);
+      }
+    } else {
+      return cellSpec.getCellSchema().getAvroValidationPolicy();
+    }
+  }
 
   /** Specification of the column to encode. */
   private final CellSpec mCellSpec;
@@ -96,6 +155,19 @@ public final class AvroCellEncoder implements KijiCellEncoder {
    */
   private final Schema mReaderSchema;
 
+  /**
+   * Writer schemas registered for the column that this cell encoder will encode cells for.
+   *
+   * Note: This will be null if schema validation is disabled.
+   */
+  private final Set<Schema> mRegisteredWriters;
+
+  /**
+   * Avro validation policy to use when encoding cells. This may be overridden using the
+   * "org.kiji.schema.impl.AvroCellEncoder.SCHEMA_VALIDATION_POLICY" system property.
+   */
+  private final AvroValidationPolicy mValidationPolicy;
+
   // -----------------------------------------------------------------------------------------------
 
   /**
@@ -117,7 +189,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
   private class SchemaHashEncoder implements SchemaEncoder {
     /** {@inheritDoc} */
     @Override
-    public void encode(Schema writerSchema) throws IOException {
+    public void encode(final Schema writerSchema) throws IOException {
       final BytesKey schemaHash = mCellSpec.getSchemaTable().getOrCreateSchemaHash(writerSchema);
       mByteArrayEncoder.writeFixed(schemaHash.getBytes());
     }
@@ -129,7 +201,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
   private class SchemaIdEncoder implements SchemaEncoder {
     /** {@inheritDoc} */
     @Override
-    public void encode(Schema writerSchema) throws IOException {
+    public void encode(final Schema writerSchema) throws IOException {
       final long schemaId = mCellSpec.getSchemaTable().getOrCreateSchemaId(writerSchema);
       mByteArrayEncoder.writeFixed(ByteStreamArray.longToVarInt64(schemaId));
     }
@@ -153,7 +225,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
 
     /** {@inheritDoc} */
     @Override
-    public void encode(Schema writerSchema) throws IOException {
+    public void encode(final Schema writerSchema) throws IOException {
       // Nothing to encode, because the writer schema is already encoded in the column layout.
       // This means the writer schema must be exactly the declared reader schema.
     }
@@ -166,7 +238,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
    * @return a schema encoder for the specified cell encoding.
    * @throws IOException on I/O error.
    */
-  private SchemaEncoder createSchemaEncoder(CellSpec cellSpec) throws IOException {
+  private SchemaEncoder createSchemaEncoder(final CellSpec cellSpec) throws IOException {
     switch (cellSpec.getCellSchema().getStorage()) {
     case HASH: return new SchemaHashEncoder();
     case UID: return new SchemaIdEncoder();
@@ -185,29 +257,65 @@ public final class AvroCellEncoder implements KijiCellEncoder {
    * @param cellSpec Specification of the cell to encode.
    * @throws IOException on I/O error.
    */
-  public AvroCellEncoder(CellSpec cellSpec) throws IOException {
+  public AvroCellEncoder(final CellSpec cellSpec) throws IOException {
     mCellSpec = Preconditions.checkNotNull(cellSpec);
     Preconditions.checkArgument(cellSpec.isAvro());
     mReaderSchema = mCellSpec.getAvroSchema();
     mSchemaEncoder = createSchemaEncoder(mCellSpec);
+    mRegisteredWriters = getRegisteredWriters(mCellSpec);
+    mValidationPolicy = getAvroValidationPolicy(mCellSpec);
   }
 
   /** {@inheritDoc} */
   @Override
-  public byte[] encode(DecodedCell<?> cell) throws IOException {
+  public byte[] encode(final DecodedCell<?> cell) throws IOException {
     return encode(cell.getData());
   }
 
   /** {@inheritDoc} */
   @Override
-  public synchronized <T> byte[] encode(T cellValue) throws IOException {
+  public synchronized <T> byte[] encode(final T cellValue) throws IOException {
     mByteArrayOutputStream.reset();
-    final Schema writerSchema =
-        (cellValue instanceof GenericContainer)
-        ? ((GenericContainer) cellValue).getSchema()
-        : mReaderSchema;
 
-    // TODO(SCHEMA-401): Validate writer schema thoroughly against the actual reader schema.
+    // Get the writer schema for this cell.
+    final Schema writerSchema = getWriterSchema(cellValue);
+
+    // Perform avro schema validation (if necessary).
+    switch (mValidationPolicy) {
+      case STRICT: {
+        if (!mRegisteredWriters.contains(writerSchema)) {
+          throw new KijiEncodingException(
+              String.format("Error trying to use unregistered writer schema: %s",
+                  writerSchema.toString(true)));
+        }
+        break;
+      }
+      case DEVELOPER: {
+        throw new UnsupportedOperationException(
+            "The \"DEVELOPER\" schema validation mode is not currently supported");
+      }
+      case NONE:
+        // No-op. No validation required.
+        break;
+      case SCHEMA_1_0:
+        // No-op. Validation happens for primitive types only during Avro serialization by setting
+        // the writer schema (see getWriterSchema()).
+        break;
+      default: {
+        throw new KijiEncodingException(
+            String.format("Unrecognized schema validation policy: %s",
+                mValidationPolicy.toString()));
+      }
+    }
+
+    // Perform final column schema validation (if necessary).
+    if (mCellSpec.getCellSchema().getStorage() == SchemaStorage.FINAL
+        && !writerSchema.equals(mReaderSchema)) {
+      throw new KijiEncodingException(
+          String.format("Writer schema: %s does not match final column schema: %s",
+              writerSchema.toString(true),
+              mReaderSchema.toString(true)));
+    }
 
     // Encode the Avro schema (if necessary):
     mSchemaEncoder.encode(writerSchema);
@@ -231,7 +339,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
    * @param schema The writer schema.
    * @return A datum writer for the given schema.
    */
-  private DatumWriter<Object> getDatumWriter(Schema schema) {
+  private DatumWriter<Object> getDatumWriter(final Schema schema) {
     final DatumWriter<Object> existing = mCachedDatumWriters.get(schema);
     if (null != existing) {
       return existing;
@@ -239,5 +347,53 @@ public final class AvroCellEncoder implements KijiCellEncoder {
     final DatumWriter<Object> newWriter = new SpecificDatumWriter<Object>(schema);
     mCachedDatumWriters.put(schema, newWriter);
     return newWriter;
+  }
+
+  /**
+   * Gets the writer schema of a specified value.
+   *
+   * @param <T> is the java type of the specified value.
+   * @param cellValue to get the Avro schema of.
+   * @return an Avro schema representing the type of data specified.
+   */
+  private <T> Schema getWriterSchema(final T cellValue) {
+    if (cellValue instanceof GenericContainer) {
+      return ((GenericContainer) cellValue).getSchema();
+    } else if (mValidationPolicy == AvroValidationPolicy.SCHEMA_1_0) {
+      // Compute the writer schema using old semantics. This will only validate primitive schemas.
+      return mReaderSchema;
+    } else {
+      final String className = cellValue.getClass().getCanonicalName();
+      return PRIMITIVE_SCHEMAS.get(className);
+    }
+  }
+
+  /**
+   * Gets the registered writer schemas associated with the provided cell specification.
+   *
+   * @param spec containing registered schemas.
+   * @return the set of writer schemas registered for the provided cell or null if validation is
+   *     disabled.
+   * @throws IOException if there is an error looking up schemas.
+   */
+  private static Set<Schema> getRegisteredWriters(final CellSpec spec) throws IOException {
+    final List<Long> writerUIDs = spec.getCellSchema().getWriters();
+    if (writerUIDs == null) {
+      return null;
+    }
+
+    final Set<Schema> writers = Sets.newHashSet();
+    for (Long uid : writerUIDs) {
+      // Convert uid to schema.
+      final Schema writerSchema = spec.getSchemaTable().getSchema(uid);
+      if (writerSchema == null) {
+        throw new KijiEncodingException(
+            String.format("Unable to fetch schema with UID: %d from schema table.", uid));
+      }
+
+      // Add it to a hashset.
+      writers.add(writerSchema);
+    }
+    return writers;
   }
 }
