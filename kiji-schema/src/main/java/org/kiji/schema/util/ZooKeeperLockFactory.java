@@ -24,41 +24,29 @@ import java.io.IOException;
 import java.util.List;
 
 import com.google.common.base.Joiner;
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.layout.impl.ZooKeeperClient;
 
 /** Factory for ZooKeeperLock instances. */
 @ApiAudience.Private
 public final class ZooKeeperLockFactory implements LockFactory {
-  /** ZooKeeper watcher that simply discards events. */
-  private static class ZooKeeperNoopWatcher implements Watcher {
-    /** {@inheritDoc} */
-    @Override
-    public void process(WatchedEvent event) {
-      // Ignore
-    }
-  }
-
-  /** ZooKeeper watcher that simply discards events. */
-  private static final Watcher ZOOKEEPER_NOOP_WATCHER = new ZooKeeperNoopWatcher();
-
   /**
    * Creates a ZooKeeper client.
    *
-   * @param zkConnStr ZooKeeper quorum, as a comma separated list of ZooKeeper node "host:port".
+   * @param zkAddress ZooKeeper quorum, as a comma-separated list of ZooKeeper node "host:port".
    * @return a new ZooKeeper client.
    * @throws IOException on I/O error.
    */
-  public static ZooKeeper newZooKeeper(String zkConnStr) throws IOException {
-    return new ZooKeeper(zkConnStr, 60000, ZOOKEEPER_NOOP_WATCHER);
+  public static ZooKeeperClient newZooKeeper(String zkAddress) throws IOException {
+    final ZooKeeperClient zkClient = new ZooKeeperClient(zkAddress, 60000);
+    zkClient.open();
+    return zkClient;
   }
 
   /**
@@ -95,28 +83,23 @@ public final class ZooKeeperLockFactory implements LockFactory {
   /**
    * Creates a factory for ZooKeeperLock.
    *
-   * @param zkClient ZooKeeper client
-   */
-  public ZooKeeperLockFactory(ZooKeeper zkClient) {
-    mZooKeeper = Preconditions.checkNotNull(zkClient);
-  }
-
-  /**
-   * Creates a factory for ZooKeeperLock.
-   *
-   * @param zkConnStr ZooKeeper connection.
+   * @param zkAddress Address of the ZooKeeper quorum (comma-separated list of "host:port").
    * @throws IOException on I/O error.
    */
-  public ZooKeeperLockFactory(String zkConnStr) throws IOException {
-    this(newZooKeeper(zkConnStr));
+  public ZooKeeperLockFactory(String zkAddress) throws IOException {
+    mZKAddress = zkAddress;
   }
 
-  /** ZooKeeper instance to use. */
-  private final ZooKeeper mZooKeeper;
+  /** Address of the ZooKeeper quorum. */
+  private final String mZKAddress;
 
   /** {@inheritDoc} */
   @Override
   public Lock create(String name) {
-    return new ZooKeeperLock(mZooKeeper, new File(name));
+    try {
+      return new ZooKeeperLock(newZooKeeper(mZKAddress), new File(name));
+    } catch (IOException ioe) {
+      throw new KijiIOException(ioe);
+    }
   }
 }

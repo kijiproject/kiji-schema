@@ -110,4 +110,10 @@
     <Class name="org.kiji.schema.tools.DeleteTool" />
     <Bug pattern="UWF_NULL_FIELD" />
   </Match>
+
+  <Match>
+    <!-- An absolute path to a ZooKeeper node is fine. -->
+    <Class name="org.kiji.schema.layout.impl.TableLayoutMonitor" />
+    <Bug pattern="DMI_HARDCODED_ABSOLUTE_FILENAME" />
+  </Match>
 </FindBugsFilter>

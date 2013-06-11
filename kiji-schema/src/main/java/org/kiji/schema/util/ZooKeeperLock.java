@@ -30,24 +30,25 @@ import com.google.common.base.Preconditions;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.KeeperException.NoNodeException;
-import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.ZooDefs.Ids;
-import org.apache.zookeeper.ZooKeeper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.RuntimeInterruptedException;
+import org.kiji.schema.layout.impl.ZooKeeperClient;
 
 /** Distributed lock on top of ZooKeeper. */
 @ApiAudience.Private
 public final class ZooKeeperLock implements Lock, Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperLock.class);
   private static final byte[] EMPTY = new byte[0];
+  private static final String LOCK_NAME_PREFIX = "lock-";
 
-  private final ZooKeeper mZooKeeper;
+  private final ZooKeeperClient mZKClient;
   private final File mLockDir;
   private final File mLockPathPrefix;
   private File mCreatedPath = null;
@@ -56,22 +57,20 @@ public final class ZooKeeperLock implements Lock, Closeable {
   /**
    * Constructs a ZooKeeper lock object.
    *
-   * @param zookeeper
-   *          ZooKeeper client.
-   * @param lockDir
-   *          Path of the directory node to use for the lock.
+   * @param zookeeper ZooKeeper client.
+   * @param lockDir Path of the directory node to use for the lock.
    */
-  public ZooKeeperLock(ZooKeeper zookeeper, File lockDir) {
-    this.mZooKeeper = zookeeper;
+  public ZooKeeperLock(ZooKeeperClient zookeeper, File lockDir) {
+    this.mZKClient = zookeeper;
     this.mLockDir = lockDir;
-    this.mLockPathPrefix = new File(lockDir, "lock-");
+    this.mLockPathPrefix = new File(lockDir,  LOCK_NAME_PREFIX);
   }
 
   /** Watches the lock directory node. */
   private class LockWatcher implements Watcher {
     @Override
     public void process(WatchedEvent event) {
-      LOG.debug(String.format("%s: received event", this));
+      LOG.debug("ZooKeeperLock.LockWatcher: received event {}", event);
       synchronized (ZooKeeperLock.this) {
         mPrecedingEvent = event;
         ZooKeeperLock.this.notifyAll();
@@ -93,71 +92,30 @@ public final class ZooKeeperLock implements Lock, Closeable {
   /** {@inheritDoc} */
   @Override
   public boolean lock(double timeout) throws IOException {
-    while (true) {
-      try {
-        return lockInternal(timeout);
-      } catch (InterruptedException ie) {
-        LOG.info(ie.toString());
-      } catch (KeeperException ke) {
-        throw new IOException(ke);
-      }
-    }
-  }
-
-  /**
-   * Creates a ZooKeeper node and all its parents, if necessary.
-   *
-   * @param zkClient ZooKeeper client.
-   * @param path ZooKeeper node path.
-   * @throws KeeperException on I/O error.
-   */
-  private static void createZKNodeRecursively(ZooKeeper zkClient, File path)
-      throws KeeperException {
-    if (path.getPath().equals("/")) {
-      return;
-    }
-    final File parent = path.getParentFile();
-    if (parent != null) {
-      createZKNodeRecursively(zkClient, parent);
-    }
-    while (true) {
-      try {
-        LOG.debug(String.format("Creating ZooKeeper node %s", path));
-        final File created = new File(zkClient.create(
-            path.toString(), EMPTY, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT));
-        Preconditions.checkState(created.equals(path));
-        return;
-      } catch (NodeExistsException exn) {
-        // Node already exists, ignore!
-        return;
-      } catch (InterruptedException ie) {
-        LOG.error(ie.toString());
-      }
+    try {
+      return lockInternal(timeout);
+    } catch (KeeperException ke) {
+      throw new IOException(ke);
     }
   }
 
   /**
    * Creates a ZooKeeper lock node.
    *
-   * @param zkClient ZooKeeper client.
    * @param path ZooKeeper lock node path prefix.
    * @return the created ZooKeeper lock node path.
    * @throws KeeperException on error.
    */
-  private static File createZKLockNode(ZooKeeper zkClient, File path) throws KeeperException {
+  private File createZKLockNode(File path) throws KeeperException {
     boolean parentCreated = false;
     while (true) {
       try {
-        return new File(zkClient.create(
-            path.toString(), EMPTY, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL));
+        return mZKClient.create(path, EMPTY, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
       } catch (NoNodeException nne) {
-        LOG.debug(nne.toString());
+        LOG.debug("Cannot create ZooKeeper lock node {}: parent node does not exist.", path);
         Preconditions.checkState(!parentCreated);  // creates the parent node at most once.
-        createZKNodeRecursively(zkClient, path.getParentFile());
+        mZKClient.createNodeRecursively(path.getParentFile());
         parentCreated = true;
-      } catch (InterruptedException ie) {
-        LOG.debug(ie.toString());
-        // Retry
       }
     }
   }
@@ -165,52 +123,47 @@ public final class ZooKeeperLock implements Lock, Closeable {
   /**
    * Acquires the lock.
    *
-   * @param timeout
-   *          Deadline, in seconds, to acquire the lock. 0 means no timeout.
+   * @param timeout Deadline, in seconds, to acquire the lock. 0 means no timeout.
    * @return whether the lock is acquired (ie. false means timeout).
-   * @throws InterruptedException on interruption.
    * @throws KeeperException on error.
    */
-  private boolean lockInternal(double timeout) throws InterruptedException, KeeperException {
+  private boolean lockInternal(double timeout) throws KeeperException {
     /** Absolute time deadline, in seconds since Epoch */
-    final double absoluteDeadline = (timeout > 0.0)
-        ? (System.currentTimeMillis() / 1000.0) + timeout
-        : 0.0;
+    final double absoluteDeadline = (timeout > 0.0) ? Time.now() + timeout : 0.0;
 
     File createdPath = null;
     synchronized (this) {
       Preconditions.checkState(null == mCreatedPath, mCreatedPath);
       // Queues for access to the lock:
-      createdPath = createZKLockNode(mZooKeeper, mLockPathPrefix);
+      createdPath = createZKLockNode(mLockPathPrefix);
       mCreatedPath = createdPath;
     }
-    LOG.debug(String.format("%s: queuing for lock with node %s", this, createdPath));
+    LOG.debug("{}: queuing for lock with node {}", this, createdPath);
 
     while (true) {
       try {
         // Do we own the lock already, or do we have to wait?
         final Set<String> childrenSet =
-            new TreeSet<String>(mZooKeeper.getChildren(mLockDir.toString(), false));
+            new TreeSet<String>(mZKClient.getChildren(mLockDir, null, null));
         final String[] children = childrenSet.toArray(new String[childrenSet.size()]);
-        LOG.debug(String.format("%s: lock queue: %s", this, childrenSet));
+        LOG.debug("{}: lock queue: {}", this, childrenSet);
 
         final int index = Arrays.binarySearch(children, createdPath.getName());
         if (index == 0) {
           // We own the lock:
-          LOG.debug(String.format("%s: lock acquired", this));
+          LOG.debug("{}: lock acquired", this);
           return true;
         } else { // index >= 1
           synchronized (this) {
             final File preceding = new File(mLockDir, children[index - 1]);
-            LOG.debug(String.format("%s: waiting for preceding node %s to disappear",
-                this, preceding));
-            if (mZooKeeper.exists(preceding.toString(), mLockWatcher) != null) {
+            LOG.debug("{}: waiting for preceding node {} to disappear", this, preceding);
+            if (mZKClient.exists(preceding, mLockWatcher) != null) {
               if (absoluteDeadline > 0.0) {
-                final double timeLeft = absoluteDeadline - (System.currentTimeMillis() / 1000.0);
+                final double timeLeft = absoluteDeadline - Time.now();
                 if (timeLeft <= 0) {
-                  LOG.debug(String.format("%s: out of time while acquiring lock, deleting %s",
-                      this, mCreatedPath));
-                  mZooKeeper.delete(mCreatedPath.toString(), -1); // -1 means any version
+                  LOG.debug("{}: out of time while acquiring lock, deleting {}",
+                      this, mCreatedPath);
+                  mZKClient.delete(mCreatedPath, -1); // -1 means any version
                   mCreatedPath = null;
                   return false;
                 }
@@ -221,14 +174,13 @@ public final class ZooKeeperLock implements Lock, Closeable {
               if ((mPrecedingEvent != null)
                   && (mPrecedingEvent.getType() == EventType.NodeDeleted)
                   && (index == 1)) {
-                LOG.debug(String.format("%s: lock acquired after %s disappeared",
-                    this, children[index - 1]));
+                LOG.debug("{}: lock acquired after {} disappeared", this, children[index - 1]);
               }
             }
           }
         }
       } catch (InterruptedException ie) {
-        LOG.info(String.format("%s: interrupted: %s", this, ie));
+        throw new RuntimeInterruptedException(ie);
       }
     }
   }
@@ -236,45 +188,36 @@ public final class ZooKeeperLock implements Lock, Closeable {
   /** {@inheritDoc} */
   @Override
   public void unlock() throws IOException {
-    while (true) {
-      try {
-        unlockInternal();
-        return;
-      } catch (InterruptedException ie) {
-        LOG.info(ie.toString());
-      } catch (KeeperException ke) {
-        throw new IOException(ke);
-      }
+    try {
+      unlockInternal();
+      return;
+    } catch (InterruptedException ie) {
+      throw new RuntimeInterruptedException(ie);
+    } catch (KeeperException ke) {
+      throw new IOException(ke);
     }
   }
 
   /**
-     * Releases the lock.
-     *
-     * @throws InterruptedException if the thread is interrupted.
-     * @throws KeeperException on error.
-     */
+   * Releases the lock.
+   *
+   * @throws InterruptedException if the thread is interrupted.
+   * @throws KeeperException on error.
+   */
   private void unlockInternal() throws InterruptedException, KeeperException {
     File pathToDelete = null;
     synchronized (this) {
       Preconditions.checkState(null != mCreatedPath, mCreatedPath);
       pathToDelete = mCreatedPath;
-      LOG.debug(String.format("Releasing lock: deleting %s", mCreatedPath));
+      LOG.debug("Releasing lock {}: deleting {}", this, mCreatedPath);
       mCreatedPath = null;
     }
-    mZooKeeper.delete(pathToDelete.toString(), -1); // -1 means any version
+    mZKClient.delete(pathToDelete, -1); // -1 means any version
   }
 
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    while (true) {
-      try {
-        this.mZooKeeper.close();
-        return;
-      } catch (InterruptedException ie) {
-        LOG.error(ie.toString());
-      }
-    }
+    this.mZKClient.close();
   }
 }

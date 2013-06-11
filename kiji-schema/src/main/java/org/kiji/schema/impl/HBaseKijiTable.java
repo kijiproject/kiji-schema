@@ -138,6 +138,10 @@ public final class HBaseKijiTable implements KijiTable {
       Configuration conf,
       HTableInterfaceFactory htableFactory)
       throws IOException {
+
+    // Table is not open unless constructor succeeds:
+    mIsOpen = new AtomicBoolean(false);
+
     mKiji = kiji;
     mName = name;
     mTableURI = KijiURI.newBuilder(mKiji.getURI()).withTableName(mName).build();
@@ -164,11 +168,11 @@ public final class HBaseKijiTable implements KijiTable {
       throw new RuntimeException("Invalid Row Key format found in Kiji Table");
     }
 
-    mIsOpen = new AtomicBoolean(true);
     mConstructorStack = CLEANUP_LOG.isDebugEnabled() ? Debug.getStackTrace() : null;
 
     // Retain the Kiji instance only if open succeeds:
     mKiji.retain();
+    mIsOpen.set(true);
   }
 
   /** {@inheritDoc} */

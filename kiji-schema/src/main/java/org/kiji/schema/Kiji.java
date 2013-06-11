@@ -152,6 +152,8 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
   /**
    * Gets the schema table for this Kiji instance.
    *
+   * <p> The schema table is owned by the Kiji instance : do not close it. </p>.
+   *
    * @return The kiji schema table.
    * @throws IOException If there is an error.
    */
@@ -160,6 +162,8 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
   /**
    * Gets the system table for this Kiji instance.
    *
+   * <p> The system table is owned by the Kiji instance : do not close it. </p>.
+   *
    * @return The kiji system table.
    * @throws IOException If there is an error.
    */
@@ -167,6 +171,8 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
 
   /**
    * Gets the meta table for this Kiji instance.
+   *
+   * <p> The meta table is owned by the Kiji instance : do not close it. </p>.
    *
    * @return The kiji meta table.
    * @throws IOException If there is an error.
