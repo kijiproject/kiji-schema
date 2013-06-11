@@ -44,13 +44,14 @@ import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
+import org.kiji.schema.layout.impl.CellEncoderProvider;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -67,15 +68,27 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   /** The column name translator to use. */
   private final ColumnNameTranslator mTranslator;
 
-  /**
+  /** Provider for cell encoders. */
+  private final CellEncoderProvider mCellEncoderProvider;
+
+    /**
    * Creates a non-buffered kiji table writer that sends modifications directly to Kiji.
    *
    * @param table A kiji table.
+   * @throws IOException
    */
   public HBaseKijiTableWriter(HBaseKijiTable table) {
     mTable = table;
-    mTable.retain();
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
+    try {
+      mCellEncoderProvider =
+          new CellEncoderProvider(mTable, DefaultKijiCellEncoderFactory.get());
+    } catch (IOException ioe) {
+      throw new KijiIOException(ioe);
+    }
+
+    // Retain the table only when everything succeeds.
+    mTable.retain();
   }
 
   /** {@inheritDoc} */
@@ -92,9 +105,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     final KijiColumnName columnName = new KijiColumnName(family, qualifier);
     final HBaseColumnName hbaseColumnName = mTranslator.toHBaseColumnName(columnName);
 
-    final CellSpec cellSpec = mTable.getLayout().getCellSpec(columnName)
-        .setSchemaTable(mTable.getKiji().getSchemaTable());
-    final KijiCellEncoder cellEncoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final KijiCellEncoder cellEncoder = mCellEncoderProvider.getEncoder(family, qualifier);
     final byte[] encoded = cellEncoder.encode(value);
 
     final Put put = new Put(entityId.getHBaseRowKey())

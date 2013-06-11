@@ -63,7 +63,7 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 @ApiAudience.Private
 public final class CellDecoderProvider {
 
-  /** Layout of the table for provide decoders for. */
+  /** Layout of the table to provide decoders for. */
   private final KijiTableLayout mLayout;
 
   /** Table to resolve Avro schemas. */

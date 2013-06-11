@@ -36,7 +36,7 @@ import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.impl.CellEncoderProvider;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 /**
@@ -66,6 +66,9 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** HBase column name translator. */
   private final ColumnNameTranslator mTranslator;
 
+  /** Provider for cell encoders. */
+  private final CellEncoderProvider mCellEncoderProvider;
+
   /** EntityId of the row to mutate atomically. */
   private EntityId mEntityId;
 
@@ -89,10 +92,14 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
    * @throws IOException in case of an error.
    */
   public HBaseAtomicKijiPutter(HBaseKijiTable table) throws IOException {
-    table.retain();
     mTable = table;
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
     mHTable = HBaseKijiTable.createHTableInterface(mTable);
+    mCellEncoderProvider =
+        new CellEncoderProvider(mTable, DefaultKijiCellEncoderFactory.get());
+
+    // Retain the table only when everything succeeds.
+    table.retain();
   }
 
   /** Resets the current transaction. */
@@ -148,9 +155,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
     final HBaseColumnName columnName = mTranslator.toHBaseColumnName(kijiColumnName);
 
-    final CellSpec cellSpec = mTable.getLayout().getCellSpec(kijiColumnName)
-        .setSchemaTable(mTable.getKiji().getSchemaTable());
-    final KijiCellEncoder cellEncoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final KijiCellEncoder cellEncoder = mCellEncoderProvider.getEncoder(family, qualifier);
     final byte[] encoded = cellEncoder.encode(value);
 
     for (KeyValue kv : mHopper) {
@@ -190,9 +195,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
     final HBaseColumnName columnName = mTranslator.toHBaseColumnName(kijiColumnName);
 
-    final CellSpec cellSpec = mTable.getLayout().getCellSpec(kijiColumnName)
-        .setSchemaTable(mTable.getKiji().getSchemaTable());
-    final KijiCellEncoder cellEncoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final KijiCellEncoder cellEncoder = mCellEncoderProvider.getEncoder(family, qualifier);
     final byte[] encoded = cellEncoder.encode(value);
 
     mHopper.add(new KeyValue(

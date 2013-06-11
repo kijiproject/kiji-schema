@@ -90,7 +90,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
     mCellDecoderProvider =
         new CellDecoderProvider(mTable, SpecificCellDecoderFactory.get(), layoutOverride);
 
-    // Retain the table only when everything succeeds:
+    // Retain the table only when everything succeeds.
     mTable.retain();
   }
 

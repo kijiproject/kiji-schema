@@ -53,9 +53,9 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
+import org.kiji.schema.layout.impl.CellEncoderProvider;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 
@@ -77,6 +77,9 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
   /** Column name translator to use. */
   private final ColumnNameTranslator mTranslator;
+
+  /** Provider for cell encoders. */
+  private final CellEncoderProvider mCellEncoderProvider;
 
   /** Local write buffers. */
   private Map<EntityId, Put> mPutBuffer = new HashMap<EntityId, Put>();
@@ -113,6 +116,8 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
       throw new KijiTableNotFoundException(table.getName());
     }
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
+    mCellEncoderProvider =
+        new CellEncoderProvider(mTable, DefaultKijiCellEncoderFactory.get());
 
     SchemaPlatformBridge.get().setAutoFlush(mHTable, false);
     // Retain the table only after everything else succeeded:
@@ -171,9 +176,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     final KijiColumnName columnName = new KijiColumnName(family, qualifier);
     final HBaseColumnName hbaseColumnName = mTranslator.toHBaseColumnName(columnName);
 
-    final CellSpec cellSpec = mTable.getLayout().getCellSpec(columnName)
-        .setSchemaTable(mTable.getKiji().getSchemaTable());
-    final KijiCellEncoder cellEncoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
+    final KijiCellEncoder cellEncoder = mCellEncoderProvider.getEncoder(family, qualifier);
     final byte[] encoded = cellEncoder.encode(value);
 
     updateBuffer(entityId, hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp,

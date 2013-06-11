@@ -28,11 +28,13 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.GenericCellDecoderFactory;
 import org.kiji.schema.KijiCellDecoderFactory;
+import org.kiji.schema.KijiCellEncoderFactory;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.util.JavaIdentifiers;
 
 /**
@@ -43,7 +45,8 @@ import org.kiji.schema.util.JavaIdentifiers;
  *   associates it with a schema table to resolve schema IDs or hashes.
  * </p>
  * <p> A CellSpec is constructed from a {@link KijiTableLayout}
- *    and is intended for a consumption by {@link KijiCellEncoder} and {@link KijiCellDecoder}.
+ *    and is intended for a consumption by {@link org.kiji.schema.KijiCellEncoder}
+ *    and {@link org.kiji.schema.KijiCellDecoder}.
  * </p>
  */
 @ApiAudience.Framework
@@ -64,6 +67,9 @@ public final class CellSpec {
 
   /** Factory for cell decoders (either specific or generic). */
   private KijiCellDecoderFactory mDecoderFactory = SpecificCellDecoderFactory.get();
+
+  /** Factory for cell encoders. */
+  private KijiCellEncoderFactory mEncoderFactory = DefaultKijiCellEncoderFactory.get();
 
   /**
    * Returns a new CellSpec for a counter cell.
@@ -245,6 +251,15 @@ public final class CellSpec {
   }
 
   /**
+   * Returns the schema table to resolve schema hashes or IDs.
+   *
+   * @return the schema table to resolve schema hashes or IDs.
+   */
+  public KijiSchemaTable getSchemaTable() {
+    return mSchemaTable;
+  }
+
+  /**
    * Sets the factory for cell decoders (either specific or generic).
    *
    * @param decoderFactory Factory for cell decoders (either specific or generic).
@@ -265,12 +280,23 @@ public final class CellSpec {
   }
 
   /**
-   * Returns the schema table to resolve schema hashes or IDs.
+   * Sets the factory for cell encoders.
    *
-   * @return the schema table to resolve schema hashes or IDs.
+   * @param encoderFactory Factory for cell encoders.
+   * @return this CellSpec.
    */
-  public KijiSchemaTable getSchemaTable() {
-    return mSchemaTable;
+  public CellSpec setEncoderFactory(KijiCellEncoderFactory encoderFactory) {
+    mEncoderFactory = encoderFactory;
+    return this;
+  }
+
+  /**
+   * Returns the factory for cell encoders to use for this column.
+   *
+   * @return the factory for cell encoders to use for this column.
+   */
+  public KijiCellEncoderFactory getEncoderFactory() {
+    return mEncoderFactory;
   }
 
   /**
