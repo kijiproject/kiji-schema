@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 import java.util.List;
 
@@ -99,5 +100,44 @@ public class TestKijiRowKeyComponents extends KijiClientTest {
         table.getEntityId("skimbleshanks", "mungojerrie", "rumpelteazer", 5, null),
         krkc.getEntityIdForTable(table));
     table.release();
+  }
+
+  @Test
+  public void testEquals() throws Exception {
+    KijiRowKeyComponents krkc1 = KijiRowKeyComponents.fromComponents(
+        "jennyanydots",
+        1,
+        null,
+        null);
+    KijiRowKeyComponents krkc2 = KijiRowKeyComponents.fromComponents(
+        "jennyanydots",
+        1,
+        null,
+        null);
+    KijiRowKeyComponents krkc3 = KijiRowKeyComponents.fromComponents(
+        "jennyanydots",
+        1,
+        null);
+    assertFalse(krkc1 == krkc2);
+    assertEquals(krkc1, krkc2);
+    assertFalse(krkc1.equals(krkc3));
+
+    // byte[] use a different code path.
+    byte[] bytes1 = new byte[]{47};
+    byte[] bytes2 = new byte[]{47};
+    assertFalse(bytes1.equals(bytes2));
+    KijiRowKeyComponents krkc4 = KijiRowKeyComponents.fromComponents(bytes1);
+    KijiRowKeyComponents krkc5 = KijiRowKeyComponents.fromComponents(bytes2);
+    assertEquals(krkc4, krkc5);
+  }
+
+  @Test
+  public void testHashCode() throws Exception {
+    byte[] bytes1 = new byte[]{47};
+    byte[] bytes2 = new byte[]{47};
+    assertFalse(bytes1.equals(bytes2));
+    KijiRowKeyComponents krkc1 = KijiRowKeyComponents.fromComponents(bytes1);
+    KijiRowKeyComponents krkc2 = KijiRowKeyComponents.fromComponents(bytes2);
+    assertEquals(krkc1.hashCode(), krkc2.hashCode());
   }
 }

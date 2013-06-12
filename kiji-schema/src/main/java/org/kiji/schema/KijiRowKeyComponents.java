@@ -83,6 +83,10 @@ public final class KijiRowKeyComponents {
     // into an EntityId, but putting them here helps the user see them at the time of creation.
     if (components[0] instanceof byte[]) {
       Preconditions.checkArgument(components.length == 1, "byte[] only valid as sole component.");
+      // We need to make a deep copy of the byte[] to ensure that a later mutation to the original
+      // byte[] doesn't confuse hash codes, etc.
+      byte[] original = (byte[])components[0];
+      return new KijiRowKeyComponents(new Object[]{Arrays.copyOf(original, original.length)});
     } else {
       boolean seenNull = false;
       for (int i = 0; i < components.length; i++) {
@@ -92,10 +96,13 @@ public final class KijiRowKeyComponents {
               "Kiji Row Keys cannot contain have a non-null component after a null component");
         } else {
           Object part = components[i];
-          Preconditions.checkArgument(
-              (part instanceof String) || (part instanceof Integer) || (part instanceof Long),
-              "Components must be of type String, Integer, or Long.");
-          seenNull = seenNull || (part == null);
+          if (part == null) {
+            seenNull = true;
+          } else {
+            Preconditions.checkArgument(
+                (part instanceof String) || (part instanceof Integer) || (part instanceof Long),
+                "Components must be of type String, Integer, or Long.");
+          }
         }
       }
     }
@@ -134,5 +141,25 @@ public final class KijiRowKeyComponents {
    */
   Object[] getComponents() {
     return mComponents;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int hashCode() {
+    return Arrays.deepHashCode(mComponents);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) {
+      return false;
+    }
+    if (!getClass().equals(obj.getClass())) {
+      return false;
+    }
+    final KijiRowKeyComponents krkc = (KijiRowKeyComponents)obj;
+
+    return Arrays.deepEquals(mComponents, krkc.mComponents);
   }
 }
