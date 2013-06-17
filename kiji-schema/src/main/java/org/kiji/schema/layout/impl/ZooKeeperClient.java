@@ -70,7 +70,7 @@ public class ZooKeeperClient {
     /** {@inheritDoc} */
     @Override
     public void process(WatchedEvent event) {
-      LOG.info("ZooKeeper client: process({})", event);
+      LOG.debug("ZooKeeper client: process({})", event);
 
       if (event.getType() != Event.EventType.None) {
         LOG.error("Unexpected event: {}", event);
@@ -84,7 +84,7 @@ public class ZooKeeperClient {
       switch (event.getState()) {
       case SyncConnected: {
         synchronized (ZooKeeperClient.this) {
-          LOG.info("ZooKeeper client session {} alive.", mZKClient.getSessionId());
+          LOG.debug("ZooKeeper client session {} alive.", mZKClient.getSessionId());
           ZooKeeperClient.this.notifyAll();
         }
         break;
@@ -181,7 +181,7 @@ public class ZooKeeperClient {
    */
   private ZooKeeper createZKClient() {
     try {
-      LOG.info("Creating ZooKeeper client for {}", mZKAddress);
+      LOG.debug("Creating ZooKeeper client for {}", mZKAddress);
       return new ZooKeeper(mZKAddress, mSessionTimeoutMS, new SessionWatcher());
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
@@ -280,14 +280,14 @@ public class ZooKeeperClient {
       } catch (InterruptedException ie) {
         throw new RuntimeInterruptedException(ie);
       } catch (ConnectionLossException ke) {
-        LOG.info("ZooKeeper connection lost.", ke);
+        LOG.debug("ZooKeeper connection lost.", ke);
       } catch (SessionExpiredException see) {
-        LOG.info("ZooKeeper session expired.", see);
+        LOG.debug("ZooKeeper session expired.", see);
       } catch (SessionMovedException sme) {
-        LOG.info("ZooKeeper session moved.", sme);
+        LOG.debug("ZooKeeper session moved.", sme);
       }
       Time.sleep(ZOOKEEPER_RETRY_DELAY);
-      LOG.info("Retrying create({}, {}, {}, {}).",
+      LOG.debug("Retrying create({}, {}, {}, {}).",
           path, Bytes.toStringBinary(data), acl, createMode);
     }
   }
@@ -307,14 +307,14 @@ public class ZooKeeperClient {
       } catch (InterruptedException ie) {
         throw new RuntimeInterruptedException(ie);
       } catch (ConnectionLossException ke) {
-        LOG.info("ZooKeeper connection lost.", ke);
+        LOG.debug("ZooKeeper connection lost.", ke);
       } catch (SessionExpiredException see) {
-        LOG.info("ZooKeeper session expired.", see);
+        LOG.debug("ZooKeeper session expired.", see);
       } catch (SessionMovedException sme) {
-        LOG.info("ZooKeeper session moved.", sme);
+        LOG.debug("ZooKeeper session moved.", sme);
       }
       Time.sleep(ZOOKEEPER_RETRY_DELAY);
-      LOG.info("Retrying exists({}).", path);
+      LOG.debug("Retrying exists({}).", path);
     }
   }
 
@@ -335,14 +335,14 @@ public class ZooKeeperClient {
       } catch (InterruptedException ie) {
         throw new RuntimeInterruptedException(ie);
       } catch (ConnectionLossException ke) {
-        LOG.info("ZooKeeper connection lost.", ke);
+        LOG.debug("ZooKeeper connection lost.", ke);
       } catch (SessionExpiredException see) {
-        LOG.info("ZooKeeper session expired.", see);
+        LOG.debug("ZooKeeper session expired.", see);
       } catch (SessionMovedException sme) {
-        LOG.info("ZooKeeper session moved.", sme);
+        LOG.debug("ZooKeeper session moved.", sme);
       }
       Time.sleep(ZOOKEEPER_RETRY_DELAY);
-      LOG.info("Retrying exists({}).", path);
+      LOG.debug("Retrying exists({}).", path);
     }
   }
 
@@ -365,14 +365,14 @@ public class ZooKeeperClient {
       } catch (InterruptedException ie) {
         throw new RuntimeInterruptedException(ie);
       } catch (ConnectionLossException ke) {
-        LOG.info("ZooKeeper connection lost.", ke);
+        LOG.debug("ZooKeeper connection lost.", ke);
       } catch (SessionExpiredException see) {
-        LOG.info("ZooKeeper session expired.", see);
+        LOG.debug("ZooKeeper session expired.", see);
       } catch (SessionMovedException sme) {
-        LOG.info("ZooKeeper session moved.", sme);
+        LOG.debug("ZooKeeper session moved.", sme);
       }
       Time.sleep(ZOOKEEPER_RETRY_DELAY);
-      LOG.info("Retrying getData({}).", path);
+      LOG.debug("Retrying getData({}).", path);
     }
   }
 
@@ -393,12 +393,12 @@ public class ZooKeeperClient {
       } catch (InterruptedException ie) {
         throw new RuntimeInterruptedException(ie);
       } catch (ConnectionLossException ke) {
-        LOG.info("ZooKeeper connection lost.", ke);
-        LOG.info("Retrying setData({}, {}, {}).", path, Bytes.toStringBinary(data), version);
+        LOG.debug("ZooKeeper connection lost.", ke);
+        LOG.debug("Retrying setData({}, {}, {}).", path, Bytes.toStringBinary(data), version);
       } catch (SessionExpiredException see) {
-        LOG.info("ZooKeeper session expired.", see);
+        LOG.debug("ZooKeeper session expired.", see);
       } catch (SessionMovedException sme) {
-        LOG.info("ZooKeeper session moved.", sme);
+        LOG.debug("ZooKeeper session moved.", sme);
       }
       Time.sleep(ZOOKEEPER_RETRY_DELAY);
     }
@@ -422,14 +422,14 @@ public class ZooKeeperClient {
       } catch (InterruptedException ie) {
         throw new RuntimeInterruptedException(ie);
       } catch (ConnectionLossException ke) {
-        LOG.info("ZooKeeper connection lost.", ke);
+        LOG.debug("ZooKeeper connection lost.", ke);
       } catch (SessionExpiredException see) {
-        LOG.info("ZooKeeper session expired.", see);
+        LOG.debug("ZooKeeper session expired.", see);
       } catch (SessionMovedException sme) {
-        LOG.info("ZooKeeper session moved.", sme);
+        LOG.debug("ZooKeeper session moved.", sme);
       }
       Time.sleep(ZOOKEEPER_RETRY_DELAY);
-      LOG.info("Retrying getChildren({}).", path);
+      LOG.debug("Retrying getChildren({}).", path);
     }
   }
 
@@ -449,14 +449,14 @@ public class ZooKeeperClient {
       } catch (InterruptedException ie) {
         throw new RuntimeInterruptedException(ie);
       } catch (ConnectionLossException ke) {
-        LOG.info("ZooKeeper connection lost.", ke);
+        LOG.debug("ZooKeeper connection lost.", ke);
       } catch (SessionExpiredException see) {
-        LOG.info("ZooKeeper session expired.", see);
+        LOG.debug("ZooKeeper session expired.", see);
       } catch (SessionMovedException sme) {
-        LOG.info("ZooKeeper session moved.", sme);
+        LOG.debug("ZooKeeper session moved.", sme);
       }
       Time.sleep(ZOOKEEPER_RETRY_DELAY);
-      LOG.info("Retrying delete({}, {}).", path, version);
+      LOG.debug("Retrying delete({}, {}).", path, version);
     }
   }
 
