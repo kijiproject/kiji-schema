@@ -166,10 +166,10 @@ final class FormattedEntityId extends EntityId {
       int krk = kijiRowKey.size();
       int fgc = format.getComponents().size();
       if (LOG.isDebugEnabled()) {
-        LOG.debug(String.format(
+        LOG.debug(
               "{} components found in {}, {} expected by row key format."
               + "The last {} components implicitly set to null",
-              krk, kijiRowKey.toString(), fgc, fgc - krk));
+              krk, kijiRowKey.toString(), fgc, fgc - krk);
       }
     }
     if (kijiRowKey.size() < format.getNullableStartIndex()) {
