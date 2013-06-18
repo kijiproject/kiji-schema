@@ -23,7 +23,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.zookeeper.CreateMode;
@@ -44,13 +46,14 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.RuntimeInterruptedException;
+import org.kiji.schema.util.ReferenceCountable;
 import org.kiji.schema.util.Time;
 
 /**
  * ZooKeeper client interface.
  */
 @ApiAudience.Private
-public class ZooKeeperClient {
+public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperClient.class);
 
   /** Empty byte array used to create ZooKeeper "directory" nodes. */
@@ -130,6 +133,9 @@ public class ZooKeeperClient {
   /** Set once the client is closed. */
   private final AtomicBoolean mClosed = new AtomicBoolean(false);
 
+  /** Represents the number of handles to this ZooKeeperClient. */
+  private final AtomicInteger mRetainCount;
+
   /**
    * Current ZooKeeper session client.
    *
@@ -147,18 +153,17 @@ public class ZooKeeperClient {
   // -----------------------------------------------------------------------------------------------
 
   /**
-   * Initializes a ZooKeeper client.
+   * Initializes a ZooKeeper client. The new ZooKeeperClient is returned with a retain count of one.
    *
    * @param zkAddress Address of the ZooKeeper quorum, as a comma-separated list of "host:port".
    * @param sessionTimeoutMS ZooKeeper session timeout, in milliseconds.
    *     If a session heart-beat fails for this much time, the ZooKeeper session is assumed dead.
    *     This is not a connection timeout.
-   * @throws IOException
-   * @throws KeeperException
    */
   public ZooKeeperClient(String zkAddress, int sessionTimeoutMS) {
     this.mZKAddress = zkAddress;
     this.mSessionTimeoutMS = sessionTimeoutMS;
+    this.mRetainCount = new AtomicInteger(1);
   }
 
   /**
@@ -234,10 +239,33 @@ public class ZooKeeperClient {
     return getZKClient(0.0);
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public ZooKeeperClient retain() {
+    final int counter = mRetainCount.getAndIncrement();
+    Preconditions.checkState(counter >= 1,
+        "Cannot retain closed ZooKeeperClient: %s retain counter was %s.",
+        toString(), counter);
+    return this;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void release() throws IOException {
+    final int counter = mRetainCount.decrementAndGet();
+    Preconditions.checkState(counter >= 0,
+        "Cannot release closed ZooKeeperClient: %s retain counter is now %s.",
+        toString(), counter);
+    if (counter == 0) {
+      close();
+    }
+  }
+
   /**
-   * Closes this ZooKeeper client.
+   * Closes this ZooKeeper client.  Should only be called by {@link #release()} or finalize if not
+   * released properly.
    */
-  public void close() {
+  private void close() {
     Preconditions.checkState(mOpened.get(), "Cannot close ZooKeeperClient that is not opened yet.");
     Preconditions.checkState(!mClosed.getAndSet(true),
         "Cannot close ZooKeeperClient multiple times.");
@@ -489,5 +517,27 @@ public class ZooKeeperClient {
         return;
       }
     }
+  }
+
+  /**
+   * Returns a string representation of this object.
+   * @return A string representation of this object.
+   */
+  public String toString() {
+    return Objects.toStringHelper(getClass())
+        .add("ZooKeeper_address", mZKAddress)
+        .add("Session_timeout_millis", mSessionTimeoutMS)
+        .add("Retain_count", mRetainCount.get())
+        .toString();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void finalize() throws Throwable {
+    if (mRetainCount != null && mRetainCount.get() != 0) {
+      LOG.warn("Finalizing retained ZooKeeperClient, use ZooKeeperClient.release().");
+      close();
+    }
+    super.finalize();
   }
 }

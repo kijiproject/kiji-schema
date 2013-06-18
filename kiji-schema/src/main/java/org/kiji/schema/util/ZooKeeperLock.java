@@ -64,6 +64,8 @@ public final class ZooKeeperLock implements Lock, Closeable {
     this.mZKClient = zookeeper;
     this.mLockDir = lockDir;
     this.mLockPathPrefix = new File(lockDir,  LOCK_NAME_PREFIX);
+    // ZooKeeperClient.retain() should be the last line of the constructor.
+    this.mZKClient.retain();
   }
 
   /** Watches the lock directory node. */
@@ -218,6 +220,6 @@ public final class ZooKeeperLock implements Lock, Closeable {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    this.mZKClient.close();
+    this.mZKClient.release();
   }
 }

@@ -170,13 +170,16 @@ public final class TableLayoutMonitor implements Closeable {
   public TableLayoutMonitor(ZooKeeperClient zkClient) throws KeeperException {
     this.mZKClient = zkClient;
     this.mZKClient.createNodeRecursively(ROOT_ZOOKEEPER_PATH);
+    // ZooKeeperClient.retain() should be the last line of the constructor.
+    this.mZKClient.retain();
   }
 
   /**
    * Closes the monitor.
+   * @throws IOException in case of an error closing the underlying ZooKeeper connection.
    */
-  public void close() {
-    this.mZKClient.close();
+  public void close() throws IOException {
+    this.mZKClient.release();
   }
 
   /**

@@ -37,8 +37,8 @@ public class TestZooKeeperLock extends ZooKeeperTest {
   public void testZooKeeperLock() throws Exception {
     final File lockDir = new File("/lock");
     final ZooKeeperClient zkClient = new ZooKeeperClient(getZKAddress(), 60000);
-    zkClient.open();
     try {
+      zkClient.open();
       final AtomicInteger counter = new AtomicInteger(0);
 
       final ZooKeeperLock lock1 = new ZooKeeperLock(zkClient, lockDir);
@@ -60,6 +60,7 @@ public class TestZooKeeperLock extends ZooKeeperTest {
             lock2.lock();
             counter.incrementAndGet();
             lock2.unlock();
+            lock2.close();
             counter.incrementAndGet();
           } catch (Exception exn) {
             throw new KijiIOException(exn);
@@ -72,12 +73,13 @@ public class TestZooKeeperLock extends ZooKeeperTest {
         Time.sleep(0.1);  // I hate it, but I can't think anything simpler for now.
       }
       lock1.unlock();
+      lock1.close();
 
       thread.join();
       assertEquals(5, counter.get());
 
     } finally {
-      zkClient.close();
+      zkClient.release();
     }
   }
 }

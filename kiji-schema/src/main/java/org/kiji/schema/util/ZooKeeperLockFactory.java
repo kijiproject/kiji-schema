@@ -97,7 +97,12 @@ public final class ZooKeeperLockFactory implements LockFactory {
   @Override
   public Lock create(String name) {
     try {
-      return new ZooKeeperLock(newZooKeeper(mZKAddress), new File(name));
+      final ZooKeeperClient client = newZooKeeper(mZKAddress);
+      try {
+        return new ZooKeeperLock(client, new File(name));
+      } finally {
+        client.release();
+      }
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }

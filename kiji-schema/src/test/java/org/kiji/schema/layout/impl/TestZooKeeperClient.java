@@ -39,8 +39,8 @@ public class TestZooKeeperClient extends ZooKeeperTest {
     final String zkAddr = String.format("localhost:%d", getZKCluster().getClientPort());
 
     final ZooKeeperClient client = new ZooKeeperClient(zkAddr, 10 * 1000);
-    client.open();
     try {
+      client.open();
       client.getZKClient(1.0);
       LOG.debug("Got a live ZooKeeper client.");
 
@@ -68,7 +68,7 @@ public class TestZooKeeperClient extends ZooKeeperTest {
       Assert.assertEquals(0, client.exists(new File("/a/b/c/d/e/f")).getVersion());
 
     } finally {
-      client.close();
+      client.release();
     }
   }
 }

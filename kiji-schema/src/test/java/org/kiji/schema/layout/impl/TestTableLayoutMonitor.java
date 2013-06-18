@@ -41,47 +41,51 @@ public class TestTableLayoutMonitor extends ZooKeeperTest {
   @Test
   public void testTableLayoutMonitor() throws Exception {
     final ZooKeeperClient zkClient = new ZooKeeperClient(getZKAddress(), 60 * 1000);
-    zkClient.open();
+    try {
+      zkClient.open();
 
-    final TableLayoutMonitor monitor = new TableLayoutMonitor(zkClient);
-    final KijiURI tableURI =
-        KijiURI.newBuilder(String.format("kiji://%s/kiji_instance/table_name", getZKAddress()))
-        .build();
+      final TableLayoutMonitor monitor = new TableLayoutMonitor(zkClient);
+      final KijiURI tableURI =
+          KijiURI.newBuilder(String.format("kiji://%s/kiji_instance/table_name", getZKAddress()))
+          .build();
 
-    monitor.notifyNewTableLayout(tableURI, Bytes.toBytes("layout.v1"), -1);
+      monitor.notifyNewTableLayout(tableURI, Bytes.toBytes("layout.v1"), -1);
 
-    final List<String> layouts = Lists.newArrayList();
-    final Object lock = new Object();
+      final List<String> layouts = Lists.newArrayList();
+      final Object lock = new Object();
 
-    final LayoutTracker layoutTracker = monitor.newTableLayoutTracker(
-        tableURI,
-        new LayoutUpdateHandler() {
-          /** {@inheritDoc} */
-          @Override
-          public void update(byte[] layout) {
-            synchronized (lock) {
-              layouts.add(Bytes.toString(layout));
-              lock.notifyAll();
+      final LayoutTracker layoutTracker = monitor.newTableLayoutTracker(
+          tableURI,
+          new LayoutUpdateHandler() {
+            /** {@inheritDoc} */
+            @Override
+            public void update(byte[] layout) {
+              synchronized (lock) {
+                layouts.add(Bytes.toString(layout));
+                lock.notifyAll();
+              }
             }
-          }
-        });
+          });
 
-    synchronized (lock) {
-      layoutTracker.open();
-      lock.wait(10 * 1000);
+      synchronized (lock) {
+        layoutTracker.open();
+        lock.wait(10 * 1000);
+      }
+
+      Assert.assertEquals(1, layouts.size());
+      Assert.assertEquals("layout.v1", layouts.get(0));
+
+      synchronized (lock) {
+        monitor.notifyNewTableLayout(tableURI, Bytes.toBytes("layout.v2"), -1);
+        lock.wait(10 * 1000);
+      }
+      Assert.assertEquals(2, layouts.size());
+      Assert.assertEquals("layout.v2", layouts.get(1));
+
+      monitor.close();
+    } finally {
+      zkClient.release();
     }
-
-    Assert.assertEquals(1, layouts.size());
-    Assert.assertEquals("layout.v1", layouts.get(0));
-
-    synchronized (lock) {
-      monitor.notifyNewTableLayout(tableURI, Bytes.toBytes("layout.v2"), -1);
-      lock.wait(10 * 1000);
-    }
-    Assert.assertEquals(2, layouts.size());
-    Assert.assertEquals("layout.v2", layouts.get(1));
-
-    monitor.close();
   }
 
 }
