@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -1552,7 +1553,7 @@ public final class KijiTableLayout {
 
       // Final schema cannot change:
       if ((reference.getStorage() == SchemaStorage.FINAL)
-          && (!schema.getValue().equals(reference.getValue()))) {
+          && !Objects.equal(schema.getValue(), reference.getValue())) {
         throw new InvalidLayoutException(String.format(
             "Final column schema cannot be modified from %s to %s.",
             reference, schema));

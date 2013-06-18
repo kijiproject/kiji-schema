@@ -27,6 +27,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 
 import com.google.common.collect.Lists;
@@ -1473,5 +1474,19 @@ public class TestKijiTableLayout {
       assertEquals("Names should begin with a letter followed by a combination of letters, numbers "
           + "and underscores.", ile.getMessage());
     }
+  }
+
+  /**
+   * Check that a table layout containing a counter can be updated without failing
+   * KijiTableLayout#validateCellSchema.
+   * Here we update a layout containing a counter cell with itself.
+   *
+   * @throws IOException if table layout cannot be created.
+   */
+  @Test
+  public void validateCounters() throws IOException {
+    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.COUNTER_TEST);
+    // No exceptions should be thrown when the layout is updated.
+    KijiTableLayout.createUpdatedLayout(layout.getDesc(), layout);
   }
 }
