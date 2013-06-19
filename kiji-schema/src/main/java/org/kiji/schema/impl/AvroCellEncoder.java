@@ -53,25 +53,6 @@ import org.kiji.schema.util.BytesKey;
 @ApiAudience.Private
 public final class AvroCellEncoder implements KijiCellEncoder {
 
-  /** Name of the system property to control schema validation. */
-  public static final String SCHEMA_VALIDATION =
-      "org.kiji.schema.impl.AvroCellEncoder.SCHEMA_VALIDATION";
-
-  /** Schema validation policies, until AVRO-1315 is available. */
-  private enum SchemaValidation {
-    DISABLED,
-    STRICT
-  }
-
-  /**
-   * Reports the schema validation policy.
-   *
-   * @return the schema validation policy.
-   */
-  private static SchemaValidation getSchemaValidation() {
-    return SchemaValidation.valueOf(System.getProperty(SCHEMA_VALIDATION, "STRICT"));
-  }
-
   /** Specification of the column to encode. */
   private final CellSpec mCellSpec;
 
@@ -217,68 +198,6 @@ public final class AvroCellEncoder implements KijiCellEncoder {
     return encode(cell.getData());
   }
 
-  /**
-   * Simplistic validation of Avro schema, until Avro provides a better one.
-   *
-   * <p>
-   *   This is a terribly inaccurate method to validate reader/writer schemas.
-   *   Until we have properly defined reader schemas and schema validation,
-   *   this attempts to provide an overly restrictive safe default.
-   *
-   *   Concretely, this allows no evolution: writer and reader schemas must match exactly.
-   * </p>
-   *
-   * @param readerSchema Reader schema configured for the column.
-   * @param writerSchema Writer schema of the data being written to the column.
-   * @throws KijiEncodingException if the validation fails.
-   */
-  private void validate(Schema readerSchema, Schema writerSchema) {
-    if (readerSchema.getType() == writerSchema.getType()) {
-      switch (readerSchema.getType()) {
-      case RECORD: {
-        // Overly restrictive for now, but safe, until we can provide safe evolution:
-        if (!readerSchema.equals(writerSchema)) {
-          throw new KijiEncodingException(String.format(
-              "Incompatible reader/writer schema: reader=%s writer=%s",
-              readerSchema, writerSchema));
-        }
-        break;
-      }
-      case ARRAY: {
-        validate(readerSchema.getElementType(), writerSchema.getElementType());
-        break;
-      }
-      case MAP: {
-        validate(readerSchema.getValueType(), writerSchema.getValueType());
-        break;
-      }
-      default: {
-        // Overly restrictive for now, but safe, until we can provide safe evolution:
-        if (!readerSchema.equals(writerSchema)) {
-          throw new KijiEncodingException(String.format(
-              "Incompatible reader/writer schema: reader=%s writer=%s",
-              readerSchema, writerSchema));
-        }
-      }
-      }
-    } else {
-      switch (readerSchema.getType()) {
-      case RECORD:
-        throw new KijiEncodingException(String.format(
-          "Incompatible reader/writer schema: reader=%s writer=%s",
-          readerSchema, writerSchema));
-      default: {
-        // Overly restrictive for now, but safe, until we can provide safe evolution:
-        if (!readerSchema.equals(writerSchema)) {
-          throw new KijiEncodingException(String.format(
-              "Incompatible reader/writer schema: reader=%s writer=%s",
-              readerSchema, writerSchema));
-        }
-      }
-      }
-    }
-  }
-
   /** {@inheritDoc} */
   @Override
   public synchronized <T> byte[] encode(T cellValue) throws IOException {
@@ -287,18 +206,8 @@ public final class AvroCellEncoder implements KijiCellEncoder {
         (cellValue instanceof GenericContainer)
         ? ((GenericContainer) cellValue).getSchema()
         : mReaderSchema;
-    // TODO(SCHEMA-326): reader schema should always be defined, independently of writer schemas:
-    final Schema readerSchema = (mReaderSchema != null) ? mReaderSchema : writerSchema;
-    // TODO(SCHEMA-326): Validate writer schema thoroughly against the actual reader schema.
-    switch (getSchemaValidation()) {
-    case DISABLED:
-      break;
-    case STRICT:
-      validate(readerSchema, writerSchema);
-      break;
-    default:
-      throw new RuntimeException("Invalid schema validation policy: " + getSchemaValidation());
-    }
+
+    // TODO(SCHEMA-401): Validate writer schema thoroughly against the actual reader schema.
 
     // Encode the Avro schema (if necessary):
     mSchemaEncoder.encode(writerSchema);

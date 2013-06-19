@@ -25,13 +25,10 @@ import static org.junit.Assert.assertTrue;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
 import org.apache.avro.AvroTypeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.hadoop.hbase.HConstants;
-import org.codehaus.jackson.node.IntNode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -311,53 +308,6 @@ public class TestReaderSchema extends KijiClientTest {
 
     } finally {
       reader.close();
-    }
-  }
-
-  /**
-   * Decode using the writer schema.
-   *
-   * TODO(SCHEMA-326): Validate using writer schemas properly once we can write different schemas.
-   */
-  @Test
-  public void testDecodeWriterSchema() throws Exception {
-    final EntityId eid = mTable.getEntityId("eid");
-
-    // Writing records with different schemas is not allowed for now,
-    // until we have proper validation:
-
-    final TestRecord1 record1 = TestRecord1.newBuilder().setInteger(1).build();
-
-    // Create a generic record with a schema compatible with TestRecord3, but different:
-    final Schema schema3 = Schema.createRecord("TestRecord3", null, "org.kiji.schema.avro", false);
-    schema3.setFields(Lists.newArrayList(
-        new Schema.Field("integer", Schema.create(Schema.Type.INT), null, new IntNode(-1))));
-    final GenericData.Record record3 = new GenericRecordBuilder(schema3)
-        .build();
-
-    final KijiTableWriter writer = mTable.openTableWriter();
-    try {
-      // Write different records in the same column to test reading with the writer schemas:
-
-      // Try writing a TestRecord1:
-      try {
-        writer.put(eid, "family", "records", 1L, record1);
-        Assert.fail("Should not be allowed to write Record1 in place of Record3");
-      } catch (KijiEncodingException kee) {
-        // Expected for now:
-        assertTrue(kee.getMessage().contains("Incompatible reader/writer schema"));
-      }
-
-      // Try writing a generic record (similar to TestRecord1, but named 'TestRecord3'):
-      try {
-        writer.put(eid, "family", "records", 1L, record3);
-        Assert.fail("Should not be allowed to write generic record in place of Record3");
-      } catch (KijiEncodingException kee) {
-        // Expected for now:
-        assertTrue(kee.getMessage().contains("Incompatible reader/writer schema"));
-      }
-    } finally {
-      writer.close();
     }
   }
 
