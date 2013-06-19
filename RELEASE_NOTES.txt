@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.1.0
+  * SCHEMA-429. Kiji command line now asks the user to type in the instance or
+      table name when uninstalling or deleting them.
   * SCHEMA-405. Adds KijiRowKeyComponents, a way to specify the components
       of a Kiji row key independent of a RowKeyFormat. May be converted into
       an EntityId, given a KijiTable or EntityIdFactory.

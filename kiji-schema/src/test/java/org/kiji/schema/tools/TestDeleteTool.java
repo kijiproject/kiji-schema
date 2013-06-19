@@ -23,7 +23,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.PrintStream;
 
 import com.google.common.collect.Lists;
@@ -62,9 +64,15 @@ public class TestDeleteTool extends KijiClientTest {
   private String mToolOutputStr;
 
   private int runTool(BaseTool tool, String...arguments) throws Exception {
+    return runToolWithInput(tool, "", arguments);
+  }
+
+  private int runToolWithInput(BaseTool tool, String input, String... arguments) throws Exception {
     mToolOutputBytes.reset();
     final PrintStream pstream = new PrintStream(mToolOutputBytes);
     tool.setPrintStream(pstream);
+    final InputStream istream = new ByteArrayInputStream(input.getBytes());
+    tool.setInputStream(istream);
     tool.setConf(getConf());
     try {
       LOG.info("Running tool: '{}' with parameters {}", tool.getName(), arguments);
@@ -261,5 +269,41 @@ public class TestDeleteTool extends KijiClientTest {
         mReader.get(mTable.getEntityId("row-1"), kdr);
     assertEquals(1, rowAfter.getValues("family", "column").size());
     assertEquals(315L, (long) rowAfter.getValues("family", "column").firstKey());
+  }
+
+  @Test
+  public void testInteractiveWithWrongInstanceInput() throws Exception {
+    final KijiURI target = mTable.getKiji().getURI();
+    assertEquals(BaseTool.FAILURE, runToolWithInput(new DeleteTool(),
+        "wrongtable",
+        "--target=" + target
+    ));
+  }
+
+  @Test
+  public void testInteractiveWithTableInput() throws Exception {
+    final KijiURI target = mTable.getURI();
+    assertEquals(BaseTool.SUCCESS, runToolWithInput(new DeleteTool(),
+        "table",
+        "--target=" + target
+    ));
+  }
+
+  @Test
+  public void testInteractiveWithWrongTableInput() throws Exception {
+    final KijiURI target = mTable.getURI();
+    assertEquals(BaseTool.FAILURE, runToolWithInput(new DeleteTool(),
+        "wrongtable",
+        "--target=" + target
+    ));
+  }
+
+  @Test
+  public void testNoninteractiveTableDelete() throws Exception {
+    final KijiURI target = mTable.getURI();
+    assertEquals(BaseTool.SUCCESS, runTool(new DeleteTool(),
+        "--target=" + target,
+        "--interactive=false"
+    ));
   }
 }

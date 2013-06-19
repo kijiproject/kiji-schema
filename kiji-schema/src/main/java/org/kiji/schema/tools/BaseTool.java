@@ -21,13 +21,13 @@ package org.kiji.schema.tools;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.regex.Pattern;
 
 import com.google.common.base.Preconditions;
-
 import org.apache.hadoop.conf.Configured;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,9 +70,18 @@ import org.kiji.schema.KijiNotInstalledException;
 @Inheritance.Extensible
 public abstract class BaseTool extends Configured implements KijiTool {
   private static final Logger LOG = LoggerFactory.getLogger(BaseTool.class);
-  /** Used when prompting the user for feedback. */
+
+  /** Pattern use for yes responses.  Matches 'y' or 'yes'. */
   private static final Pattern YES_PATTERN = Pattern.compile("y|yes", Pattern.CASE_INSENSITIVE);
+
+  /** Pattern use for no responses.  Matches 'n' or 'no' */
   private static final Pattern NO_PATTERN = Pattern.compile("n|no", Pattern.CASE_INSENSITIVE);
+
+  /** Generic hint asking for a yes or no response. */
+  private static final String YES_OR_NO_HINT = "Please answer yes or no.";
+
+  /** Matches all input strings.  Used for failure to match for a specific user input.*/
+  private static final Pattern ALL_PATTERN = Pattern.compile(".*");
 
   @Flag(name="debug", usage="Enables more verbose error messages.")
   private boolean mDebugFlag = false;
@@ -86,6 +95,9 @@ public abstract class BaseTool extends Configured implements KijiTool {
 
   /** The print stream to write to. */
   private PrintStream mPrintStream;
+
+  /** The input stream to read from. */
+  private InputStream mInputStream;
 
   /** Success tool exit code. */
   public static final int SUCCESS = 0;
@@ -103,26 +115,66 @@ public abstract class BaseTool extends Configured implements KijiTool {
    * non-interactive mode, an IllegalStateException is thrown.
    *
    * @param question The question to which a yes or no is expected in response.
-   * @return <code>true</code> if the user answer yes, <code>false</code> if  the user answered no.
+   * @return <code>true</code> if the user answer yes, <code>false</code> if the user answered no.
    * @throws IOException if there is a problem reading from the terminal.
    */
   protected final boolean yesNoPrompt(String question) throws IOException {
+    return confirmationPrompt(question, YES_OR_NO_HINT, YES_PATTERN, NO_PATTERN);
+  }
+
+  /**
+   * Prompts the user to specifically type in a specified user string for a specified question
+   * and reports the result. This is primarily used for dangerous operations such as deleting or
+   * uninstalling a Kiji table or instance.  If inputConfirmation is called in non-interactive
+   * mode, an IllegalStateException is thrown.
+   *
+   * @param question The question to which the user is expected to respond to.
+   * @param confirm The requested input(such as instance or table name) to validate against.
+   * @return <code>true</code> if the string was entered successfully, <code>false</code> if not.
+   * @throws IOException if there is a problem reading from the terminal.
+   */
+  protected final boolean inputConfirmation(String question, String confirm) throws IOException {
+    String hint = String.format("Type '%s' without the quotes to confirm(or nothing to cancel):",
+        confirm);
+    Pattern confirmPattern = Pattern.compile(Pattern.quote(confirm), Pattern.CASE_INSENSITIVE);
+    return confirmationPrompt(question, hint, confirmPattern, ALL_PATTERN);
+  }
+
+  /**
+   * Prompts a user with a question and a hint, and returns a boolean for whether the user matched
+   * the confirm or the deny portion.  Used by {@link #yesNoPrompt} and {@link #inputConfirmation}.
+   *
+   * @param question The question that the user is expected to respond to.
+   * @param hint describing what the expected answer is.
+   * @param confirmPattern Pattern that is matched against for returning <code>true</code>.
+   * @param denyPattern Pattern that is matched against for returning <code>false</code>.
+   * @return <code>true</code> if the confirm pattern matched successfully, <code>false</code>
+   *   if the deny pattern matched.
+   * @throws IOException if there is a problem reading from the terminal.
+   */
+  private boolean confirmationPrompt(String question,
+                                     String hint,
+                                     Pattern confirmPattern,
+                                     Pattern denyPattern)
+      throws IOException {
     Preconditions.checkState(mInteractiveFlag);
-    BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, "UTF-8"));
+    BufferedReader reader = new BufferedReader(new InputStreamReader(getInputStream(), "UTF-8"));
     Boolean yesOrNo = null;
     try {
       while (yesOrNo == null) {
         getPrintStream().println(question);
-        getPrintStream().println("Please answer yes or no.");
+        if (null != hint) {
+          getPrintStream().println(hint);
+        }
         String response = reader.readLine();
         if (null == response) {
           throw new RuntimeException("Reached end of stream when reading yes or no response from "
               + "console!");
         }
         response = response.trim();
-        if (YES_PATTERN.matcher(response).matches()) {
+        if (confirmPattern.matcher(response).matches()) {
           yesOrNo = true;
-        } else if (NO_PATTERN.matcher(response).matches()) {
+        } else if (denyPattern.matcher(response).matches()) {
           yesOrNo = false;
         }
       }
@@ -269,6 +321,33 @@ public abstract class BaseTool extends Configured implements KijiTool {
       mPrintStream = printStream;
     } else {
       getPrintStream().println("Printstream is already set.");
+    }
+  }
+
+  /**
+   * The input stream the tool should be reading from.
+   * If no input stream is set, returns System.in
+   *
+   * @return The input stream the tool should read from.
+   */
+  public InputStream getInputStream() {
+    if (null == mInputStream) {
+      mInputStream = System.in;
+    }
+    return mInputStream;
+  }
+
+  /**
+   * Set the input stream the tool should read from.  If you don't set it,
+   * it will default to STDIN.
+   *
+   * @param inputStream The input stream to use.
+   */
+  public void setInputStream(InputStream inputStream) {
+    if (null == mInputStream) {
+      mInputStream = inputStream;
+    } else {
+      getPrintStream().println("Inputstream is already set.");
     }
   }
 

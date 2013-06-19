@@ -288,10 +288,11 @@ public final class DeleteTool extends BaseTool {
    * @throws Exception on error.
    */
   private int deleteTable(Kiji kiji, KijiURI tableURI) throws Exception {
-    if (isInteractive() && !yesNoPrompt(String.format(
-        "Are you sure you want to delete Kiji table '%s'?", tableURI))) {
+    if (isInteractive() && !inputConfirmation(
+        String.format("Are you sure you want to delete Kiji table '%s'?", tableURI),
+        tableURI.getTable())) {
       getPrintStream().println("Delete aborted.");
-      return SUCCESS;
+      return FAILURE;
     }
     kiji.deleteTable(tableURI.getTable());
     getPrintStream().println(String.format("Kiji table '%s' deleted.", tableURI));
@@ -306,10 +307,17 @@ public final class DeleteTool extends BaseTool {
    * @throws Exception on error.
    */
   private int deleteInstance(KijiURI instanceURI) throws Exception {
-    if (isInteractive() && !yesNoPrompt(String.format(
-        "Are you sure you want to delete Kiji instance '%s'?", instanceURI))) {
+    final Kiji kiji = Kiji.Factory.open(instanceURI, getConf());
+    getPrintStream().println("WARNING: This instance contains the table(s):");
+    for (String name : kiji.getTableNames()) {
+      getPrintStream().println(name);
+    }
+
+    if (isInteractive() && !inputConfirmation(
+        String.format("Are you sure you want to delete Kiji instance '%s'?", instanceURI),
+        instanceURI.getInstance())) {
       getPrintStream().println("Delete aborted.");
-      return SUCCESS;
+      return FAILURE;
     }
     KijiInstaller.get().uninstall(instanceURI, getConf());
     getPrintStream().println(String.format("Kiji instance '%s' deleted.", instanceURI));

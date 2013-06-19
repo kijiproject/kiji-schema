@@ -27,6 +27,7 @@ import com.google.common.base.Preconditions;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.KConstants;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiInvalidNameException;
 import org.kiji.schema.KijiNotInstalledException;
@@ -78,11 +79,17 @@ public final class UninstallTool extends BaseTool {
   protected int run(List<String> nonFlagArgs) throws Exception {
     getPrintStream().println("Deleting kiji instance: " + mKijiURI.toString());
     if (isInteractive())  {
+      final Kiji kiji = Kiji.Factory.open(mKijiURI, getConf());
+      getPrintStream().println("WARNING: This instance contains the table(s):");
+      for (String name : kiji.getTableNames()) {
+        getPrintStream().println(name);
+      }
+
       getPrintStream().println();
-      if (!yesNoPrompt("Are you sure? This action will delete all meta and user data "
-          + "from hbase and cannot be undone!")) {
+      if (!inputConfirmation("Are you sure? This action will delete all meta and user data "
+          + "from hbase and cannot be undone!", mKijiURI.getInstance())) {
         getPrintStream().println("Delete aborted.");
-        return SUCCESS;
+        return FAILURE;
       }
     }
     try {
