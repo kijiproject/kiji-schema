@@ -595,7 +595,7 @@ public final class KijiTableLayout {
 
       /** @return the Avro descriptor for this family. */
       public FamilyDesc getDesc() {
-        return mDesc;
+        return FamilyDesc.newBuilder(mDesc).build();
       }
 
       /** @return the primary name for the family. */
@@ -836,7 +836,7 @@ public final class KijiTableLayout {
 
     /** @return the Avro descriptor for this locality group. */
     public LocalityGroupDesc getDesc() {
-      return mDesc;
+      return LocalityGroupDesc.newBuilder(mDesc).build();
     }
 
     /** @return the locality group primary name. */
@@ -1287,7 +1287,7 @@ public final class KijiTableLayout {
 
   /** @return the Avro descriptor for this table layout. */
   public TableLayoutDesc getDesc() {
-    return mDesc;
+    return TableLayoutDesc.newBuilder(mDesc).build();
   }
 
   /** @return the table name. */
