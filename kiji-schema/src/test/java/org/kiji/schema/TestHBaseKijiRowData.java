@@ -50,6 +50,7 @@ import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.Node;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.impl.HBaseKijiRowData;
@@ -814,6 +815,39 @@ public class TestHBaseKijiRowData extends KijiClientTest {
       assertEquals("getMostRecentCell should return a null cell from empty rowdata.",
           null,
           cell);
+
+    } finally {
+      reader.close();
+    }
+  }
+
+  /** Tests that reading an entire family with a column that has been deleted works. */
+  @Test
+  public void testReadDeletedColumns() throws Exception {
+    new InstanceBuilder(getKiji())
+        .withTable(mTable)
+            .withRow("row1")
+              .withFamily("family")
+                  .withQualifier("qual0").withValue(1L, "string1")
+                  .withQualifier("qual0").withValue(2L, "string2")
+        .build();
+
+    final TableLayoutDesc update =
+        KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST_WITH_QUAL0_REMOVED);
+    update.setReferenceLayout(mTable.getLayout().getDesc().getLayoutId());
+    getKiji().modifyTableLayout(update);
+
+    mTable.release();
+    mTable = (HBaseKijiTable) getKiji().openTable(TABLE_NAME);
+
+    final KijiDataRequest dataRequest = KijiDataRequest.builder()
+        .addColumns(ColumnsDef.create().addFamily("family"))
+        .build();
+
+    final KijiTableReader reader = mTable.openTableReader();
+    try {
+      final KijiRowData row1 = reader.get(mTable.getEntityId("row1"), dataRequest);
+      assertTrue(row1.getValues("family", "qual0").isEmpty());
 
     } finally {
       reader.close();

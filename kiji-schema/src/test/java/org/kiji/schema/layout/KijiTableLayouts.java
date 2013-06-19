@@ -117,6 +117,9 @@ public final class KijiTableLayouts {
   public static final String ROW_DATA_TEST =
       "org/kiji/schema/layout/row-data-test.json";
 
+  public static final String ROW_DATA_TEST_WITH_QUAL0_REMOVED =
+      "org/kiji/schema/layout/row-data-test-with-qual0-removed.json";
+
   /** Layout to test sqoop export map. */
   public static final String SQOOP_EXPORT_MAP_TEST =
       "org/kiji/schema/layout/sqoop-export-map-test.json";

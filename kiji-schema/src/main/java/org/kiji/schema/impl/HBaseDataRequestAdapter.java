@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.NavigableSet;
 
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
@@ -33,6 +34,7 @@ import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
+import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.HBaseEntityId;
+import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.NoSuchColumnException;
@@ -47,6 +50,7 @@ import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.hbase.HBaseScanOptions;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 /**
@@ -145,9 +149,17 @@ public class HBaseDataRequestAdapter {
   public Get toGet(EntityId entityId, KijiTableLayout tableLayout)
       throws IOException {
 
+    final ColumnNameTranslator columnTranslator = new ColumnNameTranslator(tableLayout);
+
+    // Context to translate user Kiji filters into HBase filters:
+    final KijiColumnFilter.Context filterContext =
+        new NameTranslatingFilterContext(columnTranslator);
+
+    // Get request we are building and returning:
     final Get get = new Get(entityId.getHBaseRowKey());
-    FilterList filterList = new FilterList(FilterList.Operator.MUST_PASS_ONE);
-    ColumnNameTranslator columnTranslator = new ColumnNameTranslator(tableLayout);
+
+    // Filters for each requested column: OR(<filter-for-column-1>, <filter-for-column2>, ...)
+    final FilterList columnFilters = new FilterList(FilterList.Operator.MUST_PASS_ONE);
 
     // There's a shortcoming in the HBase API that doesn't allow us to specify per-column
     // filters for timestamp ranges and max versions.  We need to generate a request that
@@ -162,54 +174,102 @@ public class HBaseDataRequestAdapter {
     // Fortunately, although we may retrieve more versions per column than we need from HBase, we
     // can still honor the user's requested maxVersions when returning the versions in
     // HBaseKijiRowData.
+
+    // Largest of the max-versions from all the requested columns.
+    // Columns with paging are excluded (max-versions does not make sense when paging):
     int largestMaxVersions = 1;
+
     // If every column is paged, we should add a keyonly filter to a single column, so we can have
     // access to entityIds in our KijiRowData that is constructed.
     boolean completelyPaged = mKijiDataRequest.isPagingEnabled() ? true : false;
+
     for (KijiDataRequest.Column columnRequest : mKijiDataRequest.getColumns()) {
+      final KijiColumnName kijiColumnName = columnRequest.getColumnName();
+      final HBaseColumnName hbaseColumnName = columnTranslator.toHBaseColumnName(kijiColumnName);
+
       if (!columnRequest.isPagingEnabled()) {
         completelyPaged = false;
-        KijiColumnName kijiColumnName = columnRequest.getColumnName();
-        HBaseColumnName hbaseColumnName = columnTranslator.toHBaseColumnName(kijiColumnName);
-        if (!kijiColumnName.isFullyQualified()) {
-          // The request is for all column in a Kiji family.
-          get.addFamily(hbaseColumnName.getFamily());
-        } else {
-          // Calls to Get.addColumn() will invalidate any previous calls to Get.addFamily(),
-          // so we only do it if:
-          //   1. No data from the family has been added to the request yet, OR
-          //   2. Only specific columns from the family have been requested so far.
-          if (!get.getFamilyMap().containsKey(hbaseColumnName.getFamily())
-              || null != get.getFamilyMap().get(hbaseColumnName.getFamily())) {
-            get.addColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier());
-          }
-        }
-        filterList.addFilter(toFilter(columnRequest, columnTranslator, tableLayout));
+
+        // Do not include max-versions from columns with paging enabled:
         largestMaxVersions = Math.max(largestMaxVersions, columnRequest.getMaxVersions());
+      }
+
+      if (kijiColumnName.isFullyQualified()) {
+        // Requests a fully-qualified column.
+        // Adds this column to the Get request, and also as a filter.
+        //
+        // Filters are required here because we might end up requesting all cells from the
+        // HBase family (ie. from the Kiji locality group), if a map-type family from that
+        // locality group is also requested.
+        addColumn(get, hbaseColumnName);
+        columnFilters.addFilter(toFilter(columnRequest, hbaseColumnName, filterContext));
+
+      } else {
+        final FamilyLayout fLayout = tableLayout.getFamilyMap().get(kijiColumnName.getFamily());
+        if (fLayout.isGroupType()) {
+          // Requests all columns in a Kiji group-type family.
+          // Expand the family request into individual column requests:
+          for (String qualifier : fLayout.getColumnMap().keySet()) {
+            final KijiColumnName fqKijiColumnName =
+                new KijiColumnName(kijiColumnName.getFamily(), qualifier);
+            final HBaseColumnName fqHBaseColumnName =
+                columnTranslator.toHBaseColumnName(fqKijiColumnName);
+            addColumn(get, fqHBaseColumnName);
+            columnFilters.addFilter(toFilter(columnRequest, fqHBaseColumnName, filterContext));
+          }
+
+        } else if (fLayout.isMapType()) {
+          // Requests all columns in a Kiji map-type family.
+          // We need to request all columns in the HBase family (ie. in the Kiji locality group)
+          // and add a column prefix-filter to select only the columns from that Kiji family:
+          get.addFamily(hbaseColumnName.getFamily());
+          columnFilters.addFilter(toFilter(columnRequest, hbaseColumnName, filterContext));
+
+        } else {
+          throw new InternalKijiError("Family is neither group-type nor map-type");
+        }
       }
     }
 
     if (completelyPaged) {
-      // If every column in our data request is paged, we should construct a get that reuqests
-      // the least possible amount from each row.
-      KijiDataRequest.Column sampleColumnRequest = mKijiDataRequest.getColumns().iterator().next();
-      KijiColumnName kijiColumnName = sampleColumnRequest.getColumnName();
-      HBaseColumnName hbaseColumnName = columnTranslator.toHBaseColumnName(kijiColumnName);
-      if (!kijiColumnName.isFullyQualified()) {
-        get.addFamily(hbaseColumnName.getFamily());
-      } else {
-        get.addColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier());
-      }
-      // If our data request has paging enabled on every column, we need to artificially construct a
-      // Get, so that we have access to the entityId for each row. This will be used to construct
-      // a KijiRowData.
-      filterList.addFilter(new FirstKeyOnlyFilter());
-      largestMaxVersions = sampleColumnRequest.getMaxVersions();
+      // All requested columns have paging enabled.
+      Preconditions.checkState(largestMaxVersions == 1);
+
+      // We just need to know whether a row has data in at least one of the requested columns.
+      // Stop at the first valid key using AND(columnFilters, FirstKeyOnlyFilter):
+      get.setFilter(new FilterList(
+          FilterList.Operator.MUST_PASS_ALL, columnFilters, new FirstKeyOnlyFilter()));
+    } else {
+      get.setFilter(columnFilters);
     }
 
-    get.setFilter(filterList);
-    get.setTimeRange(mKijiDataRequest.getMinTimestamp(), mKijiDataRequest.getMaxTimestamp());
-    get.setMaxVersions(largestMaxVersions);
+    return get
+        .setTimeRange(mKijiDataRequest.getMinTimestamp(), mKijiDataRequest.getMaxTimestamp())
+        .setMaxVersions(largestMaxVersions);
+  }
+
+  /**
+   * Adds a fully-qualified column to an HBase Get request, if necessary.
+   *
+   * <p>
+   *   If the entire HBase family is already requested, the column does not need to be added.
+   * </p>
+   *
+   * @param get Adds the column to this Get request.
+   * @param column Fully-qualified HBase column to add to the Get request.
+   * @return the Get request.
+   */
+  private static Get addColumn(Get get, HBaseColumnName column) {
+    // Calls to Get.addColumn() invalidate previous calls to Get.addFamily(),
+    // so we only do it if:
+    //   1. No data from the family has been added to the request yet,
+    // OR
+    //   2. Only specific columns from the family have been requested so far.
+    // Note: the Get family-map uses null values to indicate requests for an entire HBase family.
+    if (!get.familySet().contains(column.getFamily())
+        || (get.getFamilyMap().get(column.getFamily()) != null)) {
+      get.addColumn(column.getFamily(), column.getQualifier());
+    }
     return get;
   }
 
@@ -238,59 +298,77 @@ public class HBaseDataRequestAdapter {
    * data in a given Kiji column request.
    *
    * @param columnRequest A kiji column request.
-   * @param columnNameTranslator A column name translator.
-   * @param tableLayout A kiji table
+   * @param hbaseColumnName HBase column name.
+   * @param filterContext Context to translate Kiji column filters to HBase filters.
    * @return An HBase filter that retrieves only the data for the column request.
    * @throws IOException If there is an error.
    */
-  private Filter toFilter(
+  private static Filter toFilter(
       KijiDataRequest.Column columnRequest,
-      ColumnNameTranslator columnNameTranslator,
-      KijiTableLayout tableLayout) throws IOException {
+      HBaseColumnName hbaseColumnName,
+      KijiColumnFilter.Context filterContext)
+      throws IOException {
 
-    KijiColumnName kijiColumnName = columnRequest.getColumnName();
-    HBaseColumnName hbaseColumnName = columnNameTranslator.toHBaseColumnName(kijiColumnName);
+    final KijiColumnName kijiColumnName = columnRequest.getColumnName();
 
-    // Build up the filter we'll return from this method.
-    FilterList requestFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
+    // Builds an HBase filter for the specified column:
+    //     (HBase-family = Kiji-locality-group)
+    // AND (HBase-qualifier = Kiji-family:qualifier / prefixed by Kiji-family:)
+    // AND (ColumnPaginationFilter(limit=1))  // when paging or if max-versions is 1
+    // AND (custom user filter)
+    // AND (KeyOnlyFilter)  // only when paging
+    final FilterList filter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
 
-    // Only read cells from this locality group.
-    Filter localityGroupFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
-        new BinaryComparator(hbaseColumnName.getFamily()));
-    requestFilter.addFilter(localityGroupFilter);
+    // Only let cells from the locality-group (ie. HBase family) the column belongs to, ie:
+    //     HBase-family = Kiji-locality-group
+    filter.addFilter(
+        new FamilyFilter(
+            CompareFilter.CompareOp.EQUAL,
+            new BinaryComparator(hbaseColumnName.getFamily())));
 
-    if (!kijiColumnName.isFullyQualified()) {
-      // Allow all cells from this Kiji family.
-      Filter mapPrefixFilter = new ColumnPrefixFilter(hbaseColumnName.getQualifier());
-      requestFilter.addFilter(mapPrefixFilter);
+    if (kijiColumnName.isFullyQualified()) {
+      // Only let cells from the fully-qualified column ie.:
+      //     HBase-qualifier = Kiji-family:qualifier
+      filter.addFilter(
+          new QualifierFilter(
+              CompareFilter.CompareOp.EQUAL,
+              new BinaryComparator(hbaseColumnName.getQualifier())));
     } else {
-      // Allow cells only from this Kiji family:qualifier.
-      Filter qualifierFilter = new QualifierFilter(CompareFilter.CompareOp.EQUAL,
-          new BinaryComparator(hbaseColumnName.getQualifier()));
-      requestFilter.addFilter(qualifierFilter);
+      // Only let cells from the map-type family ie.:
+      //     HBase-qualifier starts with "Kiji-family:"
+      filter.addFilter(new ColumnPrefixFilter(hbaseColumnName.getQualifier()));
     }
 
-    if (kijiColumnName.isFullyQualified() && !columnRequest.isPagingEnabled()
-        && columnRequest.getMaxVersions() == 1) {
+    if (columnRequest.isPagingEnabled()
+        || (kijiColumnName.isFullyQualified() && (columnRequest.getMaxVersions() == 1))) {
       // For fully qualified columns where maxVersions = 1, we can use the
       // ColumnPaginationFilter to restrict the number of versions returned to at most 1.
-      // (Other columns' maxVersions will be filtered client-side in HBaseKijiRowData.)
+      //
+      // Other columns' maxVersions will be filtered client-side in HBaseKijiRowData.
+      //
       // Prior to HBase 0.94, we could use this optimization for all fully qualified
       // columns' maxVersions requests, due to different behavior in the
       // ColumnPaginationFilter.
-      requestFilter.addFilter(new ColumnPaginationFilter(1, 0));
+      //
+      // Note: we could also use this for a map-type family if max-versions == 1,
+      //     by setting limit = Integer.MAX_VALUE.
+      final int limit = 1;
+      final int offset = 0;
+      filter.addFilter(new ColumnPaginationFilter(limit, offset));
     }
 
-    // Also add the user-specified column filter if requested.
-    KijiColumnFilter userColumnFilter = columnRequest.getFilter();
-    if (null != userColumnFilter) {
-
-      Filter hBaseFilter = userColumnFilter.toHBaseFilter(kijiColumnName,
-          new NameTranslatingFilterContext(columnNameTranslator));
-      requestFilter.addFilter(hBaseFilter);
+    // Add the optional user-specified column filter, if specified:
+    if (columnRequest.getFilter() != null) {
+      filter.addFilter(
+          columnRequest.getFilter().toHBaseFilter(kijiColumnName, filterContext));
     }
 
-    return requestFilter;
+    // If column has paging enabled, we just want to know about the existence of a cell:
+    if (columnRequest.isPagingEnabled()) {
+      filter.addFilter(new KeyOnlyFilter());
+    }
+
+    return filter;
   }
 
   /**

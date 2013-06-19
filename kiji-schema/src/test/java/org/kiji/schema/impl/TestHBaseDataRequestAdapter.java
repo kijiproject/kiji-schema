@@ -39,14 +39,21 @@ import org.junit.Test;
 
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder;
+import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
+import org.kiji.schema.KijiRowData;
+import org.kiji.schema.KijiRowScanner;
+import org.kiji.schema.KijiTable;
+import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
+import org.kiji.schema.util.InstanceBuilder;
 
 public class TestHBaseDataRequestAdapter extends KijiClientTest {
   private KijiTableLayout mTableLayout;
@@ -184,5 +191,260 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
     HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(request);
     assertFalse(
         hbaseDataRequest.toGet(mEntityIdFactory.getEntityId("entity"), mTableLayout).hasFamilies());
+  }
+
+  /**
+   * Tests that combining column requests with different max-versions works properly.
+   * This test focuses on the case where one column has max-versions == 1,
+   * which relies on the ColumnPagingFilter.
+   *
+   * No paging involved in this test.
+   */
+  @Test
+  public void testMaxVersionsEqualsOne() throws Exception {
+    final Kiji kiji = new InstanceBuilder(getKiji())
+        .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST))
+            .withRow("row0")
+                .withFamily("family")
+                    .withQualifier("qual0")
+                        .withValue(1L, "value-1")
+                        .withValue(2L, "value-2")
+                        .withValue(3L, "value-3")
+                    .withQualifier("qual1")
+                        .withValue(1L, "value-1")
+                        .withValue(2L, "value-2")
+                        .withValue(3L, "value-3")
+                    .withQualifier("qual2")
+                        .withValue(1L, "value-1")
+                        .withValue(2L, "value-2")
+                        .withValue(3L, "value-3")
+        .build();
+
+    final KijiTable table = kiji.openTable("row_data_test_table");
+    try {
+      final KijiTableReader reader = table.openTableReader();
+      try {
+        final KijiDataRequest dataRequest = KijiDataRequest.builder()
+            .addColumns(ColumnsDef.create()
+                .withMaxVersions(1)
+                .add("family", "qual0"))
+            .addColumns(ColumnsDef.create()
+                .withMaxVersions(2)
+                .add("family", "qual1"))
+            .addColumns(ColumnsDef.create()
+                .withMaxVersions(3)
+                .add("family", "qual2"))
+            .build();
+        final KijiRowData row = reader.get(table.getEntityId("row0"), dataRequest);
+        assertEquals(1, row.getValues("family", "qual0").size());
+        assertEquals(2, row.getValues("family", "qual1").size());
+        assertEquals(3, row.getValues("family", "qual2").size());
+      } finally {
+        reader.close();
+      }
+    } finally {
+      table.release();
+    }
+  }
+
+  /**
+   * Tests that requesting an entire group-type family properly expands to all declared columns.
+   */
+  @Test
+  public void testExpandGroupTypeFamily() throws Exception {
+    final Kiji kiji = new InstanceBuilder(getKiji())
+        .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST))
+            .withRow("row0")
+                .withFamily("family")
+                    .withQualifier("qual0")
+                        .withValue(1L, "value")
+                    .withQualifier("qual1")
+                        .withValue(1L, "value")
+        .build();
+
+    final KijiTable table = kiji.openTable("row_data_test_table");
+    try {
+      final KijiTableReader reader = table.openTableReader();
+      try {
+        final KijiDataRequest dataRequest = KijiDataRequest.builder()
+            .addColumns(ColumnsDef.create()
+                .addFamily("family"))
+            .build();
+        final KijiRowData row = reader.get(table.getEntityId("row0"), dataRequest);
+        assertEquals(1, row.getValues("family", "qual0").size());
+        assertEquals(1, row.getValues("family", "qual1").size());
+      } finally {
+        reader.close();
+      }
+    } finally {
+      table.release();
+    }
+  }
+
+  /**
+   * Test a partially paged data request.
+   * Ensures that combining data requests with paged and non-paged columns work.
+   */
+  @Test
+  public void testScanPartiallyPaged() throws Exception {
+    final Kiji kiji = new InstanceBuilder(getKiji())
+        .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST))
+            .withRow("row0")
+                .withFamily("family")
+                    .withQualifier("qual0")
+                        .withValue("value0")
+                .withFamily("map")
+                    .withQualifier("int0")
+                        .withValue(0)
+            .withRow("row1")
+                .withFamily("family")
+                    .withQualifier("qual0")
+                        .withValue("value1")
+            .withRow("row2")
+                .withFamily("map")
+                    .withQualifier("int2")
+                        .withValue(2)
+            .withRow("row3")
+                .withFamily("family")
+                    .withQualifier("qual1")
+                        .withValue("value1")
+        .build();
+
+    final KijiTable table = kiji.openTable("row_data_test_table");
+    try {
+      final KijiTableReader reader = table.openTableReader();
+      try {
+        final KijiDataRequest dataRequest = KijiDataRequest.builder()
+            .addColumns(ColumnsDef.create()
+                .add("family", "qual0"))
+            .addColumns(ColumnsDef.create()
+                .withPageSize(1)
+                .addFamily("map"))
+            .build();
+        final KijiRowScanner scanner = reader.getScanner(dataRequest);
+        try {
+          int nrows = 0;
+          for (KijiRowData row : scanner) {
+            // All rows but "row3" should be scanned through:
+            assertFalse(row.getEntityId().getComponentByIndex(0).equals("row3"));
+            nrows += 1;
+          }
+          assertEquals(3, nrows);
+        } finally {
+          scanner.close();
+        }
+      } finally {
+        reader.close();
+      }
+    } finally {
+      table.release();
+    }
+  }
+
+  /**
+   * Tests a fully paged data request on fully-qualified columns.
+   *
+   * Scanning through rows with paging enabled returns rows where the only cells are visible
+   * through paging (ie. the Result returned by the scanner would theoretically be empty).
+   */
+  @Test
+  public void testScanCompletelyPaged() throws Exception {
+    final Kiji kiji = new InstanceBuilder(getKiji())
+        .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST))
+            .withRow("row0")
+                .withFamily("family")
+                    .withQualifier("qual0")
+                        .withValue("value0")
+            .withRow("row1")
+                .withFamily("family")
+                    .withQualifier("qual1")
+                        .withValue("value1")
+            .withRow("row2")
+                .withFamily("family")
+                    .withQualifier("qual2")
+                        .withValue("value2")
+        .build();
+
+    final KijiTable table = kiji.openTable("row_data_test_table");
+    try {
+      final KijiTableReader reader = table.openTableReader();
+      try {
+        final KijiDataRequest dataRequest = KijiDataRequest.builder()
+            .addColumns(ColumnsDef.create()
+                .withPageSize(1)
+                .add("family", "qual0")
+                .add("family", "qual1"))
+            .build();
+        final KijiRowScanner scanner = reader.getScanner(dataRequest);
+        try {
+          int nrows = 0;
+          for (KijiRowData row : scanner) {
+            // All rows but "row2" should be scanned through:
+            assertFalse(row.getEntityId().getComponentByIndex(0).equals("row2"));
+            nrows += 1;
+          }
+          assertEquals(2, nrows);
+        } finally {
+          scanner.close();
+        }
+      } finally {
+        reader.close();
+      }
+    } finally {
+      table.release();
+    }
+  }
+
+  /**
+   * Tests a fully paged data request on a map-type family.
+   *
+   * Scanning through rows with paging enabled returns rows where the only cells are visible
+   * through paging (ie. the Result returned by the scanner would theoretically be empty).
+   */
+  @Test
+  public void testScanCompletelyPagedMapFamily() throws Exception {
+    final Kiji kiji = new InstanceBuilder(getKiji())
+        .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST))
+            .withRow("row0")
+                .withFamily("map")
+                    .withQualifier("qual")
+                        .withValue(314)
+            .withRow("row1")
+                .withFamily("map")
+                    .withQualifier("qual")
+                        .withValue(314)
+            .withRow("row2")
+                .withFamily("family")
+                    .withQualifier("qual2")
+                        .withValue("value2")
+        .build();
+
+    final KijiTable table = kiji.openTable("row_data_test_table");
+    try {
+      final KijiTableReader reader = table.openTableReader();
+      try {
+        final KijiDataRequest dataRequest = KijiDataRequest.builder()
+            .addColumns(ColumnsDef.create()
+                .withPageSize(1)
+                .addFamily("map"))
+            .build();
+        final KijiRowScanner scanner = reader.getScanner(dataRequest);
+        try {
+          int nrows = 0;
+          for (KijiRowData row : scanner) {
+            // All rows but "row2" should be scanned through:
+            assertFalse(row.getEntityId().getComponentByIndex(0).equals("row2"));
+            nrows += 1;
+          }
+          assertEquals(2, nrows);
+        } finally {
+          scanner.close();
+        }
+      } finally {
+        reader.close();
+      }
+    } finally {
+      table.release();
+    }
   }
 }
