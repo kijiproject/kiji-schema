@@ -3,6 +3,8 @@
                               Kiji Schema Release Notes
 
 Version 1.1.0
+  * SCHEMA-434. Fixes a race condition in ZooKeeperClient which might cause
+      a NPE when closing a Kiji instance.
   * SCHEMA-429. Kiji command line now asks the user to type in the instance or
       table name when uninstalling or deleting them.
   * SCHEMA-405. Adds KijiRowKeyComponents, a way to specify the components

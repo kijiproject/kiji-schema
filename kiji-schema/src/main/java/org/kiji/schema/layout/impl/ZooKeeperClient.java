@@ -87,7 +87,11 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
       switch (event.getState()) {
       case SyncConnected: {
         synchronized (ZooKeeperClient.this) {
-          LOG.debug("ZooKeeper client session {} alive.", mZKClient.getSessionId());
+          if (mClosed.get()) {
+            LOG.debug("ZooKeeper client session alive notification received after close().");
+          } else {
+            LOG.debug("ZooKeeper client session {} alive.", mZKClient.getSessionId());
+          }
           ZooKeeperClient.this.notifyAll();
         }
         break;
@@ -105,7 +109,7 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
           LOG.debug("ZooKeeper client session {} died.", mZKClient.getSessionId());
           Preconditions.checkState(mOpened.get());
           if (!mClosed.get()) {
-            mZKClient = createZKClient();
+            createZKClient();
           } else {
             LOG.debug("ZooKeeperClient closed, not reopening ZooKeeper session.");
           }
@@ -173,7 +177,7 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
     Preconditions.checkState(!mOpened.getAndSet(true),
         "Cannot open ZooKeeperClient multiple times.");
     Preconditions.checkState(mZKClient == null);
-    mZKClient = createZKClient();
+    createZKClient();
   }
 
   /**
@@ -181,13 +185,12 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
    *
    * <p> This returns immediately, but the ZooKeeper session is established asynchronously. </p>
    *
-   * @return a new ZooKeeper session client.
    * @throws KijiIOException on I/O error.
    */
-  private ZooKeeper createZKClient() {
+  private synchronized void createZKClient() {
     try {
       LOG.debug("Creating ZooKeeper client for {}", mZKAddress);
-      return new ZooKeeper(mZKAddress, mSessionTimeoutMS, new SessionWatcher());
+      mZKClient = new ZooKeeper(mZKAddress, mSessionTimeoutMS, new SessionWatcher());
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
