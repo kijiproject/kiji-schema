@@ -1472,6 +1472,8 @@ public final class KijiTableLayout {
    */
   public static Schema readAvroSchema(CellSchema avro) throws InvalidLayoutException {
     switch (avro.getType()) {
+    case AVRO:
+      return null;
     case INLINE:
       try {
         return new Schema.Parser().parse(avro.getValue());
