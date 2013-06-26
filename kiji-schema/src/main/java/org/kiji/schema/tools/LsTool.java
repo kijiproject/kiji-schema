@@ -190,7 +190,7 @@ public final class LsTool extends BaseTool {
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     if (nonFlagArgs.isEmpty()) {
-      nonFlagArgs.add(KConstants.DEFAULT_INSTANCE_URI);
+      nonFlagArgs.add(KConstants.DEFAULT_HBASE_URI);
     }
 
     int status = SUCCESS;
