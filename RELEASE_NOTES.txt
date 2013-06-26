@@ -2,6 +2,10 @@
 
                               Kiji Schema Release Notes
 
+Version 1.1.1
+  * SCHEMA-433. Kiji ls now defaults to listing kiji instances if not arguement 
+      is given.
+
 Version 1.1.0
   * SCHEMA-434. Fixes a race condition in ZooKeeperClient which might cause
       a NPE when closing a Kiji instance.
