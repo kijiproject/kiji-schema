@@ -69,7 +69,7 @@ import org.kiji.schema.platform.SchemaPlatformBridge;
 public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiBufferedWriter.class);
 
-  /** Underlying HTableInterface used by this writer. */
+  /** Underlying dedicated HTableInterface used by this writer. Owned by this writer. */
   private final HTableInterface mHTable;
 
   /** KijiTable this writer is attached to. */
@@ -433,6 +433,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     flush();
     Preconditions.checkState(mIsOpen.getAndSet(false),
         "HBaseKijiBufferWriter for %s is closed already.", mTable.getURI());
+    mHTable.close();
     mTable.release();
   }
 
