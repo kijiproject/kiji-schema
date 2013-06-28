@@ -40,6 +40,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiMetaTable;
+import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiRowKeySplitter;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiSystemTable;
@@ -98,10 +99,10 @@ public final class HBaseKiji implements Kiji {
   private HBaseMetaTable mMetaTable;
 
   /** Whether the kiji instance is open. */
-  private AtomicBoolean mIsOpen;
+  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
 
   /** Retain counter. When decreased to 0, the HBase Kiji may be closed and disposed of. */
-  private AtomicInteger mRetainCount = new AtomicInteger(1);
+  private final AtomicInteger mRetainCount = new AtomicInteger(0);
 
   /**
    * String representation of the call stack at the time this object is constructed.
@@ -175,15 +176,13 @@ public final class HBaseKiji implements Kiji {
     // Check for an instance name.
     Preconditions.checkNotNull(mURI.getInstance(), "An instance name must be specified when "
         + "opening a Kiji instance");
-    LOG.debug(String.format("Opening kiji instance '%s'", mURI));
+    LOG.debug("Opening Kiji instance '{}'.", mURI);
 
     // Load these lazily.
     mSchemaTable = null;
     mSystemTable = null;
     mMetaTable = null;
     mAdmin = null;
-
-    mIsOpen = new AtomicBoolean(true);
 
     // Validate configuration settings.
     Preconditions.checkArgument(
@@ -194,16 +193,31 @@ public final class HBaseKiji implements Kiji {
             + "use HBaseConfiguration.create().",
             mURI));
 
-    if (validateVersion) {
-      // Make sure the data version for the client matches the cluster.
-      LOG.debug("Validating version...");
-      VersionInfo.validateVersion(this);
-    }
+    mIsOpen.set(true);
+    LOG.debug("Opened Kiji instance '{}'.", mURI);
 
     if (CLEANUP_LOG.isDebugEnabled()) {
       mConstructorStack = Debug.getStackTrace();
     }
-    LOG.debug("Opened.");
+
+    if (validateVersion) {
+      // Make sure the data version for the client matches the cluster.
+      LOG.debug("Validating version...");
+      try {
+        VersionInfo.validateVersion(this);
+      } catch (IOException ioe) {
+        // If an IOException occurred the object will not be constructed so need
+        // to clean it up.
+        close();
+        throw ioe;
+      } catch (KijiNotInstalledException kie) {
+        // Some clients handle this unchecked Exception so do the same here.
+        close();
+        throw kie;
+      }
+    }
+
+    mRetainCount.set(1);
   }
 
   /** {@inheritDoc} */

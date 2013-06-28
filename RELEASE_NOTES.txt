@@ -3,8 +3,11 @@
                               Kiji Schema Release Notes
 
 Version 1.1.1
-  * SCHEMA-433. Kiji ls now defaults to listing Kiji instances if no argument 
+  * SCHEMA-433. Kiji ls now defaults to listing Kiji instances if no argument
       is given.
+  * SCHEMA-440. An IOException or KijiNotInstalledException occuring during the
+      instantiation of an HBaseKiji instance no longer leads to retained reference
+      count warnings once the JVM garbage collects.
 
 Version 1.1.0
   * SCHEMA-434. Fixes a race condition in ZooKeeperClient which might cause

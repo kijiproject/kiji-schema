@@ -130,7 +130,7 @@ public final class VersionInfo {
    * <p>The instance format describes the layout of the global metadata state of
    * a Kiji instance.</p>
    *
-   * @param kiji The kiji instance.
+   * @param kiji An open kiji instance.
    * @return A parsed version of the storage format protocol version string.
    * @throws IOException on I/O error.
    */
@@ -155,7 +155,7 @@ public final class VersionInfo {
    * <p>For the definition of compatibility used in this method, see {@link
    * #isKijiVersionCompatible}</p>
    *
-   * @param kiji The kiji instance.
+   * @param kiji An open kiji instance.
    * @throws IOException on I/O error reading the data version from the cluster,
    *     or throws IncompatibleKijiVersionException if the installed instance format version
    *     is incompatible with the version supported by the client.
@@ -183,7 +183,7 @@ public final class VersionInfo {
    * format version of <tt>kiji-1.0</tt>. This is treated as an alias for <tt>system-1.0</tt>.
    * No other versions associated with the <tt>"kiji"</tt> protocol are supported.</p>
    *
-   * @param kiji the kiji instance.
+   * @param kiji An open kiji instance.
    * @throws IOException on I/O error reading the Kiji version from the system.
    * @return true if the installed instance format
    *     version is compatible with this client, false otherwise.
