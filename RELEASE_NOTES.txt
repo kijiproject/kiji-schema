@@ -3,7 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.1.1
-  * SCHEMA-433. Kiji ls now defaults to listing kiji instances if not arguement 
+  * SCHEMA-433. Kiji ls now defaults to listing Kiji instances if no argument 
       is given.
 
 Version 1.1.0
