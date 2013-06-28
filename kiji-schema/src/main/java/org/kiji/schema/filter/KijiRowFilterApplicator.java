@@ -140,7 +140,11 @@ public final class KijiRowFilterApplicator {
     // The filter might need to request data that isn't already requested by the scan, so add
     // it here if needed.
     try {
-      new HBaseDataRequestAdapter(mRowFilter.getDataRequest()).applyToScan(scan, mTableLayout);
+      // TODO: SCHEMA-444 Avoid constructing a new ColumnNameTranslator below.
+      new HBaseDataRequestAdapter(
+          mRowFilter.getDataRequest(),
+          new ColumnNameTranslator(mTableLayout))
+          .applyToScan(scan, mTableLayout);
     } catch (InvalidLayoutException e) {
       throw new InternalKijiError(e);
     }

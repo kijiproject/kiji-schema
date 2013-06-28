@@ -64,14 +64,19 @@ public class HBaseDataRequestAdapter {
 
   /** The wrapped KijiDataRequest. */
   private final KijiDataRequest mKijiDataRequest;
+  /** The translator for generating HBase column names. */
+  private final ColumnNameTranslator mColumnNameTranslator;
 
   /**
-   * Wraps a KijiDataRequest.
+   * Creates a new HBaseDataRequestAdapter for a given data request using a given
+   * ColumnNameTranslator.
    *
-   * @param kijiDataRequest The Kiji data request to wrap.
+   * @param kijiDataRequest the data request to adapt for HBase.
+   * @param translator the name translator for getting HBase column names.
    */
-  public HBaseDataRequestAdapter(KijiDataRequest kijiDataRequest) {
+  public HBaseDataRequestAdapter(KijiDataRequest kijiDataRequest, ColumnNameTranslator translator) {
     mKijiDataRequest = kijiDataRequest;
+    mColumnNameTranslator = translator;
   }
 
   /**
@@ -149,11 +154,9 @@ public class HBaseDataRequestAdapter {
   public Get toGet(EntityId entityId, KijiTableLayout tableLayout)
       throws IOException {
 
-    final ColumnNameTranslator columnTranslator = new ColumnNameTranslator(tableLayout);
-
     // Context to translate user Kiji filters into HBase filters:
     final KijiColumnFilter.Context filterContext =
-        new NameTranslatingFilterContext(columnTranslator);
+        new NameTranslatingFilterContext(mColumnNameTranslator);
 
     // Get request we are building and returning:
     final Get get = new Get(entityId.getHBaseRowKey());
@@ -185,7 +188,8 @@ public class HBaseDataRequestAdapter {
 
     for (KijiDataRequest.Column columnRequest : mKijiDataRequest.getColumns()) {
       final KijiColumnName kijiColumnName = columnRequest.getColumnName();
-      final HBaseColumnName hbaseColumnName = columnTranslator.toHBaseColumnName(kijiColumnName);
+      final HBaseColumnName hbaseColumnName =
+          mColumnNameTranslator.toHBaseColumnName(kijiColumnName);
 
       if (!columnRequest.isPagingEnabled()) {
         completelyPaged = false;
@@ -213,7 +217,7 @@ public class HBaseDataRequestAdapter {
             final KijiColumnName fqKijiColumnName =
                 new KijiColumnName(kijiColumnName.getFamily(), qualifier);
             final HBaseColumnName fqHBaseColumnName =
-                columnTranslator.toHBaseColumnName(fqKijiColumnName);
+                mColumnNameTranslator.toHBaseColumnName(fqKijiColumnName);
             addColumn(get, fqHBaseColumnName);
             columnFilters.addFilter(toFilter(columnRequest, fqHBaseColumnName, filterContext));
           }

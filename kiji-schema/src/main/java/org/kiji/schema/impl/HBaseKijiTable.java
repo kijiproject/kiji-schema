@@ -54,6 +54,7 @@ import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -93,6 +94,9 @@ public final class HBaseKijiTable implements KijiTable {
 
   /** The layout of the Kiji table. */
   private final KijiTableLayout mTableLayout;
+
+  /** The name translator for this table's layout. */
+  private final ColumnNameTranslator mTranslator;
 
   /** The factory for EntityIds. */
   private final EntityIdFactory mEntityIdFactory;
@@ -146,6 +150,7 @@ public final class HBaseKijiTable implements KijiTable {
     mName = name;
     mTableURI = KijiURI.newBuilder(mKiji.getURI()).withTableName(mName).build();
     mTableLayout = mKiji.getMetaTable().getTableLayout(name);
+    mTranslator = new ColumnNameTranslator(mTableLayout);
     mWriterFactory = new HBaseKijiWriterFactory(this);
     mReaderFactory = new HBaseKijiReaderFactory(this);
     mHTableFactory = htableFactory;
@@ -216,6 +221,14 @@ public final class HBaseKijiTable implements KijiTable {
   @Override
   public KijiTableLayout getLayout() {
     return mTableLayout;
+  }
+
+  /**
+   * Get the name translator for this table's layout.
+   * @return the name translator for this table's layout.
+   */
+  public ColumnNameTranslator getColumnNameTranslator() {
+    return mTranslator;
   }
 
   /** {@inheritDoc} */

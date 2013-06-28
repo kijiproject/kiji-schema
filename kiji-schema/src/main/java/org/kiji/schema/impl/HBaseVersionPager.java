@@ -195,7 +195,8 @@ public final class HBaseVersionPager implements KijiPager {
             .add(mColumnName))
         .build();
 
-    final HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(nextPageDataRequest);
+    final HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(
+        nextPageDataRequest, mTable.getColumnNameTranslator());
     try {
       final Get hbaseGet = adapter.toGet(mEntityId, mTable.getLayout());
       LOG.debug("Sending HBase Get: {}", hbaseGet);

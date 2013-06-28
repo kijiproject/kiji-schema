@@ -131,7 +131,10 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
   public void testApplyToScan() throws Exception {
     // Initialize a scan object with some requested data.
     final KijiDataRequest priorDataRequest = KijiDataRequest.create("family", "column");
-    final Scan actualScan = new HBaseDataRequestAdapter(priorDataRequest).toScan(mTableLayout);
+    final Scan actualScan = new HBaseDataRequestAdapter(
+        priorDataRequest,
+        new ColumnNameTranslator(mTableLayout))
+        .toScan(mTableLayout);
 
     // Construct a row filter and apply it to the existing scan.
     final KijiRowFilter rowFilter = new MyKijiRowFilter();
@@ -141,7 +144,9 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
 
     // After filter application, expect the scan to also have the column requested by the filter.
     final Scan expectedScan = new HBaseDataRequestAdapter(
-        priorDataRequest.merge(rowFilter.getDataRequest())).toScan(mTableLayout);
+        priorDataRequest.merge(rowFilter.getDataRequest()),
+        new ColumnNameTranslator(mTableLayout))
+        .toScan(mTableLayout);
     expectedScan.setFilter(mHBaseFilter);
     assertEquals(expectedScan.toString(), actualScan.toString());
     assertTrue(new ScanEquals(expectedScan).matches(actualScan));

@@ -165,7 +165,8 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
 
     LOG.debug("HBaseMapPager data request: {} and page size {}", nextPageDataRequest, pageSize);
 
-    final HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(nextPageDataRequest);
+    final HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(
+        nextPageDataRequest, mTable.getColumnNameTranslator());
     try {
       final Get hbaseGet = adapter.toGet(mEntityId, mTable.getLayout());
       if (LOG.isDebugEnabled()) {
