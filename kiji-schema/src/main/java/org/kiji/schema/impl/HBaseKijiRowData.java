@@ -28,6 +28,8 @@ import java.util.NavigableSet;
 import java.util.NoSuchElementException;
 import java.util.TreeMap;
 
+import com.google.common.base.Objects;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -781,5 +783,18 @@ public final class HBaseKijiRowData implements KijiRowData {
         + "Please use the getPager(String family, String qualifier) method.",
         family);
     return new HBaseMapFamilyPager(mEntityId, mDataRequest, mTable, kijiFamily);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HBaseKijiRowData.class)
+        .add("table", mTable.getURI())
+        .add("entityId", getEntityId())
+        .add("dataRequest", mDataRequest)
+        .add("resultSize", mResult.size())
+        .add("result", mResult)
+        .add("map", getMap())
+        .toString();
   }
 }

@@ -18,8 +18,10 @@
  */
 {
   name: "row_data_test_table",
-  keys_format : {'org.kiji.schema.avro.RowKeyFormat2': {
-    encoding : "RAW"
+  keys_format: {'org.kiji.schema.avro.RowKeyFormat2': {
+    encoding: "FORMATTED",
+    components: [{name: "row", type: "STRING"}],
+    salt: {}
   }},
   locality_groups: [ {
     name: "default",

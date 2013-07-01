@@ -21,9 +21,13 @@ package org.kiji.schema.impl;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 
+import com.google.common.collect.ImmutableMap;
+import org.apache.avro.util.Utf8;
+import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
@@ -36,6 +40,8 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
@@ -56,6 +62,8 @@ import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.InstanceBuilder;
 
 public class TestHBaseDataRequestAdapter extends KijiClientTest {
+  private static final Logger LOG = LoggerFactory.getLogger(TestHBaseDataRequestAdapter.class);
+
   private KijiTableLayout mTableLayout;
   private EntityIdFactory mEntityIdFactory;
   private ColumnNameTranslator mColumnNameTranslator;
@@ -288,6 +296,10 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
   /**
    * Test a partially paged data request.
    * Ensures that combining data requests with paged and non-paged columns work.
+   * In particular, paging-related filters should not have side-effects on non-paged columns.
+   *
+   * Here we test that enabling paging on a column X:Y doesn't affect cells from other columns,
+   * ie. we can still read the cells from non-paged columns.
    */
   @Test
   public void testScanPartiallyPaged() throws Exception {
@@ -296,10 +308,16 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
             .withRow("row0")
                 .withFamily("family")
                     .withQualifier("qual0")
-                        .withValue("value0")
+                        .withValue(1L, "value1")
+                        .withValue(2L, "value2")
+                        .withValue(3L, "value3")
                 .withFamily("map")
-                    .withQualifier("int0")
-                        .withValue(0)
+                    .withQualifier("int1")
+                        .withValue(0L, 10)
+                        .withValue(1L, 11)
+                    .withQualifier("int2")
+                        .withValue(0L, 20)
+                        .withValue(1L, 21)
             .withRow("row1")
                 .withFamily("family")
                     .withQualifier("qual0")
@@ -320,20 +338,153 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
       try {
         final KijiDataRequest dataRequest = KijiDataRequest.builder()
             .addColumns(ColumnsDef.create()
+                .withMaxVersions(HConstants.ALL_VERSIONS)
                 .add("family", "qual0"))
             .addColumns(ColumnsDef.create()
+                .withMaxVersions(HConstants.ALL_VERSIONS)
                 .withPageSize(1)
                 .addFamily("map"))
             .build();
         final KijiRowScanner scanner = reader.getScanner(dataRequest);
         try {
           int nrows = 0;
+          boolean foundRow0 = false;
           for (KijiRowData row : scanner) {
+            LOG.debug("Scanning row: {}", row);
+
             // All rows but "row3" should be scanned through:
             assertFalse(row.getEntityId().getComponentByIndex(0).equals("row3"));
+
+            // Validate "row0", which contains both paged and non-paged cells:
+            if (row.getEntityId().getComponentByIndex(0).equals("row0")) {
+              foundRow0 = true;
+
+              // Make sure we can still read the columns that are not paged:
+              assertEquals(ImmutableMap.builder()
+                  .put(3L, new Utf8("value3"))
+                  .put(2L, new Utf8("value2"))
+                  .put(1L, new Utf8("value1"))
+                  .build(),
+                  row.getValues("family", "qual0"));
+
+              // The values for "map:*" should ideally not be retrieved.
+              // We cannot use KeyOnlyFilter, but we can use FirstKeyOnlyFilter to limit
+              // the number of KeyValues fetched:
+              assertEquals(ImmutableMap.builder()
+                  .put("int1", ImmutableMap.builder()
+                      .put(1L, 11)
+                      .build())
+                  .build(),
+                  row.getValues("map"));
+            }
+
             nrows += 1;
           }
           assertEquals(3, nrows);
+          assertTrue(foundRow0);
+        } finally {
+          scanner.close();
+        }
+      } finally {
+        reader.close();
+      }
+    } finally {
+      table.release();
+    }
+  }
+
+  /**
+   * Test a partially paged data request.
+   * Ensures that combining data requests with paged and non-paged columns work.
+   * In particular, paging-related filters should not have side-effects on non-paged columns.
+   *
+   * Here we test that paging on a column X:Y will not short-circuit the KeyValue scanner
+   * and still return the requested KeyValues in columns > X:Y.
+   */
+  @Test
+  public void testScanPartiallyPagedWithFirstKeyOnlyFilter() throws Exception {
+    final Kiji kiji = new InstanceBuilder(getKiji())
+        .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST))
+            .withRow("row0")
+                .withFamily("family")
+                    .withQualifier("qual0")
+                        .withValue(1L, "value1")
+                        .withValue(2L, "value2")
+                        .withValue(3L, "value3")
+                .withFamily("map")
+                    .withQualifier("int1")
+                        .withValue(0L, 10)
+                        .withValue(1L, 11)
+                    .withQualifier("int2")
+                        .withValue(0L, 20)
+                        .withValue(1L, 21)
+            .withRow("row1")
+                .withFamily("family")
+                    .withQualifier("qual0")
+                        .withValue("value1")
+            .withRow("row2")
+                .withFamily("map")
+                    .withQualifier("int2")
+                        .withValue(2)
+            .withRow("row3")
+                .withFamily("family")
+                    .withQualifier("qual1")
+                        .withValue("value1")
+        .build();
+
+    final KijiTable table = kiji.openTable("row_data_test_table");
+    try {
+      final KijiTableReader reader = table.openTableReader();
+      try {
+        final KijiDataRequest dataRequest = KijiDataRequest.builder()
+            .addColumns(ColumnsDef.create()
+                .withMaxVersions(HConstants.ALL_VERSIONS)
+                .withPageSize(1)
+                .add("family", "qual0"))
+            .addColumns(ColumnsDef.create()
+                .withMaxVersions(HConstants.ALL_VERSIONS)
+                .addFamily("map"))
+            .build();
+        final KijiRowScanner scanner = reader.getScanner(dataRequest);
+        try {
+          int nrows = 0;
+          boolean foundRow0 = false;
+          for (KijiRowData row : scanner) {
+            LOG.debug("Scanning row: {}", row);
+
+            // All rows but "row3" should be scanned through:
+            assertFalse(row.getEntityId().getComponentByIndex(0).equals("row3"));
+
+            // Validate "row0", which contains both paged and non-paged cells:
+            if (row.getEntityId().getComponentByIndex(0).equals("row0")) {
+              foundRow0 = true;
+
+              // The values for "family:qual0" should ideally not be retrieved.
+              // We cannot use KeyOnlyFilter, but we can use FirstKeyOnlyFilter to limit
+              // the number of KeyValues fetched:
+              assertEquals(ImmutableMap.builder()
+                  .put(3L, new Utf8("value3"))
+                  .build(),
+                  row.getValues("family", "qual0"));
+
+              // Make sure we can still read the columns that are not paged:
+              assertEquals(ImmutableMap.builder()
+                  .put("int1", ImmutableMap.builder()
+                      .put(0L, 10)
+                      .put(1L, 11)
+                      .build())
+                  .put("int2", ImmutableMap.builder()
+                      .put(0L, 20)
+                      .put(1L, 21)
+                      .build())
+                  .build(),
+                  row.getValues("map"));
+            }
+
+            nrows += 1;
+          }
+          assertEquals(3, nrows);
+          assertTrue(foundRow0);
         } finally {
           scanner.close();
         }
@@ -383,6 +534,8 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
         try {
           int nrows = 0;
           for (KijiRowData row : scanner) {
+            LOG.debug("Scanning row: {}", row);
+
             // All rows but "row2" should be scanned through:
             assertFalse(row.getEntityId().getComponentByIndex(0).equals("row2"));
             nrows += 1;
@@ -436,6 +589,8 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
         try {
           int nrows = 0;
           for (KijiRowData row : scanner) {
+            LOG.debug("Scanning row: {}", row);
+
             // All rows but "row2" should be scanned through:
             assertFalse(row.getEntityId().getComponentByIndex(0).equals("row2"));
             nrows += 1;

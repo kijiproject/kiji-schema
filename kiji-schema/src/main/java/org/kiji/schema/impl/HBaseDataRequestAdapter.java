@@ -34,7 +34,6 @@ import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
-import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -320,7 +319,11 @@ public class HBaseDataRequestAdapter {
     // AND (HBase-qualifier = Kiji-family:qualifier / prefixed by Kiji-family:)
     // AND (ColumnPaginationFilter(limit=1))  // when paging or if max-versions is 1
     // AND (custom user filter)
-    // AND (KeyOnlyFilter)  // only when paging
+    // AND (FirstKeyOnlyFilter)  // only when paging
+    //
+    // Note:
+    //     We cannot use KeyOnlyFilter as this filter uses Filter.transform() which applies
+    //     unconditionally on all the KeyValue in the HBase Result.
     final FilterList filter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
 
     // Only let cells from the locality-group (ie. HBase family) the column belongs to, ie:
@@ -369,7 +372,13 @@ public class HBaseDataRequestAdapter {
 
     // If column has paging enabled, we just want to know about the existence of a cell:
     if (columnRequest.isPagingEnabled()) {
-      filter.addFilter(new KeyOnlyFilter());
+      filter.addFilter(new FirstKeyOnlyFilter());
+
+      // TODO(SCHEMA-334) KeyOnlyFilter uses Filter.transform() which applies unconditionally.
+      //     There is a chance that Filter.transform() may apply conditionally in the future,
+      //     in which case we may re-introduce the KeyOnlyFilter.
+      //     An alternative is to provide a custom HBase filter to handle Kiji data requests
+      //     efficiently.
     }
 
     return filter;
