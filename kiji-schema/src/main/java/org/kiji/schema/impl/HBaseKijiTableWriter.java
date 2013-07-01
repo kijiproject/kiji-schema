@@ -49,10 +49,10 @@ import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
@@ -65,9 +65,6 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   /** The kiji table instance. */
   private final HBaseKijiTable mTable;
 
-  /** The column name translator to use. */
-  private final ColumnNameTranslator mTranslator;
-
   /** Provider for cell encoders. */
   private final CellEncoderProvider mCellEncoderProvider;
 
@@ -75,11 +72,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
    * Creates a non-buffered kiji table writer that sends modifications directly to Kiji.
    *
    * @param table A kiji table.
-   * @throws IOException
    */
   public HBaseKijiTableWriter(HBaseKijiTable table) {
     mTable = table;
-    mTranslator = new ColumnNameTranslator(mTable.getLayout());
     try {
       mCellEncoderProvider =
           new CellEncoderProvider(mTable, DefaultKijiCellEncoderFactory.get());
@@ -103,7 +98,8 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   public <T> void put(EntityId entityId, String family, String qualifier, long timestamp, T value)
       throws IOException {
     final KijiColumnName columnName = new KijiColumnName(family, qualifier);
-    final HBaseColumnName hbaseColumnName = mTranslator.toHBaseColumnName(columnName);
+    final HBaseColumnName hbaseColumnName =
+        mTable.getColumnNameTranslator().toHBaseColumnName(columnName);
 
     final KijiCellEncoder cellEncoder = mCellEncoderProvider.getEncoder(family, qualifier);
     final byte[] encoded = cellEncoder.encode(value);
@@ -125,7 +121,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
 
     // Translate the Kiji column name to an HBase column name.
     final HBaseColumnName hbaseColumnName =
-        mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
+        mTable.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(family, qualifier));
 
     // Send the increment to the HBase HTable.
     final Increment increment = new Increment(entityId.getHBaseRowKey());
@@ -186,7 +182,8 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   public void deleteFamily(EntityId entityId, String family, long upToTimestamp)
       throws IOException {
 
-    final FamilyLayout familyLayout = mTable.getLayout().getFamilyMap().get(family);
+    final LayoutCapsule capsule = mTable.getLayoutCapsule();
+    final FamilyLayout familyLayout = capsule.getLayout().getFamilyMap().get(family);
     if (null == familyLayout) {
       throw new NoSuchColumnException(String.format("Family '%s' not found.", family));
     }
@@ -205,7 +202,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
 
     // The only data in this HBase family is the one Kiji family, so we can delete everything.
     final HBaseColumnName hbaseColumnName =
-        mTranslator.toHBaseColumnName(new KijiColumnName(family));
+        capsule.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(family));
     final Delete delete = new Delete(entityId.getHBaseRowKey());
     delete.deleteFamily(hbaseColumnName.getFamily(), upToTimestamp);
 
@@ -233,7 +230,8 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     for (ColumnLayout columnLayout : familyLayout.getColumnMap().values()) {
       final String qualifier = columnLayout.getName();
       final KijiColumnName column = new KijiColumnName(familyName, qualifier);
-      final HBaseColumnName hbaseColumnName = mTranslator.toHBaseColumnName(column);
+      final HBaseColumnName hbaseColumnName =
+          mTable.getColumnNameTranslator().toHBaseColumnName(column);
       delete.deleteColumns(
           hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
     }
@@ -264,7 +262,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
 
     final String familyName = familyLayout.getName();
     final HBaseColumnName hbaseColumnName =
-        mTranslator.toHBaseColumnName(new KijiColumnName(familyName));
+        mTable.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(familyName));
     final byte[] hbaseRow = entityId.getHBaseRowKey();
 
     // Lock the row.
@@ -311,7 +309,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   public void deleteColumn(EntityId entityId, String family, String qualifier, long upToTimestamp)
       throws IOException {
     final HBaseColumnName hbaseColumnName =
-        mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
+        mTable.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumns(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
     mTable.getHTable().delete(delete);
@@ -328,7 +326,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   public void deleteCell(EntityId entityId, String family, String qualifier, long timestamp)
       throws IOException {
     final HBaseColumnName hbaseColumnName =
-        mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
+        mTable.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
     mTable.getHTable().delete(delete);

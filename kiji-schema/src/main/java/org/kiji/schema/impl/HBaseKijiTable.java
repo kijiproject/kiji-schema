@@ -93,12 +93,6 @@ public final class HBaseKijiTable implements KijiTable {
   /** HTableInterfaceFactory for creating new HTables associated with this KijiTable. */
   private final HTableInterfaceFactory mHTableFactory;
 
-  /** The layout of the Kiji table. */
-  private final KijiTableLayout mTableLayout;
-
-  /** The name translator for this table's layout. */
-  private final ColumnNameTranslator mTranslator;
-
   /** The factory for EntityIds. */
   private final EntityIdFactory mEntityIdFactory;
 
@@ -113,6 +107,68 @@ public final class HBaseKijiTable implements KijiTable {
 
   /** Reader factory for this table. */
   private final KijiReaderFactory mReaderFactory;
+
+  /**
+   * Capsule containing all objects which should be mutated in response to a table layout update.
+   * The capsule itself is immutable and should be replaced atomically with a new capsule.
+   * References only the LayoutCapsule for the most recent layout for this table.
+   */
+  private final LayoutCapsule mLayoutCapsule;
+
+  /**
+   * Container class encapsulating the KijiTableLayout and related objects which must all reflect
+   * layout updates atomically.  This object represents a snapshot of the table layout at a moment
+   * in time which is valuable for maintaining consistency within a short-lived operation.  Because
+   * this object represents a snapshot it should not be cached.
+   * Does not include CellDecoderProvider or CellEncoderProvider because
+   * readers and writers need to be able to override CellSpecs.  Does not include EntityIdFactory
+   * because currently there are no valid table layout updates that modify the row key encoding.
+   */
+  public static final class LayoutCapsule {
+    private final KijiTableLayout mLayout;
+    private final ColumnNameTranslator mTranslator;
+    private final KijiTable mTable;
+
+    /**
+     * Default constructor.
+     *
+     * @param layout the layout of the table.
+     * @param translator the ColumnNameTranslator for the given layout.
+     * @param table the KijiTable to which this capsule is associated.
+     */
+    private LayoutCapsule(
+        final KijiTableLayout layout,
+        final ColumnNameTranslator translator,
+        final KijiTable table) {
+      mLayout = layout;
+      mTranslator = translator;
+      mTable = table;
+    }
+
+    /**
+     * Get the KijiTableLayout for the associated layout.
+     * @return the KijiTableLayout for the associated layout.
+     */
+    public KijiTableLayout getLayout() {
+      return mLayout;
+    }
+
+    /**
+     * Get the ColumnNameTranslator for the associated layout.
+     * @return the ColumnNameTranslator for the associated layout.
+     */
+    public ColumnNameTranslator getColumnNameTranslator() {
+      return mTranslator;
+    }
+
+    /**
+     * Get the KijiTable to which this capsule is associated.
+     * @return the KijiTable to which this capsule is associated.
+     */
+    public KijiTable getTable() {
+      return mTable;
+    }
+  }
 
   /**
    * Construct an opened Kiji table stored in HBase.
@@ -142,17 +198,21 @@ public final class HBaseKijiTable implements KijiTable {
     LOG.debug("Opening Kiji table '{}' with client version '{}'.",
         mTableURI, VersionInfo.getSoftwareVersion());
 
-    mTableLayout = mKiji.getMetaTable().getTableLayout(name);  // throws KijiTableNotFoundException
-    mTranslator = new ColumnNameTranslator(mTableLayout);
+    // throws KijiTableNotFoundException
+    final KijiTableLayout layout = mKiji.getMetaTable().getTableLayout(name);
+    final LayoutCapsule capsule =
+        new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
+    mLayoutCapsule = capsule;
     mWriterFactory = new HBaseKijiWriterFactory(this);
     mReaderFactory = new HBaseKijiReaderFactory(this);
 
-    if (mTableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat) {
-      mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat) mTableLayout.getDesc()
-          .getKeysFormat());
-    } else if (mTableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat2) {
-      mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat2) mTableLayout.getDesc()
-          .getKeysFormat());
+    if (capsule.getLayout().getDesc().getKeysFormat() instanceof RowKeyFormat) {
+      mEntityIdFactory = EntityIdFactory.getFactory(
+          (RowKeyFormat) capsule.getLayout().getDesc().getKeysFormat());
+    } else if (
+        capsule.getLayout().getDesc().getKeysFormat() instanceof RowKeyFormat2) {
+      mEntityIdFactory = EntityIdFactory.getFactory(
+          (RowKeyFormat2) capsule.getLayout().getDesc().getKeysFormat());
     } else {
       // No resource to close or release:
       throw new RuntimeException("Invalid Row Key format found in Kiji Table");
@@ -218,18 +278,33 @@ public final class HBaseKijiTable implements KijiTable {
     return mHTableFactory.create(mConf, hbaseTableName);
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   * If you need both the table layout and a column name translator within a single short lived
+   * operation, you should use {@link #getLayoutCapsule()} to ensure consistent state.
+   */
   @Override
   public KijiTableLayout getLayout() {
-    return mTableLayout;
+    return mLayoutCapsule.getLayout();
   }
 
   /**
-   * Get the name translator for this table's layout.
-   * @return the name translator for this table's layout.
+   * Get the column name translator for the current layout of this table.  Do not cache this object.
+   * If you need both the table layout and a column name translator within a single short lived
+   * operation, you should use {@link #getLayoutCapsule()} to ensure consistent state.
+   * @return the column name translator for the current layout of this table.
    */
   public ColumnNameTranslator getColumnNameTranslator() {
-    return mTranslator;
+    return mLayoutCapsule.getColumnNameTranslator();
+  }
+
+  /**
+   * Get the LayoutCapsule containing a snapshot of the state of this table's layout and
+   * corresponding ColumnNameTranslator.  Do not cache this object or its contents.
+   * @return a layout capsule representing the current state of this table's layout.
+   */
+  public LayoutCapsule getLayoutCapsule() {
+    return mLayoutCapsule;
   }
 
   /** {@inheritDoc} */

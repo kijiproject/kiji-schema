@@ -37,7 +37,6 @@ import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 /**
  * HBase implementation of AtomicKijiPutter.
@@ -62,9 +61,6 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
 
   /** The HTableInterface associated with the KijiTable. */
   private final HTableInterface mHTable;
-
-  /** HBase column name translator. */
-  private final ColumnNameTranslator mTranslator;
 
   /** Provider for cell encoders. */
   private final CellEncoderProvider mCellEncoderProvider;
@@ -93,7 +89,6 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
    */
   public HBaseAtomicKijiPutter(HBaseKijiTable table) throws IOException {
     mTable = table;
-    mTranslator = new ColumnNameTranslator(mTable.getLayout());
     mHTable = mTable.openHTableConnection();
     mCellEncoderProvider =
         new CellEncoderProvider(mTable, DefaultKijiCellEncoderFactory.get());
@@ -153,7 +148,8 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     Preconditions.checkState(mPut != null,
         "checkAndCommit() must be paired with a call to begin()");
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
-    final HBaseColumnName columnName = mTranslator.toHBaseColumnName(kijiColumnName);
+    final HBaseColumnName columnName =
+        mTable.getColumnNameTranslator().toHBaseColumnName(kijiColumnName);
 
     final KijiCellEncoder cellEncoder = mCellEncoderProvider.getEncoder(family, qualifier);
     final byte[] encoded = cellEncoder.encode(value);
@@ -193,7 +189,8 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     Preconditions.checkState(mPut != null, "calls to put() must be between calls to begin() and "
         + "commit(), checkAndCommit(), or rollback()");
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
-    final HBaseColumnName columnName = mTranslator.toHBaseColumnName(kijiColumnName);
+    final HBaseColumnName columnName =
+        mTable.getColumnNameTranslator().toHBaseColumnName(kijiColumnName);
 
     final KijiCellEncoder cellEncoder = mCellEncoderProvider.getEncoder(family, qualifier);
     final byte[] encoded = cellEncoder.encode(value);

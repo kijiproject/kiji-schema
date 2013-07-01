@@ -55,6 +55,7 @@ import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.HBaseKijiTable;
+import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
@@ -138,7 +139,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     getKiji().createTable(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
     mTable = HBaseKijiTable.downcast(getKiji().openTable(TABLE_NAME));
 
-    final ColumnNameTranslator translator = new ColumnNameTranslator(mTable.getLayout());
+    final LayoutCapsule capsule = mTable.getLayoutCapsule();
+    final ColumnNameTranslator translator = capsule.getColumnNameTranslator();
     HBaseColumnName hcolumn = translator.toHBaseColumnName(new KijiColumnName("family", "empty"));
     mHBaseFamily = hcolumn.getFamily();
     mHBaseEmpty = hcolumn.getQualifier();
@@ -152,7 +154,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         .getQualifier();
     mHBaseMapFamily = translator.toHBaseColumnName(new KijiColumnName("map")).getFamily();
 
-    mEntityIdFactory = EntityIdFactory.getFactory(mTable.getLayout());
+    mEntityIdFactory = EntityIdFactory.getFactory(capsule.getLayout());
   }
 
   @After

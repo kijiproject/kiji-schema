@@ -48,8 +48,8 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
  * </p>
  * <p>
  *   At construction time, cell decoders may be customized by specifying CellSpec instances
- *   to overlay on top of the actual table layout, using the constructor:
- *   {@link CellDecoderProvider#CellDecoderProvider(KijiTable, KijiCellDecoderFactory, Map)}.
+ *   to overlay on top of the actual table layout, using the constructors:
+ *   {@link #CellDecoderProvider(KijiTable, KijiCellDecoderFactory, Map)}.
  * </p>
  * <p>
  *   CellSpec customizations include:

@@ -53,10 +53,10 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /**
@@ -74,9 +74,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
   /** KijiTable this writer is attached to. */
   private final HBaseKijiTable mTable;
-
-  /** Column name translator to use. */
-  private final ColumnNameTranslator mTranslator;
 
   /** Provider for cell encoders. */
   private final CellEncoderProvider mCellEncoderProvider;
@@ -115,7 +112,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     } catch (TableNotFoundException e) {
       throw new KijiTableNotFoundException(table.getName());
     }
-    mTranslator = new ColumnNameTranslator(mTable.getLayout());
     mCellEncoderProvider =
         new CellEncoderProvider(mTable, DefaultKijiCellEncoderFactory.get());
 
@@ -174,7 +170,8 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
         "HBaseKijiBufferedWriter for %s is closed.", mTable.getURI());
 
     final KijiColumnName columnName = new KijiColumnName(family, qualifier);
-    final HBaseColumnName hbaseColumnName = mTranslator.toHBaseColumnName(columnName);
+    final HBaseColumnName hbaseColumnName =
+        mTable.getColumnNameTranslator().toHBaseColumnName(columnName);
 
     final KijiCellEncoder cellEncoder = mCellEncoderProvider.getEncoder(family, qualifier);
     final byte[] encoded = cellEncoder.encode(value);
@@ -234,7 +231,8 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     Preconditions.checkState(mIsOpen.get(),
         "HBaseKijiBufferedWriter for %s is closed.", mTable.getURI());
 
-    final FamilyLayout familyLayout = mTable.getLayout().getFamilyMap().get(family);
+    final LayoutCapsule capsule = mTable.getLayoutCapsule();
+    final FamilyLayout familyLayout = capsule.getLayout().getFamilyMap().get(family);
     if (null == familyLayout) {
       throw new NoSuchColumnException(String.format("Family '%s' not found.", family));
     }
@@ -253,7 +251,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
     // The only data in this HBase family is the one Kiji family, so we can delete everything.
     final HBaseColumnName hbaseColumnName =
-        mTranslator.toHBaseColumnName(new KijiColumnName(family));
+        capsule.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(family));
     final Delete delete = new Delete(entityId.getHBaseRowKey());
     delete.deleteFamily(hbaseColumnName.getFamily(), upToTimestamp);
 
@@ -282,7 +280,8 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     for (ColumnLayout columnLayout : familyLayout.getColumnMap().values()) {
       final String qualifier = columnLayout.getName();
       final KijiColumnName column = new KijiColumnName(familyName, qualifier);
-      final HBaseColumnName hbaseColumnName = mTranslator.toHBaseColumnName(column);
+      final HBaseColumnName hbaseColumnName =
+          mTable.getColumnNameTranslator().toHBaseColumnName(column);
       delete.deleteColumns(
           hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
     }
@@ -314,7 +313,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
     final String familyName = familyLayout.getName();
     final HBaseColumnName hbaseColumnName =
-        mTranslator.toHBaseColumnName(new KijiColumnName(familyName));
+        mTable.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(familyName));
     final byte[] hbaseRow = entityId.getHBaseRowKey();
 
     // Lock the row.
@@ -365,7 +364,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     Preconditions.checkState(mIsOpen.get(),
         "HBaseKijiBufferedWriter for %s is closed.", mTable.getURI());
     final HBaseColumnName hbaseColumnName =
-        mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
+        mTable.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumns(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
     updateBuffer(delete);
@@ -386,7 +385,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     Preconditions.checkState(mIsOpen.get(),
         "HBaseKijiBufferedWriter for %s is closed.", mTable.getURI());
     final HBaseColumnName hbaseColumnName =
-        mTranslator.toHBaseColumnName(new KijiColumnName(family, qualifier));
+        mTable.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
     updateBuffer(delete);

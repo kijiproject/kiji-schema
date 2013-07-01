@@ -40,6 +40,7 @@ import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
@@ -126,10 +127,11 @@ public final class PutTool extends BaseTool {
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
     final KijiColumnName column = mColumnURI.getColumns().get(0);
-    final CellSchema cellSchema = mTable.getLayout().getCellSchema(column);
+    final KijiTableLayout layout = mTable.getLayout();
+    final CellSchema cellSchema = layout.getCellSchema(column);
 
     final EntityId entityId =
-        ToolUtils.createEntityIdFromUserInputs(mEntityId, mTable.getLayout());
+        ToolUtils.createEntityIdFromUserInputs(mEntityId, layout);
 
     final KijiTableWriter writer = mTable.openTableWriter();
     try {
@@ -160,7 +162,7 @@ public final class PutTool extends BaseTool {
           }
         } else {
           try {
-            mSchema = mTable.getLayout().getSchema(column);
+            mSchema = layout.getSchema(column);
           } catch (Exception e) {
             LOG.error(e.getMessage());
             return FAILURE;

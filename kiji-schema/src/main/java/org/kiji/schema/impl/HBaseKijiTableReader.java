@@ -45,6 +45,7 @@ import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.filter.KijiRowFilter;
 import org.kiji.schema.filter.KijiRowFilterApplicator;
 import org.kiji.schema.hbase.HBaseScanOptions;
+import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -100,12 +101,13 @@ public class HBaseKijiTableReader implements KijiTableReader {
       throws IOException {
 
     // Make sure the request validates against the layout of the table.
-    final KijiTableLayout tableLayout = mTable.getLayout();
+    final LayoutCapsule capsule = mTable.getLayoutCapsule();
+    final KijiTableLayout tableLayout = capsule.getLayout();
     validateRequestAgainstLayout(dataRequest, tableLayout);
 
     // Construct an HBase Get to send to the HTable.
     HBaseDataRequestAdapter hbaseRequestAdapter =
-        new HBaseDataRequestAdapter(dataRequest, mTable.getColumnNameTranslator());
+        new HBaseDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
     Get hbaseGet;
     try {
       hbaseGet = hbaseRequestAdapter.toGet(entityId, tableLayout);
@@ -131,10 +133,11 @@ public class HBaseKijiTableReader implements KijiTableReader {
     if (entityIds.size() == 1) {
       return Collections.singletonList(this.get(entityIds.get(0), dataRequest));
     }
-    final KijiTableLayout tableLayout = mTable.getLayout();
+    final LayoutCapsule capsule = mTable.getLayoutCapsule();
+    final KijiTableLayout tableLayout = capsule.getLayout();
     validateRequestAgainstLayout(dataRequest, tableLayout);
     final HBaseDataRequestAdapter hbaseRequestAdapter =
-        new HBaseDataRequestAdapter(dataRequest, mTable.getColumnNameTranslator());
+        new HBaseDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
 
     // Construct a list of hbase Gets to send to the HTable.
     List<Get> hbaseGetList = makeGetList(entityIds, tableLayout, hbaseRequestAdapter);
@@ -169,9 +172,10 @@ public class HBaseKijiTableReader implements KijiTableReader {
       KijiRowFilter rowFilter = kijiScannerOptions.getKijiRowFilter();
       HBaseScanOptions scanOptions = kijiScannerOptions.getHBaseScanOptions();
 
+      final LayoutCapsule capsule = mTable.getLayoutCapsule();
       final HBaseDataRequestAdapter dataRequestAdapter =
-          new HBaseDataRequestAdapter(dataRequest, mTable.getColumnNameTranslator());
-      final KijiTableLayout tableLayout = mTable.getLayout();
+          new HBaseDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
+      final KijiTableLayout tableLayout = capsule.getLayout();
       validateRequestAgainstLayout(dataRequest, tableLayout);
       final Scan scan = dataRequestAdapter.toScan(tableLayout, scanOptions);
 

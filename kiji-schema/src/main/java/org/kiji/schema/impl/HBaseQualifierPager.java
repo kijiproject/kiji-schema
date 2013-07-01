@@ -43,7 +43,7 @@ import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.filter.KijiColumnRangeFilter;
 import org.kiji.schema.filter.StripValueColumnFilter;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
+import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.util.Debug;
 
 /**
@@ -72,9 +72,6 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
 
   /** Column data request for the map-type family to page through. */
   private final KijiDataRequest.Column mColumnRequest;
-
-  /** Converts HBase and Kiji column names. */
-  private final ColumnNameTranslator mColumnNameTranslator;
 
   /** True only if there is another page of data to read through {@link #next()}. */
   private boolean mHasNext;
@@ -115,8 +112,6 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
     mEntityId = entityId;
     mTable = table;
     mHasNext = true;  // there might be no page to read, but we don't know until we issue an RPC
-
-    mColumnNameTranslator = new ColumnNameTranslator(mTable.getLayout());
 
     // Only retain the table if everything else ran fine:
     mTable.retain();
@@ -165,10 +160,11 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
 
     LOG.debug("HBaseMapPager data request: {} and page size {}", nextPageDataRequest, pageSize);
 
+    final LayoutCapsule capsule = mTable.getLayoutCapsule();
     final HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(
-        nextPageDataRequest, mTable.getColumnNameTranslator());
+        nextPageDataRequest, capsule.getColumnNameTranslator());
     try {
-      final Get hbaseGet = adapter.toGet(mEntityId, mTable.getLayout());
+      final Get hbaseGet = adapter.toGet(mEntityId, capsule.getLayout());
       if (LOG.isDebugEnabled()) {
         LOG.debug("Sending HBase Get: {} with filter {}",
             hbaseGet, Debug.toDebugString(hbaseGet.getFilter()));
@@ -181,7 +177,8 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
       for (int i = 0; i < kvs.length; ++i) {
         final HBaseColumnName hbaseColumn =
             new HBaseColumnName(kvs[i].getFamily(), kvs[i].getQualifier());
-        final KijiColumnName kijiColumn = mColumnNameTranslator.toKijiColumnName(hbaseColumn);
+        final KijiColumnName kijiColumn =
+            capsule.getColumnNameTranslator().toKijiColumnName(hbaseColumn);
         qualifiers[i] = kijiColumn.getQualifier();
       }
 

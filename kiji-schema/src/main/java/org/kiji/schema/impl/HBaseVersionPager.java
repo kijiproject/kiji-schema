@@ -40,6 +40,7 @@ import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiPager;
 import org.kiji.schema.KijiRowData;
+import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
 
 /**
@@ -195,10 +196,11 @@ public final class HBaseVersionPager implements KijiPager {
             .add(mColumnName))
         .build();
 
+    final LayoutCapsule capsule = mTable.getLayoutCapsule();
     final HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(
-        nextPageDataRequest, mTable.getColumnNameTranslator());
+        nextPageDataRequest, capsule.getColumnNameTranslator());
     try {
-      final Get hbaseGet = adapter.toGet(mEntityId, mTable.getLayout());
+      final Get hbaseGet = adapter.toGet(mEntityId, capsule.getLayout());
       LOG.debug("Sending HBase Get: {}", hbaseGet);
       final Result result = mTable.getHTable().get(hbaseGet);
       LOG.debug("{} cells were requested, {} cells were received.", pageSize, result.size());

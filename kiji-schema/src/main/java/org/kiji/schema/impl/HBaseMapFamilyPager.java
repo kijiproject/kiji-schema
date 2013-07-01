@@ -42,6 +42,7 @@ import org.kiji.schema.filter.Filters;
 import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.filter.KijiColumnRangeFilter;
 import org.kiji.schema.filter.StripValueColumnFilter;
+import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.util.Debug;
 
 /**
@@ -173,10 +174,11 @@ public final class HBaseMapFamilyPager implements KijiPager {
 
     LOG.debug("HBaseMapPager data request: {} and page size {}", nextPageDataRequest, pageSize);
 
+    final LayoutCapsule capsule = mTable.getLayoutCapsule();
     final HBaseDataRequestAdapter adapter =
-        new HBaseDataRequestAdapter(nextPageDataRequest, mTable.getColumnNameTranslator());
+        new HBaseDataRequestAdapter(nextPageDataRequest, capsule.getColumnNameTranslator());
     try {
-      final Get hbaseGet = adapter.toGet(mEntityId, mTable.getLayout());
+      final Get hbaseGet = adapter.toGet(mEntityId, capsule.getLayout());
       if (LOG.isDebugEnabled()) {
         LOG.debug("Sending HBase Get: {} with filter {}",
             hbaseGet, Debug.toDebugString(hbaseGet.getFilter()));
