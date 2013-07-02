@@ -111,12 +111,12 @@ public final class KijiURI {
   public static final Pattern RE_AUTHORITY_GROUP = Pattern.compile("\\(([^)]+)\\):(\\d+)");
 
   /**
-   * Zookeeper quorum: comma-separated list of Zookeeper host names or IP addresses.
-   * Preserves user ordering.
+   * Ordered list of Zookeeper quorum host names or IP addresses.
+   * Preserves user ordering. Never null.
    */
   private final ImmutableList<String> mZookeeperQuorum;
 
-  /** Normalized version of mZookeeperQuorum. */
+  /** Normalized (sorted) version of mZookeeperQuorum. Never null. */
   private final ImmutableList<String> mZookeeperQuorumNormalized;
 
   /** Zookeeper client port number. */
@@ -530,12 +530,26 @@ public final class KijiURI {
     }
   }
 
-  /** @return Zookeeper quorum (comma-separated list of host names or IPs), normalized. */
+  /**
+   * Returns the set of Zookeeper quorum hosts (names or IPs).
+   *
+   * <p> Host names or IP addresses are de-duplicated and sorted. </p>
+   *
+   * @return the set of Zookeeper quorum hosts (names or IPs).
+   *     Never null.
+   */
   public ImmutableList<String> getZookeeperQuorum() {
     return mZookeeperQuorumNormalized;
   }
 
-  /** @return Zookeeper quorum (comma-separated list of host names or IPs), ordered. */
+  /**
+   * Returns the original user-specified list of Zookeeper quorum hosts.
+   *
+   * <p> Host names are exactly as specified by the user. </p>
+   *
+   * @return the original user-specified list of Zookeeper quorum hosts.
+   *     Never null.
+   */
   public ImmutableList<String> getZookeeperQuorumOrdered() {
     return mZookeeperQuorum;
   }
@@ -545,12 +559,22 @@ public final class KijiURI {
     return mZookeeperClientPort;
   }
 
-  /** @return Kiji instance name. */
+  /**
+   * Returns the name of the Kiji instance specified by this URI, if any.
+   *
+   * @return the name of the Kiji instance specified by this URI.
+   *     Null means unspecified (ie. this URI does not target a Kiji instance).
+   */
   public String getInstance() {
     return mInstanceName;
   }
 
-  /** @return Kiji table name. */
+  /**
+   * Returns the name of the Kiji table specified by this URI, if any.
+   *
+   * @return the name of the Kiji table specified by this URI.
+   *     Null means unspecified (ie. this URI does not target a Kiji table).
+   */
   public String getTable() {
     return mTableName;
   }

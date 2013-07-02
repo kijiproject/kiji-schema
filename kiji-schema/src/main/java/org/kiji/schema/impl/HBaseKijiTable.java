@@ -57,6 +57,7 @@ import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.ResourceUtils;
+import org.kiji.schema.util.VersionInfo;
 
 /**
  * <p>A KijiTable that exposes the underlying HBase implementation.</p>
@@ -81,7 +82,7 @@ public final class HBaseKijiTable implements KijiTable {
   private final KijiURI mTableURI;
 
   /** Whether the table is open. */
-  private final AtomicBoolean mIsOpen;
+  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
 
   /** String representation of the call stack at the time this object is constructed. */
   private final String mConstructorStack;
@@ -102,7 +103,7 @@ public final class HBaseKijiTable implements KijiTable {
   private final EntityIdFactory mEntityIdFactory;
 
   /** Retain counter. When decreased to 0, the HBase KijiTable may be closed and disposed of. */
-  private final AtomicInteger mRetainCount = new AtomicInteger(1);
+  private final AtomicInteger mRetainCount = new AtomicInteger(0);
 
   /** Configuration object for new HTables. */
   private final Configuration mConf;
@@ -119,21 +120,9 @@ public final class HBaseKijiTable implements KijiTable {
    * @param kiji The Kiji instance.
    * @param name The name of the Kiji user-space table to open.
    * @param conf The Hadoop configuration object.
-   *
-   * @throws IOException On an HBase error.
-   */
-  HBaseKijiTable(HBaseKiji kiji, String name, Configuration conf) throws IOException {
-    this(kiji, name, conf, DefaultHTableInterfaceFactory.get());
-  }
-
-  /**
-   * Construct an opened Kiji table stored in HBase.
-   *
-   * @param kiji The Kiji instance.
-   * @param name The name of the Kiji user-space table to open.
-   * @param conf The Hadoop configuration object.
    * @param htableFactory A factory that creates HTable objects.
    *
+   * @throws KijiTableNotFoundException if the table does not exist.
    * @throws IOException On an HBase error.
    */
   HBaseKijiTable(
@@ -143,25 +132,20 @@ public final class HBaseKijiTable implements KijiTable {
       HTableInterfaceFactory htableFactory)
       throws IOException {
 
-    // Table is not open unless constructor succeeds:
-    mIsOpen = new AtomicBoolean(false);
+    mConstructorStack = CLEANUP_LOG.isDebugEnabled() ? Debug.getStackTrace() : null;
 
     mKiji = kiji;
     mName = name;
+    mHTableFactory = htableFactory;
+    mConf = conf;
     mTableURI = KijiURI.newBuilder(mKiji.getURI()).withTableName(mName).build();
-    mTableLayout = mKiji.getMetaTable().getTableLayout(name);
+    LOG.debug("Opening Kiji table '{}' with client version '{}'.",
+        mTableURI, VersionInfo.getSoftwareVersion());
+
+    mTableLayout = mKiji.getMetaTable().getTableLayout(name);  // throws KijiTableNotFoundException
     mTranslator = new ColumnNameTranslator(mTableLayout);
     mWriterFactory = new HBaseKijiWriterFactory(this);
     mReaderFactory = new HBaseKijiReaderFactory(this);
-    mHTableFactory = htableFactory;
-    mConf = conf;
-    try {
-      mHTable = htableFactory.create(conf,
-          KijiManagedHBaseTableName.getKijiTableName(kiji.getURI().getInstance(), name).toString());
-    } catch (TableNotFoundException e) {
-      release();
-      throw new KijiTableNotFoundException(name);
-    }
 
     if (mTableLayout.getDesc().getKeysFormat() instanceof RowKeyFormat) {
       mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat) mTableLayout.getDesc()
@@ -170,14 +154,30 @@ public final class HBaseKijiTable implements KijiTable {
       mEntityIdFactory = EntityIdFactory.getFactory((RowKeyFormat2) mTableLayout.getDesc()
           .getKeysFormat());
     } else {
+      // No resource to close or release:
       throw new RuntimeException("Invalid Row Key format found in Kiji Table");
     }
 
-    mConstructorStack = CLEANUP_LOG.isDebugEnabled() ? Debug.getStackTrace() : null;
+    try {
+      final String hbaseTableName =
+          KijiManagedHBaseTableName.getKijiTableName(kiji.getURI().getInstance(), name).toString();
+      LOG.debug("Opening HBase table: '{}'.", hbaseTableName);
+      mHTable = htableFactory.create(conf, hbaseTableName);
+    } catch (TableNotFoundException tnfe) {
+      // There is a table layout in the metadata tables, but no corresponding HBase table:
+      LOG.error("Inconsistency between Kiji metatable and existing HBase tables: "
+          + "table layout for '{}' exists but HBase table does not.", mTableURI);
+
+      // No resource to close or release:
+      throw new KijiTableNotFoundException(name);
+    }
 
     // Retain the Kiji instance only if open succeeds:
     mKiji.retain();
+
+    // Table is now open and must be release properly:
     mIsOpen.set(true);
+    mRetainCount.set(1);
   }
 
   /** {@inheritDoc} */
@@ -205,16 +205,17 @@ public final class HBaseKijiTable implements KijiTable {
   }
 
   /**
-   * Creates a new HTableInterface associated with a given HBaseKijiTable.
+   * Opens a new connection to the HBase table backing this Kiji table.
    *
-   * @param table The HBaseKijiTable to get an HTableInterface for.
+   * <p> The caller is responsible for properly closing the connection afterwards. </p>
+   *
    * @return A new HTable associated with this KijiTable.
    * @throws IOException in case of an error.
    */
-  public static HTableInterface createHTableInterface(HBaseKijiTable table) throws IOException {
-    final KijiManagedHBaseTableName tableName = KijiManagedHBaseTableName.getKijiTableName(
-        table.getKiji().getURI().getInstance(), table.getName());
-    return table.mHTableFactory.create(table.mConf, tableName.toString());
+  public HTableInterface openHTableConnection() throws IOException {
+    final String hbaseTableName =
+        KijiManagedHBaseTableName.getKijiTableName(mTableURI.getInstance(), mName).toString();
+    return mHTableFactory.create(mConf, hbaseTableName);
   }
 
   /** {@inheritDoc} */

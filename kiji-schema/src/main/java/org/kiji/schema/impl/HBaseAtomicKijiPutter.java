@@ -94,7 +94,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   public HBaseAtomicKijiPutter(HBaseKijiTable table) throws IOException {
     mTable = table;
     mTranslator = new ColumnNameTranslator(mTable.getLayout());
-    mHTable = HBaseKijiTable.createHTableInterface(mTable);
+    mHTable = mTable.openHTableConnection();
     mCellEncoderProvider =
         new CellEncoderProvider(mTable, DefaultKijiCellEncoderFactory.get());
 

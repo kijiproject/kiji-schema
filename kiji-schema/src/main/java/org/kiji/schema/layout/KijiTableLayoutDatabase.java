@@ -70,9 +70,11 @@ public interface KijiTableLayoutDatabase {
   /**
    * Gets the most recent versions of the layout for a table.
    *
+   * <p> Throws KijiTableNotFoundException if the table does not exist. </p>
+   *
    * @param table The name of the Kiji table.
    * @return The table's layout.
-   * @throws IOException If there is an error or no such table.
+   * @throws IOException If there is an error.
    */
   KijiTableLayout getTableLayout(String table) throws IOException;
 

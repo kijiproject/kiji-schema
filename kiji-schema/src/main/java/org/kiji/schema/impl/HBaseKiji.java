@@ -45,7 +45,6 @@ import org.kiji.schema.KijiRowKeySplitter;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
@@ -60,7 +59,6 @@ import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
-import org.kiji.schema.util.ZooKeeperLockFactory;
 
 /**
  * Kiji instance class that contains configuration and table
@@ -112,30 +110,12 @@ public final class HBaseKiji implements Kiji {
 
   /**
    * Creates a new <code>HBaseKiji</code> instance.
-   * This should only be used by Kiji.Factory.open();
-   *
-   * @see org.kiji.schema.Kiji#open(KijiURI, Configuraiton)
-   *
-   * @param kijiURI The KijiURI.
-   * @param conf The Hadoop Configuration.
-   * @throws IOException If there is an error.
-   */
-  HBaseKiji(KijiURI kijiURI, Configuration conf) throws IOException {
-    this(kijiURI,
-        conf,
-        true,
-        DefaultHTableInterfaceFactory.get(),
-        new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(kijiURI)));
-  }
-
-  /**
-   * Creates a new <code>HBaseKiji</code> instance.
    *
    * <p> Should only be used by Kiji.Factory.open().
    * <p> Caller does not need to use retain(), but must call release() when done with it.
    *
    * @param kijiURI the KijiURI.
-   * @param conf Hadoop Configuration.
+   * @param conf Hadoop Configuration. Deep copied internally.
    * @param validateVersion Validate that the installed version of kiji is compatible with
    *     this client.
    * @param tableFactory HTableInterface factory.
@@ -149,6 +129,11 @@ public final class HBaseKiji implements Kiji {
       HTableInterfaceFactory tableFactory,
       LockFactory lockFactory)
       throws IOException {
+
+    if (CLEANUP_LOG.isDebugEnabled()) {
+      mConstructorStack = Debug.getStackTrace();
+    }
+
     // Deep copy the configuration.
     mConf = new Configuration(conf);
 
@@ -157,26 +142,15 @@ public final class HBaseKiji implements Kiji {
     mLockFactory = Preconditions.checkNotNull(lockFactory);
     mURI = Preconditions.checkNotNull(kijiURI);
 
-    // Check for a zookeeper quorum.
-    final String[] zkQuorum = mURI.getZookeeperQuorum().toArray(new String[0]);
-    if (null != zkQuorum) {
-      mConf.setStrings("hbase.zookeeper.quorum", zkQuorum);
-    } else {
-      LOG.debug("Opening a Kiji using a zookeeper quorum defined in a hadoop configuration...");
-    }
-
-    // Check for a zookeeper port.
-    final Integer zkPort = mURI.getZookeeperClientPort();
-    if (null != zkPort) {
-      mConf.setInt("hbase.zookeeper.property.clientPort", zkPort);
-    } else {
-      LOG.debug("Opening a Kiji using a zookeeper port defined in a hadoop configuration...");
-    }
+    // Configure the ZooKeeper quorum:
+    mConf.setStrings("hbase.zookeeper.quorum", mURI.getZookeeperQuorum().toArray(new String[0]));
+    mConf.setInt("hbase.zookeeper.property.clientPort", mURI.getZookeeperClientPort());
 
     // Check for an instance name.
-    Preconditions.checkNotNull(mURI.getInstance(), "An instance name must be specified when "
-        + "opening a Kiji instance");
-    LOG.debug("Opening Kiji instance '{}'.", mURI);
+    Preconditions.checkArgument(mURI.getInstance() != null,
+        "KijiURI '%s' does not specify a Kiji instance name.", mURI);
+    LOG.debug("Opening kiji instance '{}' with client version '{}'.",
+        mURI, VersionInfo.getSoftwareVersion());
 
     // Load these lazily.
     mSchemaTable = null;
@@ -184,25 +158,12 @@ public final class HBaseKiji implements Kiji {
     mMetaTable = null;
     mAdmin = null;
 
-    // Validate configuration settings.
-    Preconditions.checkArgument(
-        getConf().get("hbase.zookeeper.property.clientPort") != null,
-        String.format(
-            "Configuration for Kiji instance '%s' "
-            + "lacks HBase resources (hbase-default.xml, hbase-site.xml), "
-            + "use HBaseConfiguration.create().",
-            mURI));
-
     mIsOpen.set(true);
-    LOG.debug("Opened Kiji instance '{}'.", mURI);
-
-    if (CLEANUP_LOG.isDebugEnabled()) {
-      mConstructorStack = Debug.getStackTrace();
-    }
+    LOG.debug("Kiji instance '{}' is now opened.", mURI);
 
     if (validateVersion) {
       // Make sure the data version for the client matches the cluster.
-      LOG.debug("Validating version...");
+      LOG.debug("Validating version for Kiji instance '{}'.", mURI);
       try {
         VersionInfo.validateVersion(this);
       } catch (IOException ioe) {
@@ -362,38 +323,36 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public void createTable(TableLayoutDesc tableLayout, byte[][] splitKeys) throws IOException {
+    final KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableLayout.getName()).build();
+    LOG.debug("Creating Kiji table '{}'.", tableURI);
+
     // This will validate the layout and may throw an InvalidLayoutException.
     final KijiTableLayout kijiTableLayout = KijiTableLayout.newLayout(tableLayout);
 
-    try {
-      getMetaTable().getTableLayout(tableLayout.getName());
-      throw new RuntimeException("Table " + tableLayout.getName() + " already exists");
-    } catch (KijiTableNotFoundException e) {
-      // Good.
+    if (getMetaTable().tableExists(tableLayout.getName())) {
+      throw new KijiAlreadyExistsException(
+          String.format("Kiji table '%s' already exists.", tableURI), tableURI);
     }
 
     if (tableLayout.getKeysFormat() instanceof RowKeyFormat) {
       LOG.warn("Usage of 'RowKeyFormat' is deprecated. New tables should use 'RowKeyFormat2'.");
     }
 
-    LOG.debug("Adding layout to the Kiji meta table");
     getMetaTable().updateTableLayout(tableLayout.getName(), tableLayout);
 
-    LOG.debug("Creating table in HBase");
     try {
       final HTableSchemaTranslator translator = new HTableSchemaTranslator();
       final HTableDescriptor desc =
           translator.toHTableDescriptor(mURI.getInstance(), kijiTableLayout);
+      LOG.debug("Creating HBase table '{}'.", desc.getNameAsString());
       if (null != splitKeys) {
         getHBaseAdmin().createTable(desc, splitKeys);
       } else {
         getHBaseAdmin().createTable(desc);
       }
     } catch (TableExistsException tee) {
-      final KijiURI tableURI =
-          KijiURI.newBuilder(mURI).withTableName(tableLayout.getName()).build();
-      throw new KijiAlreadyExistsException(String.format(
-          "Kiji table '%s' already exists.", tableURI), tableURI);
+      throw new KijiAlreadyExistsException(
+          String.format("Kiji table '%s' already exists.", tableURI), tableURI);
     }
   }
 
