@@ -53,6 +53,7 @@ import org.kiji.schema.KijiRowData;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
@@ -97,8 +98,10 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @throws IOException on I/O error.
    */
   private static CellDecoderProvider createCellProvider(HBaseKijiTable table) throws IOException {
+    final LayoutCapsule capsule = table.getLayoutCapsule();
     return new CellDecoderProvider(
-        table,
+        capsule.getLayout(),
+        table.getKiji().getSchemaTable(),
         SpecificCellDecoderFactory.get(),
         Maps.<KijiColumnName, CellSpec>newHashMap());
   }

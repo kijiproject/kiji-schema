@@ -32,7 +32,6 @@ import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiSchemaTable;
-import org.kiji.schema.KijiTable;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
@@ -49,7 +48,8 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
  * <p>
  *   At construction time, cell decoders may be customized by specifying CellSpec instances
  *   to overlay on top of the actual table layout, using the constructors:
- *   {@link #CellDecoderProvider(KijiTable, KijiCellDecoderFactory, Map)}.
+ *   {@link #CellDecoderProvider(org.kiji.schema.layout.KijiTableLayout,
+ *   org.kiji.schema.KijiSchemaTable, org.kiji.schema.KijiCellDecoderFactory, java.util.Map)}.
  * </p>
  * <p>
  *   CellSpec customizations include:
@@ -63,42 +63,30 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 @ApiAudience.Private
 public final class CellDecoderProvider {
 
-  /** Layout of the table to provide decoders for. */
-  private final KijiTableLayout mLayout;
-
-  /** Table to resolve Avro schemas. */
-  private final KijiSchemaTable mSchemaTable;
-
-  /** Default cell decoder factory (either specific or generic). */
-  private final KijiCellDecoderFactory mCellDecoderFactory;
-
   /** Maps column names to decoders. */
   private final ImmutableMap<String, KijiCellDecoder<?>> mDecoderMap;
 
   /**
-   * Initializes a provider for cell decoders.
+   * Initialize a provider for cell decoders.
    *
-   * @param table Kiji table to provide cell decoders for.
-   * @param cellDecoderFactory Default factory for cell decoders.
-   * @param cellSpecs Column specification overlay/override map.
+   * @param layout the layout for which to provide decoders.
+   * @param schemaTable the schema table from which to retrieve cell schemas.
+   * @param factory Default factory for cell decoders.
+   * @param overrides Column specification overlay/override map.
    *     Specifications from this map override the actual specification from the table.
-   * @throws IOException on I/O error.
+   * @throws IOException in case of an error creating the cached decoders.
    */
   public CellDecoderProvider(
-      KijiTable table,
-      KijiCellDecoderFactory cellDecoderFactory,
-      Map<KijiColumnName, CellSpec> cellSpecs)
+      final KijiTableLayout layout,
+      final KijiSchemaTable schemaTable,
+      final KijiCellDecoderFactory factory,
+      final Map<KijiColumnName, CellSpec> overrides)
       throws IOException {
-
-    mLayout = table.getLayout();
-    mSchemaTable = table.getKiji().getSchemaTable();
-    mCellDecoderFactory = cellDecoderFactory;
-
     // Compute the set of all the column names (map-type families and fully-qualified columns).
     // Note: nothing prevents one from overriding the specification for one specific qualifier
     // in a map-type family.
-    final Set<KijiColumnName> columns = Sets.newHashSet(cellSpecs.keySet());
-    for (FamilyLayout fLayout : mLayout.getFamilies()) {
+    final Set<KijiColumnName> columns = Sets.newHashSet(overrides.keySet());
+    for (FamilyLayout fLayout : layout.getFamilies()) {
       if (fLayout.isMapType()) {
         columns.add(new KijiColumnName(fLayout.getName(), null));
       } else if (fLayout.isGroupType()) {
@@ -116,18 +104,18 @@ public final class CellDecoderProvider {
     for (KijiColumnName column : columns) {
       // Gets the specification for this column,
       // from the overlay map or else from the actual table layout:
-      CellSpec cellSpec = cellSpecs.get(column);
+      CellSpec cellSpec = overrides.get(column);
       if (null == cellSpec) {
-        cellSpec = mLayout.getCellSpec(column);
+        cellSpec = layout.getCellSpec(column);
       } else {
         // Deep-copy the user-provided CellSpec:
         cellSpec = CellSpec.copy(cellSpec);
       }
 
       // Fills in the missing details to build the decoder:
-      cellSpec.setSchemaTable(mSchemaTable);
+      cellSpec.setSchemaTable(schemaTable);
       if (cellSpec.getDecoderFactory() == null) {
-        cellSpec.setDecoderFactory(mCellDecoderFactory);
+        cellSpec.setDecoderFactory(factory);
       }
 
       final KijiCellDecoder<?> decoder = cellSpec.getDecoderFactory().create(cellSpec);

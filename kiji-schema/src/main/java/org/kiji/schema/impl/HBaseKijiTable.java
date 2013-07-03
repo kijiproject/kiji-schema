@@ -20,11 +20,14 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HRegionInfo;
@@ -112,7 +115,15 @@ public final class HBaseKijiTable implements KijiTable {
    * The capsule itself is immutable and should be replaced atomically with a new capsule.
    * References only the LayoutCapsule for the most recent layout for this table.
    */
-  private final LayoutCapsule mLayoutCapsule;
+  private volatile LayoutCapsule mLayoutCapsule;
+
+  /**
+   * Set of outstanding layout consumers associated with this table.  Updating the layout of this
+   * table requires calling
+   * {@link LayoutConsumer#update(org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule)} on all
+   * registered consumers.
+   */
+  private final Set<LayoutConsumer> mLayoutConsumers = new HashSet<LayoutConsumer>();
 
   /**
    * Container class encapsulating the KijiTableLayout and related objects which must all reflect
@@ -234,7 +245,7 @@ public final class HBaseKijiTable implements KijiTable {
     // Retain the Kiji instance only if open succeeds:
     mKiji.retain();
 
-    // Table is now open and must be release properly:
+    // Table is now open and must be released properly:
     mIsOpen.set(true);
     mRetainCount.set(1);
   }
@@ -261,6 +272,66 @@ public final class HBaseKijiTable implements KijiTable {
   @Override
   public KijiURI getURI() {
     return mTableURI;
+  }
+
+  /**
+   * Register a layout consumer that must be updated before this table will report that it has
+   * completed a table layout update.  Sends the first update immediately before returning.
+   *
+   * @param consumer the LayoutConsumer to be registered.
+   * @throws IOException in case of an error updating the LayoutConsumer.
+   */
+  public void registerLayoutConsumer(LayoutConsumer consumer) throws IOException {
+    synchronized (mLayoutConsumers) {
+      mLayoutConsumers.add(consumer);
+    }
+    consumer.update(mLayoutCapsule);
+  }
+
+  /**
+   * Unregister a layout consumer so that it will not be updated when this table performs a layout
+   * update.  Should only be called when a consumer is closed.
+   *
+   * @param consumer the LayoutConsumer to unregister.
+   */
+  public void unregisterLayoutConsumer(LayoutConsumer consumer) {
+    synchronized (mLayoutConsumers) {
+      mLayoutConsumers.remove(consumer);
+    }
+  }
+
+  /**
+   * <p>
+   * Get the set of registered layout consumers.  All layout consumers should be updated using
+   * {@link LayoutConsumer#update(org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule)} before this
+   * table reports that it has successfully update its layout.
+   * </p>
+   * <p>
+   * This method is package private for testing purposes only.  It should not be used externally.
+   * </p>
+   * @return the set of registered layout consumers.
+   */
+  Set<LayoutConsumer> getLayoutConsumers() {
+    synchronized (mLayoutConsumers) {
+      return ImmutableSet.copyOf(mLayoutConsumers);
+    }
+  }
+
+  /**
+   * Update all registered LayoutConsumers with a new KijiTableLayout.
+   *
+   * This method is package private for testing purposes only.  It should not be used externally.
+   *
+   * @param layout the new KijiTableLayout with which to update consumers.
+   * @throws IOException in case of an error updating LayoutConsumers.
+   */
+  void updateLayoutConsumers(KijiTableLayout layout) throws IOException {
+    final LayoutCapsule capsule = new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
+    synchronized (mLayoutConsumers) {
+      for (LayoutConsumer consumer : mLayoutConsumers) {
+        consumer.update(capsule);
+      }
+    }
   }
 
   /**

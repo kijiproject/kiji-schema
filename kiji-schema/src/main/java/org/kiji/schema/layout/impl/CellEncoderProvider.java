@@ -32,7 +32,6 @@ import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiCellEncoderFactory;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiSchemaTable;
-import org.kiji.schema.KijiTable;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
@@ -50,37 +49,27 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 @ApiAudience.Private
 public final class CellEncoderProvider {
 
-  /** Layout of the table to provide encoders for. */
-  private final KijiTableLayout mLayout;
-
-  /** Table to resolve Avro schemas. */
-  private final KijiSchemaTable mSchemaTable;
-
-  /** Default cell encoder factory (either specific or generic). */
-  private final KijiCellEncoderFactory mCellEncoderFactory;
-
   /** Maps column names to encoders. */
   private final ImmutableMap<String, KijiCellEncoder> mEncoderMap;
 
   /**
    * Initializes a provider for cell encoders.
    *
-   * @param table to provide cell encoders for.
-   * @param cellEncoderFactory is the factory to use to create cell encoders.
-   * @throws IOException on I/O error.
+   * @param layout the KijiTableLayout for which to provide cell encoders.
+   * @param schemaTable the KijiSchemaTable from which to retrieve cell schemas.
+   * @param factory the CellEncoderFactory with which to build cell encoders.
+   * @throws IOException in case of an error reading from the schema table.
    */
   public CellEncoderProvider(
-      KijiTable table,
-      KijiCellEncoderFactory cellEncoderFactory)
+      final KijiTableLayout layout,
+      final KijiSchemaTable schemaTable,
+      final KijiCellEncoderFactory factory)
       throws IOException {
-    mLayout = table.getLayout();
-    mSchemaTable = table.getKiji().getSchemaTable();
-    mCellEncoderFactory = cellEncoderFactory;
 
     // Compute the set of all the column names (map-type families and fully-qualified columns from
     // group-type families).
     final Set<KijiColumnName> columns = Sets.newHashSet();
-    for (FamilyLayout fLayout : mLayout.getFamilies()) {
+    for (FamilyLayout fLayout : layout.getFamilies()) {
       if (fLayout.isMapType()) {
         columns.add(new KijiColumnName(fLayout.getName(), null));
       } else if (fLayout.isGroupType()) {
@@ -96,10 +85,10 @@ public final class CellEncoderProvider {
     // Pro-actively build cell encoders for all columns in the table:
     final Map<String, KijiCellEncoder> encoderMap = Maps.newHashMap();
     for (KijiColumnName column : columns) {
-      final CellSpec cellSpec = mLayout.getCellSpec(column);
+      final CellSpec cellSpec = layout.getCellSpec(column);
 
-      cellSpec.setSchemaTable(mSchemaTable);
-      cellSpec.setEncoderFactory(mCellEncoderFactory);
+      cellSpec.setSchemaTable(schemaTable);
+      cellSpec.setEncoderFactory(factory);
 
       final KijiCellEncoder encoder = cellSpec.getEncoderFactory().create(cellSpec);
       encoderMap.put(column.getName(), encoder);

@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Result;
@@ -50,6 +51,7 @@ import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
+import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 /**
  * Reads from a kiji table by sending the requests directly to the HBase tables.
@@ -61,8 +63,101 @@ public class HBaseKijiTableReader implements KijiTableReader {
   /** HBase KijiTable to read from. */
   private final HBaseKijiTable mTable;
 
-  /** Provider for cell decoders. */
-  private final CellDecoderProvider mCellDecoderProvider;
+  /** Map of overridden cell specs. */
+  private final Map<KijiColumnName, CellSpec> mCellSpecOverrides;
+
+  /** Object which processes layout update from the KijiTable from which this Reader reads. */
+  private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
+
+  /**
+   * Encapsulation of all table layout related state necessary for the operation of this reader.
+   * Can be hot swapped to reflect a table layout update.
+   */
+  private ReaderLayoutCapsule mReaderLayoutCapsule = null;
+
+  /**
+   * Container class encapsulating all reader state which must be updated in response to a table
+   * layout update.
+   */
+  private static final class ReaderLayoutCapsule {
+    private final CellDecoderProvider mCellDecoderProvider;
+    private final KijiTableLayout mLayout;
+    private final ColumnNameTranslator mTranslator;
+
+    /**
+     * Default constructor.
+     *
+     * @param cellDecoderProvider the CellDecoderProvider to cache.  This provider should reflect
+     *     all overrides appropriate to this reader.
+     * @param layout the KijiTableLayout to cache.
+     * @param translator the ColumnNameTranslator to cache.
+     */
+    private ReaderLayoutCapsule(
+        final CellDecoderProvider cellDecoderProvider,
+        final KijiTableLayout layout,
+        final ColumnNameTranslator translator) {
+      mCellDecoderProvider = cellDecoderProvider;
+      mLayout = layout;
+      mTranslator = translator;
+    }
+
+    /**
+     * Get the column name translator for the current layout.
+     * @return the column name translator for the current layout.
+     */
+    private ColumnNameTranslator getColumnNameTranslator() {
+      return mTranslator;
+    }
+
+    /**
+     * Get the current table layout for the table to which this reader is associated.
+     * @return the current table layout for the table to which this reader is associated.
+     */
+    private KijiTableLayout getLayout() {
+      return mLayout;
+    }
+
+    /**
+     * Get the CellDecoderProvider including CellSpec overrides for providing cell decoders for the
+     * current layout.
+     * @return the CellDecoderProvider including CellSpec overrides for providing cell decoders for
+     * the current layout.
+     */
+    private CellDecoderProvider getCellDecoderProvider() {
+      return mCellDecoderProvider;
+    }
+  }
+
+  /** Provides for the updating of this Reader in response to a table layout update. */
+  private final class InnerLayoutUpdater implements LayoutConsumer {
+    /** {@inheritDoc} */
+    @Override
+    public void update(final LayoutCapsule capsule) throws IOException {
+      final CellDecoderProvider provider = new CellDecoderProvider(
+          capsule.getLayout(),
+          mTable.getKiji().getSchemaTable(),
+          SpecificCellDecoderFactory.get(),
+          mCellSpecOverrides);
+      // If the capsule is null this is the initial setup and we do not need a log message.
+      if (mReaderLayoutCapsule != null) {
+        LOG.debug(
+            "Updating layout used by KijiTableReader: {} for table: {} from version: {} to: {}",
+            this,
+            mTable.getURI(),
+            mReaderLayoutCapsule.getLayout().getDesc().getLayoutId(),
+            capsule.getLayout().getDesc().getLayoutId());
+      } else {
+        LOG.debug("Initializing KijiTableReader: {} for table: {} with table layout version: {}",
+            this,
+            mTable.getURI(),
+            capsule.getLayout().getDesc().getLayoutId());
+      }
+      mReaderLayoutCapsule = new ReaderLayoutCapsule(
+          provider,
+          capsule.getLayout(),
+          capsule.getColumnNameTranslator());
+    }
+  }
 
   /**
    * Creates a new <code>HBaseKijiTableReader</code> instance that sends the read requests
@@ -88,8 +183,10 @@ public class HBaseKijiTableReader implements KijiTableReader {
       Map<KijiColumnName, CellSpec> layoutOverride)
       throws IOException {
     mTable = table;
-    mCellDecoderProvider =
-        new CellDecoderProvider(mTable, SpecificCellDecoderFactory.get(), layoutOverride);
+    mCellSpecOverrides = layoutOverride;
+    mTable.registerLayoutConsumer(mInnerLayoutUpdater);
+    Preconditions.checkState(mReaderLayoutCapsule != null,
+        "KijiTableReader for table: %s failed to initialize.", mTable.getURI());
 
     // Retain the table only when everything succeeds.
     mTable.retain();
@@ -99,9 +196,8 @@ public class HBaseKijiTableReader implements KijiTableReader {
   @Override
   public KijiRowData get(EntityId entityId, KijiDataRequest dataRequest)
       throws IOException {
-
+    final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
     // Make sure the request validates against the layout of the table.
-    final LayoutCapsule capsule = mTable.getLayoutCapsule();
     final KijiTableLayout tableLayout = capsule.getLayout();
     validateRequestAgainstLayout(dataRequest, tableLayout);
 
@@ -121,7 +217,8 @@ public class HBaseKijiTableReader implements KijiTableReader {
     final Result result = hbaseGet.hasFamilies() ? mTable.getHTable().get(hbaseGet) : new Result();
 
     // Parse the result.
-    return new HBaseKijiRowData(mTable, dataRequest, entityId, result, mCellDecoderProvider);
+    return new HBaseKijiRowData(
+        mTable, dataRequest, entityId, result, capsule.getCellDecoderProvider());
   }
 
   /** {@inheritDoc} */
@@ -133,7 +230,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
     if (entityIds.size() == 1) {
       return Collections.singletonList(this.get(entityIds.get(0), dataRequest));
     }
-    final LayoutCapsule capsule = mTable.getLayoutCapsule();
+    final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
     final KijiTableLayout tableLayout = capsule.getLayout();
     validateRequestAgainstLayout(dataRequest, tableLayout);
     final HBaseDataRequestAdapter hbaseRequestAdapter =
@@ -165,14 +262,13 @@ public class HBaseKijiTableReader implements KijiTableReader {
       KijiDataRequest dataRequest,
       KijiScannerOptions kijiScannerOptions)
       throws IOException {
-
     try {
       EntityId startRow = kijiScannerOptions.getStartRow();
       EntityId stopRow = kijiScannerOptions.getStopRow();
       KijiRowFilter rowFilter = kijiScannerOptions.getKijiRowFilter();
       HBaseScanOptions scanOptions = kijiScannerOptions.getHBaseScanOptions();
 
-      final LayoutCapsule capsule = mTable.getLayoutCapsule();
+      final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
       final HBaseDataRequestAdapter dataRequestAdapter =
           new HBaseDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
       final KijiTableLayout tableLayout = capsule.getLayout();
@@ -197,7 +293,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
           .withDataRequest(dataRequest)
           .withTable(mTable)
           .withScan(scan)
-          .withCellDecoderProvider(mCellDecoderProvider)
+          .withCellDecoderProvider(capsule.getCellDecoderProvider())
           .withReopenScannerOnTimeout(kijiScannerOptions.getReopenScannerOnTimeout()));
     } catch (InvalidLayoutException e) {
       // The table layout should never be invalid at this point, since we got it from a valid
@@ -225,9 +321,8 @@ public class HBaseKijiTableReader implements KijiTableReader {
       Result result = results[i];
       EntityId entityId = entityIds.get(i);
 
-      final HBaseKijiRowData rowData = (null == result)
-          ? null
-          : new HBaseKijiRowData(mTable, dataRequest, entityId, result, mCellDecoderProvider);
+      final HBaseKijiRowData rowData = (null == result) ? null : new HBaseKijiRowData(
+          mTable, dataRequest, entityId, result, mReaderLayoutCapsule.getCellDecoderProvider());
       rowDataList.add(rowData);
     }
     return rowDataList;
@@ -273,6 +368,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
+    mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
     // TODO(SCHEMA-333): Ensure the reader is closed explicitly.
     mTable.release();
   }
