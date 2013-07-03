@@ -109,15 +109,18 @@ final class HashedEntityId extends EntityId {
   @SuppressWarnings("unchecked")
   public <T> T getComponentByIndex(int idx) {
     Preconditions.checkArgument(idx == 0);
-    if (null != mKijiRowKey) {
-      return (T)mKijiRowKey.clone();
-    }
-    return null;
+    Preconditions.checkState(mKijiRowKey != null,
+        "Cannot retrieve components as materialization is suppressed");
+
+    return (T)mKijiRowKey.clone();
   }
 
   /** {@inheritDoc} */
   @Override
   public List<Object> getComponents() {
+    Preconditions.checkState(mKijiRowKey != null,
+        "Cannot retrieve components as materialization is suppressed");
+
     List<Object> resp = new ArrayList<Object>();
     resp.add(mKijiRowKey);
     return resp;

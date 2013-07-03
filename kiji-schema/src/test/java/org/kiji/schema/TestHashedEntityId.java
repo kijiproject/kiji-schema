@@ -22,7 +22,7 @@ package org.kiji.schema;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.fail;
 
 import org.junit.Test;
 
@@ -65,8 +65,17 @@ public class TestHashedEntityId {
     assertArrayEquals(hbaseRowKey, eid.getHBaseRowKey());
     // when we create a hashed entity ID from an hbase row key we cannot retrieve the
     // original key which was used to create it.
-    assertNull(eid.getComponentByIndex(0));
-    assertEquals(1, eid.getComponents().size());
-    assertNull(eid.getComponents().get(0));
+    try {
+      eid.getComponentByIndex(0);
+      fail("Should fail with IllegalStateException");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot retrieve components as materialization is suppressed", ise.getMessage());
+    }
+    try {
+      eid.getComponents();
+      fail("Should fail with IllegalStateException");
+    } catch (IllegalStateException ise) {
+      assertEquals("Cannot retrieve components as materialization is suppressed", ise.getMessage());
+    }
   }
 }

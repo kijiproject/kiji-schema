@@ -453,7 +453,7 @@ final class FormattedEntityId extends EntityId {
   @SuppressWarnings("unchecked")
   public <T> T getComponentByIndex(int idx) {
     Preconditions.checkState(!mRowKeyFormat.getSalt().getSuppressKeyMaterialization(),
-        String.format("Cannot retrieve components as materialization is suppressed"));
+        "Cannot retrieve components as materialization is suppressed");
     Preconditions.checkArgument(idx >= 0 && idx < mComponentValues.size());
     return (T) mComponentValues.get(idx);
   }
@@ -462,7 +462,7 @@ final class FormattedEntityId extends EntityId {
   @Override
   public List<Object> getComponents() {
     Preconditions.checkState(!mRowKeyFormat.getSalt().getSuppressKeyMaterialization(),
-        String.format("Cannot retrieve components as materialization is suppressed"));
+        "Cannot retrieve components as materialization is suppressed");
     return Collections.unmodifiableList(mComponentValues);
   }
 
