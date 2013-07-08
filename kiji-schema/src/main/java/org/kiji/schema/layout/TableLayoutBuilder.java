@@ -39,14 +39,19 @@ import org.kiji.schema.avro.LocalityGroupDesc;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.util.ProtocolVersion;
 
 /**
  * An experimental table layout builder class.
  * Currently manipulates reader, writer, and written schemas.
  */
 @ApiAudience.Private
-public class TableLayoutBuilder {
+class TableLayoutBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(TableLayoutBuilder.class);
+
+  /** Schema validation is available from layout-1.3.0 and up. */
+  private static final ProtocolVersion SCHEMA_VALIDATION_VER =
+      ProtocolVersion.parse("layout-1.3.0");
 
   /** Table layout descriptor builder backing this TableLayoutBuilder. */
   private final TableLayoutDesc.Builder mDescBuilder;
@@ -59,8 +64,15 @@ public class TableLayoutBuilder {
    *
    * @param tableLayoutDesc to build with
    * @param kiji the instance in which to configure schemas
+   * @throws InvalidLayoutException If layout does not support schema validation.
    */
-  public TableLayoutBuilder(TableLayoutDesc tableLayoutDesc, Kiji kiji) {
+  public TableLayoutBuilder(TableLayoutDesc tableLayoutDesc, Kiji kiji)
+      throws InvalidLayoutException {
+    final ProtocolVersion layoutVersion = ProtocolVersion.parse(tableLayoutDesc.getVersion());
+    if (SCHEMA_VALIDATION_VER.compareTo(layoutVersion) > 0) {
+      throw new InvalidLayoutException("Schema validation is available from "
+          + SCHEMA_VALIDATION_VER + " and up; this layout is " + layoutVersion);
+    }
     mKiji = kiji;
     mDescBuilder = TableLayoutDesc.newBuilder(tableLayoutDesc)
         .setReferenceLayout(tableLayoutDesc.getLayoutId())

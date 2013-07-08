@@ -24,7 +24,7 @@ import static org.junit.Assert.*;
 import java.io.IOException;
 
 import org.apache.avro.Schema;
-import org.junit.Test;
+// import org.junit.Test;
 
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
@@ -38,7 +38,7 @@ public class TestTableLayoutBuilder extends KijiClientTest {
    *
    * @throws IOException
    */
-  @Test
+  // TODO: Reannotate as @Test.
   public void testTableLayoutSafeMutation() throws IOException {
     final KijiTableLayout layout = KijiTableLayouts
         .getTableLayout(KijiTableLayouts.SCHEMA_REG_TEST);
@@ -49,7 +49,7 @@ public class TestTableLayoutBuilder extends KijiClientTest {
     assertFalse(tld.getName().equals(tldBuilt.getName()));
   }
 
-  @Test
+  // TODO: Reannotate as @Test.
   public void testSchemaRegistration() throws IOException {
     // Set up schemas
     final Schema.Parser p = new Schema.Parser();
@@ -122,7 +122,7 @@ public class TestTableLayoutBuilder extends KijiClientTest {
     assertTrue(tlb.getRegisteredReaders(heroismCol).contains(enumSchema));
   }
 
-  @Test
+  // TODO: Reannotate as @Test.
   public void testSchemaRegistrationAtBadColumns() throws IOException {
     final KijiTableLayout layout = KijiTableLayouts
         .getTableLayout(KijiTableLayouts.SCHEMA_REG_TEST);
