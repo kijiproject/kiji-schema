@@ -3,14 +3,20 @@
                               Kiji Schema Release Notes
 
 Version 1.1.1
-  * SCHEMA-433. Kiji ls now defaults to listing Kiji instances if no argument
-      is given.
-  * SCHEMA-440. An IOException or KijiNotInstalledException occuring during the
-      instantiation of an HBaseKiji instance no longer leads to retained reference
-      count warnings once the JVM garbage collects.
+  * SCHEMA-455. Add CellByteSizeAsValueFilter for computing table sizes.
   * SCHEMA-445. Fixes a bug in the DataRequest adapter that causes requests
       with mixed paging and non-paging columns to discard all values from all
       columns in a row, causing IOException while decoding the cells later on.
+  * SCHEMA-139. Correctly close Kiji instances if an exception occurs during
+      construction.
+  * SCHEMA-332. Add basic maven archetype for KijiSchema-based user projects.
+  * SCHEMA-439. Properly close HTable connections in HBaseKijiBufferedWriter.
+  * SCHEMA-433. Kiji ls now defaults to listing Kiji instances if no argument
+      is given.
+  * SCHEMA-440. An IOException or KijiNotInstalledException occuring during the
+      instantiation of an HBaseKiji instance no longer leads to retained
+      reference count warnings once the JVM garbage collects.
+  * SCHEMA-438. Fix bug detecting some HBase versions in compatibility shims.
 
 Version 1.1.0
   * SCHEMA-434. Fixes a race condition in ZooKeeperClient which might cause
