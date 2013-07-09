@@ -104,6 +104,9 @@ public final class ColumnId {
   /** The integer encoded by this column id. */
   private final int mId;
 
+  /** The Base64 string encoding of this column id. */
+  private final String mStringEncoding;
+
   /**
    * Constructs a column id that encodes the given integer.
    *
@@ -112,6 +115,22 @@ public final class ColumnId {
   public ColumnId(int id) {
     Preconditions.checkArgument(id >= 0, "id may not be negative");
     mId = id;
+    mStringEncoding = intToBase64(mId);
+  }
+
+  /**
+   * Converts the given integer to Base64 encoding with the MSB to the right.
+   * @param id is the decimal number to convert.
+   * @return a string representing the Base64 encoding of the incoming integer.
+   */
+  public static String intToBase64(int id) {
+    StringBuilder sb = new StringBuilder();
+    int val = id;
+    do {
+      sb.append(ALPHABET.charAt(val % ALPHABET.length()));
+      val >>= BITS_PER_DIGIT;
+    } while (val > 0);
+    return sb.toString();
   }
 
   /**
@@ -169,13 +188,7 @@ public final class ColumnId {
    */
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    int val = mId;
-    do {
-      sb.append(ALPHABET.charAt(val % ALPHABET.length()));
-      val >>= BITS_PER_DIGIT;
-    } while (val > 0);
-    return sb.toString();
+    return mStringEncoding;
   }
 
   /** {@inheritDoc} */
