@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.google.common.base.Preconditions;
+
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
@@ -135,7 +136,7 @@ public final class ColumnId {
     int val = 0;
     for (int i = 0; i < encoded.length(); i++) {
       try {
-        val += VALUE_MAP.get(encoded.charAt(i)) << i * 6;
+        val += VALUE_MAP.get(encoded.charAt(i)) << i * BITS_PER_DIGIT;
       } catch (NullPointerException e) {
         throw new InvalidColumnNameException("Contained a character not in the alphabet: "
             + encoded);
