@@ -2,6 +2,10 @@
 
                               Kiji Schema Release Notes
 
+Version 1.1.2
+  * SCHEMA-466. Fall back to $HADOOP_HOME/lib/native/ for native libraries.
+      Correctly detect native libraries in CDH 4.2 and CDH 4.3 packaging.
+
 Version 1.1.1
   * SCHEMA-455. Add CellByteSizeAsValueFilter for computing table sizes.
   * SCHEMA-445. Fixes a bug in the DataRequest adapter that causes requests

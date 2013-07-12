@@ -163,10 +163,20 @@ kiji_cp="$schema_jar:$KIJI_CLASSPATH:$kiji_conf:$libjars:$distrojars:$hadoop_cp:
 # Determine location of Hadoop native libraries and set java.library.path.
 if [ -d "${HADOOP_HOME}/lib/native" ]; then
   JAVA_PLATFORM=`java -cp ${hadoop_cp} -Xmx32m org.apache.hadoop.util.PlatformName | sed -e "s/ /_/g"`
-  if [ ! -z "$JAVA_LIBRARY_PATH" ]; then
-    JAVA_LIBRARY_PATH="${JAVA_LIBRARY_PATH}:${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}"
-  else
-    JAVA_LIBRARY_PATH="${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}"
+  if [ -d "${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}" ]; then
+    # if $HADOOP_HOME/lib/native/$JAVA_PLATFORM exists, use native libs from there.
+    if [ ! -z "${JAVA_LIBRARY_PATH}" ]; then
+      JAVA_LIBRARY_PATH="${JAVA_LIBRARY_PATH}:${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}"
+    else
+      JAVA_LIBRARY_PATH="${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}"
+    fi
+  elif [ -d "${HADOOP_HOME}/lib/native" ]; then
+    # If not, check for a global $HADOOP_HOME/lib/native/ and just use that dir.
+    if [ ! -z "${JAVA_LIBRARY_PATH}" ]; then
+      JAVA_LIBRARY_PATH="${JAVA_LIBRARY_PATH}:${HADOOP_HOME}/lib/native/"
+    else
+      JAVA_LIBRARY_PATH="${HADOOP_HOME}/lib/native/"
+    fi
   fi
 fi
 
