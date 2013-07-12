@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import java.util.Arrays;
 
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -94,32 +95,42 @@ public final class KijiRowKeySplitter {
   }
 
   /**
-   * Returns the split keys for the given number of regions.  This assumes that the keys are
-   * byte strings of variable hash size.
+   * Generates a list of region boundaries evenly spaced in the HBase row key space.
    *
-   * @param numRegions The number of desired regions.
-   * @param hashSize The hashSize appropriate for entityId.
+   * <p>  </p>
+   *
+   * @param numRegions Number of desired regions. Must be greater than 2 and less than the maximum
+   *     number of regions allowed given the requested key precision.
+   * @param precision Precision of the boundary split keys, in number of bytes.
    * @return The row keys that serve as the boundaries between the regions.
+   *     Each boundary split key has the requested precision, in number of bytes.
+   *     The number of boundaries is numRegions - 1.
    */
-  public byte[][] getSplitKeys(int numRegions, int hashSize) {
-    if (numRegions < 2) {
-      throw new IllegalArgumentException("numRegions must be at least 2, but was " + numRegions);
+  public byte[][] getSplitKeys(int numRegions, int precision) {
+    Preconditions.checkArgument(precision >= 1, "Invalid precision: %s.", precision);
+    Preconditions.checkArgument(numRegions >= 2,
+        "Number of regions must be at least 2, got %s.", numRegions);
+    if (precision < 4) {
+      // 4 bytes give more precision than a Java integer achieves:
+      final long maxRegions = 1L << (8 * precision);
+      Preconditions.checkArgument(numRegions <= maxRegions,
+          "Number of regions must be at most %s, got %s.", maxRegions, numRegions);
     }
 
     // Create a byte array of all zeros.
-    byte[] startKey = new byte[hashSize];
+    final byte[] startKey = new byte[precision];
     Arrays.fill(startKey, (byte) 0x00);
 
     // Create a byte array of all ones.
-    byte[] limitKey = new byte[hashSize];
+    final byte[] limitKey = new byte[precision];
     Arrays.fill(limitKey, (byte) 0xFF);
 
     // This result includes numRegions + 1 keys in it (includes the startKey and limitKey).
-    byte[][] ends = Bytes.split(startKey, limitKey, numRegions - 1);
+    final byte[][] ends = Bytes.split(startKey, limitKey, true, numRegions - 1);
 
     if (LOG.isDebugEnabled()) {
       for (int i = 0; i < ends.length; i++) {
-        LOG.debug("Generated split key: " + ByteArrayFormatter.toHex(ends[i], ':'));
+        LOG.debug("Generated split key: {}", ByteArrayFormatter.toHex(ends[i], ':'));
       }
     }
 

@@ -19,10 +19,15 @@
 
 package org.kiji.schema;
 
-import static org.junit.Assert.*;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -35,5 +40,42 @@ public class TestKijiRowKeySplitter {
         .getRowKeyResolution(KijiTableLayouts.getLayout(KijiTableLayouts.FORMATTED_RKF)));
     assertEquals(16, KijiRowKeySplitter
         .getRowKeyResolution(KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED)));
+  }
+
+  /**
+   * It should be possible to create as many regions as we have potential values for a
+   * hash prefix (i.e. it's desirable to create 256 regions for a table with a 1-byte
+   * hash prefix). In order to do so, the splitting needs to consider the start
+   * and end keys as inclusive. This tests validates such a case by asking for 256
+   * regions on a 1 byte hash prefix.
+   */
+  @Test
+  public void testSplitKeysInclusive() {
+    byte[][] splitKeys = KijiRowKeySplitter.get().getSplitKeys(256, 1);
+    assertThat(splitKeys.length, is(255));
+  }
+
+  @Test
+  public void testSplitKeysSimple() {
+    final byte[][] splitKeys = KijiRowKeySplitter.get().getSplitKeys(2, 1);
+    assertEquals(1, splitKeys.length);
+    assertArrayEquals(new byte[]{(byte) 0x80}, splitKeys[0]);
+  }
+
+  @Test
+  public void testSplitKeysInvalidArgument() {
+    try {
+      KijiRowKeySplitter.get().getSplitKeys(257, 1);
+      Assert.fail("Should be invalid!");
+    } catch (IllegalArgumentException iae) {
+      assertTrue(iae.getMessage().contains("Number of regions must be at most 256"));
+    }
+
+    try {
+      KijiRowKeySplitter.get().getSplitKeys(65537, 2);
+      Assert.fail("Should be invalid!");
+    } catch (IllegalArgumentException iae) {
+      assertTrue(iae.getMessage().contains("Number of regions must be at most 65536"));
+    }
   }
 }
