@@ -27,6 +27,7 @@ import java.util.List;
 
 import org.junit.Test;
 
+import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 public class TestKijiTable extends KijiClientTest {
@@ -47,6 +48,34 @@ public class TestKijiTable extends KijiClientTest {
       for (KijiRegion region : regions) {
         assertTrue(region.getLocations().size() > 0);
       }
+    } finally {
+      mTable.release();
+    }
+  }
+
+  @Test
+  public void testGetRegionsThenAnotherCommand() throws IOException {
+    // SCHEMA-258: getRegions() would close the table, so you can't do more work with it.
+    final int numRegions = 3;
+
+    final Kiji mKiji = getKiji();
+    mKiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED), numRegions);
+    final KijiTable mTable = mKiji.openTable("user");
+    assertTrue("This isn't testing HBaseKijiTable, it's " + mTable.getClass().getName(),
+        mTable instanceof HBaseKijiTable);
+    try {
+      mTable.getRegions();
+
+      // Try to get the region list again; make sure this doesn't explode.
+      mTable.getRegions();
+
+      KijiTableWriter writer = mTable.openTableWriter();
+      writer.put(mTable.getEntityId("username"), "info", "name", "Bob");
+      writer.close();
+
+      KijiTableReader reader = mTable.openTableReader();
+      reader.get(mTable.getEntityId("username"), KijiDataRequest.create("info", "name"));
+      reader.close();
     } finally {
       mTable.release();
     }

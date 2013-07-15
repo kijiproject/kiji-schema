@@ -56,7 +56,6 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.Debug;
-import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 
 /**
@@ -356,14 +355,10 @@ public final class HBaseKijiTable implements KijiTable {
     if (hbaseTable instanceof HTable) {
       LOG.debug("Casting HTableInterface to an HTable.");
       final HTable concreteHBaseTable = (HTable) hbaseTable;
-      try {
-        for (HRegionInfo region: regions) {
-          List<HRegionLocation> hLocations =
-              concreteHBaseTable.getRegionsInRange(region.getStartKey(), region.getEndKey());
-          result.add(new HBaseKijiRegion(region, hLocations));
-        }
-      } finally {
-        ResourceUtils.closeOrLog(concreteHBaseTable);
+      for (HRegionInfo region: regions) {
+        List<HRegionLocation> hLocations =
+            concreteHBaseTable.getRegionsInRange(region.getStartKey(), region.getEndKey());
+        result.add(new HBaseKijiRegion(region, hLocations));
       }
     } else {
       LOG.warn("Unable to cast HTableInterface {} to an HTable.  "

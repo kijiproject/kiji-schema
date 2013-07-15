@@ -3,6 +3,7 @@
                               Kiji Schema Release Notes
 
 Version 1.1.2
+  * SCHEMA-258. Fix: HBaseKijiTable.getRegions() closes the underlying HTable.
   * SCHEMA-466. Fall back to $HADOOP_HOME/lib/native/ for native libraries.
       Correctly detect native libraries in CDH 4.2 and CDH 4.3 packaging.
 
