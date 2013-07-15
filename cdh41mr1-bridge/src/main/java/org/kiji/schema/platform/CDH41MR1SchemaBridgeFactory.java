@@ -50,10 +50,10 @@ public final class CDH41MR1SchemaBridgeFactory extends SchemaPlatformBridgeFacto
     String hadoopVer = org.apache.hadoop.util.VersionInfo.getVersion();
     String hbaseVer = org.apache.hadoop.hbase.util.VersionInfo.getVersion();
 
-    if (hadoopVer.matches("2\\..*-cdh4\\..*")
-        && hbaseVer.matches("0\\.92\\.1-cdh4\\..*")) {
-      // Hadoop 2.x-cdh4.* and HBase 0.92.1-cdh4.* match correctly; use this bridge.
-      return Priority.NORMAL;
+    if (hadoopVer.matches("2\\..*-cdh4\\.1\\..*")
+        && hbaseVer.matches("0\\.92\\.1-cdh4\\.1\\..*")) {
+      // Hadoop 2.x-cdh4.1.* and HBase 0.92.1-cdh4.1.* match correctly; definitely use this bridge.
+      return Priority.HIGH;
     } else {
       // Can't provide for this implementation.
       return Priority.DISABLED;
