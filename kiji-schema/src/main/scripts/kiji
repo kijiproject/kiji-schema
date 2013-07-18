@@ -153,7 +153,13 @@ hbase_cp=$($HBASE_HOME/bin/hbase classpath)
 hadoop_cp=$($HADOOP_HOME/bin/hadoop classpath)
 
 # The KijiSchema jar needs to go at the head of the classpath to suppress slf4j warnings.
-schema_jar="$KIJI_HOME/lib/kiji-schema-${project.version}.jar"
+# The KijiSchema jar filename will be either a "normal" KijiSchema jar, or one compiled with
+# profiling enabled, denoted by ...-profiling.jar. Select the appropriate jar filename here
+if [ -f "${KIJI_HOME}/lib/kiji-schema-${project.version}-profiling.jar" ]; then
+  schema_jar="$KIJI_HOME/lib/kiji-schema-${project.version}-profiling.jar"
+else
+  schema_jar="$KIJI_HOME/lib/kiji-schema-${project.version}.jar"
+fi
 
 # Note that we put the libjars before the hbase jars, in case there are conflicts.
 kiji_conf=$KIJI_HOME/conf
