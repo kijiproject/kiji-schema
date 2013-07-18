@@ -26,16 +26,18 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
-import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +50,6 @@ import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiReaderFactory;
 import org.kiji.schema.KijiRegion;
 import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
@@ -89,11 +90,11 @@ public final class HBaseKijiTable implements KijiTable {
   /** String representation of the call stack at the time this object is constructed. */
   private final String mConstructorStack;
 
-  /** The underlying HTable that stores this Kiji table's data. */
-  private final HTableInterface mHTable;
-
   /** HTableInterfaceFactory for creating new HTables associated with this KijiTable. */
   private final HTableInterfaceFactory mHTableFactory;
+
+  /** Factory for HTableInterface, compatible with the HTablePool. */
+  private final HBaseTableInterfaceFactory mHBaseTableFactory;
 
   /** The factory for EntityIds. */
   private final EntityIdFactory mEntityIdFactory;
@@ -109,6 +110,12 @@ public final class HBaseKijiTable implements KijiTable {
 
   /** Reader factory for this table. */
   private final KijiReaderFactory mReaderFactory;
+
+  /** Pool of HTable connections. Safe for concurrent access. */
+  private final HTablePool mHTablePool;
+
+  /** Name of the HBase table backing this Kiji table. */
+  private final String mHBaseTableName;
 
   /**
    * Capsule containing all objects which should be mutated in response to a table layout update.
@@ -188,8 +195,8 @@ public final class HBaseKijiTable implements KijiTable {
    * @param conf The Hadoop configuration object.
    * @param htableFactory A factory that creates HTable objects.
    *
-   * @throws KijiTableNotFoundException if the table does not exist.
    * @throws IOException On an HBase error.
+   *     <p> Throws KijiTableNotFoundException if the table does not exist. </p>
    */
   HBaseKijiTable(
       HBaseKiji kiji,
@@ -207,6 +214,8 @@ public final class HBaseKijiTable implements KijiTable {
     mTableURI = KijiURI.newBuilder(mKiji.getURI()).withTableName(mName).build();
     LOG.debug("Opening Kiji table '{}' with client version '{}'.",
         mTableURI, VersionInfo.getSoftwareVersion());
+    mHBaseTableName =
+        KijiManagedHBaseTableName.getKijiTableName(mTableURI.getInstance(), mName).toString();
 
     // throws KijiTableNotFoundException
     final KijiTableLayout layout = mKiji.getMetaTable().getTableLayout(name);
@@ -228,19 +237,8 @@ public final class HBaseKijiTable implements KijiTable {
       throw new RuntimeException("Invalid Row Key format found in Kiji Table");
     }
 
-    try {
-      final String hbaseTableName =
-          KijiManagedHBaseTableName.getKijiTableName(kiji.getURI().getInstance(), name).toString();
-      LOG.debug("Opening HBase table: '{}'.", hbaseTableName);
-      mHTable = htableFactory.create(conf, hbaseTableName);
-    } catch (TableNotFoundException tnfe) {
-      // There is a table layout in the metadata tables, but no corresponding HBase table:
-      LOG.error("Inconsistency between Kiji metatable and existing HBase tables: "
-          + "table layout for '{}' exists but HBase table does not.", mTableURI);
-
-      // No resource to close or release:
-      throw new KijiTableNotFoundException(name);
-    }
+    mHBaseTableFactory = new HBaseTableInterfaceFactory();
+    mHTablePool = new HTablePool(mConf, Integer.MAX_VALUE, mHBaseTableFactory);
 
     // Retain the Kiji instance only if open succeeds:
     mKiji.retain();
@@ -338,14 +336,17 @@ public final class HBaseKijiTable implements KijiTable {
    * Opens a new connection to the HBase table backing this Kiji table.
    *
    * <p> The caller is responsible for properly closing the connection afterwards. </p>
+   * <p>
+   *   Note: this does not necessarily create a new HTable instance, but may instead return
+   *   an already existing HTable instance from a pool managed by this HBaseKijiTable.
+   *   Closing a pooled HTable instance internally moves the HTable instance back into the pool.
+   * </p>
    *
    * @return A new HTable associated with this KijiTable.
    * @throws IOException in case of an error.
    */
   public HTableInterface openHTableConnection() throws IOException {
-    final String hbaseTableName =
-        KijiManagedHBaseTableName.getKijiTableName(mTableURI.getInstance(), mName).toString();
-    return mHTableFactory.create(mConf, hbaseTableName);
+    return mHTablePool.getTable(mHBaseTableName);
   }
 
   /**
@@ -390,7 +391,11 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public KijiTableWriter openTableWriter() {
-    return new HBaseKijiTableWriter(this);
+    try {
+      return new HBaseKijiTableWriter(this);
+    } catch (IOException ioe) {
+      throw new KijiIOException(ioe);
+    }
   }
 
   /** {@inheritDoc} */
@@ -417,34 +422,33 @@ public final class HBaseKijiTable implements KijiTable {
   @Override
   public List<KijiRegion> getRegions() throws IOException {
     final HBaseAdmin hbaseAdmin = ((HBaseKiji) getKiji()).getHBaseAdmin();
-    final HTableInterface hbaseTable = getHTable();
+    final HTableInterface htable = mHTableFactory.create(mConf,  mHBaseTableName);
+    try {
+      final List<HRegionInfo> regions = hbaseAdmin.getTableRegions(htable.getTableName());
+      final List<KijiRegion> result = Lists.newArrayList();
 
-    final List<HRegionInfo> regions = hbaseAdmin.getTableRegions(hbaseTable.getTableName());
-    final List<KijiRegion> result = Lists.newArrayList();
+      // If we can get the concrete HTable, we can get location information.
+      if (htable instanceof HTable) {
+        LOG.debug("Casting HTableInterface to an HTable.");
+        final HTable concreteHBaseTable = (HTable) htable;
+        for (HRegionInfo region: regions) {
+          List<HRegionLocation> hLocations =
+              concreteHBaseTable.getRegionsInRange(region.getStartKey(), region.getEndKey());
+          result.add(new HBaseKijiRegion(region, hLocations));
+        }
+      } else {
+        LOG.warn("Unable to cast HTableInterface {} to an HTable.  "
+            + "Creating Kiji regions without location info.", getURI());
+        for (HRegionInfo region: regions) {
+          result.add(new HBaseKijiRegion(region));
+        }
+      }
 
-    // If we can get the concrete HTable, we can get location information.
-    if (hbaseTable instanceof HTable) {
-      LOG.debug("Casting HTableInterface to an HTable.");
-      final HTable concreteHBaseTable = (HTable) hbaseTable;
-      for (HRegionInfo region: regions) {
-        List<HRegionLocation> hLocations =
-            concreteHBaseTable.getRegionsInRange(region.getStartKey(), region.getEndKey());
-        result.add(new HBaseKijiRegion(region, hLocations));
-      }
-    } else {
-      LOG.warn("Unable to cast HTableInterface {} to an HTable.  "
-          + "Creating Kiji regions without location info.", getURI());
-      for (HRegionInfo region: regions) {
-        result.add(new HBaseKijiRegion(region));
-      }
+      return result;
+
+    } finally {
+      htable.close();
     }
-
-    return result;
-  }
-
-  /** @return The underlying HTable instance. */
-  public HTableInterface getHTable() {
-    return mHTable;
   }
 
   /**
@@ -458,9 +462,7 @@ public final class HBaseKijiTable implements KijiTable {
         "HBaseKijiTable.release() on table '%s' already closed.", mTableURI);
 
     LOG.debug("Closing HBaseKijiTable '{}'.", mTableURI);
-    if (null != mHTable) {
-      mHTable.close();
-    }
+    mHTablePool.close();
 
     mKiji.release();
     LOG.debug("HBaseKijiTable '{}' closed.", mTableURI);
@@ -528,6 +530,18 @@ public final class HBaseKijiTable implements KijiTable {
     super.finalize();
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HBaseKijiTable.class)
+        .add("id", System.identityHashCode(this))
+        .add("uri", mTableURI)
+        .add("retain_counter", mRetainCount.get())
+        .add("layout_id", getLayoutCapsule().getLayout().getDesc().getLayoutId())
+        .addValue(mIsOpen.get() ? "open" : "closed")
+        .toString();
+  }
+
   /**
    * We know that all KijiTables are really HBaseKijiTables
    * instances.  This is a convenience method for downcasting, which
@@ -544,5 +558,32 @@ public final class HBaseKijiTable implements KijiTable {
           "Found a KijiTable object that was not an instance of HBaseKijiTable.");
     }
     return (HBaseKijiTable) kijiTable;
+  }
+
+  /**
+   * Factory for HTableInterface, implementing the HBase factory interface.
+   *
+   * <p> The only purpose of this factory is to provide HTableInterface for HTablePool. </p>
+   * <p> Wraps a Kiji HTableInterfaceFactory into an HBase HTableInterfaceFactory. </p>
+   * <p> The HBase factory is not allowed to throw I/O Exception, and must wrap them. </p>
+   */
+  private final class HBaseTableInterfaceFactory
+      implements org.apache.hadoop.hbase.client.HTableInterfaceFactory {
+    /** {@inheritDoc} */
+    @Override
+    public HTableInterface createHTableInterface(Configuration conf, byte[] tableName) {
+      try {
+        LOG.debug("Creating new connection for Kiji table {}", mTableURI);
+        return mHTableFactory.create(conf, Bytes.toString(tableName));
+      } catch (IOException ioe) {
+        throw new KijiIOException(ioe);
+      }
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void releaseHTableInterface(HTableInterface table) throws IOException {
+      table.close();
+    }
   }
 }

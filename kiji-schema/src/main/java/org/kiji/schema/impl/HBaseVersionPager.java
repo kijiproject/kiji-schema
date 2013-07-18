@@ -25,6 +25,7 @@ import java.util.NoSuchElementException;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -202,7 +203,7 @@ public final class HBaseVersionPager implements KijiPager {
     try {
       final Get hbaseGet = adapter.toGet(mEntityId, capsule.getLayout());
       LOG.debug("Sending HBase Get: {}", hbaseGet);
-      final Result result = mTable.getHTable().get(hbaseGet);
+      final Result result = doHBaseGet(hbaseGet);
       LOG.debug("{} cells were requested, {} cells were received.", pageSize, result.size());
 
       if (result.size() < maxVersions) {
@@ -225,6 +226,22 @@ public final class HBaseVersionPager implements KijiPager {
           mTable, nextPageDataRequest, mEntityId, result, mCellDecoderProvider);
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
+    }
+  }
+
+  /**
+   * Sends an HBase Get request.
+   *
+   * @param get HBase Get request.
+   * @return the HBase Result.
+   * @throws IOException on I/O error.
+   */
+  private Result doHBaseGet(Get get) throws IOException {
+    final HTableInterface htable = mTable.openHTableConnection();
+    try {
+      return htable.get(get);
+    } finally {
+      htable.close();
     }
   }
 

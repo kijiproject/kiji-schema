@@ -76,7 +76,10 @@ import org.kiji.schema.hbase.HBaseScanOptions;
  * {@code hbase.client.scanner.caching}.
  * </p>
  *
- * Instantiated in Kiji Schema via {@link org.kiji.schema.KijiTable#openTableReader()}.
+ * <p> Instantiated in Kiji Schema via {@link org.kiji.schema.KijiTable#openTableReader()}. </p>
+ * <p>
+ *   Unless otherwise specified, readers are not thread-safe and must be synchronized externally.
+ * </p>
  */
 @ApiAudience.Public
 @ApiStability.Evolving

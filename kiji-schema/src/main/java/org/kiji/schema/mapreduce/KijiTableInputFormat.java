@@ -95,19 +95,23 @@ public class KijiTableInputFormat
     final Kiji kiji = Kiji.Factory.open(inputTableURI, conf);
     final KijiTable table = kiji.openTable(inputTableURI.getTable());
 
-    final HTableInterface htable = HBaseKijiTable.downcast(table).getHTable();
+    final HTableInterface htable = HBaseKijiTable.downcast(table).openHTableConnection();
+    try {
+      final List<InputSplit> splits = Lists.newArrayList();
+      for (KijiRegion region : table.getRegions()) {
+        final byte[] startKey = region.getStartKey();
+        // TODO: a smart way to get which location is most relevant.
+        final String location =
+            region.getLocations().isEmpty() ? null : region.getLocations().iterator().next();
+        final TableSplit tableSplit = new TableSplit(
+            htable.getTableName(), startKey, region.getEndKey(), location);
+        splits.add(new KijiTableSplit(tableSplit, startKey));
+      }
+      return splits;
 
-    final List<InputSplit> splits = Lists.newArrayList();
-    for (KijiRegion region : table.getRegions()) {
-      final byte[] startKey = region.getStartKey();
-      // TODO: a smart way to get which location is most relevant.
-      final String location =
-          region.getLocations().isEmpty() ? null : region.getLocations().iterator().next();
-      final TableSplit tableSplit = new TableSplit(
-          htable.getTableName(), startKey, region.getEndKey(), location);
-      splits.add(new KijiTableSplit(tableSplit, startKey));
+    } finally {
+      htable.close();
     }
-    return splits;
   }
 
   /**

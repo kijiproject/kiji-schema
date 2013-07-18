@@ -231,8 +231,12 @@ class HFileTool extends BaseTool {
       try {
         val table = kiji.openTable(tableURI.getTable)
         try {
-          val htable = table.asInstanceOf[HBaseKijiTable].getHTable()
-          runAction(htable, filePath)
+          val htable = table.asInstanceOf[HBaseKijiTable].openHTableConnection()
+          try {
+            runAction(htable, filePath)
+          } finally {
+            htable.close()
+          }
         } finally {
           table.release()
         }

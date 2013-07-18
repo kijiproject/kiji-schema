@@ -41,7 +41,10 @@ import org.kiji.annotations.Inheritance;
  *   putter.put(entityId, columnFamily, columnQualifier, value);
  * </pre>
  *
- * This interface is not used alone but is bundled within {@link KijiTableWriter}.
+ * <p> This interface is not used alone but is bundled within {@link KijiTableWriter}. </p>
+ * <p>
+ *   Unless otherwise specified, putters are not thread-safe and must be synchronized externally.
+ * </p>
  */
 @ApiAudience.Public
 @ApiStability.Evolving

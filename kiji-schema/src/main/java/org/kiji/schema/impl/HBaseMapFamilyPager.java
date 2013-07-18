@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -183,7 +184,7 @@ public final class HBaseMapFamilyPager implements KijiPager {
         LOG.debug("Sending HBase Get: {} with filter {}",
             hbaseGet, Debug.toDebugString(hbaseGet.getFilter()));
       }
-      final Result result = mTable.getHTable().get(hbaseGet);
+      final Result result = doHBaseGet(hbaseGet);
       LOG.debug("Got {} cells over {} requested", result.size(), pageSize);
 
       final KijiRowData page =
@@ -206,7 +207,23 @@ public final class HBaseMapFamilyPager implements KijiPager {
     }
   }
 
-   /** {@inheritDoc} */
+  /**
+   * Sends an HBase Get request.
+   *
+   * @param get HBase Get request.
+   * @return the HBase Result.
+   * @throws IOException on I/O error.
+   */
+  private Result doHBaseGet(Get get) throws IOException {
+    final HTableInterface htable = mTable.openHTableConnection();
+    try {
+      return htable.get(get);
+    } finally {
+      htable.close();
+    }
+  }
+
+  /** {@inheritDoc} */
   @Override
   public void remove() {
     throw new UnsupportedOperationException("KijiPager.remove() is not supported.");

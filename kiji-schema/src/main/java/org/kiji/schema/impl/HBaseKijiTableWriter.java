@@ -22,11 +22,14 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Increment;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
@@ -44,7 +47,6 @@ import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.SchemaType;
@@ -56,10 +58,12 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 import org.kiji.schema.layout.impl.CellEncoderProvider;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.platform.SchemaPlatformBridge;
-import org.kiji.schema.util.ResourceUtils;
 
 /**
  * Makes modifications to a Kiji table by sending requests directly to HBase from the local client.
+ *
+ * <p> This writer acquires a dedicated HTable object for its entire life span. </p>
+ * <p> This class is not thread-safe and must be synchronized externally. </p>
  */
 @ApiAudience.Private
 public final class HBaseKijiTableWriter implements KijiTableWriter {
@@ -68,8 +72,22 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   /** The kiji table instance. */
   private final HBaseKijiTable mTable;
 
-  /** Object which processes layout update from the KijiTable to which this Writer writes. */
+  /** States of a writer instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSING,
+    CLOSED
+  }
+
+  /** Tracks the state of this writer. */
+  private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
+
+  /** Processes layout update from the KijiTable to which this writer writes. */
   private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
+
+  /** Dedicated HTable connection. */
+  private final HTableInterface mHTable;
 
   /**
    * All state which should be modified atomically to reflect an update to the underlying table's
@@ -135,6 +153,11 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     /** {@inheritDoc} */
     @Override
     public void update(final LayoutCapsule capsule) throws IOException {
+      final State state = mState.get();
+      if ((state == State.CLOSED) || (state == State.CLOSING)) {
+        LOG.debug("Writer closing or closed: ignoring layout update.");
+        return;
+      }
       final CellEncoderProvider provider = new CellEncoderProvider(
           capsule.getLayout(),
           mTable.getKiji().getSchemaTable(),
@@ -153,12 +176,13 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
             mTable.getURI(),
             capsule.getLayout().getDesc().getLayoutId());
       }
-      SchemaPlatformBridge.get().setAutoFlush(mTable.getHTable(), true);
-      flush();
       mWriterLayoutCapsule = new WriterLayoutCapsule(
           provider,
           capsule.getLayout(),
           capsule.getColumnNameTranslator());
+      if (mState.get() == State.OPEN) {
+        mHTable.flushCommits();
+      }
     }
   }
 
@@ -166,19 +190,20 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
    * Creates a non-buffered kiji table writer that sends modifications directly to Kiji.
    *
    * @param table A kiji table.
+   * @throws IOException on I/O error.
    */
-  public HBaseKijiTableWriter(HBaseKijiTable table) {
+  public HBaseKijiTableWriter(HBaseKijiTable table) throws IOException {
     mTable = table;
-    try {
-      mTable.registerLayoutConsumer(mInnerLayoutUpdater);
-    } catch (IOException ioe) {
-      throw new KijiIOException(ioe);
-    }
+    mTable.registerLayoutConsumer(mInnerLayoutUpdater);
     Preconditions.checkState(mWriterLayoutCapsule != null,
         "KijiTableWriter for table: %s failed to initialize.", mTable.getURI());
 
+    mHTable = table.openHTableConnection();
+    SchemaPlatformBridge.get().setAutoFlush(mHTable, true);
+
     // Retain the table only when everything succeeds.
     mTable.retain();
+    Preconditions.checkState(mState.compareAndSet(State.UNINITIALIZED, State.OPEN));
   }
 
   /** {@inheritDoc} */
@@ -192,6 +217,8 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public <T> void put(EntityId entityId, String family, String qualifier, long timestamp, T value)
       throws IOException {
+    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+
     final KijiColumnName columnName = new KijiColumnName(family, qualifier);
     final WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final HBaseColumnName hbaseColumnName =
@@ -203,7 +230,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
 
     final Put put = new Put(entityId.getHBaseRowKey())
         .add(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp, encoded);
-    mTable.getHTable().put(put);
+    mHTable.put(put);
   }
 
   // ----------------------------------------------------------------------------------------------
@@ -213,6 +240,8 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public KijiCell<Long> increment(EntityId entityId, String family, String qualifier, long amount)
       throws IOException {
+    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+
     verifyIsCounter(family, qualifier);
 
     // Translate the Kiji column name to an HBase column name.
@@ -225,7 +254,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
         hbaseColumnName.getFamily(),
         hbaseColumnName.getQualifier(),
         amount);
-    final Result result = mTable.getHTable().increment(increment);
+    final Result result = mHTable.increment(increment);
     final NavigableMap<Long, byte[]> counterEntries =
         result.getMap().get(hbaseColumnName.getFamily()).get(hbaseColumnName.getQualifier());
     assert null != counterEntries;
@@ -263,8 +292,10 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   /** {@inheritDoc} */
   @Override
   public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {
+    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+
     final Delete delete = new Delete(entityId.getHBaseRowKey(), upToTimestamp, null);
-    mTable.getHTable().delete(delete);
+    mHTable.delete(delete);
   }
 
   /** {@inheritDoc} */
@@ -277,6 +308,8 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public void deleteFamily(EntityId entityId, String family, long upToTimestamp)
       throws IOException {
+    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+
     final WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final FamilyLayout familyLayout = capsule.getLayout().getFamilyMap().get(family);
     if (null == familyLayout) {
@@ -302,7 +335,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     delete.deleteFamily(hbaseColumnName.getFamily(), upToTimestamp);
 
     // Send the delete to the HBase HTable.
-    mTable.getHTable().delete(delete);
+    mHTable.delete(delete);
   }
 
   /**
@@ -332,7 +365,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     }
 
     // Send the delete to the HBase HTable.
-    mTable.getHTable().delete(delete);
+    mHTable.delete(delete);
   }
 
   /**
@@ -361,7 +394,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     final byte[] hbaseRow = entityId.getHBaseRowKey();
 
     // Lock the row.
-    final RowLock rowLock = mTable.getHTable().lockRow(hbaseRow);
+    final RowLock rowLock = mHTable.lockRow(hbaseRow);
     try {
       // Step 1.
       final Get get = new Get(hbaseRow, rowLock);
@@ -372,7 +405,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
       filter.addFilter(new ColumnPrefixFilter(hbaseColumnName.getQualifier()));
       get.setFilter(filter);
 
-      final Result result = mTable.getHTable().get(get);
+      final Result result = mHTable.get(get);
 
       // Step 2.
       if (result.isEmpty()) {
@@ -385,11 +418,11 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
               + ":" + Bytes.toString(hbaseQualifier));
           delete.deleteColumns(hbaseColumnName.getFamily(), hbaseQualifier, upToTimestamp);
         }
-        mTable.getHTable().delete(delete);
+        mHTable.delete(delete);
       }
     } finally {
       // Make sure to unlock the row!
-      mTable.getHTable().unlockRow(rowLock);
+      mHTable.unlockRow(rowLock);
     }
   }
 
@@ -403,11 +436,13 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public void deleteColumn(EntityId entityId, String family, String qualifier, long upToTimestamp)
       throws IOException {
+    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
         .toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumns(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
-    mTable.getHTable().delete(delete);
+    mHTable.delete(delete);
   }
 
   /** {@inheritDoc} */
@@ -420,24 +455,45 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public void deleteCell(EntityId entityId, String family, String qualifier, long timestamp)
       throws IOException {
+    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
         .toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
-    mTable.getHTable().delete(delete);
+    mHTable.delete(delete);
   }
 
   // ----------------------------------------------------------------------------------------------
 
+  /** {@inheritDoc} */
   @Override
   public void flush() throws IOException {
-    mTable.getHTable().flushCommits();
+    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+    mHTable.flushCommits();
   }
 
+  /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    flush();
+    if (!mState.compareAndSet(State.OPEN, State.CLOSING)) {
+      LOG.error("Cannot close writer {} in state {}.", this, mState.get());
+      return;
+    }
     mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
-    ResourceUtils.releaseOrLog(mTable);
+    mHTable.flushCommits();
+    mTable.release();
+    Preconditions.checkState(mState.compareAndSet(State.CLOSING, State.CLOSED));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HBaseKijiTableWriter.class)
+        .add("id", System.identityHashCode(this))
+        .add("table", mTable.getURI())
+        .add("layout-version", mWriterLayoutCapsule.getLayout().getDesc().getLayoutId())
+        .add("state", mState)
+        .toString();
   }
 }

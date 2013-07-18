@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
@@ -79,6 +80,9 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
 
   /** Whether to reopen the HBase scanner on timeout. */
   private final boolean mReopenScannerOnTimeout;
+
+  /** HTable connection. */
+  private final HTableInterface mHTable;
 
   /** For debugging finalize(). */
   private String mConstructorStack = "";
@@ -226,8 +230,16 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
 
     mEntityIdFactory = EntityIdFactory.getFactory(mTable.getLayout());
 
-    mResultScanner = mTable.getHTable().getScanner(mScan);
-    mNextResult = getNextResult();
+    mHTable = mTable.openHTableConnection();
+    try {
+      mResultScanner = openResultScanner();
+      mNextResult = getNextResult();
+    } catch (KijiIOException ioe) {
+      if (mHTable != null) {
+        mHTable.close();
+      }
+      throw ioe;
+    }
 
     mIsOpen.set(true);
   }
@@ -258,7 +270,7 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
       }
       LOG.debug("Opening HBase result scanner with start row key: '{}'.",
           Bytes.toStringBinary(mScan.getStartRow()));
-      return mTable.getHTable().getScanner(mScan);
+      return mHTable.getScanner(mScan);
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
@@ -281,6 +293,7 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
       return;
     }
     mResultScanner.close();
+    mHTable.close();
   }
 
   /** {@inheritDoc} */

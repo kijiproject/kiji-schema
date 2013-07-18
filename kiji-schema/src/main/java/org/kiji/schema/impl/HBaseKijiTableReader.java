@@ -24,10 +24,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import com.google.common.base.Objects;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.Scan;
 import org.slf4j.Logger;
@@ -62,6 +66,9 @@ public class HBaseKijiTableReader implements KijiTableReader {
 
   /** HBase KijiTable to read from. */
   private final HBaseKijiTable mTable;
+
+  /** Becomes true after a successful initialization. */
+  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
 
   /** Map of overridden cell specs. */
   private final Map<KijiColumnName, CellSpec> mCellSpecOverrides;
@@ -190,12 +197,15 @@ public class HBaseKijiTableReader implements KijiTableReader {
 
     // Retain the table only when everything succeeds.
     mTable.retain();
+    mIsOpen.set(true);
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiRowData get(EntityId entityId, KijiDataRequest dataRequest)
       throws IOException {
+    Preconditions.checkState(mIsOpen.get(), "Reader %s is closed.", this);
+
     final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
     // Make sure the request validates against the layout of the table.
     final KijiTableLayout tableLayout = capsule.getLayout();
@@ -213,8 +223,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
       throw new InternalKijiError(e);
     }
     // Send the HTable Get.
-    LOG.debug("Sending HBase Get: {}", hbaseGet);
-    final Result result = hbaseGet.hasFamilies() ? mTable.getHTable().get(hbaseGet) : new Result();
+    final Result result = hbaseGet.hasFamilies() ? doHBaseGet(hbaseGet) : new Result();
 
     // Parse the result.
     return new HBaseKijiRowData(
@@ -225,6 +234,8 @@ public class HBaseKijiTableReader implements KijiTableReader {
   @Override
   public List<KijiRowData> bulkGet(List<EntityId> entityIds, KijiDataRequest dataRequest)
       throws IOException {
+    Preconditions.checkState(mIsOpen.get(), "Reader %s is closed.", this);
+
     // Bulk gets have some overhead associated with them,
     // so delegate work to get(EntityId, KijiDataRequest) if possible.
     if (entityIds.size() == 1) {
@@ -237,11 +248,11 @@ public class HBaseKijiTableReader implements KijiTableReader {
         new HBaseDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
 
     // Construct a list of hbase Gets to send to the HTable.
-    List<Get> hbaseGetList = makeGetList(entityIds, tableLayout, hbaseRequestAdapter);
+    final List<Get> hbaseGetList = makeGetList(entityIds, tableLayout, hbaseRequestAdapter);
 
     // Send the HTable Gets.
-    Result[] results = mTable.getHTable().get(hbaseGetList);
-    assert entityIds.size() == results.length;
+    final Result[] results = doHBaseGet(hbaseGetList);
+    Preconditions.checkState(entityIds.size() == results.length);
 
     // Parse the results.  If a Result is null, then the corresponding KijiRowData should also
     // be null.  This indicates that there was an error retrieving this row.
@@ -262,6 +273,8 @@ public class HBaseKijiTableReader implements KijiTableReader {
       KijiDataRequest dataRequest,
       KijiScannerOptions kijiScannerOptions)
       throws IOException {
+    Preconditions.checkState(mIsOpen.get(), "Reader %s is closed.", this);
+
     try {
       EntityId startRow = kijiScannerOptions.getStartRow();
       EntityId stopRow = kijiScannerOptions.getStopRow();
@@ -302,6 +315,17 @@ public class HBaseKijiTableReader implements KijiTableReader {
     }
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HBaseKijiTableReader.class)
+        .add("id", System.identityHashCode(this))
+        .add("table", mTable.getURI())
+        .add("layout-version", mReaderLayoutCapsule.getLayout().getDesc().getLayoutId())
+        .addValue(mIsOpen.get() ? "open" : "closed")
+        .toString();
+  }
+
   /**
    * Parses an array of hbase Results, returned from a bulk get, to a List of
    * KijiRowData.
@@ -321,8 +345,10 @@ public class HBaseKijiTableReader implements KijiTableReader {
       Result result = results[i];
       EntityId entityId = entityIds.get(i);
 
-      final HBaseKijiRowData rowData = (null == result) ? null : new HBaseKijiRowData(
-          mTable, dataRequest, entityId, result, mReaderLayoutCapsule.getCellDecoderProvider());
+      final HBaseKijiRowData rowData = (null == result)
+          ? null
+          : new HBaseKijiRowData(mTable, dataRequest, entityId, result,
+                mReaderLayoutCapsule.getCellDecoderProvider());
       rowDataList.add(rowData);
     }
     return rowDataList;
@@ -368,8 +394,55 @@ public class HBaseKijiTableReader implements KijiTableReader {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
-    // TODO(SCHEMA-333): Ensure the reader is closed explicitly.
-    mTable.release();
+    if (mIsOpen.getAndSet(false)) {
+      mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
+      mTable.release();
+    } else {
+      LOG.error("Cannot close reader {}: reader is not open.", this);
+    }
+  }
+
+  /**
+   * Sends an HBase Get request.
+   *
+   * @param get HBase Get request.
+   * @return the HBase Result.
+   * @throws IOException on I/O error.
+   */
+  private Result doHBaseGet(Get get) throws IOException {
+    final HTableInterface htable = mTable.openHTableConnection();
+    try {
+      LOG.debug("Sending HBase Get: {}", get);
+      return htable.get(get);
+    } finally {
+      htable.close();
+    }
+  }
+
+  /**
+   * Sends a batch of HBase Get requests.
+   *
+   * @param get HBase Get requests.
+   * @return the HBase Results.
+   * @throws IOException on I/O error.
+   */
+  private Result[] doHBaseGet(List<Get> get) throws IOException {
+    final HTableInterface htable = mTable.openHTableConnection();
+    try {
+      LOG.debug("Sending bulk HBase Get: {}", get);
+      return htable.get(get);
+    } finally {
+      htable.close();
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  protected void finalize() throws Throwable {
+    if (mIsOpen.get()) {
+      LOG.error("{} is closed in finalize() : please, close reader explicitly.", this);
+      close();
+    }
+    super.finalize();
   }
 }

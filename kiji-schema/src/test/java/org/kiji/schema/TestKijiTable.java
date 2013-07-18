@@ -26,11 +26,14 @@ import java.io.IOException;
 import java.util.List;
 
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 public class TestKijiTable extends KijiClientTest {
+  private static final Logger LOG = LoggerFactory.getLogger(TestKijiTable.class);
 
   @Test
   public void testGetRegions() throws IOException {
@@ -61,6 +64,7 @@ public class TestKijiTable extends KijiClientTest {
     final Kiji mKiji = getKiji();
     mKiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED), numRegions);
     final KijiTable mTable = mKiji.openTable("user");
+    LOG.info("Opened Kiji table: {}", mTable);
     assertTrue("This isn't testing HBaseKijiTable, it's " + mTable.getClass().getName(),
         mTable instanceof HBaseKijiTable);
     try {

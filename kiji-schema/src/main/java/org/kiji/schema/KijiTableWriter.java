@@ -31,6 +31,10 @@ import org.kiji.annotations.Inheritance;
  *   To get a KijiTableWriter, use {@link org.kiji.schema.KijiTable#openTableWriter()}
  *   or {@link org.kiji.schema.KijiTable#getWriterFactory()}.
  * </p>
+ *
+ * <p>
+ *   Unless otherwise specified, writers are not thread-safe and must be synchronized externally.
+ * </p>
  */
 @ApiAudience.Public
 @ApiStability.Evolving

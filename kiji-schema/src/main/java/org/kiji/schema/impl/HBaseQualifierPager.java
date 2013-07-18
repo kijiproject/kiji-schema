@@ -27,6 +27,7 @@ import java.util.NoSuchElementException;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Get;
+import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -169,7 +170,7 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
         LOG.debug("Sending HBase Get: {} with filter {}",
             hbaseGet, Debug.toDebugString(hbaseGet.getFilter()));
       }
-      final Result result = mTable.getHTable().get(hbaseGet);
+      final Result result = doHBaseGet(hbaseGet);
       LOG.debug("Got {} cells over {} requested", result.size(), pageSize);
 
       final KeyValue[] kvs = result.raw();
@@ -195,6 +196,22 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
 
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
+    }
+  }
+
+  /**
+   * Sends an HBase Get request.
+   *
+   * @param get HBase Get request.
+   * @return the HBase Result.
+   * @throws IOException on I/O error.
+   */
+  private Result doHBaseGet(Get get) throws IOException {
+    final HTableInterface htable = mTable.openHTableConnection();
+    try {
+      return htable.get(get);
+    } finally {
+      htable.close();
     }
   }
 
