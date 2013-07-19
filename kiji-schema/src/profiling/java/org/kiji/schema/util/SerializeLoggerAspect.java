@@ -149,7 +149,7 @@ public class SerializeLoggerAspect {
   /**
    * Pointcut to match the toolMain function of BaseTool.
    */
-  @Pointcut("call(* org.kiji.schema.tools.BaseTool.toolMain(..))")
+  @Pointcut("execution(* org.kiji.schema.tools.BaseTool.toolMain(..))")
   protected void serializeTool(){
   }
 
