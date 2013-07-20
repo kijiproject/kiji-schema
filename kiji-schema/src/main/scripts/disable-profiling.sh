@@ -22,9 +22,9 @@
 #
 #   The sequence of commands is as follows:
 #
-#   $KIJI_HOME/bin/enable-profiling.sh
+#   $KIJI_HOME/bin/profiling/enable-profiling.sh
 #   kiji <command> etc...
-#   $KIJI_HOME/bin/disable-profiling.sh
+#   $KIJI_HOME/bin/profiling/disable-profiling.sh
 
 set -e
 
@@ -71,6 +71,9 @@ orig_dir="${KIJI_HOME}/lib/original_jars"
 # any manual intervention.
 inconsistent_state="false"
 
+# Name of aspectj jar
+aspectj_jar_name="aspectjrt-1.7.2.jar"
+
 # Remove the profiling jars from lib and distrodir. We have cp'd them while
 # enabling profiling, so rm should be fine.
 if [ -f "${KIJI_HOME}/lib/${kiji_profiling_schema_jar_name}" ]; then
@@ -82,6 +85,17 @@ else
   inconsistent_state="true"
 fi
 
+# Remove the aspectj jar
+if [ -f "${KIJI_HOME}/lib/${aspectj_jar_name}" ]; then
+  echo "Removing aspectj jar..."
+  rm -f "${KIJI_HOME}/lib/${aspectj_jar_name}"
+else
+  echo "Did not find ${aspectj_jar_name} in ${KIJI_HOME}/lib. "
+  echo "Is profiling enabled?"
+  inconsistent_state="true"
+fi
+
+# Remove the KijiMR profiling-enabled jar
 if [ -d "${distrodir}" ]; then
   if [ -f "${distrodir}/${kiji_mr_jar_prefix}"*"profiling.jar" ]; then
     echo "Remove profile enabled kiji mapreduce jar..."

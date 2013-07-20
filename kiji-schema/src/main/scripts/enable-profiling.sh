@@ -24,9 +24,9 @@
 #
 #   Run the command as follows before running any kiji commands
 #
-#   $KIJI_HOME/bin/enable-profiling.sh
+#   $KIJI_HOME/bin/profiling/enable-profiling.sh
 #   kiji <command> etc...
-#   $KIJI_HOME/bin/disable-profiling.sh
+#   $KIJI_HOME/bin/profiling/disable-profiling.sh
 
 set -e
 
@@ -68,6 +68,9 @@ kiji_mr_jar_prefix="kiji-mapreduce-${KIJI_HADOOP_DISTRO_VER}-"
 # profiling-enabled jars in their normal place
 orig_dir="${KIJI_HOME}/lib/original_jars"
 
+# Name of the aspectj jar
+aspectj_jar_name="aspectjrt-1.7.2.jar"
+
 # Create a directory for original jars
 mkdir -p "${orig_dir}"
 
@@ -93,6 +96,16 @@ if [ ! -f "${KIJI_HOME}/lib/${profiling_kiji_schema_jar_name}" ]; then
   cp "${KIJI_HOME}/lib/profiling/${profiling_kiji_schema_jar_name}" "${KIJI_HOME}/lib"
 else
   echo "Profiling enabled jar already exists in ${KIJI_HOME}/lib. Not overwriting."
+  inconsistent_state="true"
+fi
+
+# Copy the aspectj jar into the $KIJI_HOME/lib directory
+if [ ! -f "${KIJI_HOME}/lib/${aspectj_jar_name}" ]; then
+  echo "Moving the aspectj jar from " \
+  "${KIJI_HOME}/lib/profiling/${aspectj_jar_name} to ${KIJI_HOME}/lib"
+  cp "${KIJI_HOME}/lib/profiling/${aspectj_jar_name}" "${KIJI_HOME}/lib"
+else
+  echo "Aspectj jar already exists in ${KIJI_HOME}/lib. Not overwriting."
   inconsistent_state="true"
 fi
 
