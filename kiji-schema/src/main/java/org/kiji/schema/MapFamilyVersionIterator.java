@@ -32,8 +32,8 @@ import org.kiji.annotations.ApiStability;
  * Iterators through the cells in a map-type family,
  *
  * <p>
- *   This iterator combines a {@link MapFamilyQualifierPager} and many
- *   {@link ColumnVersionPager}s
+ *   This iterator combines a {@link MapFamilyQualifierIterator} and many
+ *   {@link ColumnVersionIterator}s
  * </p>
  * <p>
  *   You may construct a version iterator on a map-type family with paging enabled as follows:

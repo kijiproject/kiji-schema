@@ -42,7 +42,7 @@ import org.kiji.schema.util.ResourceUtils;
 public class TestHBaseMetaTable {
   private HTableInterface mHTable;
   private KijiTableLayoutDatabase mTableLayoutDatabase;
-  private KijiTableKeyValueDatabase mTableKeyValueDatabase;
+  private KijiTableKeyValueDatabase<?> mTableKeyValueDatabase;
 
   @Before
   public void setup() throws IOException {

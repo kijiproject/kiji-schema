@@ -33,11 +33,11 @@ import org.kiji.annotations.Inheritance;
  *   The page size is an upper limit to the number of cells retrieved from the region servers
  *   at a time, to bound the amount of memory consumed on the client machine.
  * </p>
- * <p> To enable paging on a column, use {@link ColumnsDef#withPageSize(int)} when building a
- *   {@link KijiDataRequest}.
- *   For example, using a group type column <code>"info:name"</code>,
- *   you may request a maximum of 2 versions per page,
- *   with a maximum of 5 versions per qualifier as follows.
+ * <p> To enable paging on a column, use
+ *   {@link KijiDataRequestBuilder$ColumnsDef#withPageSize(int)} when building a
+ *   {@link KijiDataRequest}. For example, using a group type column <code>"info:name"</code>,
+ *   you may request a maximum of 2 versions per page, with a maximum of 5 versions per qualifier
+ *   as follows:
  *   <pre>
  *     final KijiDataRequest dataRequest = KijiDataRequest.builder()
  *         .addColumnsDef(ColumnsDef.create()

@@ -182,7 +182,7 @@ public final class ColumnValueEqualsRowFilter extends KijiRowFilter {
       final Schema writerSchema = (new Schema.Parser()).parse(schema);
       final String data = root.path(VALUE_NODE).path(DATA_NODE).getTextValue();
       try {
-        final DecodedCell cell = new DecodedCell(writerSchema,
+        final DecodedCell<?> cell = new DecodedCell<Object>(writerSchema,
             FromJson.fromAvroJsonString(data, writerSchema));
         return new ColumnValueEqualsRowFilter(family, qualifier, cell);
       } catch (IOException ioe) {

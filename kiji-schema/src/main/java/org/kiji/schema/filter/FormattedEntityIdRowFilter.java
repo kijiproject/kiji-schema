@@ -109,7 +109,7 @@ public final class FormattedEntityIdRowFilter extends KijiRowFilter {
 
   /**
    * Creates a new <code>FormattedEntityIdRowFilter</code> instance. The row key
-   * format must have an encoding of {@link RowKeyEncoding.FORMATTED}, and if
+   * format must have an encoding of {@link RowKeyEncoding#FORMATTED}, and if
    * there is a salt defined, it must not be set to suppress key
    * materialization.  If key materialization were suppressed, then there would
    * be no component fields to match against.

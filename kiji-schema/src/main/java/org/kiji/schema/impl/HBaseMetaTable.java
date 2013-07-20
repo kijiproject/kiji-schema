@@ -144,7 +144,7 @@ public class HBaseMetaTable implements KijiMetaTable {
    * @param tableKeyValueDatabase A database of key-value pairs to delegate metadata storage to.
    */
   public HBaseMetaTable(HTableInterface htable, KijiTableLayoutDatabase tableLayoutDatabase,
-    KijiTableKeyValueDatabase tableKeyValueDatabase) {
+      KijiTableKeyValueDatabase<?> tableKeyValueDatabase) {
     mIsOpen = true;
     mTable = htable;
     mTableLayoutDatabase = tableLayoutDatabase;

@@ -29,7 +29,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  *
  * <p>Application authors cannot instantiate this class directly. Instead they
  * should use the factory method {@link #validatorForLayout(KijiTableLayout)}
- * to get a validator. They can then use its {@link validate(KijiDataRequest)}
+ * to get a validator. They can then use its {@link #validate(KijiDataRequest)}
  * method to validate requests.</p>
  */
 @ApiAudience.Framework

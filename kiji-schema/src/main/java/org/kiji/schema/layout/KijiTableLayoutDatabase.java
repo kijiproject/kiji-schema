@@ -32,7 +32,7 @@ import org.kiji.schema.avro.TableLayoutsBackup;
 /**
  * <p>
  * A database of Kiji table layouts. It is strongly recommended that you access the
- * functionality of KijiTableKeyValueDatabase via the {@link KijiMetaTable}.
+ * functionality of KijiTableKeyValueDatabase via the {@link org.kiji.schema.KijiMetaTable}.
  * </p>
  *
  */

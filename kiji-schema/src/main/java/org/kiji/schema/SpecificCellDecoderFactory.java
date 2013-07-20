@@ -57,7 +57,9 @@ public final class SpecificCellDecoderFactory implements KijiCellDecoderFactory 
       return new SpecificCellDecoder<T>(cellSpec);
     case COUNTER:
       // purposefully forget the type (long) param of cell decoders for counters.
-      return (KijiCellDecoder<T>) CounterCellDecoder.get();
+      @SuppressWarnings("unchecked")
+      final KijiCellDecoder<T> counterCellDecoder = (KijiCellDecoder<T>) CounterCellDecoder.get();
+      return counterCellDecoder;
     default:
       throw new RuntimeException("Unhandled cell encoding: " + cellSpec.getCellSchema());
     }

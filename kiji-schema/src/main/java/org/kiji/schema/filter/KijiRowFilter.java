@@ -84,7 +84,7 @@ public abstract class KijiRowFilter {
   public static KijiRowFilter toFilter(JsonNode root) {
     final String filterDeserializerClassName = root.path(DESERIALIZER_CLASS_NODE).getTextValue();
     try {
-      final Class filterDeserializerClass = Class.forName(filterDeserializerClassName);
+      final Class<?> filterDeserializerClass = Class.forName(filterDeserializerClassName);
       final KijiRowFilterDeserializer filterDeserializer =
           (KijiRowFilterDeserializer) filterDeserializerClass.newInstance();
       final KijiRowFilter filter = filterDeserializer.createFromJson(root.path(FILTER_NODE));

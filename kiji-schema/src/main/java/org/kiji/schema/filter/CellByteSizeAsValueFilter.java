@@ -33,7 +33,8 @@ import org.kiji.schema.KijiColumnName;
 /**
  * Filter that replaces the value of each cell by its size, in number of bytes.
  *
- * <p> Each cell size is encoded as a 32 bits integer (see {@link Bytes#toInt(byte[])}). </p>
+ * <p> Each cell size is encoded as a 32 bits integer (see
+ *   {@link org.apache.hadoop.hbase.util.Bytes#toInt(byte[])}).</p>
  * <p>
  *   In order to use this filter, you must override the reader schema of the affected columns
  *   as a final fixed byte array of size 4.
@@ -67,7 +68,8 @@ import org.kiji.schema.KijiColumnName;
  *   }
  *   }</tt></pre>
  * </p>
- * <p> TODO(SCHEMA-334): This filter may currently not be combined properly via {@link FilterList}.
+ * <p> TODO(SCHEMA-334): This filter may currently not be combined properly via
+ *     {@link org.apache.hadoop.hbase.filter.FilterList}.
  *     If you need to apply this filter to specific columns, you must currently send separate get
  *     requests.
  * </p>

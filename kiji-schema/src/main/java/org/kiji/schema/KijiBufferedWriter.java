@@ -29,7 +29,8 @@ import org.kiji.annotations.Inheritance;
  * Interface for performing batch operations on a Kiji Table.  Buffered operations are stored in
  * local memory and flushed on explicit calls to {@link #flush()} or {@link #close()}.  The buffer
  * of an open writer cannot be relied upon to flush before JVM shutdown.
- * Accessible via {@link KijiTable#getWriterFactory()#openBufferedWriter()};
+ * Accessible via {@link KijiTable#getWriterFactory()} then
+ * {@link KijiWriterFactory#openBufferedWriter()}.
  */
 @ApiAudience.Public
 @ApiStability.Experimental

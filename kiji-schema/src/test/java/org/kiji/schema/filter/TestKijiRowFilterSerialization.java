@@ -54,7 +54,7 @@ public class TestKijiRowFilterSerialization {
   public void testColumnValueEqualsRowFilter() throws Exception {
     TestRecord record = createTestRecord();
     runTest(new ColumnValueEqualsRowFilter("family", "qualifier",
-        new DecodedCell(record.getSchema(), record)));
+        new DecodedCell<Object>(record.getSchema(), record)));
   }
 
   @Test
@@ -63,7 +63,8 @@ public class TestKijiRowFilterSerialization {
     runTest(Filters.and(
         new HasColumnDataRowFilter("fA", "qA"),
         new HasColumnDataRowFilter("fB", "qB"),
-        new ColumnValueEqualsRowFilter("fC", "qC", new DecodedCell(record.getSchema(), record))));
+        new ColumnValueEqualsRowFilter("fC", "qC",
+            new DecodedCell<Object>(record.getSchema(), record))));
   }
 
   @Test
@@ -72,7 +73,8 @@ public class TestKijiRowFilterSerialization {
     runTest(Filters.or(
         new HasColumnDataRowFilter("fA", "qA"),
         new HasColumnDataRowFilter("fB", "qB"),
-        new ColumnValueEqualsRowFilter("fC", "qC", new DecodedCell(record.getSchema(), record))));
+        new ColumnValueEqualsRowFilter("fC", "qC",
+            new DecodedCell<Object>(record.getSchema(), record))));
   }
 
   @Test
@@ -89,7 +91,7 @@ public class TestKijiRowFilterSerialization {
         .setG("another string")
         .build();
     runTest(new ColumnValueEqualsRowFilter("family", "qualifier",
-        new DecodedCell(record.getSchema(), record)));
+        new DecodedCell<Object>(record.getSchema(), record)));
   }
 
   @Test

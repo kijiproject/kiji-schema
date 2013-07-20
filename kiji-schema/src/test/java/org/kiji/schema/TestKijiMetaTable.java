@@ -126,7 +126,7 @@ public class TestKijiMetaTable extends KijiClientTest {
     final Kiji kiji = getKiji();
     final KijiMetaTable metaTable = kiji.getMetaTable();
 
-    final KijiTableKeyValueDatabase outDb = metaTable.putValue("foo", "key", BYTES_VALUE);
+    final KijiTableKeyValueDatabase<?> outDb = metaTable.putValue("foo", "key", BYTES_VALUE);
     assertEquals("putValue() exposes the delegate", metaTable, outDb);
   }
 

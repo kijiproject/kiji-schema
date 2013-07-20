@@ -65,7 +65,7 @@ public class GenericTableMapReduceUtil extends TableMapReduceUtil {
    * of just WritableSerialization.
    */
   public static void initGenericTableMapperJob(String table, Scan scan,
-      Class<? extends TableMapper> mapper,
+      Class<? extends TableMapper<?, ?>> mapper,
       Class<?> outputKeyClass,
       Class<?> outputValueClass, Job job) throws IOException {
     if (outputValueClass != null) {
