@@ -284,6 +284,20 @@ public class InstanceBuilder {
     }
 
     /**
+     * Adds a table to the testing environment.
+     *
+     * <p> Note: This will replace any existing added tables with the same name.
+     *
+     * @param layoutDesc The layout descriptor of the Kiji table being added.
+     * @return A builder to continue building with.
+     * @throws InvalidLayoutException is the layout is invalid.
+     */
+    public TableBuilder withTable(TableLayoutDesc layoutDesc) throws InvalidLayoutException {
+      final KijiTableLayout layout = KijiTableLayout.newLayout(layoutDesc);
+      return withTable(layoutDesc.getName(), layout);
+    }
+
+    /**
      * Adds a row to the testing environment. Note: This will replace any existing added rows
      * with the same entityId.
      *
