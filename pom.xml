@@ -27,7 +27,7 @@
   <parent>
     <groupId>org.kiji.pom</groupId>
     <artifactId>root-pom</artifactId>
-    <version>1.1.2-SNAPSHOT</version>
+    <version>1.1.2</version>
   </parent>
 
   <name>KijiSchema top-level project</name>
@@ -37,7 +37,7 @@
   <properties>
     <kiji-delegation.version>1.0.0</kiji-delegation.version>
     <kiji-platforms.version>1.1.0</kiji-platforms.version>
-    <fake-hbase.version>0.1.1-SNAPSHOT</fake-hbase.version>
+    <fake-hbase.version>0.1.1</fake-hbase.version>
 
     <!--
        The Hadoop and HBase versions to use in the default "cdh4" profile

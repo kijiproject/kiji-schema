@@ -34,7 +34,7 @@
   <inceptionYear>2012</inceptionYear>
 
   <properties>
-    <kiji-checkin.version>1.0.1-SNAPSHOT</kiji-checkin.version>
+    <kiji-checkin.version>1.0.1</kiji-checkin.version>
     <aspectj-maven-plugin.version>1.4</aspectj-maven-plugin.version>
     <aspectjrt.version>1.7.2</aspectjrt.version>
   </properties>
