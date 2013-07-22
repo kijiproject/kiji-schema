@@ -116,7 +116,9 @@ fi
 if [ -d "${distrodir}" ]; then
   has_kijimr_profile_jar="false"
   for fname in "${distrodir}/${kiji_mr_jar_prefix}"*.jar; do
-    if [ "${fname}" == *"profiling.jar" ]; then
+    # We need double brackets for the if condition to ensure the condition is satisfied
+    # when profiling is a substring of fname. This fails with single brackets.
+    if [[ "${fname}" == *"profiling.jar" ]]; then
       # We found a profiling jar already installed. Set a flag so we don't
       # clobber it with another profiling jar
       has_kijimr_profile_jar="true"
