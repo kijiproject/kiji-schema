@@ -199,7 +199,7 @@ public final class LayoutTool extends BaseTool {
     final NavigableMap<Long, KijiTableLayout> timedLayouts =
         mKiji.getMetaTable().getTimedTableLayoutVersions(mTableURI.getTable(), mMaxVersions);
     if (timedLayouts.isEmpty()) {
-        throw new RuntimeException("No such table: " + mTableURI.getTable());
+      throw new RuntimeException("No such table: " + mTableURI.getTable());
     }
     for (Map.Entry<Long, KijiTableLayout> entry: timedLayouts.entrySet()) {
       final long timestamp = entry.getKey();
@@ -207,7 +207,8 @@ public final class LayoutTool extends BaseTool {
       final String json = ToJson.toJsonString(layout.getDesc());
 
       if (mWriteTo.isEmpty()) {
-        System.out.printf("timestamp: %d:%n%s", timestamp, json);
+        // SCHEMA-14: Add a newline to separate the dumped JSON versions of the layout.
+        System.out.printf("timestamp: %d:%n%s%n", timestamp, json);
       } else {
         final String fileName = String.format("%s-%d.json", mWriteTo, timestamp);
         final FileOutputStream fos = new FileOutputStream(fileName);
