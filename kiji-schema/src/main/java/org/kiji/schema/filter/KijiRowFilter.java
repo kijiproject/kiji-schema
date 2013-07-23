@@ -118,6 +118,13 @@ public abstract class KijiRowFilter {
     /**
      * Converts a Kiji column name to an HBase column family name.
      *
+     * <p>Kiji optimizes cell storage in HBase by mapping user-provided column names to
+     * compact identifiers (usually just a single byte). For example, what you refer to as
+     * a column name "my_kiji_column" might actually be stored in HBase as a column name
+     * with a single letter "B". Because of this, KijiRowFilter implementations that
+     * reference Kiji column names should use this method to obtain the name of corresponding
+     * optimized HBase column name.</p>
+     *
      * @param kijiColumnName The name of a kiji column.
      * @return The name of the HBase column that stores the kiji column data.
      * @throws NoSuchColumnException If there is no such column in the kiji table.
@@ -127,6 +134,16 @@ public abstract class KijiRowFilter {
 
     /**
      * Converts a Kiji cell value into an HBase cell value.
+     *
+     * <p>Kiji stores bytes into HBase cells by encoding an identifier for the writer schema
+     * followed by the binary-encoded Avro data. Because of this, KijiRowFilter implementations
+     * that inspect the contents of a cell should use this method to obtain the bytes encoded
+     * as they would be stored by Kiji.</p>
+     *
+     * <p>For example, if you are implementing a KijiRowFilter that only considers rows
+     * where column C contains an integer value of 123, construct an HBase Filter that
+     * checks whether the contents of the cell in <code>getHBaseColumnName(C)</code> equals
+     * <code>getHBaseCellValue(C, DecodedCell(<i>INT</i>, 123))</code>.</p>
      *
      * @param column Name of the column this cell belongs to.
      * @param kijiCell A kiji cell value.
