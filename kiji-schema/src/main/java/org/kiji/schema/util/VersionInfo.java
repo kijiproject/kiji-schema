@@ -213,7 +213,35 @@ public final class VersionInfo {
       clusterVersion = MIN_INSTANCE_VERSION;
     }
 
+    // See SCHEMA-469.
+    // From https://github.com/kijiproject/wiki/wiki/KijiVersionCompatibility:
+    //
+    // (quote)
+    //   Our primary goal with data formats is backwards compatibility. KijiSchema Version 1.x
+    //   will read and interact with data written by Version 1.y, if x > y.
+    //
+    // ...
+    //
+    //   The instance format describes the feature set and format of the entire Kiji instance.
+    //   This allows a client to determine whether it can connect to the instance at all, read
+    //   any cells, and identifies where other metadata (e.g., schemas, layouts) is located, as
+    //   well as the range of supported associated formats within that metadata.
+    //
+    //   The kiji version command specifies the instance version presently installed on the
+    //   cluster, and the system data version supported by the client. The major version numbers
+    //   of these must agree to connect to one another.
+    // (end quote)
+    //
+    // Given these requirements, we require that our client's supported instance version major
+    // digit be greater than or equal to the major digit of the system installation.
+    //
+    // If we ever deprecate an instance format and then target it for end-of-life (i.e., when
+    // contemplating KijiSchema 2.0.0), we may introduce a cut-off point: we may support only
+    // the most recent 'k' major digits; so KijiSchema 2.0.0 may have system-12.0, but support
+    // reading/writing instances only as far back as system-9.0. This is not yet implemented;
+    // if we do go down this route, then this method would be the place to do it.
+
     return clientVersion.getProtocolName().equals(clusterVersion.getProtocolName())
-        && clientVersion.getMajorVersion() == clusterVersion.getMajorVersion();
+        && clientVersion.getMajorVersion() >= clusterVersion.getMajorVersion();
   }
 }

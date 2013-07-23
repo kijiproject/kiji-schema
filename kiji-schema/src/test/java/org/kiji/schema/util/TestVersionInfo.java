@@ -154,4 +154,22 @@ public class TestVersionInfo {
     assertTrue(VersionInfo.areInstanceVersionsCompatible(clientVersion, clusterVersion));
   }
 
+  @Test
+  public void testNoForwardCompatibility() {
+    // A system-1.0-capable client should not be able to read a system-2.0 installation.
+    final ProtocolVersion clientVersion = ProtocolVersion.parse("system-1.0");
+    final ProtocolVersion clusterVersion = ProtocolVersion.parse("system-2.0");
+
+    assertFalse(VersionInfo.areInstanceVersionsCompatible(clientVersion, clusterVersion));
+  }
+
+  @Test
+  public void testBackCompatibilityThroughMajorVersions() {
+    // A system-2.0-capable client should still be able to read a system-1.0 installation.
+    final ProtocolVersion clientVersion = ProtocolVersion.parse("system-2.0");
+    final ProtocolVersion clusterVersion = ProtocolVersion.parse("system-1.0");
+
+    assertTrue(VersionInfo.areInstanceVersionsCompatible(clientVersion, clusterVersion));
+  }
+
 }
