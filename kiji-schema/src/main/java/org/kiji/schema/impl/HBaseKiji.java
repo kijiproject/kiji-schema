@@ -450,23 +450,38 @@ public final class HBaseKiji implements Kiji {
       printStream = System.out;
     }
 
+    final KijiMetaTable metaTable = getMetaTable();
+
     // Try to get the table layout first, which will throw a KijiTableNotFoundException if
     // there is no table.
     final String tableName = update.getName();
-    getMetaTable().getTableLayout(tableName);
+    metaTable.getTableLayout(tableName);
+
+    final KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableName).build();
+    LOG.debug("Applying layout update {} on table {}", update, tableURI);
 
     KijiTableLayout newLayout = null;
 
     if (dryRun) {
       // Process column ids and perform validation, but don't actually update the meta table.
-      final KijiMetaTable metaTable = getMetaTable();
       final List<KijiTableLayout> layouts = metaTable.getTableLayoutVersions(tableName, 1);
       final KijiTableLayout currentLayout = layouts.isEmpty() ? null : layouts.get(0);
       newLayout = KijiTableLayout.createUpdatedLayout(update, currentLayout);
     } else {
       // Actually set it.
-      LOG.debug("Applying layout update: " + update);
-      newLayout = getMetaTable().updateTableLayout(tableName, update);
+      if (mSystemTable.getDataVersion().compareTo(SYSTEM_2_0) >= 0) {
+        try {
+          final HBaseTableLayoutUpdater updater =
+              new HBaseTableLayoutUpdater(this, tableURI, update);
+          updater.update();
+          newLayout = updater.getNewLayout();
+
+        } catch (KeeperException ke) {
+          throw new IOException(ke);
+        }
+      } else {
+        newLayout = metaTable.updateTableLayout(tableName, update);
+      }
     }
     Preconditions.checkState(newLayout != null);
 

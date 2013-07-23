@@ -21,11 +21,14 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 
 import junit.framework.Assert;
-
 import org.junit.Test;
 
 import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
 import org.kiji.schema.util.ProtocolVersion;
 
@@ -43,6 +46,36 @@ public class IntegrationTestHBaseKiji extends AbstractKijiIntegrationTest {
       kiji.release();
     }
   }
+
+  /** Validates HBaseKiji.modifyTableLayout() for data version "system-2.0". */
+  @Test
+  public void testHBaseKijiSystemModifyTableLayout2dot0() throws Exception {
+    final KijiURI uri = getKijiURI();
+    setDataVersion(uri, ProtocolVersion.parse("system-2.0"));
+    final HBaseKiji kiji = (HBaseKiji) Kiji.Factory.open(uri);
+    try {
+      Assert.assertNotNull(kiji.getZKClient());
+
+      kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST));
+      final KijiTable table = kiji.openTable("foo");
+      try {
+        final TableLayoutDesc layoutUpdate =
+            TableLayoutDesc.newBuilder(table.getLayout().getDesc()).build();
+        layoutUpdate.setReferenceLayout(layoutUpdate.getLayoutId());
+        layoutUpdate.setLayoutId("2");
+
+        final KijiTableLayout newLayout = kiji.modifyTableLayout(layoutUpdate);
+
+      } finally {
+        table.release();
+      }
+
+    } finally {
+      kiji.release();
+    }
+  }
+
+
   /**
    * Sets the data version of a Kiji instance.
    *
