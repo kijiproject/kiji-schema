@@ -129,6 +129,10 @@ if [ -z "$hadoop_major_version" -a -z "$KIJI_HADOOP_DISTRO_VER" ]; then
   echo "Warning: Unknown Hadoop version. May not be able to load all Kiji jars."
   echo "Set KIJI_HADOOP_DISTRO_VER to 'hadoop1' or 'hadoop2' to load these."
 else
+  # If the hadoop version is 0 (i.e. 0.20) then use the hadoop1 bridge
+  if [ $hadoop_major_version -eq 0 ]; then
+    hadoop_major_version=1
+  fi
   KIJI_HADOOP_DISTRO_VER=${KIJI_HADOOP_DISTRO_VER:-"hadoop$hadoop_major_version"}
 fi
 
