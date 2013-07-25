@@ -31,6 +31,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -43,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.SystemTableBackup;
@@ -97,6 +99,7 @@ public class HBaseSystemTable implements KijiSystemTable {
    * @param factory HTableInterface factory.
    * @return a new HTableInterface for the Kiji system table.
    * @throws IOException on I/O error.
+   *     <p> Throws KijiNotInstalledException if the Kiji instance does not exist. </p>
    */
   public static HTableInterface newSystemTable(
       KijiURI kijiURI,
@@ -105,7 +108,13 @@ public class HBaseSystemTable implements KijiSystemTable {
       throws IOException {
     final String tableName =
         KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString();
-    return factory.create(conf, tableName);
+    try {
+      return factory.create(conf, tableName);
+    } catch (TableNotFoundException tnfe) {
+      throw new KijiNotInstalledException(
+          String.format("Kiji instance %s is not installed.", kijiURI),
+          kijiURI.toString());
+    }
   }
 
   /**
@@ -115,6 +124,7 @@ public class HBaseSystemTable implements KijiSystemTable {
    * @param conf the Hadoop configuration.
    * @param factory HTableInterface factory.
    * @throws IOException If there is an error.
+   *     <p> Throws KijiNotInstalledException if the Kiji instance does not exist. </p>
    */
   public HBaseSystemTable(
       KijiURI kijiURI,

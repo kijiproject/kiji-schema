@@ -19,6 +19,8 @@
 
 package org.kiji.schema.util;
 
+import java.util.regex.Pattern;
+
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
 import static org.easymock.EasyMock.replay;
@@ -45,7 +47,7 @@ public class TestVersionInfo {
   @Test
   public void testGetClientDataVersion() {
     // This is the actual version we expect to be in there right now.
-    assertEquals(ProtocolVersion.parse("system-1.0"), VersionInfo.getClientDataVersion());
+    assertEquals(ProtocolVersion.parse("system-2.0"), VersionInfo.getClientDataVersion());
   }
 
   @Test
@@ -98,9 +100,10 @@ public class TestVersionInfo {
       VersionInfo.validateVersion(kiji);
       fail("An exception should have been thrown.");
     } catch (IncompatibleKijiVersionException ikve) {
-      assertEquals(
-          "Data format of Kiji instance (kiji-0.9) cannot operate with client (system-1.0)",
-          ikve.getMessage());
+      assertTrue(ikve.getMessage(), Pattern.matches(
+          "Data format of Kiji instance \\(kiji-0\\.9\\) cannot operate "
+          + "with client \\(system-[0-9]\\.[0-9]\\)",
+          ikve.getMessage()));
     }
   }
 

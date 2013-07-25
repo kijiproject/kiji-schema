@@ -19,7 +19,10 @@
 
 package org.kiji.schema;
 
+import java.util.regex.Pattern;
+
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.apache.hadoop.conf.Configuration;
@@ -73,8 +76,9 @@ public class TestKijiInstaller {
       KijiInstaller.get().uninstall(uri, conf);
       fail("An exception should have been thrown.");
     } catch (KijiNotInstalledException knie) {
-      assertEquals("Kiji instance 'anInstanceThatNeverExisted' is not installed.",
-          knie.getMessage());
+      assertTrue(Pattern.matches(
+          "Kiji instance kiji://.*/anInstanceThatNeverExisted/ is not installed\\.",
+          knie.getMessage()));
     }
   }
 }

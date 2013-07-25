@@ -49,7 +49,6 @@ public final class HBaseKijiFactory implements KijiFactory {
     return new HBaseKiji(
         uri,
         confCopy,
-        true,
         hbaseFactory.getHTableInterfaceFactory(uri),
         hbaseFactory.getLockFactory(uri, confCopy));
   }

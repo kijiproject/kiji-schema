@@ -31,7 +31,6 @@ import org.kiji.schema.IncompatibleKijiVersionException;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiSystemTable;
-import org.kiji.schema.impl.HBaseSystemTable;
 
 /**
  * Reports on the version numbers associated with this software bundle
@@ -51,6 +50,9 @@ public final class VersionInfo {
 
   private static final String KIJI_SCHEMA_VERSION_PROP_NAME = "kiji-schema-version";
 
+  /** Protocol version for "system-2.0". */
+  public static final ProtocolVersion SYSTEM_2_0 = ProtocolVersion.parse("system-2.0");
+
   /**
    * Deprecated version string. Old 1.0.0-rc releases used 'kiji-1.0' as the instance format
    * version; this is now the same as 'system-1.0'.
@@ -61,6 +63,9 @@ public final class VersionInfo {
   /** Version string that represents the first version of the instance format. */
   private static final ProtocolVersion MIN_INSTANCE_VERSION =
       ProtocolVersion.parse("system-1.0");
+
+  /** Version string that represents the maximum data version supported by this Kiji client. */
+  private static final ProtocolVersion MAX_INSTANCE_VERSION = SYSTEM_2_0;
 
   /**
    * Loads kiji schema properties.
@@ -99,29 +104,19 @@ public final class VersionInfo {
   }
 
   /**
-   * Gets the version of the Kiji instance format assumed by the client.
+   * Reports the maximum system version of the Kiji instance format understood by the client.
    *
-   * <p>The instance format describes the layout of the global metadata state of
-   * a Kiji instance. This version number specifies which Kiji instances it would
-   * be compatible with. See {@link #isKijiVersionCompatible} to determine whether
-   * a deployment is compatible with this version.
+   * <p>
+   *   The instance format describes the layout of the global metadata state of
+   *   a Kiji instance. This version number specifies which Kiji instances it would
+   *   be compatible with. See {@link #isKijiVersionCompatible} to determine whether
+   *   a deployment is compatible with this version.
+   * </p>
    *
    * @return A parsed version of the instance format protocol version string.
    */
   public static ProtocolVersion getClientDataVersion() {
-    final Properties defaults = new Properties();
-    try {
-      InputStream defaultsFileStream = VersionInfo.class.getClassLoader()
-          .getResourceAsStream(HBaseSystemTable.DEFAULTS_PROPERTIES_FILE);
-      if (null == defaultsFileStream) {
-        throw new IOException(
-            "Unable to load system table defaults: " + HBaseSystemTable.DEFAULTS_PROPERTIES_FILE);
-      }
-      defaults.load(defaultsFileStream);
-    } catch (IOException ioe) {
-      throw new RuntimeException(ioe);
-    }
-    return ProtocolVersion.parse(defaults.get("data-version").toString());
+    return MAX_INSTANCE_VERSION;
   }
 
   /**

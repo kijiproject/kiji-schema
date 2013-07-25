@@ -54,8 +54,8 @@ public class TestFakeKiji extends KijiClientTest {
       LOG.info(String.format("Opened fake Kiji '%s'.", kiji.getURI()));
 
       final KijiSystemTable systemTable = kiji.getSystemTable();
-      assertEquals("Client version should match installed version",
-          VersionInfo.getClientDataVersion(), systemTable.getDataVersion());
+      assertTrue("Client data version should support installed Kiji instance data version",
+          VersionInfo.getClientDataVersion().compareTo(systemTable.getDataVersion()) >= 0);
 
       assertNotNull(kiji.getSchemaTable());
       assertNotNull(kiji.getMetaTable());

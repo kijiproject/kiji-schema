@@ -37,7 +37,7 @@ import org.kiji.schema.util.VersionInfo;
 public class TestVersionTool extends KijiClientTest {
   @Test
   public void testVersionTool() throws Exception {
-    final ProtocolVersion clientVersion = VersionInfo.getClientDataVersion();
+    final ProtocolVersion clientDataVersion = VersionInfo.getClientDataVersion();
     final VersionTool tool = new VersionTool();
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     final PrintStream ps = new PrintStream(baos);
@@ -49,10 +49,12 @@ public class TestVersionTool extends KijiClientTest {
     ResourceUtils.closeOrLog(ps);
     final String toolOutput = Bytes.toString(baos.toByteArray());
 
+    final ProtocolVersion clusterDataVersion = getKiji().getSystemTable().getDataVersion();
+
     assertEquals(
         "kiji client software version: " + VersionInfo.getSoftwareVersion() + "\n"
-        + "kiji client data version: " + clientVersion + "\n"
-        + "kiji cluster data version: " + clientVersion + "\n"
+        + "kiji client data version: " + clientDataVersion + "\n"
+        + "kiji cluster data version: " + clusterDataVersion + "\n"
         + "layout versions supported: "
             + KijiTableLayout.getMinSupportedLayoutVersion()
             + " to " + KijiTableLayout.getMaxSupportedLayoutVersion() + "\n",

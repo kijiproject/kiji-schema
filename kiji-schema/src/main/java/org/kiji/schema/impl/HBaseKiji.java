@@ -57,6 +57,7 @@ import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.layout.impl.HTableSchemaTranslator;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.LockFactory;
+import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 
@@ -72,6 +73,8 @@ public final class HBaseKiji implements Kiji {
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKiji.class.getName());
 
+  private static final ProtocolVersion SYSTEM_2_0 = ProtocolVersion.parse("system-2.0");
+
   /** The hadoop configuration. */
   private final Configuration mConf;
 
@@ -84,18 +87,6 @@ public final class HBaseKiji implements Kiji {
   /** URI for this HBaseKiji instance. */
   private final KijiURI mURI;
 
-  /** Admin interface. */
-  private HBaseAdmin mAdmin;
-
-  /** The schema table for this kiji instance, or null if it has not been opened yet. */
-  private HBaseSchemaTable mSchemaTable;
-
-  /** The system table for this kiji instance, or null if it has not been opened yet. */
-  private HBaseSystemTable mSystemTable;
-
-  /** The meta table for this kiji instance, or null if it has not been opened yet. */
-  private HBaseMetaTable mMetaTable;
-
   /** Whether the kiji instance is open. */
   private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
 
@@ -106,7 +97,20 @@ public final class HBaseKiji implements Kiji {
    * String representation of the call stack at the time this object is constructed.
    * Used for debugging
    **/
-  private String mConstructorStack;
+  private final String mConstructorStack;
+
+  /** Admin interface. */
+  private HBaseAdmin mAdmin;
+
+  /** The schema table for this kiji instance, or null if it has not been opened yet. */
+  private HBaseSchemaTable mSchemaTable;
+
+  /** The system table for this kiji instance. The system table is always open. */
+  private final HBaseSystemTable mSystemTable;
+
+  /** The meta table for this kiji instance, or null if it has not been opened yet. */
+  private HBaseMetaTable mMetaTable;
+
 
   /**
    * Creates a new <code>HBaseKiji</code> instance.
@@ -116,8 +120,6 @@ public final class HBaseKiji implements Kiji {
    *
    * @param kijiURI the KijiURI.
    * @param conf Hadoop Configuration. Deep copied internally.
-   * @param validateVersion Validate that the installed version of kiji is compatible with
-   *     this client.
    * @param tableFactory HTableInterface factory.
    * @param lockFactory Factory for locks.
    * @throws IOException on I/O error.
@@ -125,14 +127,11 @@ public final class HBaseKiji implements Kiji {
   HBaseKiji(
       KijiURI kijiURI,
       Configuration conf,
-      boolean validateVersion,
       HTableInterfaceFactory tableFactory,
       LockFactory lockFactory)
       throws IOException {
 
-    if (CLEANUP_LOG.isDebugEnabled()) {
-      mConstructorStack = Debug.getStackTrace();
-    }
+    mConstructorStack = CLEANUP_LOG.isDebugEnabled() ? Debug.getStackTrace() : null;
 
     // Deep copy the configuration.
     mConf = new Configuration(conf);
@@ -149,33 +148,35 @@ public final class HBaseKiji implements Kiji {
     // Check for an instance name.
     Preconditions.checkArgument(mURI.getInstance() != null,
         "KijiURI '%s' does not specify a Kiji instance name.", mURI);
-    LOG.debug("Opening kiji instance '{}' with client version '{}'.",
-        mURI, VersionInfo.getSoftwareVersion());
+    LOG.debug(
+        "Opening kiji instance '{}'"
+        + " with client software version '{}'"
+        + " and client data version '{}'.",
+        mURI, VersionInfo.getSoftwareVersion(), VersionInfo.getClientDataVersion());
 
     // Load these lazily.
     mSchemaTable = null;
-    mSystemTable = null;
     mMetaTable = null;
     mAdmin = null;
 
+    mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
     mIsOpen.set(true);
     LOG.debug("Kiji instance '{}' is now opened.", mURI);
 
-    if (validateVersion) {
-      // Make sure the data version for the client matches the cluster.
-      LOG.debug("Validating version for Kiji instance '{}'.", mURI);
-      try {
-        VersionInfo.validateVersion(this);
-      } catch (IOException ioe) {
-        // If an IOException occurred the object will not be constructed so need
-        // to clean it up.
-        close();
-        throw ioe;
-      } catch (KijiNotInstalledException kie) {
-        // Some clients handle this unchecked Exception so do the same here.
-        close();
-        throw kie;
-      }
+    LOG.debug("Kiji instance '{}' has data version '{}'.", mURI, mSystemTable.getDataVersion());
+
+    // Make sure the data version for the client matches the cluster.
+    LOG.debug("Validating version for Kiji instance '{}'.", mURI);
+    try {
+      VersionInfo.validateVersion(this);
+    } catch (IOException ioe) {
+      // If an IOException occurred the object will not be constructed so need to clean it up.
+      close();
+      throw ioe;
+    } catch (KijiNotInstalledException kie) {
+      // Some clients handle this unchecked Exception so do the same here.
+      close();
+      throw kie;
     }
 
     mRetainCount.set(1);
@@ -205,11 +206,8 @@ public final class HBaseKiji implements Kiji {
 
   /** {@inheritDoc} */
   @Override
-  public synchronized KijiSystemTable getSystemTable() throws IOException {
+  public KijiSystemTable getSystemTable() {
     Preconditions.checkState(mIsOpen.get());
-    if (null == mSystemTable) {
-      mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
-    }
     return mSystemTable;
   }
 
@@ -568,7 +566,6 @@ public final class HBaseKiji implements Kiji {
     ResourceUtils.closeOrLog(mAdmin);
     mSchemaTable = null;
     mMetaTable = null;
-    mSystemTable = null;
     mAdmin = null;
     LOG.debug("resource '{}' closed.", mURI);
   }
