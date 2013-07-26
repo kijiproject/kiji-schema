@@ -31,12 +31,17 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
+import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTablePool;
+import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -558,6 +563,59 @@ public final class HBaseKijiTable implements KijiTable {
           "Found a KijiTable object that was not an instance of HBaseKijiTable.");
     }
     return (HBaseKijiTable) kijiTable;
+  }
+
+  /**
+   * Creates a new HFile loader.
+   *
+   * @param conf Configuration object for the HFile loader.
+   * @return the new HFile loader.
+   */
+  private static LoadIncrementalHFiles createHFileLoader(Configuration conf) {
+    try {
+      return new LoadIncrementalHFiles(conf); // throws Exception
+    } catch (Exception exn) {
+      throw new InternalKijiError(exn);
+    }
+  }
+
+  /**
+   * Loads partitioned HFiles directly into the regions of this Kiji table.
+   *
+   * @param hfilePath Path of the HFiles to load.
+   * @throws IOException on I/O error.
+   */
+  public void bulkLoad(Path hfilePath) throws IOException {
+    final LoadIncrementalHFiles loader = createHFileLoader(mConf);
+    try {
+      // LoadIncrementalHFiles.doBulkLoad() requires an HTable instance, not an HTableInterface:
+      final HTable htable = (HTable) mHTableFactory.create(mConf, mHBaseTableName);
+      try {
+        final List<Path> hfilePaths = Lists.newArrayList();
+
+        // Try to find any hfiles for partitions within the passed in path
+        final FileStatus[] hfiles = FileSystem.get(mConf).globStatus(new Path(hfilePath, "*"));
+        for (FileStatus hfile : hfiles) {
+          String partName = hfile.getPath().getName();
+          if (!partName.startsWith("_") && partName.endsWith(".hfile")) {
+            Path partHFile = new Path(hfilePath, partName);
+            hfilePaths.add(partHFile);
+          }
+        }
+        if (hfilePaths.isEmpty()) {
+          // If we didn't find any parts, add in the passed in parameter
+          hfilePaths.add(hfilePath);
+        }
+        for (Path path : hfilePaths) {
+          loader.doBulkLoad(path, htable);
+          LOG.info("Successfully loaded: " + path.toString());
+        }
+      } finally {
+        htable.close();
+      }
+    } catch (TableNotFoundException tnfe) {
+      throw new InternalKijiError(tnfe);
+    }
   }
 
   /**
