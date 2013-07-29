@@ -25,7 +25,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -33,6 +36,7 @@ import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +59,8 @@ import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.layout.impl.HTableSchemaTranslator;
+import org.kiji.schema.layout.impl.TableLayoutMonitor;
+import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ProtocolVersion;
@@ -73,6 +79,7 @@ public final class HBaseKiji implements Kiji {
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKiji.class.getName());
 
+  /** System version that introduces table layout in ZooKeeper. */
   private static final ProtocolVersion SYSTEM_2_0 = ProtocolVersion.parse("system-2.0");
 
   /** The hadoop configuration. */
@@ -99,8 +106,8 @@ public final class HBaseKiji implements Kiji {
    **/
   private final String mConstructorStack;
 
-  /** Admin interface. */
-  private HBaseAdmin mAdmin;
+  /** HBase admin interface. Lazily initialized through {@link #getHBaseAdmin()}. */
+  private HBaseAdmin mAdmin = null;
 
   /** The schema table for this kiji instance, or null if it has not been opened yet. */
   private HBaseSchemaTable mSchemaTable;
@@ -111,6 +118,8 @@ public final class HBaseKiji implements Kiji {
   /** The meta table for this kiji instance, or null if it has not been opened yet. */
   private HBaseMetaTable mMetaTable;
 
+  /** ZooKeeper client for this Kiji instance. */
+  private final ZooKeeperClient mZKClient;
 
   /**
    * Creates a new <code>HBaseKiji</code> instance.
@@ -157,7 +166,6 @@ public final class HBaseKiji implements Kiji {
     // Load these lazily.
     mSchemaTable = null;
     mMetaTable = null;
-    mAdmin = null;
 
     mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
     mIsOpen.set(true);
@@ -177,6 +185,24 @@ public final class HBaseKiji implements Kiji {
       // Some clients handle this unchecked Exception so do the same here.
       close();
       throw kie;
+    }
+
+    // TODO(SCHEMA-491) Share ZooKeeperClient instances when possible.
+    if (mSystemTable.getDataVersion().compareTo(SYSTEM_2_0) >= 0) {
+      // system-2.0 clients must connect to ZooKeeper:
+      //  - to register themselves as table users;
+      //  - to receive table layout updates.
+      final List<String> zkHosts = Lists.newArrayList();
+      for (String host : mURI.getZookeeperQuorumOrdered()) {
+        zkHosts.add(String.format("%s:%s", host, mURI.getZookeeperClientPort()));
+      }
+      final String zkAddress = Joiner.on(",").join(zkHosts);
+      final int sessionTimeoutMS = 60 * 1000;
+      mZKClient = new ZooKeeperClient(zkAddress, sessionTimeoutMS);
+      mZKClient.open();
+    } else {
+      // system-1.x clients do not need a ZooKeeper connection.
+      mZKClient = null;
     }
 
     mRetainCount.set(1);
@@ -240,6 +266,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public KijiTable openTable(String tableName) throws IOException {
+    Preconditions.checkState(mIsOpen.get(), "HBaseKiji %s is closed", this);
     return new HBaseKijiTable(this, tableName, mConf, mHTableFactory);
   }
 
@@ -338,6 +365,23 @@ public final class HBaseKiji implements Kiji {
 
     getMetaTable().updateTableLayout(tableLayout.getName(), tableLayout);
 
+    if (getSystemTable().getDataVersion().compareTo(SYSTEM_2_0) >= 0) {
+      // system-2.0 clients retrieve the table layout from ZooKeeper as a stream of notifications.
+      // Invariant: ZooKeeper hold the most recent layout of the table.
+      LOG.debug("Writing initial table layout in ZooKeeper for table {}.", tableURI);
+      try {
+        final TableLayoutMonitor monitor = new TableLayoutMonitor(mZKClient);
+        try {
+          final byte[] layoutId = Bytes.toBytes(kijiTableLayout.getDesc().getLayoutId());
+            monitor.notifyNewTableLayout(tableURI, layoutId, -1);
+        } finally {
+          monitor.close();
+        }
+      } catch (KeeperException ke) {
+        throw new IOException(ke);
+      }
+    }
+
     try {
       final HTableSchemaTranslator translator = new HTableSchemaTranslator();
       final HTableDescriptor desc =
@@ -395,8 +439,11 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public KijiTableLayout modifyTableLayout(
-      TableLayoutDesc update, boolean dryRun, PrintStream printStream)
+      TableLayoutDesc update,
+      boolean dryRun,
+      PrintStream printStream)
       throws IOException {
+    Preconditions.checkState(mIsOpen.get(), "HBaseKiji %s is closed", this);
     Preconditions.checkNotNull(update);
 
     if (dryRun && (null == printStream)) {
@@ -454,8 +501,8 @@ public final class HBaseKiji implements Kiji {
             + " does not exist");
       }
     }
-    LOG.debug("Existing table descriptor: " + currentTableDescriptor);
-    LOG.debug("New table descriptor: " + newTableDescriptor);
+    LOG.debug("Existing table descriptor: {}", currentTableDescriptor);
+    LOG.debug("New table descriptor: {}", newTableDescriptor);
 
     LOG.debug("Checking for differences between the new HBase schema and the existing one");
     final HTableDescriptorComparator comparator = new HTableDescriptorComparator();
@@ -527,6 +574,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public void deleteTable(String tableName) throws IOException {
+    Preconditions.checkState(mIsOpen.get(), "HBaseKiji %s is closed", this);
     // Delete from HBase.
     String hbaseTable = KijiManagedHBaseTableName.getKijiTableName(mURI.getInstance(),
         tableName).toString();
@@ -545,6 +593,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public List<String> getTableNames() throws IOException {
+    Preconditions.checkState(mIsOpen.get(), "HBaseKiji %s is closed", this);
     return getMetaTable().listTables();
   }
 
@@ -555,11 +604,15 @@ public final class HBaseKiji implements Kiji {
    */
   private void close() throws IOException {
     if (!mIsOpen.getAndSet(false)) {
-      LOG.warn("Called close() on resource that was already closed.");
+      LOG.error("Cannot close {} : not open.", this);
       return;
     }
 
-    LOG.debug("Closing resource '{}'.", mURI);
+    if (mZKClient != null) {
+      mZKClient.release();
+    }
+
+    LOG.debug("Closing {}.", this);
     ResourceUtils.closeOrLog(mMetaTable);
     ResourceUtils.closeOrLog(mSystemTable);
     ResourceUtils.closeOrLog(mSchemaTable);
@@ -567,7 +620,7 @@ public final class HBaseKiji implements Kiji {
     mSchemaTable = null;
     mMetaTable = null;
     mAdmin = null;
-    LOG.debug("resource '{}' closed.", mURI);
+    LOG.debug("{} closed.", this);
   }
 
   /** {@inheritDoc} */
@@ -632,5 +685,26 @@ public final class HBaseKiji implements Kiji {
       close();
     }
     super.finalize();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HBaseKiji.class)
+        .add("id", System.identityHashCode(this))
+        .add("uri", mURI)
+        .add("retain-count", mRetainCount)
+        .add("open", mIsOpen)
+        .toString();
+  }
+
+  /**
+   * Returns the ZooKeeper client for this Kiji instance.
+   *
+   * @return the ZooKeeper client for this Kiji instance.
+   *     Null if the data version &le; {@code system-2.0}.
+   */
+  ZooKeeperClient getZKClient() {
+    return mZKClient;
   }
 }
