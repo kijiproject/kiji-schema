@@ -21,35 +21,24 @@ package org.kiji.schema.tools;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-
-import com.google.common.collect.Lists;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
-import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.ProtocolVersion;
-import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 
-public class TestVersionTool extends KijiClientTest {
+public class TestVersionTool extends KijiToolTest {
+
   @Test
   public void testVersionTool() throws Exception {
     final ProtocolVersion clientDataVersion = VersionInfo.getClientDataVersion();
-    final VersionTool tool = new VersionTool();
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    final PrintStream ps = new PrintStream(baos);
-    tool.setConf(getConf());
-    tool.setPrintStream(ps);
-    final int exitCode = tool.toolMain(Lists.newArrayList("--debug",
-        String.format("--kiji=%s", getKiji().getURI())));
+    final Kiji kiji = getKiji();
 
-    ResourceUtils.closeOrLog(ps);
-    final String toolOutput = Bytes.toString(baos.toByteArray());
+    final int exitCode =
+        runTool(new VersionTool(), "--debug", String.format("--kiji=%s", kiji.getURI()));
 
-    final ProtocolVersion clusterDataVersion = getKiji().getSystemTable().getDataVersion();
+    final ProtocolVersion clusterDataVersion = kiji.getSystemTable().getDataVersion();
 
     assertEquals(
         "kiji client software version: " + VersionInfo.getSoftwareVersion() + "\n"
@@ -58,7 +47,7 @@ public class TestVersionTool extends KijiClientTest {
         + "layout versions supported: "
             + KijiTableLayout.getMinSupportedLayoutVersion()
             + " to " + KijiTableLayout.getMaxSupportedLayoutVersion() + "\n",
-        toolOutput);
+        mToolOutputStr);
 
     assertEquals(0, exitCode);
   }

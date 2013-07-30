@@ -22,17 +22,11 @@ package org.kiji.schema.tools;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-
-import com.google.common.collect.Lists;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -40,41 +34,8 @@ import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
 import org.kiji.schema.util.ResourceUtils;
 
-public class TestScanTool extends KijiClientTest {
+public class TestScanTool extends KijiToolTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestScanTool.class);
-
-  /** Horizontal ruler to delimit CLI outputs in logs. */
-  private static final String RULER =
-      "--------------------------------------------------------------------------------";
-
-  /** Output of the CLI tool, as bytes. */
-  private ByteArrayOutputStream mToolOutputBytes = new ByteArrayOutputStream();
-
-  /** Output of the CLI tool, as a single string. */
-  private String mToolOutputStr;
-
-  /** Output of the CLI tool, as an array of lines. */
-  private String[] mToolOutputLines;
-
-  private int runTool(BaseTool tool, String...arguments) throws Exception {
-    mToolOutputBytes.reset();
-    final PrintStream pstream = new PrintStream(mToolOutputBytes);
-    tool.setPrintStream(pstream);
-    tool.setConf(getConf());
-    try {
-      LOG.info("Running tool: '{}' with parameters {}", tool.getName(), arguments);
-      return tool.toolMain(Lists.newArrayList(arguments));
-    } finally {
-      pstream.flush();
-      pstream.close();
-
-      mToolOutputStr = Bytes.toString(mToolOutputBytes.toByteArray());
-      LOG.info("Captured output for tool: '{}' with parameters {}:\n{}\n{}{}\n",
-          tool.getName(), arguments,
-          RULER, mToolOutputStr, RULER);
-      mToolOutputLines = mToolOutputStr.split("\n");
-    }
-  }
 
   @Test
   public void testUnderspecified() throws Exception {

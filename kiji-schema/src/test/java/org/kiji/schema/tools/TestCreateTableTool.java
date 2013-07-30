@@ -23,20 +23,15 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
-import java.io.PrintStream;
 
-import com.google.common.collect.Lists;
 import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.InvalidLayoutException;
@@ -44,44 +39,11 @@ import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ToJson;
 
-public class TestCreateTableTool extends KijiClientTest {
+public class TestCreateTableTool extends KijiToolTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestCreateTableTool.class);
-
-  /** Horizontal ruler to delimit CLI outputs in logs. */
-  private static final String RULER =
-      "--------------------------------------------------------------------------------";
 
   /** Path to a region splits files. */
   public static final String REGION_SPLIT_KEY_FILE = "org/kiji/schema/tools/split-keys.txt";
-
-  /** Output of the CLI tool, as bytes. */
-  private ByteArrayOutputStream mToolOutputBytes = new ByteArrayOutputStream();
-
-  /** Output of the CLI tool, as a single string. */
-  private String mToolOutputStr;
-
-  /** Output of the CLI tool, as an array of lines. */
-  private String[] mToolOutputLines;
-
-  private int runTool(BaseTool tool, String...arguments) throws Exception {
-    mToolOutputBytes.reset();
-    final PrintStream pstream = new PrintStream(mToolOutputBytes);
-    tool.setConf(getConf());
-    tool.setPrintStream(pstream);
-    try {
-      LOG.info("Running tool: '{}' with parameters {}", tool.getName(), arguments);
-      return tool.toolMain(Lists.newArrayList(arguments));
-    } finally {
-      pstream.flush();
-      pstream.close();
-
-      mToolOutputStr = Bytes.toString(mToolOutputBytes.toByteArray());
-      LOG.info("Captured output for tool: '{}' with parameters {}:\n{}\n{}{}\n",
-          tool.getName(), arguments,
-          RULER, mToolOutputStr, RULER);
-      mToolOutputLines = mToolOutputStr.split("\n");
-    }
-  }
 
   /**
    * Writes a table layout as a JSON descriptor in a temporary file.

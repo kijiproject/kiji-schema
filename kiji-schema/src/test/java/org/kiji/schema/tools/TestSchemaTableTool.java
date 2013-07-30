@@ -21,61 +21,23 @@ package org.kiji.schema.tools;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.PrintStream;
 
-import com.google.common.collect.Lists;
 import org.apache.avro.Schema;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.util.ByteArrayFormatter;
 import org.kiji.schema.util.BytesKey;
 
 
-public class TestSchemaTableTool extends KijiClientTest {
+public class TestSchemaTableTool extends KijiToolTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestSchemaTableTool.class);
-
-  /** Horizontal ruler to delimit CLI outputs in logs. */
-  private static final String RULER =
-      "--------------------------------------------------------------------------------";
-
-  /** Output of the CLI tool, as bytes. */
-  private ByteArrayOutputStream mToolOutputBytes = new ByteArrayOutputStream();
-
-  /** Output of the CLI tool, as a single string. */
-  private String mToolOutputStr;
-
-  /** Output of the CLI tool, as an array of lines. */
-  private String[] mToolOutputLines;
-
-  private int runTool(BaseTool tool, String...arguments) throws Exception {
-    mToolOutputBytes.reset();
-    final PrintStream pstream = new PrintStream(mToolOutputBytes);
-    tool.setPrintStream(pstream);
-    tool.setConf(getConf());
-    try {
-      LOG.info("Running tool: '{}' with parameters {}", tool.getName(), arguments);
-      return tool.toolMain(Lists.newArrayList(arguments));
-    } finally {
-      pstream.flush();
-      pstream.close();
-
-      mToolOutputStr = Bytes.toString(mToolOutputBytes.toByteArray());
-      LOG.info("Captured output for tool: '{}' with parameters {}:\n{}\n{}{}\n",
-          tool.getName(), arguments,
-          RULER, mToolOutputStr, RULER);
-      mToolOutputLines = mToolOutputStr.split("\n");
-    }
-  }
 
   /** Table used to test against. Owned by this test. */
   private KijiSchemaTable mTable = null;

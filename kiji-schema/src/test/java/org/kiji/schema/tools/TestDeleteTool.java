@@ -23,21 +23,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.PrintStream;
-
-import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder;
@@ -50,43 +42,8 @@ import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
 import org.kiji.schema.util.ResourceUtils;
 
-public class TestDeleteTool extends KijiClientTest {
+public class TestDeleteTool extends KijiToolTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestDeleteTool.class);
-
-  /** Horizontal ruler to delimit CLI outputs in logs. */
-  private static final String RULER =
-      "--------------------------------------------------------------------------------";
-
-  /** Output of the CLI tool, as bytes. */
-  private ByteArrayOutputStream mToolOutputBytes = new ByteArrayOutputStream();
-
-  /** Output of the CLI tool, as a single string. */
-  private String mToolOutputStr;
-
-  private int runTool(BaseTool tool, String...arguments) throws Exception {
-    return runToolWithInput(tool, "", arguments);
-  }
-
-  private int runToolWithInput(BaseTool tool, String input, String... arguments) throws Exception {
-    mToolOutputBytes.reset();
-    final PrintStream pstream = new PrintStream(mToolOutputBytes);
-    tool.setPrintStream(pstream);
-    final InputStream istream = new ByteArrayInputStream(input.getBytes());
-    tool.setInputStream(istream);
-    tool.setConf(getConf());
-    try {
-      LOG.info("Running tool: '{}' with parameters {}", tool.getName(), arguments);
-      return tool.toolMain(Lists.newArrayList(arguments));
-    } finally {
-      pstream.flush();
-      pstream.close();
-
-      mToolOutputStr = Bytes.toString(mToolOutputBytes.toByteArray());
-      LOG.info("Captured output for tool: '{}' with parameters {}:\n{}\n{}{}\n",
-          tool.getName(), arguments,
-          RULER, mToolOutputStr, RULER);
-    }
-  }
 
   /** Table used to test against. Owned by this test. */
   private KijiTable mTable = null;

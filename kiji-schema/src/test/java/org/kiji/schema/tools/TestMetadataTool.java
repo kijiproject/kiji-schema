@@ -27,13 +27,13 @@ import java.io.File;
 import java.util.List;
 
 import com.google.common.collect.Lists;
+
 import org.junit.Test;
 
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.layout.KijiTableLayouts;
 
-public class TestMetadataTool extends KijiClientTest {
+public class TestMetadataTool extends KijiToolTest {
   @Test
   public void testInTempFolder() throws Exception {
     final File backupFile = new File(getLocalTempDir(), "tempMetadataBackup");
