@@ -19,9 +19,11 @@
 
 package org.kiji.schema.layout.impl;
 
-import java.util.List;
+import java.util.concurrent.BlockingQueue;
 
-import com.google.common.collect.Lists;
+import com.google.common.collect.ImmutableSetMultimap;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Queues;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Assert;
 import org.junit.Test;
@@ -29,60 +31,135 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.RuntimeInterruptedException;
 import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutTracker;
 import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutUpdateHandler;
+import org.kiji.schema.layout.impl.TableLayoutMonitor.UsersTracker;
+import org.kiji.schema.layout.impl.TableLayoutMonitor.UsersUpdateHandler;
 import org.kiji.schema.util.ZooKeeperTest;
 
 /** Tests for TableLayoutMonitor. */
 public class TestTableLayoutMonitor extends ZooKeeperTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestTableLayoutMonitor.class);
 
-  /** Terribly minimal unit-test for TableLayoutMonitor trackers. */
+  /** Tests the layout update notification mechanism. */
   @Test
-  public void testTableLayoutMonitor() throws Exception {
+  public void testLayoutUpdateNotification() throws Exception {
     final ZooKeeperClient zkClient = new ZooKeeperClient(getZKAddress(), 60 * 1000);
     try {
       zkClient.open();
 
       final TableLayoutMonitor monitor = new TableLayoutMonitor(zkClient);
-      final KijiURI tableURI =
-          KijiURI.newBuilder(String.format("kiji://%s/kiji_instance/table_name", getZKAddress()))
-          .build();
+      try {
 
-      monitor.notifyNewTableLayout(tableURI, Bytes.toBytes("layout.v1"), -1);
+        final KijiURI tableURI =
+            KijiURI.newBuilder(String.format("kiji://%s/kiji_instance/table_name", getZKAddress()))
+            .build();
 
-      final List<String> layouts = Lists.newArrayList();
-      final Object lock = new Object();
+        monitor.notifyNewTableLayout(tableURI, Bytes.toBytes("layout.v1"), -1);
 
-      final LayoutTracker layoutTracker = monitor.newTableLayoutTracker(
-          tableURI,
-          new LayoutUpdateHandler() {
-            /** {@inheritDoc} */
-            @Override
-            public void update(byte[] layout) {
-              synchronized (lock) {
-                layouts.add(Bytes.toString(layout));
-                lock.notifyAll();
+        final BlockingQueue<String> queue = Queues.newSynchronousQueue();
+
+        final LayoutTracker layoutTracker = monitor.newTableLayoutTracker(
+            tableURI,
+            new LayoutUpdateHandler() {
+              /** {@inheritDoc} */
+              @Override
+              public void update(byte[] layout) {
+                try {
+                  queue.put(Bytes.toString(layout));
+                } catch (InterruptedException ie) {
+                  throw new RuntimeInterruptedException(ie);
+                }
               }
-            }
-          });
+            });
 
-      synchronized (lock) {
         layoutTracker.open();
-        lock.wait(10 * 1000);
-      }
+        final String layout1 = queue.take();
+        Assert.assertEquals("layout.v1", layout1);
 
-      Assert.assertEquals(1, layouts.size());
-      Assert.assertEquals("layout.v1", layouts.get(0));
-
-      synchronized (lock) {
         monitor.notifyNewTableLayout(tableURI, Bytes.toBytes("layout.v2"), -1);
-        lock.wait(10 * 1000);
-      }
-      Assert.assertEquals(2, layouts.size());
-      Assert.assertEquals("layout.v2", layouts.get(1));
+        final String layout2 = queue.take();
+        Assert.assertEquals("layout.v2", layout2);
 
-      monitor.close();
+      } finally {
+        monitor.close();
+      }
+    } finally {
+      zkClient.release();
+    }
+  }
+
+  /** Tests the tracking of table users. */
+  @Test
+  public void testUsersTracker() throws Exception {
+    final ZooKeeperClient zkClient = new ZooKeeperClient(getZKAddress(), 60 * 1000);
+    try {
+      zkClient.open();
+
+      final TableLayoutMonitor monitor = new TableLayoutMonitor(zkClient);
+      try {
+        final KijiURI tableURI =
+            KijiURI.newBuilder(String.format("kiji://%s/kiji_instance/table_name", getZKAddress()))
+            .build();
+
+        final BlockingQueue<Multimap<String, String>> queue = Queues.newSynchronousQueue();
+
+        final UsersTracker tracker = monitor.newTableUsersTracker(
+            tableURI,
+            new UsersUpdateHandler() {
+              @Override
+              public void update(Multimap<String, String> users) {
+                LOG.info("Users map updated to: {}", users);
+                try {
+                  queue.put(users);
+                } catch (InterruptedException ie) {
+                  throw new RuntimeInterruptedException(ie);
+                }
+              }
+            });
+        tracker.open();
+        try {
+          final Multimap<String, String> umap1 = queue.take();
+          Assert.assertTrue(umap1.isEmpty());
+
+          monitor.registerTableUser(tableURI, "user-id-1", "layout-id-1");
+          final Multimap<String, String> umap2 = queue.take();
+          Assert.assertEquals(ImmutableSetMultimap.of("user-id-1", "layout-id-1"), umap2);
+
+          monitor.registerTableUser(tableURI, "user-id-1", "layout-id-2");
+          final Multimap<String, String> umap3 = queue.take();
+          Assert.assertEquals(
+              ImmutableSetMultimap.of(
+                  "user-id-1", "layout-id-1",
+                  "user-id-1", "layout-id-2"),
+              umap3);
+
+          monitor.registerTableUser(tableURI, "user-id-2", "layout-id-1");
+          final Multimap<String, String> umap4 = queue.take();
+          Assert.assertEquals(
+              ImmutableSetMultimap.of(
+                  "user-id-1", "layout-id-1",
+                  "user-id-1", "layout-id-2",
+                  "user-id-2", "layout-id-1"),
+              umap4);
+
+          monitor.unregisterTableUser(tableURI, "user-id-1", "layout-id-1");
+          final Multimap<String, String> umap5 = queue.take();
+          Assert.assertEquals(
+              ImmutableSetMultimap.of(
+                  "user-id-1", "layout-id-2",
+                  "user-id-2", "layout-id-1"),
+              umap5);
+
+        } finally {
+          LOG.info("Closing tracker");
+          tracker.close();
+          LOG.info("Tracker closed");
+        }
+      } finally {
+        monitor.close();
+      }
     } finally {
       zkClient.release();
     }

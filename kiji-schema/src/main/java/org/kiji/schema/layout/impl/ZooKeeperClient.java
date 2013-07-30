@@ -327,7 +327,7 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
    * See {@link ZooKeeper#exists(String, boolean)}.
    *
    * @param path of a node.
-   * @return the stat of the node.
+   * @return the stat of the node; null if the node does not exist.
    * @throws KeeperException on ZooKeeper errors.
    *     Connection related errors are handled by retrying the operations.
    */
@@ -499,6 +499,10 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
    */
   public void createNodeRecursively(File path)
       throws KeeperException {
+
+    if (exists(path) != null) {
+      return;
+    }
 
     if (path.getPath().equals("/")) {
       // No need to create the root node "/" :

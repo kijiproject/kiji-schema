@@ -22,10 +22,15 @@ package org.kiji.schema.layout.impl;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -37,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.ZooKeeperLock;
@@ -106,6 +112,15 @@ public final class TableLayoutMonitor implements Closeable {
 
   /** Root path of the ZooKeeper directory node where to write Kiji nodes. */
   private static final File ROOT_ZOOKEEPER_PATH = new File("/kiji-schema");
+
+  /** UTF-8 encoding name. */
+  private static final String UTF8 = "utf-8";
+
+  /** Separator used in ZooKeeper node names. */
+  private static final String ZK_NODE_NAME_SEPARATOR = "#";
+
+  /** Empty byte array used to create ZooKeeper nodes. */
+  private static final byte[] EMPTY_BYTES = new byte[0];
 
   // -----------------------------------------------------------------------------------------------
 
@@ -200,7 +215,7 @@ public final class TableLayoutMonitor implements Closeable {
    *
    * @param tableURI Registers a user for the table with this URI.
    * @param userId ID of the user to register.
-   * @param layoutId ID of the layout
+   * @param layoutId ID of the layout.
    * @throws KeeperException on unrecoverable ZooKeeper error.
    */
   public void registerTableUser(KijiURI tableURI, String userId, String layoutId)
@@ -208,26 +223,46 @@ public final class TableLayoutMonitor implements Closeable {
 
     final File usersDir = getTableUsersDir(tableURI);
     this.mZKClient.createNodeRecursively(usersDir);
-    this.mZKClient.create(
-        new File(usersDir, userId),
-        Bytes.toBytes(layoutId),
-        Ids.OPEN_ACL_UNSAFE,
-        CreateMode.EPHEMERAL);
+    final String nodeName = makeZKNodeName(userId, layoutId);
+    final File nodePath = new File(usersDir, nodeName);
+    final byte[] data = EMPTY_BYTES;
+    this.mZKClient.create(nodePath, data, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
   }
 
   /**
-   * Unregisters a table user.
+   * Unregisters an existing user of a table.
    *
-   * @param tableURI Unregisters the specified user for the table with this URI.
+   * @param tableURI Registers a user for the table with this URI.
    * @param userId ID of the user to unregister.
+   * @param layoutId ID of the layout.
    * @throws KeeperException on unrecoverable ZooKeeper error.
    */
-  public void unregisterTableUser(KijiURI tableURI, String userId) throws KeeperException {
+  public void unregisterTableUser(KijiURI tableURI, String userId, String layoutId)
+      throws KeeperException {
+
     final File usersDir = getTableUsersDir(tableURI);
-    this.mZKClient.createNodeRecursively(usersDir);
-    final File clientPath = new File(usersDir, userId);
-    final Stat stat = this.mZKClient.exists(clientPath);
-    this.mZKClient.delete(clientPath, stat.getVersion());
+    final String nodeName = makeZKNodeName(userId, layoutId);
+    final File nodePath = new File(usersDir, nodeName);
+    if (this.mZKClient.exists(nodePath) != null) {
+      this.mZKClient.delete(nodePath, -1);
+    }
+  }
+
+  /**
+   * Constructs the ZooKeeper node name for the specified user ID and layout ID.
+   *
+   * @param userId ID of the user to construct a ZooKeeper node for.
+   * @param layoutId ID of the table layout to construct a ZooKeeper node for.
+   * @return the ZooKeeper node for the specified user ID and layout ID.
+   */
+  private static String makeZKNodeName(String userId, String layoutId) {
+    try {
+      return String.format("%s" + ZK_NODE_NAME_SEPARATOR + "%s",
+          URLEncoder.encode(userId, UTF8),
+          URLEncoder.encode(layoutId, UTF8));
+    } catch (UnsupportedEncodingException uee) {
+      throw new InternalKijiError(uee);
+    }
   }
 
   /**
@@ -335,12 +370,8 @@ public final class TableLayoutMonitor implements Closeable {
       this.mHandler = handler;
     }
 
-    /**
-     * Starts the tracker.
-     *
-     * @throws KeeperException on ZooKeeper error.
-     */
-    public void open() throws KeeperException {
+    /** Starts the tracker. */
+    public void open() {
       Preconditions.checkState(!mOpened.getAndSet(true),
           "Cannot start LayoutTracker while already started.");
 
@@ -384,6 +415,8 @@ public final class TableLayoutMonitor implements Closeable {
           "Cannot stop a LayoutTracker that has not been started.");
       Preconditions.checkState(!mClosed.getAndSet(true),
           "Cannot stop a LayoutTracker multiple times.");
+      // ZOOKEEPER-442: There is currently no way to cancel a watch.
+      //     All we can do here is to neutralize the handler by setting mClosed.
     }
   }
 
@@ -399,10 +432,10 @@ public final class TableLayoutMonitor implements Closeable {
      *
      * <p> If this method raises an unchecked exception, the tracking stops. </p>
      *
-     * @param users Updated list of users of the Kiji table being tracked.
+     * @param users Updated mapping from user ID to layout IDs of the Kiji table being tracked.
      */
     // TODO(SCHEMA-412): Notifications for ZooKeeper disconnections.
-    void update(List<String> users);
+    void update(Multimap<String, String> users);
   }
 
   /**
@@ -450,6 +483,7 @@ public final class TableLayoutMonitor implements Closeable {
      * Starts the tracker.
      */
     public void open() {
+      Preconditions.checkState(!mOpened.getAndSet(true));
       final Thread thread = new Thread() {
         /** {@inheritDoc} */
         @Override
@@ -460,7 +494,6 @@ public final class TableLayoutMonitor implements Closeable {
             LOG.error("Unrecoverable ZooKeeper error: {}", ke.getMessage());
             throw new RuntimeException(ke);
           }
-          Preconditions.checkState(!mOpened.getAndSet(false));
           registerWatcher();
         }
       };
@@ -477,9 +510,25 @@ public final class TableLayoutMonitor implements Closeable {
       try {
         // Lists the children nodes of the users ZooKeeper node path for this table,
         // and registers a watcher for updates on the children list:
-        final List<String> children =
+        final List<String> zkNodeNames =
             TableLayoutMonitor.this.mZKClient.getChildren(mUsersDir, mWatcher, mStat);
-        LOG.info("Received users update for table {}: {}.", mTableURI, children);
+        LOG.info("Received users update for table {}: {}.", mTableURI, zkNodeNames);
+
+        final Multimap<String, String> children = HashMultimap.create();
+        try {
+          for (String nodeName : zkNodeNames) {
+            final String[] split = nodeName.split(ZK_NODE_NAME_SEPARATOR);
+            if (split.length != 2) {
+              LOG.error("Ignorning invalid ZooKeeper node name: {}", nodeName);
+              continue;
+            }
+            final String userId = URLDecoder.decode(split[0], UTF8);
+            final String layoutId = URLDecoder.decode(split[1], UTF8);
+            children.put(userId, layoutId);
+          }
+        } catch (UnsupportedEncodingException uee) {
+          throw new InternalKijiError(uee);
+        }
 
         // This assumes handlers do not let exceptions pop up:
         mHandler.update(children);
@@ -497,6 +546,8 @@ public final class TableLayoutMonitor implements Closeable {
           "Cannot stop a UsersTracker that has not been started.");
       Preconditions.checkState(!mClosed.getAndSet(true),
           "Cannot stop a UsersTracker multiple times.");
+      // ZOOKEEPER-442: There is currently no way to cancel a watch.
+      //     All we can do here is to neutralize the handler by setting mClosed.
     }
   }
 
