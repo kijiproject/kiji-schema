@@ -43,6 +43,7 @@ import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,12 +60,18 @@ import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiWriterFactory;
+import org.kiji.schema.RuntimeInterruptedException;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
+import org.kiji.schema.layout.impl.TableLayoutMonitor;
+import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutTracker;
+import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutUpdateHandler;
+import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.util.Debug;
+import org.kiji.schema.util.JvmId;
 import org.kiji.schema.util.VersionInfo;
 
 /**
@@ -122,12 +129,37 @@ public final class HBaseKijiTable implements KijiTable {
   /** Name of the HBase table backing this Kiji table. */
   private final String mHBaseTableName;
 
+  /** Unique identifier for this KijiTable instance as a live Kiji client. */
+  private final String mKijiClientId =
+      String.format("%s;HBaseKijiTable@%s", JvmId.get(), System.identityHashCode(this));
+
+  /** Monitor for the layout of this table. */
+  private final TableLayoutMonitor mLayoutMonitor;
+
+  /**
+   * The LayoutUpdateHandler which performs layout modifications. This object's update() method is
+   * called by mLayoutTracker
+   */
+  private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
+
+  /**
+   * Listener for updates to this table's layout in ZooKeeper.  Calls mInnerLayoutUpdater.update()
+   * in response to a change to the ZooKeeper node representing this table's layout.
+   */
+  private final LayoutTracker mLayoutTracker;
+
   /**
    * Capsule containing all objects which should be mutated in response to a table layout update.
    * The capsule itself is immutable and should be replaced atomically with a new capsule.
    * References only the LayoutCapsule for the most recent layout for this table.
    */
-  private volatile LayoutCapsule mLayoutCapsule;
+  private volatile LayoutCapsule mLayoutCapsule = null;
+
+  /**
+   * Monitor used to delay construction of this KijiTable until the LayoutCapsule is initialized
+   * from ZooKeeper.  This lock should not be used to synchronize any other operations.
+   */
+  private final Object mLayoutCapsuleInitializationLock = new Object();
 
   /**
    * Set of outstanding layout consumers associated with this table.  Updating the layout of this
@@ -192,6 +224,76 @@ public final class HBaseKijiTable implements KijiTable {
     }
   }
 
+  /** Updates the layout of this table in response to a layout update pushed from ZooKeeper. */
+  private final class InnerLayoutUpdater implements LayoutUpdateHandler {
+    /** {@inheritDoc} */
+    @Override
+    public void update(final byte[] layoutBytes) {
+      final String currentLayoutId =
+          (mLayoutCapsule == null) ? null : mLayoutCapsule.getLayout().getDesc().getLayoutId();
+      final String newLayoutId = Bytes.toString(layoutBytes);
+      if (currentLayoutId == null) {
+        LOG.info("Setting initial layout for table {} to layout ID {}.",
+            mTableURI, newLayoutId);
+      } else {
+        LOG.info("Updating layout for table {} from layout ID {} to layout ID {}.",
+            mTableURI, currentLayoutId, newLayoutId);
+      }
+
+      // TODO(SCHEMA-503): the meta-table doesn't provide a way to look-up a layout by ID:
+      final KijiTableLayout newLayout = getMostRecentLayout();
+      Preconditions.checkState(
+          Objects.equal(newLayout.getDesc().getLayoutId(), newLayoutId),
+          "New layout ID %s does not match most recent layout ID %s from meta-table.",
+          newLayoutId, newLayout.getDesc().getLayoutId());
+
+      mLayoutCapsule =
+          new LayoutCapsule(newLayout, new ColumnNameTranslator(newLayout), HBaseKijiTable.this);
+
+      // Propagates the new layout to all consumers:
+      synchronized (mLayoutConsumers) {
+        for (LayoutConsumer consumer : mLayoutConsumers) {
+          try {
+            consumer.update(mLayoutCapsule);
+          } catch (IOException ioe) {
+            // TODO(SCHEMA-505): Handle exceptions decently
+            throw new KijiIOException(ioe);
+          }
+        }
+      }
+
+      // Registers this KijiTable in ZooKeeper as a user of the new table layout,
+      // and unregisters as a user of the former table layout.
+      try {
+        mLayoutMonitor.registerTableUser(mTableURI, mKijiClientId, newLayoutId);
+        if (currentLayoutId != null) {
+          mLayoutMonitor.unregisterTableUser(mTableURI, mKijiClientId, currentLayoutId);
+        }
+      } catch (KeeperException ke) {
+        // TODO(SCHEMA-505): Handle exceptions decently
+        throw new KijiIOException(ke);
+      }
+
+      // Now, there is a layout defined for the table, KijiTable constructor may complete:
+      synchronized (mLayoutCapsuleInitializationLock) {
+        mLayoutCapsuleInitializationLock.notifyAll();
+      }
+    }
+
+    /**
+     * Reads the most recent layout of this Kiji table from the Kiji instance meta-table.
+     *
+     * @return the most recent layout of this Kiji table from the Kiji instance meta-table.
+     */
+    private KijiTableLayout getMostRecentLayout() {
+      try {
+        return getKiji().getMetaTable().getTableLayout(getName());
+      } catch (IOException ioe) {
+        throw new KijiIOException(ioe);
+      }
+    }
+  }
+
   /**
    * Construct an opened Kiji table stored in HBase.
    *
@@ -222,25 +324,31 @@ public final class HBaseKijiTable implements KijiTable {
     mHBaseTableName =
         KijiManagedHBaseTableName.getKijiTableName(mTableURI.getInstance(), mName).toString();
 
-    // throws KijiTableNotFoundException
-    final KijiTableLayout layout = mKiji.getMetaTable().getTableLayout(name);
-    final LayoutCapsule capsule =
-        new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
-    mLayoutCapsule = capsule;
+    // TODO(SCHEMA-504): Add a manual switch to disable ZooKeeper on system-2.0 instances:
+    if (getKiji().getSystemTable().getDataVersion().compareTo(VersionInfo.SYSTEM_2_0) >= 0) {
+      // system-2.0 clients retrieve the table layout from ZooKeeper notifications:
+
+      mLayoutMonitor = createLayoutMonitor(mKiji.getZKClient());
+      mLayoutTracker = mLayoutMonitor.newTableLayoutTracker(mTableURI, mInnerLayoutUpdater);
+      // Opening the LayoutTracker will trigger an initial layout update after a short delay.
+      mLayoutTracker.open();
+
+      // Wait for the LayoutCapsule to be initialized by a call to InnerLayoutUpdater.update()
+      waitForLayoutInitialized();
+    } else {
+      // system-1.x clients retrieve the table layout from the meta-table:
+
+      // throws KijiTableNotFoundException
+      final KijiTableLayout layout = mKiji.getMetaTable().getTableLayout(name);
+      mLayoutMonitor = null;
+      mLayoutTracker = null;
+      mLayoutCapsule = new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
+    }
+
     mWriterFactory = new HBaseKijiWriterFactory(this);
     mReaderFactory = new HBaseKijiReaderFactory(this);
 
-    if (capsule.getLayout().getDesc().getKeysFormat() instanceof RowKeyFormat) {
-      mEntityIdFactory = EntityIdFactory.getFactory(
-          (RowKeyFormat) capsule.getLayout().getDesc().getKeysFormat());
-    } else if (
-        capsule.getLayout().getDesc().getKeysFormat() instanceof RowKeyFormat2) {
-      mEntityIdFactory = EntityIdFactory.getFactory(
-          (RowKeyFormat2) capsule.getLayout().getDesc().getKeysFormat());
-    } else {
-      // No resource to close or release:
-      throw new RuntimeException("Invalid Row Key format found in Kiji Table");
-    }
+    mEntityIdFactory = createEntityIdFactory(mLayoutCapsule);
 
     mHBaseTableFactory = new HBaseTableInterfaceFactory();
     mHTablePool = new HTablePool(mConf, Integer.MAX_VALUE, mHBaseTableFactory);
@@ -251,6 +359,54 @@ public final class HBaseKijiTable implements KijiTable {
     // Table is now open and must be released properly:
     mIsOpen.set(true);
     mRetainCount.set(1);
+  }
+
+  /**
+   * Constructs a new table layout monitor.
+   *
+   * @param zkClient ZooKeeperClient to use.
+   * @return a new table layout monitor.
+   * @throws IOException on ZooKeeper error (wrapped KeeperException).
+   */
+  private static TableLayoutMonitor createLayoutMonitor(ZooKeeperClient zkClient)
+      throws IOException {
+    try {
+      return new TableLayoutMonitor(zkClient);
+    } catch (KeeperException ke) {
+      throw new IOException(ke);
+    }
+  }
+
+  /**
+   * Waits until the table layout is initialized.
+   */
+  private void waitForLayoutInitialized() {
+    synchronized (mLayoutCapsuleInitializationLock) {
+      while (mLayoutCapsule == null) {
+        try {
+          mLayoutCapsuleInitializationLock.wait();
+        } catch (InterruptedException ie) {
+          throw new RuntimeInterruptedException(ie);
+        }
+      }
+    }
+  }
+
+  /**
+   * Constructs an Entity ID factory from a layout capsule.
+   *
+   * @param capsule Layout capsule to construct an entity ID factory from.
+   * @return a new entity ID factory as described from the table layout.
+   */
+  private static EntityIdFactory createEntityIdFactory(final LayoutCapsule capsule) {
+    final Object format = capsule.getLayout().getDesc().getKeysFormat();
+    if (format instanceof RowKeyFormat) {
+      return EntityIdFactory.getFactory((RowKeyFormat) format);
+    } else if (format instanceof RowKeyFormat2) {
+      return EntityIdFactory.getFactory((RowKeyFormat2) format);
+    } else {
+      throw new RuntimeException("Invalid Row Key format found in Kiji Table: " + format);
+    }
   }
 
   /** {@inheritDoc} */
@@ -465,6 +621,20 @@ public final class HBaseKijiTable implements KijiTable {
     final boolean opened = mIsOpen.getAndSet(false);
     Preconditions.checkState(opened,
         "HBaseKijiTable.release() on table '%s' already closed.", mTableURI);
+
+    if (mLayoutTracker != null) {
+      mLayoutTracker.close();
+    }
+    if (mLayoutMonitor != null) {
+      // Unregister this KijiTable as a live user of the Kiji table:
+      try {
+        mLayoutMonitor.unregisterTableUser(
+            mTableURI, mKijiClientId, mLayoutCapsule.getLayout().getDesc().getLayoutId());
+      } catch (KeeperException ke) {
+        throw new IOException(ke);
+      }
+      mLayoutMonitor.close();
+    }
 
     LOG.debug("Closing HBaseKijiTable '{}'.", mTableURI);
     mHTablePool.close();
