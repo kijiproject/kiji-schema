@@ -55,12 +55,13 @@
       </extension>
     </extensions>
     <resources>
-      <!-- Only filter archetype-resources/pom.xml. -->
+      <!-- Only filter archetype-resources/pom.xml and README.md -->
       <resource>
         <directory>src/main/resources</directory>
         <filtering>true</filtering>
         <includes>
           <include>archetype-resources/pom.xml</include>
+          <include>archetype-resources/README.md</include>
         </includes>
       </resource>
       <resource>
@@ -68,6 +69,7 @@
         <filtering>false</filtering>
         <excludes>
           <exclude>archetype-resources/pom.xml</exclude>
+          <exclude>archetype-resources/README.md</exclude>
         </excludes>
       </resource>
     </resources>

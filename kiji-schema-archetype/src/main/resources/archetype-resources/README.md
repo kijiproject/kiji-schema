@@ -32,7 +32,7 @@ and an equivalent .json file.  Edit the .ddl file to modify the table descriptio
 file should not be edited directly and is only used programmatically in the demonstration DemoKiji.
 
 An .avdl record is defined in src/main/avro/ExampleRecord.avdl, and example usage
-of the KijiSchema API is in src/main/java/${packageInPathFormat}/${artifactId}/DemoKiji.java.
+of the KijiSchema API is in src/main/java/\${packageInPathFormat}/\${artifactId}/DemoKiji.java.
 
 
 To run the demo, build the jars:
@@ -41,7 +41,7 @@ To run the demo, build the jars:
 
 run:
 
-    kiji jar target/${artifactId}-${version}.jar ${groupId}.DemoKiji
+    kiji jar target/\${artifactId}-\${version}.jar \${groupId}.DemoKiji
 
 
 If you've already run this example, you'll have to delete the users table first (don't do this
