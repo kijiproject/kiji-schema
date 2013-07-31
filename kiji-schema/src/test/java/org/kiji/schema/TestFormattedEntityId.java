@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.avro.ComponentType;
 import org.kiji.schema.avro.HashSpec;
+import org.kiji.schema.avro.HashType;
 import org.kiji.schema.avro.RowKeyComponent;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat2;
@@ -197,6 +199,23 @@ public class TestFormattedEntityId extends KijiClientTest {
     final RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
         .setSalt(HashSpec.newBuilder().setSuppressKeyMaterialization(true).build())
         .setRangeScanStartIndex(2)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  private RowKeyFormat2 makeDefaultSaltRowKeyFormat() {
+    // This does not set the 'salt' element of RowKeyFormat2, leaving it to its default value.
+
+    // components of the row key
+    final List<RowKeyComponent> components = Lists.newArrayList(
+        RowKeyComponent.newBuilder().setName("astring").setType(ComponentType.STRING).build(),
+        RowKeyComponent.newBuilder().setName("anint").setType(ComponentType.INTEGER).build(),
+        RowKeyComponent.newBuilder().setName("along").setType(ComponentType.LONG).build());
+
+    // build the row key format
+    final RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
         .setComponents(components)
         .build();
 
@@ -680,5 +699,30 @@ public class TestFormattedEntityId extends KijiClientTest {
 
     final FormattedEntityId formattedEntityId = makeId(format, "one");
     assertEquals("hbase=hex:f9", formattedEntityId.toShellString());
+  }
+
+  @Test
+  public void testDefaultSaltRowKeyFormat() {
+    // SCHEMA-335: This should use a default HashSpec rather than triggering an NPE.
+    final RowKeyFormat2 format = makeDefaultSaltRowKeyFormat();
+
+    // Test that the salt field is populated with the default value we expect. It's an incompatible
+    // change if this ever changes. In effect, the next few asserts test that the Avro IDL is not
+    // incompatibly changed.
+    HashSpec spec = format.getSalt();
+    assertNotNull("Didn't get a default HashSpec, got null!", spec);
+    assertEquals("Default hash spec doesn't have the well-defined default size",
+        2, (int) spec.getHashSize());
+    assertEquals("Default hash spec doesn't have the well-defined default algorithm",
+        HashType.MD5, spec.getHashType());
+    assertFalse("Default hash spec should have suppressKeyMaterialization false",
+        spec.getSuppressKeyMaterialization());
+
+    // And test that FormattedEntityId itself no longer has theNPE.
+    final FormattedEntityId formattedEntityId = makeId(format, "one", 1, 7L);
+    byte[] hbaseRowKey = formattedEntityId.getHBaseRowKey();
+
+    final FormattedEntityId testEntityId = FormattedEntityId.fromHBaseRowKey(hbaseRowKey, format);
+    assertArrayEquals(formattedEntityId.getHBaseRowKey(), testEntityId.getHBaseRowKey());
   }
 }

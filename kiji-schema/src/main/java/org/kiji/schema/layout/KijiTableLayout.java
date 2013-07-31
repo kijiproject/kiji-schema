@@ -950,6 +950,12 @@ public final class KijiTableLayout {
       throw new InvalidLayoutException("At least 1 component is required in row key format.");
     }
 
+    if (format.getSalt() == null) {
+      // SCHEMA-489. The Avro decoder should replace this with a non-null HashSpec object,
+      // but check here for paranoia.
+      throw new InvalidLayoutException("Null values for RowKeyFormat2.salt are not allowed.");
+    }
+
     // Nullable index cannot be the first element or anything greater
     // than the components length (number of components).
     if (format.getNullableStartIndex() <= 0

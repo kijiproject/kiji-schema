@@ -3,13 +3,17 @@
                               KijiSchema Release Notes
 
 Version 1.1.3
+  * SCHEMA-335, SCHEMA-489. Fix: FormattedEntityId and KijiTableLayout trigger
+      NPE if RowKeyFormat2.salt is null. Omitted salt entries now default to a
+      2-byte MD5-based hash prefix.
   * SCHEMA-474. KijiTable maintains a pool of HTable objects.
       Readers, writers, scanners and pagers borrow HTable objects from the pool.
-  * SCHEMA-469. Fix: VersionInfo should recognize backward-compatibility requirements for
-      instance versions.
-  * SCHEMA-396. HBase KijiTable readers and writers can now receive table layout updates by
-      subscribing to a LayoutConsumer list managed by the table.  Registered readers and writers
-      will recreate their layout dependent state in response to a table layout update.
+  * SCHEMA-469. Fix: VersionInfo should recognize backward-compatibility
+      requirements for instance versions.
+  * SCHEMA-396. HBase KijiTable readers and writers can now receive table
+      layout updates by subscribing to a LayoutConsumer list managed by the
+      table. Registered readers and writers will recreate their layout dependent
+      state in response to a table layout update.
 
 Version 1.1.2
   * SCHEMA-358. Adds a withTable(TableLayoutDesc) method to

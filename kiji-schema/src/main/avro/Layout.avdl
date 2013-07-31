@@ -363,13 +363,20 @@ protocol KijiTableLayoutRecords {
     /**
      * Size of the hash, in bytes. If used for salting purposes, i.e. the hash is not the sole
      * component of the key, use a smaller hash size.
+     *
+     * <p>This defaults to 16 so that if you suppress key materialization, you don't inadvertently
+     * lose precision. But users of materialized keys (i.e., most use cases) should set this to
+     * a much more conservative value: 1 or 2 bytes of hash prefix.</p>
      */
     int hash_size = 16;
 
-    /** Use with caution! Under normal circumstances, an hbase row key is created as
-     * a hash is followed by the actual component that is hashed. Setting this to
+    /**
+     * If true, strips actual key data from the HBase row key. Only the hash is stored in HBase.
+     *
+     * <p>Use with caution! Under normal circumstances, an HBase row key is created as
+     * a hash prefix followed by the actual component that is hashed. Setting this to
      * true enables the user to store only the hash. (making the distinction between HASHED
-     * and HASH_PREFIXED). This means that there is a non-zero possibility for collisions.
+     * and HASH_PREFIXED). This means that there is a non-zero possibility for collisions.</p>
      */
     boolean suppress_key_materialization = false;
   }
@@ -428,8 +435,11 @@ protocol KijiTableLayoutRecords {
 
     /**
      * Specification for hashing. Hashing is left prefixed.
+     *
+     * <p>SCHEMA-335: If not specified, this will default to two bytes of MD5 hash prefix.</p>
      */
-     union {null, HashSpec} salt = null;
+     HashSpec salt =
+         { "hash_type" : "MD5", "hash_size" : 2, "suppress_key_materialization" : false };
 
     /**
      * The first component index from which point we support range scans. This means

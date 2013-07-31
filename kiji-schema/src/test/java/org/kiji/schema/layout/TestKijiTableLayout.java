@@ -21,6 +21,7 @@ package org.kiji.schema.layout;
 
 import static org.hamcrest.text.StringContains.containsString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
@@ -29,6 +30,7 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import com.google.common.collect.Lists;
 import org.apache.avro.Schema;
@@ -45,6 +47,7 @@ import org.kiji.schema.avro.ComponentType;
 import org.kiji.schema.avro.CompressionType;
 import org.kiji.schema.avro.FamilyDesc;
 import org.kiji.schema.avro.HashSpec;
+import org.kiji.schema.avro.HashType;
 import org.kiji.schema.avro.LocalityGroupDesc;
 import org.kiji.schema.avro.RowKeyComponent;
 import org.kiji.schema.avro.RowKeyEncoding;
@@ -223,6 +226,25 @@ public class TestKijiTableLayout {
     RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
         .setSalt(hs)
         .setRangeScanStartIndex(1)
+        .setComponents(components)
+        .build();
+
+    return format;
+  }
+
+  // This is an admissable RowKeyFormat2 object, but only because KijiTableLayout
+  // should set its HashSpec ('salt') element to a non-null default value.
+  private RowKeyFormat2 makeDefaultSaltRowKeyFormat() {
+    // SCHEMA-489: Do not set the 'salt' field directly; use the default from the AVDL.
+
+    // components of the row key
+    final List<RowKeyComponent> components = Lists.newArrayList(
+        RowKeyComponent.newBuilder().setName("astring").setType(ComponentType.STRING).build(),
+        RowKeyComponent.newBuilder().setName("anint").setType(ComponentType.INTEGER).build(),
+        RowKeyComponent.newBuilder().setName("along").setType(ComponentType.LONG).build());
+
+    // build the row key format
+    final RowKeyFormat2 format = RowKeyFormat2.newBuilder().setEncoding(RowKeyEncoding.FORMATTED)
         .setComponents(components)
         .build();
 
@@ -1393,6 +1415,34 @@ public class TestKijiTableLayout {
       assertEquals("Valid hash sizes are between 1 and 16", ile.getMessage());
     }
   }
+
+  @Test
+  public void testNullSaltInRowKeyFormat2() throws InvalidLayoutException {
+    // This should be replaced with a non-null salt element / HashSpec record.
+    final TableLayoutDesc desc = TableLayoutDesc.newBuilder()
+        .setName("table_name")
+        .setKeysFormat(makeDefaultSaltRowKeyFormat())
+        .setVersion(TABLE_LAYOUT_VERSION)
+        .build();
+
+    final KijiTableLayout ktl = KijiTableLayout.newLayout(desc);
+    final TableLayoutDesc descOut = ktl.getDesc();
+
+    Object keysFormatRaw = descOut.getKeysFormat();
+    assertNotNull("Unexpected null RowKeyFormat2 field", keysFormatRaw);
+    assertTrue("keys_format should be an RKF2", keysFormatRaw instanceof RowKeyFormat2);
+
+    RowKeyFormat2 rkf2 = (RowKeyFormat2) keysFormatRaw;
+    HashSpec salt = rkf2.getSalt();
+    assertNotNull("Expected non-null salt", salt);
+
+    // Test that the null salt element specified above is replaced with the default
+    // values we specified.
+    assertEquals(2, (int) salt.getHashSize());
+    assertFalse(salt.getSuppressKeyMaterialization());
+    assertEquals(HashType.MD5, salt.getHashType());
+  }
+
 
   @Test
   public void repeatedNamesRKF() throws InvalidLayoutException {
