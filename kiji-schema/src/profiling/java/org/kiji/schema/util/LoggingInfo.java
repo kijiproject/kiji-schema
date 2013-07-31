@@ -52,7 +52,7 @@ public final class LoggingInfo {
    * @param aggregateTime nanoseconds spent so far in a function call.
    * @param timesInvoked number of times function was invoked so far.
    */
-  LoggingInfo(long aggregateTime, int timesInvoked) {
+  public LoggingInfo(long aggregateTime, int timesInvoked) {
     mAggregateTime = new AtomicLong(aggregateTime);
     mNumInvoked = new AtomicInteger(timesInvoked);
   }
@@ -62,7 +62,7 @@ public final class LoggingInfo {
    *
    * @param encoded the string to be decoded.
    */
-  LoggingInfo(String encoded) {
+  public LoggingInfo(String encoded) {
     String[] parts = encoded.split(", ");
     mAggregateTime = new AtomicLong(Long.decode(parts[0]));
     mNumInvoked = new AtomicInteger(Integer.decode(parts[1]));

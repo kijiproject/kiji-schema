@@ -68,7 +68,8 @@ public class LogTimerAspect {
   @Around("execution(* org.kiji.schema.KijiCellDecoder.*(..)) || "
       + "execution(* org.kiji.schema.KijiCellEncoder.*(..)) || "
       + "execution(* org.kiji.schema.KijiMetaTable.*(..)) || "
-      + "execution(* org.kiji.schema.KijiSchemaTable.*(..))")
+      + "execution(* org.kiji.schema.KijiSchemaTable.*(..)) || "
+      + "execution(* org.kiji.schema.KijiPutter.put(..))")
   public Object aroundProfileMethods(final ProceedingJoinPoint thisJoinPoint) throws Throwable {
     final long start, end;
     start = System.nanoTime();
