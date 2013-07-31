@@ -436,9 +436,11 @@ protocol KijiTableLayoutRecords {
     /**
      * Specification for hashing. Hashing is left prefixed.
      *
-     * <p>SCHEMA-335: If not specified, this will default to two bytes of MD5 hash prefix.</p>
+     * <p>SCHEMA-335: If not specified, this will default to two bytes of MD5 hash prefix.
+     * This field may only be set to null if <tt>encoding</tt> is <tt>RowKeyEncoding.RAW</tt>.
+     * </p>
      */
-     HashSpec salt =
+     union { HashSpec, null } salt =
          { "hash_type" : "MD5", "hash_size" : 2, "suppress_key_materialization" : false };
 
     /**

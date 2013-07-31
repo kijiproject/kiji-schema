@@ -156,6 +156,7 @@ final class FormattedEntityId extends EntityId {
   static FormattedEntityId getEntityId(List<Object> kijiRowKey,
       RowKeyFormat2 format) {
     Preconditions.checkNotNull(format);
+    Preconditions.checkNotNull(format.getSalt());
     Preconditions.checkNotNull(kijiRowKey);
 
     // Validity check for kiji  Row Key.
@@ -232,6 +233,7 @@ final class FormattedEntityId extends EntityId {
    */
   static FormattedEntityId fromHBaseRowKey(byte[] hbaseRowKey, RowKeyFormat2 format) {
     Preconditions.checkNotNull(format);
+    Preconditions.checkNotNull(format.getSalt());
     Preconditions.checkNotNull(hbaseRowKey);
     // we modify the hbaseRowKey in the makeKijiRowKey code for integer encoding, so we make
     // a copy of it to pass to makeKijiRowKey:
@@ -440,6 +442,8 @@ final class FormattedEntityId extends EntityId {
   private FormattedEntityId(RowKeyFormat2 format, byte[] hbaseRowKey, List<Object> kijiRowKey) {
     mRowKeyFormat = Preconditions.checkNotNull(format);
     Preconditions.checkArgument(format.getEncoding() == RowKeyEncoding.FORMATTED);
+    Preconditions.checkNotNull(format.getSalt(),
+        "Formatted entityIds may not specify a null 'salt' field in RowKeyFormat2.");
     mHBaseRowKey = hbaseRowKey;
     if (format.getSalt().getSuppressKeyMaterialization()) {
       mComponentValues = null;

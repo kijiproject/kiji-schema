@@ -953,7 +953,8 @@ public final class KijiTableLayout {
     if (format.getSalt() == null) {
       // SCHEMA-489. The Avro decoder should replace this with a non-null HashSpec object,
       // but check here for paranoia.
-      throw new InvalidLayoutException("Null values for RowKeyFormat2.salt are not allowed.");
+      throw new InvalidLayoutException(
+          "Null values for RowKeyFormat2.salt are only allowed for RAW encoding.");
     }
 
     // Nullable index cannot be the first element or anything greater
@@ -1632,7 +1633,12 @@ public final class KijiTableLayout {
     if (rowKeyFormat instanceof RowKeyFormat) {
       return ((RowKeyFormat) rowKeyFormat).getHashSize();
     } else if (rowKeyFormat instanceof RowKeyFormat2) {
-      return ((RowKeyFormat2) rowKeyFormat).getSalt().getHashSize();
+      RowKeyFormat2 format2 = (RowKeyFormat2) rowKeyFormat;
+      if (null == format2.getSalt()) {
+        throw new RuntimeException("This RowKeyFormat2 instance does not specify salt/hashing.");
+      } else {
+        return format2.getSalt().getHashSize();
+      }
     } else {
       throw new RuntimeException("Unsupported Row Key Format");
     }

@@ -77,6 +77,11 @@ public final class KijiRowKeySplitter {
     if (RowKeyFormat.class.equals(tableLayout.getKeysFormat().getClass())) {
       hashSize = ((RowKeyFormat) tableLayout.getKeysFormat()).getHashSize();
     } else if (RowKeyFormat2.class.equals(tableLayout.getKeysFormat().getClass())) {
+      RowKeyFormat2 format = (RowKeyFormat2) tableLayout.getKeysFormat();
+      if (null == format.getSalt()) {
+        throw new IllegalArgumentException(
+            "This table layout defines an entityId format without hashing enabled.");
+      }
       hashSize = ((RowKeyFormat2) tableLayout.getKeysFormat()).getSalt().getHashSize();
     }
     return hashSize;
