@@ -260,7 +260,7 @@ public final class KijiTableLayout {
   // ProtocolVersions specifying when different features were added to layout functionality.
 
   /** Maximum layout version we can recognize. */
-  private static final ProtocolVersion MAX_LAYOUT_VER = ProtocolVersion.parse("layout-1.2.0");
+  private static final ProtocolVersion MAX_LAYOUT_VER = ProtocolVersion.parse("layout-1.3.0");
 
   /** First version where {@link org.kiji.schema.avro.BloomType}, max_filesize,
       memstore_flushsize and block_size were supported. */

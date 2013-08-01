@@ -82,6 +82,14 @@ public final class HBaseKiji implements Kiji {
   /** System version that introduces table layout in ZooKeeper. */
   private static final ProtocolVersion SYSTEM_2_0 = ProtocolVersion.parse("system-2.0");
 
+
+  /** First layout version where table layout validation may be enabled. */
+  public static final ProtocolVersion LAYOUT_VALIDATION_VER =
+      ProtocolVersion.parse("layout-1.3.0");
+
+  /** Minimum system version required for table layout validation. */
+  public static final ProtocolVersion MIN_SYS_VER_FOR_LAYOUT_VALIDATION = SYSTEM_2_0;
+
   /** The hadoop configuration. */
   private final Configuration mConf;
 
@@ -206,6 +214,44 @@ public final class HBaseKiji implements Kiji {
     }
 
     mRetainCount.set(1);
+  }
+
+  /**
+   * <p>
+   *   Ensures that a table is not created or modified to enable layout validation without the
+   *   requisite system version.
+   * </p>
+   *
+   * <p>
+   *   Throws an exception if a table layout has validation enabled, but the overall instance data
+   *   version is too low to support table layout validation.
+   * </p>
+   *
+   * <p>
+   *   Table layouts with layout version <tt>layout-1.3.0</tt> or higher must be applied to systems
+   *   with data version <tt>system-2.0</tt> or higher. A layout of 1.3 or above in system-1.0
+   *   environment will trigger an exception in this method.
+   * </p>
+   *
+   * <p>
+   *   Older layout versions may be applied in <tt>system-1.0</tt> or <tt>system-2.0</tt>
+   *   environments; such layouts are ignored by this method.
+   * </p>
+   *
+   * @param layout the table layout for which to ensure compatibility.
+   * @throws IOException in case of an error reading from the system table.
+   * @throws InvalidLayoutException if the layout and system versions are incompatible.
+   */
+  private void ensureValidationCompatibility(TableLayoutDesc layout) throws IOException {
+    final ProtocolVersion updateVersion = ProtocolVersion.parse(layout.getVersion());
+    final ProtocolVersion systemVersion = getSystemTable().getDataVersion();
+
+    if (updateVersion.compareTo(LAYOUT_VALIDATION_VER) >= 0
+        && systemVersion.compareTo(MIN_SYS_VER_FOR_LAYOUT_VALIDATION) < 0) {
+      throw new InvalidLayoutException(
+          String.format("Layout version: %s not supported by system version: %s",
+              updateVersion, systemVersion));
+    }
   }
 
   /** {@inheritDoc} */
@@ -351,6 +397,8 @@ public final class HBaseKiji implements Kiji {
     final KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableLayout.getName()).build();
     LOG.debug("Creating Kiji table '{}'.", tableURI);
 
+    ensureValidationCompatibility(tableLayout);
+
     // This will validate the layout and may throw an InvalidLayoutException.
     final KijiTableLayout kijiTableLayout = KijiTableLayout.newLayout(tableLayout);
 
@@ -446,15 +494,16 @@ public final class HBaseKiji implements Kiji {
     Preconditions.checkState(mIsOpen.get(), "HBaseKiji %s is closed", this);
     Preconditions.checkNotNull(update);
 
+    ensureValidationCompatibility(update);
+
     if (dryRun && (null == printStream)) {
       printStream = System.out;
     }
 
     final KijiMetaTable metaTable = getMetaTable();
 
-    // Try to get the table layout first, which will throw a KijiTableNotFoundException if
-    // there is no table.
     final String tableName = update.getName();
+    // Throws a KijiTableNotFoundException if there is no table.
     metaTable.getTableLayout(tableName);
 
     final KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableName).build();
@@ -471,15 +520,21 @@ public final class HBaseKiji implements Kiji {
       // Actually set it.
       if (mSystemTable.getDataVersion().compareTo(SYSTEM_2_0) >= 0) {
         try {
+          // Use ZooKeeper to inform all watchers that a new table layout is available.
           final HBaseTableLayoutUpdater updater =
               new HBaseTableLayoutUpdater(this, tableURI, update);
-          updater.update();
-          newLayout = updater.getNewLayout();
-
+          try {
+            updater.update();
+            newLayout = updater.getNewLayout();
+          } finally {
+            updater.close();
+          }
         } catch (KeeperException ke) {
           throw new IOException(ke);
         }
       } else {
+        // System versions before system-2.0 do not enforce table layout update consistency or
+        // validation.
         newLayout = metaTable.updateTableLayout(tableName, update);
       }
     }

@@ -47,4 +47,16 @@ protocol TestSchema {
     string another_text = "record3";
   }
 
+  record TestRecord4 {
+    /** Required string field. */
+    string text;
+
+    /** Optional int field. */
+    int num = 5;
+  }
+
+  record TestRecord5 {
+    /** Required string field. */
+    string text;
+  }
 }

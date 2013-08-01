@@ -32,6 +32,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.avro.AvroValidationPolicy;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
 import org.kiji.schema.avro.FamilyDesc;
@@ -46,7 +47,7 @@ import org.kiji.schema.util.ProtocolVersion;
  * Currently manipulates reader, writer, and written schemas.
  */
 @ApiAudience.Private
-class TableLayoutBuilder {
+public final class TableLayoutBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(TableLayoutBuilder.class);
 
   /** Schema validation is available from layout-1.3.0 and up. */
@@ -479,9 +480,11 @@ class TableLayoutBuilder {
    * Set the layout id.
    *
    * @param layoutId to set
+   * @return this.
    */
-  public void setLayoutId(String layoutId) {
+  public TableLayoutBuilder setLayoutId(String layoutId) {
     mDescBuilder.setLayoutId(layoutId);
+    return this;
   }
 
   /**
@@ -492,4 +495,35 @@ class TableLayoutBuilder {
   public String getLayoutId() {
     return mDescBuilder.getLayoutId();
   }
+
+  /**
+   * Set the Avro validation policy for a given column in this table.
+   *
+   * @param column the column whose Avro validation policy will be set.
+   * @param policy the AvroValidationPolicy to set for the given column.
+   * @return this builder.
+   * @throws InvalidLayoutException in case a fully qualified column in a map family is specified.
+   * @throws NoSuchColumnException in case the specified column does not exist.
+   */
+  public TableLayoutBuilder withAvroValidationPolicy(
+      final KijiColumnName column,
+      final AvroValidationPolicy policy)
+      throws NoSuchColumnException, InvalidLayoutException {
+    getColumnSchema(column).setAvroValidationPolicy(policy);
+    return this;
+  }
+
+  /**
+   * Get the Avro validation policy for a given column.
+   *
+   * @param column the column for which to get the Avro validation policy.
+   * @return the Avro validation policy for the given column.
+   * @throws NoSuchColumnException in case the column does not exist.
+   * @throws InvalidLayoutException in case a fully qualified column in a map family is specified.
+   */
+  public AvroValidationPolicy getAvroValidationPolicy(final KijiColumnName column)
+      throws NoSuchColumnException, InvalidLayoutException {
+    return getColumnSchema(column).getAvroValidationPolicy();
+  }
+
 }

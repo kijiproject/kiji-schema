@@ -19,33 +19,42 @@
 
 package org.kiji.schema.layout;
 
-import java.io.IOException;
+import java.util.List;
+
+import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 
 /**
- * Thrown when an invalid Kiji layout is encountered.  Possible reasons why a layout may be
- * invalid include:
- * <ul>
- *   <li>Invalid data schemas.</li>
- *   <li>Missing family or column names.</li>
- *   <li>The family or column ids were not assigned.</li>
- *   <li>The update layout is inconsistent with respect to a reference layout.  See
- *       {@link org.kiji.schema.layout.KijiTableLayout KijiTableLayout}
- *       for a description of update layouts.</li>
- * </ul>
+ * Thrown when a table layout or a layout update includes invalid or incompatible reader and writer
+ * schemas.
  */
 @ApiAudience.Public
 @ApiStability.Evolving
-public class InvalidLayoutException extends IOException {
+public class InvalidLayoutSchemaException extends InvalidLayoutException {
+
+  private final List<String> mReasons;
+
   /**
-   * Creates a new {@link InvalidLayoutException} with the specified reason.
+   * Creates a new {@link InvalidLayoutSchemaException} with the specified reason.
    *
    * @param reason A message describing the reason the layout is invalid.
    */
-  public InvalidLayoutException(String reason) {
+  public InvalidLayoutSchemaException(String reason) {
     super(reason);
+    mReasons = Lists.newArrayList(reason);
+  }
+
+  /**
+   * Creates a new {@link InvalidLayoutSchemaException} with the specified reasons.
+   *
+   * @param reasons A list of reasons the layout is invalid.
+   */
+  public InvalidLayoutSchemaException(List<String> reasons) {
+    super(Joiner.on("\n").join(reasons));
+    mReasons = reasons;
   }
 
   /**
@@ -54,7 +63,15 @@ public class InvalidLayoutException extends IOException {
    * @param tableLayout The table layout that is invalid.
    * @param reason A message describing the reason the layout is invalid.
    */
-  public InvalidLayoutException(KijiTableLayout tableLayout, String reason) {
+  public InvalidLayoutSchemaException(KijiTableLayout tableLayout, String reason) {
     this(String.format("Invalid table layout: %s%n%s", reason,  tableLayout.toString()));
+  }
+
+  /**
+   * Get a list of the reasons a table layout was invalid.
+   * @return a list of the reasons a table layout was invalid.
+   */
+  public List<String> getReasons() {
+    return mReasons;
   }
 }

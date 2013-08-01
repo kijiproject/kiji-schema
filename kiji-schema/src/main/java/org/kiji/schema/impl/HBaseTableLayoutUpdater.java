@@ -46,6 +46,7 @@ import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutTracker;
 import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutUpdateHandler;
 import org.kiji.schema.layout.impl.TableLayoutMonitor.UsersTracker;
 import org.kiji.schema.layout.impl.TableLayoutMonitor.UsersUpdateHandler;
+import org.kiji.schema.layout.impl.TableLayoutUpdateValidator;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.Time;
@@ -278,6 +279,9 @@ public class HBaseTableLayoutUpdater {
             "Reference layout ID %s does not match current layout ID %s.",
             update.getReferenceLayout(), currentLayout.getDesc().getLayoutId()));
       }
+
+      final TableLayoutUpdateValidator validator = new TableLayoutUpdateValidator(mKiji);
+      validator.validate(KijiTableLayout.newLayout(update), currentLayout);
 
       final LayoutTracker layoutTracker =
           mMonitor.newTableLayoutTracker(mTableURI, mLayoutUpdateHandler);
