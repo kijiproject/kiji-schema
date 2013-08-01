@@ -369,5 +369,19 @@ public class TestKijiURI {
     KijiURI result = KijiURI.newBuilder(uri).withTableName(".unset").build();
     assertEquals("kiji://zkhost:2181/", result.toString());
   }
+
+  @Test
+  public void testEscapedMapColumnQualifier() {
+    final KijiURI uri = KijiURI.newBuilder("kiji://zkhost/instance/table/map:one%20two").build();
+    assertEquals("map:one two", uri.getColumns().get(0).getName());
+  }
+
+  @Test
+  public void testConstructedUriIsEscaped() {
+    // SCHEMA-6. Column qualifier must be URL-encoded in KijiURI.
+    final KijiURI uri = KijiURI.newBuilder("kiji://zkhost/instance/table/")
+        .addColumnName(new KijiColumnName("map:one two")).build();
+    assertEquals("kiji://zkhost:2181/instance/table/map:one%20two/", uri.toString());
+  }
 }
 

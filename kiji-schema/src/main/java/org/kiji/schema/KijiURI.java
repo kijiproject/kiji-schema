@@ -728,6 +728,15 @@ public final class KijiURI {
         columnField = Joiner.on(",").join(strColumns);
       }
     }
-    return String.format("%s%s/", toStringTable(preserveOrdering), columnField);
+
+    try {
+      // SCHEMA-6. URI Encode column names using RFC-2396.
+      final URI columnsEncoded = new URI(KIJI_SCHEME, columnField, null);
+      return String.format("%s%s/",
+          toStringTable(preserveOrdering),
+          columnsEncoded.getRawSchemeSpecificPart());
+    } catch (URISyntaxException e) {
+      throw new KijiURIException(e.getMessage());
+    }
   }
 }
