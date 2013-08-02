@@ -62,8 +62,8 @@ public interface KijiTableKeyValueDatabase<T extends KijiTableKeyValueDatabase<T
    *
    * @param table The kiji table.
    * @param key The key to look up the associated value for.
-   * @return The value in the meta table with the given key, or null if the key doesn't exist.
-   * @throws IOException If there is an error.
+   * @return The value in the meta table with the given key.
+   * @throws IOException If there is an error or if the key doesn't exist.
    */
   byte[] getValue(String table, String key) throws IOException;
 
@@ -75,8 +75,8 @@ public interface KijiTableKeyValueDatabase<T extends KijiTableKeyValueDatabase<T
    * @param key The key to look up associated values for.
    * @param numVersions The maximum number of the most recent versions to retrieve.
    * @return A list of the most recent versions of the values for the specified table and key,
-   *     sorted by most-recent-first.  If there are no values, returns an empty list.
-   * @throws IOException If there is an error.
+   *     sorted by most-recent-first.
+   * @throws IOException If there is an error or if the key doesn't exist.
    */
   List<byte[]> getValues(String table, String key, int numVersions) throws IOException;
 
