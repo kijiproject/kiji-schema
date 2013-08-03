@@ -379,6 +379,24 @@ public final class HBaseKijiRowData implements KijiRowData {
   }
 
   /**
+   * Gets the table this row data belongs to.
+   *
+   * @return the table this row data belongs to.
+   */
+  public HBaseKijiTable getTable() {
+    return mTable;
+  }
+
+  /**
+   * Gets the data request used to retrieve this row data.
+   *
+   * @return the data request used to retrieve this row data.
+   */
+  public KijiDataRequest getDataRequest() {
+    return mDataRequest;
+  }
+
+  /**
    * Gets the layout of the table this row data belongs to.
    *
    * @return The table layout.
