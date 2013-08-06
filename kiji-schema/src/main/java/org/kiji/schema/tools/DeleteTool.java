@@ -256,7 +256,7 @@ public final class DeleteTool extends BaseTool {
         }
         case ALL: {
           if (!mayProceed("Are you sure you want to delete columns %s from row '%s' in table '%s'?",
-              Joiner.on(",").join(columns), timestamp, entityId, table.getURI())) {
+              Joiner.on(",").join(columns), entityId, table.getURI())) {
             return SUCCESS;
           }
           for (String family : families) {
