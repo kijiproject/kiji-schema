@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 
+import com.google.common.base.Objects;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -39,6 +40,7 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.io.hfile.Compression;
+import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,6 +83,9 @@ public class HBaseSystemTable implements KijiSystemTable {
    */
   public static final String DEFAULTS_PROPERTIES_FILE =
       "org/kiji/schema/system-default.properties";
+
+  /** URI of the Kiji instance this system table belongs to. */
+  private final KijiURI mURI;
 
   /** The HTable that stores the Kiji instance properties. */
   private final HTableInterface mTable;
@@ -131,16 +136,18 @@ public class HBaseSystemTable implements KijiSystemTable {
       Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
-    this(newSystemTable(kijiURI, conf, factory));
+    this(kijiURI, newSystemTable(kijiURI, conf, factory));
   }
 
   /**
    * Wrap an existing HTable connection that is assumed to be the table that stores the
    * Kiji instance properties.
    *
+   * @param uri URI of the Kiji instance this table belongs to.
    * @param htable An HTable to wrap.
    */
-  public HBaseSystemTable(HTableInterface htable) {
+  public HBaseSystemTable(KijiURI uri, HTableInterface htable) {
+    mURI = uri;
     mTable = htable;
     mIsOpen = true;
 
@@ -241,14 +248,13 @@ public class HBaseSystemTable implements KijiSystemTable {
     // Install the table.
     HTableDescriptor tableDescriptor = new HTableDescriptor(
         KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString());
-    HColumnDescriptor columnDescriptor = new HColumnDescriptor(
-        Bytes.toBytes(VALUE_COLUMN_FAMILY),  // family name.
-        1,  // max versions
-        Compression.Algorithm.NONE.toString(),  // compression
-        false,  // in-memory
-        true,  // block-cache
-        HConstants.FOREVER,  // tts
-        HColumnDescriptor.DEFAULT_BLOOMFILTER);
+    HColumnDescriptor columnDescriptor = new HColumnDescriptor(Bytes.toBytes(VALUE_COLUMN_FAMILY))
+        .setMaxVersions(1)
+        .setCompressionType(Compression.Algorithm.NONE)
+        .setInMemory(false)
+        .setBlockCacheEnabled(true)
+        .setTimeToLive(HConstants.FOREVER)
+        .setBloomFilterType(BloomType.NONE);
     tableDescriptor.addFamily(columnDescriptor);
     admin.createTable(tableDescriptor);
 
@@ -373,5 +379,14 @@ public class HBaseSystemTable implements KijiSystemTable {
     public void remove() {
       throw new UnsupportedOperationException();
     }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HBaseSystemTable.class)
+        .add("uri", mURI)
+        .add("open", mIsOpen)
+        .toString();
   }
 }

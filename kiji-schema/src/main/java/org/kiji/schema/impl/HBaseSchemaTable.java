@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.avro.AvroRuntimeException;
@@ -57,6 +58,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.hfile.Compression;
+import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,6 +133,9 @@ public class HBaseSchemaTable implements KijiSchemaTable {
 
   /** Schema hash cache. */
   private final SchemaHashCache mHashCache = new KijiSchemaTable.SchemaHashCache();
+
+  /** KijiURI of the Kiji instance this schema table belongs to. */
+  private final KijiURI mURI;
 
   /** Whether this schema table is open. */
   private boolean mIsOpen = false;
@@ -252,7 +257,8 @@ public class HBaseSchemaTable implements KijiSchemaTable {
       throws IOException {
     this(newSchemaHashTable(kijiURI, conf, tableFactory),
         newSchemaIdTable(kijiURI, conf, tableFactory),
-        newLock(kijiURI, lockFactory));
+        newLock(kijiURI, lockFactory),
+        kijiURI);
   }
 
   /**
@@ -261,13 +267,19 @@ public class HBaseSchemaTable implements KijiSchemaTable {
    * @param hashTable The HTable that maps schema hashes to schema entries.
    * @param idTable The HTable that maps schema IDs to schema entries.
    * @param zkLock Lock protecting the schema tables.
+   * @param uri URI of the Kiji instance this schema table belongs to.
    * @throws IOException on I/O error.
    */
-  public HBaseSchemaTable(HTableInterface hashTable, HTableInterface idTable, Lock zkLock)
+  public HBaseSchemaTable(
+      HTableInterface hashTable,
+      HTableInterface idTable,
+      Lock zkLock,
+      KijiURI uri)
       throws IOException {
     mSchemaHashTable = Preconditions.checkNotNull(hashTable);
     mSchemaIdTable = Preconditions.checkNotNull(idTable);
     mZKLock = Preconditions.checkNotNull(zkLock);
+    mURI = uri;
 
     mIsOpen = true;
 
@@ -603,34 +615,33 @@ public class HBaseSchemaTable implements KijiSchemaTable {
 
     final HTableDescriptor hashTableDescriptor = new HTableDescriptor(
         KijiManagedHBaseTableName.getSchemaHashTableName(kijiURI.getInstance()).toString());
-    final HColumnDescriptor hashColumnDescriptor = new HColumnDescriptor(
-        SCHEMA_COLUMN_FAMILY_BYTES, // family name.
-        maxVersions, // max versions
-        Compression.Algorithm.NONE.toString(), // compression
-        false, // in-memory
-        true, // block-cache
-        HConstants.FOREVER, // tts
-        HColumnDescriptor.DEFAULT_BLOOMFILTER);
+    final HColumnDescriptor hashColumnDescriptor = new HColumnDescriptor(SCHEMA_COLUMN_FAMILY_BYTES)
+        .setMaxVersions(maxVersions)
+        .setCompressionType(Compression.Algorithm.NONE)
+        .setInMemory(false)
+        .setBlockCacheEnabled(true)
+        .setTimeToLive(HConstants.FOREVER)
+        .setBloomFilterType(BloomType.NONE);
     hashTableDescriptor.addFamily(hashColumnDescriptor);
     admin.createTable(hashTableDescriptor);
 
     final HTableDescriptor idTableDescriptor = new HTableDescriptor(
         KijiManagedHBaseTableName.getSchemaIdTableName(kijiURI.getInstance()).toString());
-    final HColumnDescriptor idColumnDescriptor = new HColumnDescriptor(
-        SCHEMA_COLUMN_FAMILY_BYTES, // family name.
-        maxVersions, // max versions
-        Compression.Algorithm.NONE.toString(), // compression
-        false, // in-memory
-        true, // block-cache
-        HConstants.FOREVER, // tts
-        HColumnDescriptor.DEFAULT_BLOOMFILTER);
+    final HColumnDescriptor idColumnDescriptor = new HColumnDescriptor(SCHEMA_COLUMN_FAMILY_BYTES)
+        .setMaxVersions(maxVersions)
+        .setCompactionCompressionType(Compression.Algorithm.NONE)
+        .setInMemory(false)
+        .setBlockCacheEnabled(true)
+        .setTimeToLive(HConstants.FOREVER)
+        .setBloomFilterType(BloomType.NONE);
     idTableDescriptor.addFamily(idColumnDescriptor);
     admin.createTable(idTableDescriptor);
 
     final HBaseSchemaTable schemaTable = new HBaseSchemaTable(
         newSchemaHashTable(kijiURI, conf, tableFactory),
         newSchemaIdTable(kijiURI, conf, tableFactory),
-        newLock(kijiURI, lockFactory));
+        newLock(kijiURI, lockFactory),
+        kijiURI);
     try {
       schemaTable.setSchemaIdCounter(0L);
       schemaTable.registerPrimitiveSchemas();
@@ -984,5 +995,14 @@ public class HBaseSchemaTable implements KijiSchemaTable {
     LOG.info(String.format(
         "Schema ID table has %d rows and %d entries.", idTableRowCounter, entries.size()));
     return entries;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HBaseSchemaTable.class)
+        .add("uri", mURI)
+        .add("open", mIsOpen)
+        .toString();
   }
 }

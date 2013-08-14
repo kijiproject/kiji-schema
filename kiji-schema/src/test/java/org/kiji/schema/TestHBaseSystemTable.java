@@ -19,71 +19,30 @@
 
 package org.kiji.schema;
 
-import static org.easymock.EasyMock.createMock;
-import static org.easymock.EasyMock.expect;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
-
-import static org.kiji.schema.util.GetEquals.eqGet;
-import static org.kiji.schema.util.PutEquals.eqPut;
 
 import java.io.IOException;
 
-import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.junit.Before;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.junit.Test;
 
 import org.kiji.schema.impl.HBaseSystemTable;
 import org.kiji.schema.util.ProtocolVersion;
-import org.kiji.schema.util.ResourceUtils;
+import org.kiji.testing.fakehtable.FakeHTable;
 
 public class TestHBaseSystemTable {
-  private HTableInterface mHtable;
-
-  @Before
-  public void setup() {
-    mHtable = createMock(HTableInterface.class);
-  }
-
   @Test
   public void testSetDataVersion() throws IOException {
-    Put expected = new Put(Bytes.toBytes(HBaseSystemTable.KEY_DATA_VERSION));
-    expected.add(Bytes.toBytes(HBaseSystemTable.VALUE_COLUMN_FAMILY),
-        new byte[0],
-        Bytes.toBytes("kiji-100"));
-    mHtable.put(eqPut(expected));
-    mHtable.close();
+    final Configuration conf = HBaseConfiguration.create();
+    final HTableDescriptor desc = new HTableDescriptor();
+    final FakeHTable table = new FakeHTable("system", desc, conf, false, 0, true, true);
 
-    replay(mHtable);
-    HBaseSystemTable systemTable = new HBaseSystemTable(mHtable);
+    final KijiURI uri = KijiURI.newBuilder("kiji://test/instance").build();
+    final HBaseSystemTable systemTable = new HBaseSystemTable(uri, table);
     systemTable.setDataVersion(ProtocolVersion.parse("kiji-100"));
-    ResourceUtils.closeOrLog(systemTable);
-    verify(mHtable);
+    assertEquals(ProtocolVersion.parse("kiji-100"), systemTable.getDataVersion());
+    systemTable.close();
   }
-
-  @Test
-  public void testGetDataVersion() throws IOException {
-    Get expected = new Get(Bytes.toBytes(HBaseSystemTable.KEY_DATA_VERSION));
-    expected.addColumn(Bytes.toBytes(HBaseSystemTable.VALUE_COLUMN_FAMILY), new byte[0]);
-    Result result = new Result(new KeyValue[] {
-        new KeyValue(Bytes.toBytes(HBaseSystemTable.KEY_DATA_VERSION),
-        Bytes.toBytes(HBaseSystemTable.VALUE_COLUMN_FAMILY), new byte[0], Bytes.toBytes("100")),
-    });
-    expect(mHtable.get(eqGet(expected))).andReturn(result);
-    mHtable.close();
-
-    replay(mHtable);
-    HBaseSystemTable systemTable = new HBaseSystemTable(mHtable);
-    assertEquals(ProtocolVersion.parse("100"), systemTable.getDataVersion());
-    ResourceUtils.closeOrLog(systemTable);
-    verify(mHtable);
-  }
-
-  // TODO: KIJI-75 Add tests for the getValue/setValue.
 }
