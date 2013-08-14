@@ -482,7 +482,7 @@ public final class TableLayoutBuilder {
    * @param layoutId to set
    * @return this.
    */
-  public TableLayoutBuilder setLayoutId(String layoutId) {
+  public TableLayoutBuilder withLayoutId(String layoutId) {
     mDescBuilder.setLayoutId(layoutId);
     return this;
   }

@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -51,9 +50,7 @@ import org.kiji.schema.util.AvroUtils.SchemaSetCompatibility;
 import org.kiji.schema.util.ProtocolVersion;
 
 /**
- * <p>
- *   Validates a table layout update.
- * </p>
+ * Validates a table layout update.
  *
  * <p>
  *   On a column by column basis, ensures that records written by any registered or previously
@@ -223,7 +220,7 @@ public final class TableLayoutUpdateValidator {
 
     // If there were any incompatibility errors, throw an exception.
     if (incompatabilityMessages.size() != 0) {
-      throw new InvalidLayoutSchemaException(Joiner.on('\n').join(incompatabilityMessages));
+      throw new InvalidLayoutSchemaException(incompatabilityMessages);
     }
   }
 

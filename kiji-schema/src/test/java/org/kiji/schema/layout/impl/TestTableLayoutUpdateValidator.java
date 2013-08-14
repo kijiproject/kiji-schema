@@ -203,7 +203,7 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
         KijiTableLayouts.getLayout(AVRO_VALIDATION_TEST), getKiji())
         .withReader(validatedColumn, TestRecord5.SCHEMA$)
         .withAvroValidationPolicy(validatedColumn, AvroValidationPolicy.STRICT)
-        .setLayoutId("original")
+        .withLayoutId("original")
         .build();
 
     // The initial layout is valid.
