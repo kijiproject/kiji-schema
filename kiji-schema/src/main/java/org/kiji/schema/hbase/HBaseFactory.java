@@ -33,6 +33,7 @@ import org.kiji.delegation.PriorityProvider;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.impl.HBaseAdminFactory;
 import org.kiji.schema.impl.HTableInterfaceFactory;
+import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.util.LockFactory;
 
 /** Factory for HBase instances based on URIs. */
@@ -92,4 +93,13 @@ public interface HBaseFactory extends PriorityProvider {
    * @throws IOException on I/O error.
    */
   LockFactory getLockFactory(KijiURI uri, Configuration conf) throws IOException;
+
+  /**
+   * Creates and opens a ZooKeeperClient for a given Kiji instance.
+   *
+   * @param uri URI of the Kiji instance for which to create a ZooKeeperClient.
+   * @return a new open ZooKeeperClient.
+   * @throws IOException in case of an error connecting to ZooKeeper.
+   */
+  ZooKeeperClient getZooKeeperClient(KijiURI uri) throws IOException;
 }

@@ -25,10 +25,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -200,14 +198,7 @@ public final class HBaseKiji implements Kiji {
       // system-2.0 clients must connect to ZooKeeper:
       //  - to register themselves as table users;
       //  - to receive table layout updates.
-      final List<String> zkHosts = Lists.newArrayList();
-      for (String host : mURI.getZookeeperQuorumOrdered()) {
-        zkHosts.add(String.format("%s:%s", host, mURI.getZookeeperClientPort()));
-      }
-      final String zkAddress = Joiner.on(",").join(zkHosts);
-      final int sessionTimeoutMS = 60 * 1000;
-      mZKClient = new ZooKeeperClient(zkAddress, sessionTimeoutMS);
-      mZKClient.open();
+      mZKClient = HBaseFactory.Provider.get().getZooKeeperClient(mURI);
     } else {
       // system-1.x clients do not need a ZooKeeper connection.
       mZKClient = null;

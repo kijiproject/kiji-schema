@@ -95,7 +95,7 @@ public interface KijiTableLayoutDatabase {
    * @param table The name of the Kiji table.
    * @param numVersions The maximum number of the most recent versions to retrieve.
    * @return A navigable map with values the most recent versions of the layout for the table, and
-   *     keys the corresponding timestamps, ordered from most recent first to least recent last.
+   *     keys the corresponding timestamps, ordered from least recent first to most recent last.
    * @throws IOException If there is an error.
    */
   NavigableMap<Long, KijiTableLayout> getTimedTableLayoutVersions(String table, int numVersions)

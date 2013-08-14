@@ -181,6 +181,15 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
   }
 
   /**
+   * Returns whether this ZooKeeperClient has been opened and not closed.
+   *
+   * @return whether this ZooKeeperClient has been opened and not closed.
+   */
+  public boolean isOpen() {
+    return mOpened.get() && !mClosed.get();
+  }
+
+  /**
    * Factory for ZooKeeper session clients.
    *
    * <p> This returns immediately, but the ZooKeeper session is established asynchronously. </p>

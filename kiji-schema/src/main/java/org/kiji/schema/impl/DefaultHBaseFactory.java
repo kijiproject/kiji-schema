@@ -20,14 +20,18 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Priority;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.HBaseFactory;
+import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ZooKeeperLockFactory;
 
@@ -65,5 +69,19 @@ public final class DefaultHBaseFactory implements HBaseFactory {
   public int getPriority(Map<String, String> runtimeHints) {
     // Default priority; should be used unless overridden by tests.
     return Priority.NORMAL;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public ZooKeeperClient getZooKeeperClient(final KijiURI uri) {
+    final List<String> zkHosts = Lists.newArrayList();
+    for (String host : uri.getZookeeperQuorumOrdered()) {
+      zkHosts.add(String.format("%s:%s", host, uri.getZookeeperClientPort()));
+    }
+    final String zkAddress = Joiner.on(",").join(zkHosts);
+    final int sessionTimeoutMS = 60 * 1000;
+    final ZooKeeperClient zkc = new ZooKeeperClient(zkAddress, sessionTimeoutMS);
+    zkc.open();
+    return zkc;
   }
 }

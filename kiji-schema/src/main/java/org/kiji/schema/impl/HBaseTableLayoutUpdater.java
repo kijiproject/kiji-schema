@@ -272,7 +272,7 @@ public class HBaseTableLayoutUpdater {
       final NavigableMap<Long, KijiTableLayout> layoutMap =
           metaTable.getTimedTableLayoutVersions(mTableURI.getTable(), Integer.MAX_VALUE);
 
-      final KijiTableLayout currentLayout = layoutMap.firstEntry().getValue();
+      final KijiTableLayout currentLayout = layoutMap.lastEntry().getValue();
       final TableLayoutDesc update = mLayoutUpdate.apply(currentLayout);
       if (!Objects.equal(currentLayout.getDesc().getLayoutId(), update.getReferenceLayout())) {
         throw new InvalidLayoutException(String.format(
@@ -281,7 +281,7 @@ public class HBaseTableLayoutUpdater {
       }
 
       final TableLayoutUpdateValidator validator = new TableLayoutUpdateValidator(mKiji);
-      validator.validate(KijiTableLayout.newLayout(update), currentLayout);
+      validator.validate(currentLayout, KijiTableLayout.newLayout(update));
 
       final LayoutTracker layoutTracker =
           mMonitor.newTableLayoutTracker(mTableURI, mLayoutUpdateHandler);
@@ -337,6 +337,7 @@ public class HBaseTableLayoutUpdater {
         layoutTracker.close();
       }
     } finally {
+      lock.unlock();
       lock.close();
     }
   }

@@ -45,14 +45,18 @@ import org.kiji.schema.layout.impl.ZooKeeperClient;
 @ApiAudience.Private
 public final class ZooKeeperLock implements Lock, Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperLock.class);
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger("cleanup." + ZooKeeperLock.class.getName());
   private static final byte[] EMPTY = new byte[0];
   private static final String LOCK_NAME_PREFIX = "lock-";
 
+  private final String mConstructorStack;
   private final ZooKeeperClient mZKClient;
   private final File mLockDir;
   private final File mLockPathPrefix;
   private File mCreatedPath = null;
   private WatchedEvent mPrecedingEvent = null;
+
 
   /**
    * Constructs a ZooKeeper lock object.
@@ -61,6 +65,8 @@ public final class ZooKeeperLock implements Lock, Closeable {
    * @param lockDir Path of the directory node to use for the lock.
    */
   public ZooKeeperLock(ZooKeeperClient zookeeper, File lockDir) {
+    this.mConstructorStack = CLEANUP_LOG.isDebugEnabled() ? Debug.getStackTrace() : null;
+
     this.mZKClient = zookeeper;
     this.mLockDir = lockDir;
     this.mLockPathPrefix = new File(lockDir,  LOCK_NAME_PREFIX);
@@ -209,7 +215,8 @@ public final class ZooKeeperLock implements Lock, Closeable {
   private void unlockInternal() throws InterruptedException, KeeperException {
     File pathToDelete = null;
     synchronized (this) {
-      Preconditions.checkState(null != mCreatedPath, mCreatedPath);
+      Preconditions.checkState(null != mCreatedPath,
+          "unlock() cannot be called while lock is unlocked.");
       pathToDelete = mCreatedPath;
       LOG.debug("Releasing lock {}: deleting {}", this, mCreatedPath);
       mCreatedPath = null;
@@ -220,6 +227,19 @@ public final class ZooKeeperLock implements Lock, Closeable {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
+    final boolean isLocked;
+    synchronized (this) {
+      isLocked = mCreatedPath != null;
+    }
+    if (isLocked) {
+      CLEANUP_LOG.warn("Releasing ZooKeeperLock with path: {} in close().  "
+          + "Please ensure that locks are unlocked before closing.", mCreatedPath);
+      if (CLEANUP_LOG.isDebugEnabled()) {
+        CLEANUP_LOG.debug("ZooKeeperLock with path '{}' was constructed through:\n{}",
+            mCreatedPath, mConstructorStack);
+      }
+      unlock();
+    }
     this.mZKClient.release();
   }
 }
