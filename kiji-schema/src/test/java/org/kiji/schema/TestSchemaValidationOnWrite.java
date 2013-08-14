@@ -27,6 +27,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.avro.AvroSchema;
 import org.kiji.schema.avro.AvroValidationPolicy;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.Edge;
@@ -53,7 +54,7 @@ public class TestSchemaValidationOnWrite extends KijiClientTest {
             .getFamilies().get(0)
             .getColumns().get(0)
             .getColumnSchema();
-    cellSchema.setWriters(Lists.newArrayList(writerUID));
+    cellSchema.setWriters(Lists.newArrayList(AvroSchema.newBuilder().setUid(writerUID).build()));
     cellSchema.setType(SchemaType.AVRO);
     cellSchema.setAvroValidationPolicy(AvroValidationPolicy.STRICT);
     layoutDesc.setVersion("layout-1.2");

@@ -19,12 +19,15 @@
 
 package org.kiji.schema.layout;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
 import org.apache.avro.Schema;
-// import org.junit.Test;
+import org.junit.Test;
 
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
@@ -32,16 +35,13 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.TableLayoutDesc;
 
 public class TestTableLayoutBuilder extends KijiClientTest {
+  private static final String TEST_LAYOUT =
+      "org/kiji/schema/layout/TestTableLayoutBuilder.layout.json";
 
-  /**
-   * Only deep copies should be mutated by TableLayoutBuilder.
-   *
-   * @throws IOException
-   */
-  // TODO: Reannotate as @Test.
+  /** Only deep copies should be mutated by TableLayoutBuilder. */
+  @Test
   public void testTableLayoutSafeMutation() throws IOException {
-    final KijiTableLayout layout = KijiTableLayouts
-        .getTableLayout(KijiTableLayouts.SCHEMA_REG_TEST);
+    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(TEST_LAYOUT);
     final TableLayoutDesc tld = layout.getDesc();
     final TableLayoutBuilder tlb = new TableLayoutBuilder(tld, getKiji());
     tld.setName("blastoise");
@@ -49,22 +49,21 @@ public class TestTableLayoutBuilder extends KijiClientTest {
     assertFalse(tld.getName().equals(tldBuilt.getName()));
   }
 
-  // TODO: Reannotate as @Test.
+  @Test
   public void testSchemaRegistration() throws IOException {
     // Set up schemas
-    final Schema.Parser p = new Schema.Parser();
-    final Schema stringSchema = p.parse("\"string\"");
-    final Schema intSchema = p.parse("\"int\"");
-    final Schema enumSchema = p.parse("{ \"type\": \"enum\", \"name\": \"HeroType\", "
+    final Schema.Parser parser = new Schema.Parser();
+    final Schema stringSchema = parser.parse("\"string\"");
+    final Schema intSchema = parser.parse("\"int\"");
+    final Schema enumSchema = parser.parse("{ \"type\": \"enum\", \"name\": \"HeroType\", "
         + "\"symbols\" : [\"Paladin\", \"Mage\", \"Orck\", \"Gelf\"]}");
     final Schema fixedSchema =
-        p.parse("{\"type\": \"fixed\", \"size\": 16, \"name\":\"some_fixed\"}");
+        parser.parse("{\"type\": \"fixed\", \"size\": 16, \"name\":\"some_fixed\"}");
     final Schema unionSchema =
-        p.parse("[\"null\", \"string\", \"some_fixed\"]");
+        parser.parse("[\"null\", \"string\", \"some_fixed\"]");
 
     // Set up layout
-    final KijiTableLayout layout = KijiTableLayouts
-        .getTableLayout(KijiTableLayouts.SCHEMA_REG_TEST);
+    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(TEST_LAYOUT);
     final TableLayoutBuilder tlb = new TableLayoutBuilder(layout.getDesc(), getKiji());
 
     // Columns to use
@@ -122,10 +121,9 @@ public class TestTableLayoutBuilder extends KijiClientTest {
     assertTrue(tlb.getRegisteredReaders(heroismCol).contains(enumSchema));
   }
 
-  // TODO: Reannotate as @Test.
+  @Test
   public void testSchemaRegistrationAtBadColumns() throws IOException {
-    final KijiTableLayout layout = KijiTableLayouts
-        .getTableLayout(KijiTableLayouts.SCHEMA_REG_TEST);
+    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(TEST_LAYOUT);
     final TableLayoutBuilder tlb = new TableLayoutBuilder(layout.getDesc(), getKiji());
     final Schema.Parser p = new Schema.Parser();
     Schema stringSchema = p.parse("\"string\"");
@@ -135,7 +133,7 @@ public class TestTableLayoutBuilder extends KijiClientTest {
       tlb.withReader(new KijiColumnName("profile"), stringSchema);
       fail("An exception should have been thrown.");
     } catch (NoSuchColumnException nsce) {
-      assertEquals("Table 'schema_reg_test' has no column 'profile'.", nsce.getMessage());
+      assertEquals("Table 'table_name' has no column 'profile'.", nsce.getMessage());
     }
 
     // Fully qualified map family
@@ -151,7 +149,7 @@ public class TestTableLayoutBuilder extends KijiClientTest {
       tlb.withReader(new KijiColumnName("info:name"), stringSchema);
       fail("An exception should have been thrown.");
     } catch (NoSuchColumnException nsce) {
-      assertEquals("Table 'schema_reg_test' has no column 'info:name'.", nsce.getMessage());
+      assertEquals("Table 'table_name' has no column 'info:name'.", nsce.getMessage());
     }
 
     // FINAL column

@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
@@ -35,9 +36,10 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.avro.AvroSchema;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.impl.Versions;
-import org.kiji.schema.layout.InvalidLayoutException;
+import org.kiji.schema.layout.AvroSchemaResolver;
 import org.kiji.schema.layout.InvalidLayoutSchemaException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
@@ -82,7 +84,7 @@ public final class TableLayoutUpdateValidator {
    * @param reference the reference layout against which to validate.
    * @param layout the new layout to validate.
    * @throws IOException in case of an IO Error reading from the schema table.
-   * @throws InvalidLayoutException if the layouts are incompatible.
+   *     Throws InvalidLayoutException if the layouts are incompatible.
    */
   public void validate(KijiTableLayout reference, KijiTableLayout layout) throws IOException {
 
@@ -232,7 +234,7 @@ public final class TableLayoutUpdateValidator {
    * @return a list of error messages corresponding to each invalid combination of a reader and
    *     writer schema.  Returns an empty list if all reader and writer schemas are compatible.
    * @throws IOException in case of an error reading from the schema table.
-   * @throws InvalidLayoutException in case a schema does not exist in the schema table.
+   *     Throws InvalidLayoutException in case a schema does not exist in the schema table.
    */
   private List<String> validateCellSchema(
       final CellSchema refCellSchema,
@@ -258,12 +260,15 @@ public final class TableLayoutUpdateValidator {
         // against new reader schemas and reader schemas which are being removed must still be
         // validated against new writer schemas.
 
-        final Set<Long> readerSchemaIDs = (cellSchema.getReaders() != null)
-            ? Sets.newHashSet(cellSchema.getReaders())
-            : Sets.<Long>newHashSet();
-        final Set<Long> writerSchemaIDs = (cellSchema.getWriters() != null)
-            ? Sets.newHashSet(cellSchema.getWriters())
-            :Sets.<Long>newHashSet();
+        final Set<AvroSchema> readerSchemaIDs = Sets.newHashSet();
+        final Set<AvroSchema> writerSchemaIDs = Sets.newHashSet();
+
+        if (cellSchema.getReaders() != null) {
+          readerSchemaIDs.addAll(cellSchema.getReaders());
+        }
+        if (cellSchema.getWriters() != null) {
+            writerSchemaIDs.addAll(cellSchema.getWriters());
+        }
         if (cellSchema.getWritten() != null) {
           writerSchemaIDs.addAll(cellSchema.getWritten());
         }
@@ -281,27 +286,15 @@ public final class TableLayoutUpdateValidator {
           }
         }
 
-        // Resolve reader schema IDs to Schema objects:
-        final List<Schema> readerSchemas = Lists.newArrayList();
-        for (long schemaId : readerSchemaIDs) {
-          final Schema schema = mSchemaTable.getSchema(schemaId);
-          if (schema == null) {
-            throw new InvalidLayoutException(String.format(
-                "Unknown reader schema ID: %d", schemaId));
-          }
-          readerSchemas.add(schema);
-        }
+        final AvroSchemaResolver resolver = new AvroSchemaResolver(mKiji.getSchemaTable());
 
-        // Resolve writer schema IDs to Schema objects:
-        final List<Schema> writerSchemas = Lists.newArrayList();
-        for (long schemaId : writerSchemaIDs) {
-          final Schema schema = mSchemaTable.getSchema(schemaId);
-          if (schema == null) {
-            throw new InvalidLayoutException(String.format(
-                "Unknown writer schema ID: %d", schemaId));
-          }
-          writerSchemas.add(schema);
-        }
+        // Resolve reader Avro schema descriptors to Schema objects:
+        final List<Schema> readerSchemas =
+            Lists.newArrayList(Collections2.transform(readerSchemaIDs, resolver));
+
+        // Resolve writer Avro schema descriptors to Schema objects:
+        final List<Schema> writerSchemas =
+            Lists.newArrayList(Collections2.transform(writerSchemaIDs, resolver));
 
         // Perform actual validation between reader and writer schemas:
         return validateReaderWriterSchemas(readerSchemas, writerSchemas);
@@ -320,7 +313,7 @@ public final class TableLayoutUpdateValidator {
    * @return a list of error messages corresponding to each invalid combination of a reader and
    *     writer schema.  Returns an empty list if all reader and writers schemas are compatible.
    */
-  private List<String> validateReaderWriterSchemas(
+  private static List<String> validateReaderWriterSchemas(
       List<Schema> readerSchemas,
       List<Schema> writerSchemas) {
 
@@ -352,7 +345,7 @@ public final class TableLayoutUpdateValidator {
    * @param incompatibilityMessages the incompatibility messages to which to add column names.
    * @return a list of newly modified incompatibility messages.
    */
-  private List<String> addColumnNamestoIncompatibilityMessages(
+  private static List<String> addColumnNamestoIncompatibilityMessages(
       String family, String qualifier, List<String> incompatibilityMessages) {
     Preconditions.checkNotNull(family, "Column family may not be null.");
     final String column = (qualifier != null) ? family + ":" + qualifier : family;

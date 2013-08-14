@@ -17,110 +17,47 @@
  * limitations under the License.
  */
 {
-  "name": "avro_validation_test",
-  "max_filesize": null,
-  "memstore_flushsize": null,
-  "description": "",
-  "keys_format": {
-    "encoding": "FORMATTED",
-    "salt": {
-      "hash_type": "MD5",
-      "hash_size": 2,
-      "suppress_key_materialization": false
-    },
-    "range_scan_start_index": 1,
-    "nullable_start_index": 1,
-    "components": [
-      {
-        "name": "username",
-        "type": "STRING"
-      },
-      {
-        "name": "domain",
-        "type": "STRING"
-      }
-    ]
+  name: "avro_validation_test",
+  max_filesize: null,
+  memstore_flushsize: null,
+  description: "",
+  keys_format: {
+    encoding: "FORMATTED",
+    salt: {hash_size: 2},
+    components: [{name: "row", type: "STRING"}]
   },
-  "locality_groups": [
-    {
-      "id": 0,
-      "name": "default",
-      "aliases": [ ],
-      "enabled": true,
-      "description": "",
-      "in_memory": false,
-      "max_versions": 20,
-      "ttl_seconds": 2147483647,
-      "block_size": null,
-      "bloom_type": null,
-      "compression_type": "GZ",
-      "families": [
-        {
-          "id": 0,
-          "name": "info",
-          "aliases": [
-            "profile"
-          ],
-          "enabled": true,
-          "description": "",
-          "map_schema": null,
-          "columns": [
-            {
-              "id": 1,
-              "name": "qual0",
-              "aliases": [
-                "alias"
-              ],
-              "enabled": true,
-              "description": "",
-              "column_schema": {
-                "storage": "HASH",
-                "type": "AVRO",
-                "value": null,
-                "avro_validation_policy": "STRICT",
-                "specific_reader_schema_class": null,
-                "default_reader": null,
-                "readers": [ ],
-                "written": null,
-                "writers": [ ]
-              },
-              "delete": false,
-              "renamed_from": null
-            },
-            {
-              "id": 2,
-              "name": "qual1",
-              "aliases": [ ],
-              "enabled": true,
-              "description": "",
-              "column_schema": {
-                "storage": "HASH",
-                "type": "AVRO",
-                "value": null,
-                "avro_validation_policy": "STRICT",
-                "specific_reader_schema_class": null,
-                "default_reader": null,
-                "readers": [
-                  2
-                ],
-                "written": null,
-                "writers": [
-                  2
-                ]
-              },
-              "delete": false,
-              "renamed_from": null
-            }
-          ],
-          "delete": false,
-          "renamed_from": null
+  locality_groups: [{
+    name: "default",
+    in_memory: false,
+    max_versions: 20,
+    ttl_seconds: 2147483647,
+    block_size: null,
+    bloom_type: null,
+    compression_type: "NONE",
+    families: [{
+      name: "info",
+      aliases: ["profile"],
+      columns: [{
+        name: "qual0",
+        aliases: ["alias"],
+        column_schema: {
+          storage: "HASH",
+          type: "AVRO",
+          avro_validation_policy: "STRICT",
+          readers: [ ],
+          writers: [ ]
         }
-      ],
-      "delete": false,
-      "renamed_from": null
-    }
-  ],
-  "version": "layout-1.3.0",
-  "layout_id": null,
-  "reference_layout": null
+      }, {
+        name: "qual1",
+        column_schema: {
+          storage: "HASH",
+          type: "AVRO",
+          avro_validation_policy: "STRICT",
+          readers: [{uid: 2}],
+          writers: [{uid: 2}]
+        }
+      }]
+    }]
+  }],
+  version: "layout-1.3.0"
 }

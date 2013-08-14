@@ -126,10 +126,8 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
     kiji.createTable(originalDesc);
 
     final TableLayoutDesc newDesc = new TableLayoutBuilder(originalDesc, kiji)
-        .withWriter(new KijiColumnName("info:fullname"), INT_SCHEMA).build();
-    newDesc.setReferenceLayout("1");
-    newDesc.setLayoutId("2");
-
+        .withWriter(new KijiColumnName("info:fullname"), INT_SCHEMA)
+        .build();
     return newDesc;
   }
 
@@ -288,7 +286,6 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
     final TableLayoutDesc desc = KijiTableLayouts.getLayout(KijiTableLayouts.SCHEMA_REG_TEST);
     desc.setVersion("layout-1.3.0");
 
-
     final TableLayoutDesc originalDesc = new TableLayoutBuilder(desc, kiji)
         .withAvroValidationPolicy(
             new KijiColumnName("info:fullname"), AvroValidationPolicy.STRICT)
@@ -300,8 +297,6 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
     final TableLayoutDesc newDesc = new TableLayoutBuilder(originalDesc, kiji)
         .withWriter(new KijiColumnName("info:fullname"), OPTIONAL_INT_SCHEMA)
         .build();
-    newDesc.setReferenceLayout("1");
-    newDesc.setLayoutId("2");
 
     kiji.modifyTableLayout(newDesc);
   }

@@ -16,8 +16,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 {
-  name: "schema_reg_test",
+  name: "table_name",
   keys_format: {
     encoding: "FORMATTED",
     salt: {hash_size: 2},
@@ -28,11 +29,11 @@
     in_memory: false,
     max_versions: 20,
     ttl_seconds: 2147483647,
-    compression_type: "GZ",
-    families: [{
+    compression_type: "NONE",
+    families: [ {
       name: "info",
       aliases: ["profile"],
-      columns: [{
+      columns: [ {
         name: "fullname",
         aliases: ["alias"],
         column_schema: {type: "AVRO"}
@@ -44,7 +45,7 @@
         name: "mana",
         aliases: ["magic"],
         column_schema: {type: "AVRO"}
-      }]
+      } ]
     }, {
       name: "quest_progress",
       description: "Progress out of 100 in started quests.",
@@ -57,10 +58,10 @@
       map_schema: {type: "AVRO"}
     }, {
       name: "guilds",
-      description: "Clans and the timestampw when joined.",
+      description: "Clans and the timestamp when joined.",
       aliases: ["clans"],
       map_schema: {type: "INLINE", value: '"string"'}
-    }]
-  }],
-  version: "layout-1.1.0"
+    } ]
+  } ],
+  version: "layout-1.3.0"
 }

@@ -29,6 +29,7 @@ import javax.annotation.Nonnull;
 
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -52,9 +53,11 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiEncodingException;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.avro.AvroSchema;
 import org.kiji.schema.avro.AvroValidationPolicy;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.layout.AvroSchemaResolver;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -396,29 +399,17 @@ public final class AvroCellEncoder implements KijiCellEncoder {
    * Gets the registered writer schemas associated with the provided cell specification.
    *
    * @param spec containing registered schemas.
-   * @return the set of writer schemas registered for the provided cell or null if validation is
-   *     disabled.
+   * @return the set of writer schemas registered for the provided cell.
+   *     Null if validation is disabled.
    * @throws IOException if there is an error looking up schemas.
    */
   private static Set<Schema> getRegisteredWriters(final CellSpec spec) throws IOException {
-    final List<Long> writerUIDs = spec.getCellSchema().getWriters();
-    if (writerUIDs == null) {
+    final List<AvroSchema> writerSchemas = spec.getCellSchema().getWriters();
+    if (writerSchemas == null) {
       return null;
     }
-
-    final Set<Schema> writers = Sets.newHashSet();
-    for (Long uid : writerUIDs) {
-      // Convert uid to schema.
-      final Schema writerSchema = spec.getSchemaTable().getSchema(uid);
-      if (writerSchema == null) {
-        throw new KijiEncodingException(
-            String.format("Unable to fetch schema with UID: %d from schema table.", uid));
-      }
-
-      // Add it to a hashset.
-      writers.add(writerSchema);
-    }
-    return writers;
+    final AvroSchemaResolver resolver = new AvroSchemaResolver(spec.getSchemaTable());
+    return Sets.newHashSet(Collections2.transform(writerSchemas, resolver));
   }
 
   /**

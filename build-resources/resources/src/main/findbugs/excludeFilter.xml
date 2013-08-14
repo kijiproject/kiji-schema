@@ -119,7 +119,11 @@
 
   <Match>
     <!-- FindBugs has a bug: http://sourceforge.net/p/findbugs/bugs/1139/ -->
-    <Class name="org.kiji.schema.impl.AvroCellEncoder$1" />
+    <Or>
+      <Class name="org.kiji.schema.impl.AvroCellEncoder$1" />
+      <Class name="org.kiji.schema.layout.AvroSchemaResolver" />
+      <Class name="org.kiji.schema.layout.AvroSchemaIdResolver" />
+    </Or>
     <Bug pattern="NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE" />
   </Match>
 

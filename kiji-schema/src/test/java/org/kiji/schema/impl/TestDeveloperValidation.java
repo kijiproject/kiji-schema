@@ -35,6 +35,7 @@ import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.avro.AvroSchema;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.avro.TestRecord1;
@@ -102,12 +103,18 @@ public class TestDeveloperValidation extends KijiClientTest {
           writer.close();
         }
 
-        final List<Long> schemaIds =
+        final List<AvroSchema> schemaIds =
             table.getLayout().getCellSchema(new KijiColumnName("info:user_id")).getWriters();
-        final List<Long> expectedIds = Lists.newArrayList(
-            kiji.getSchemaTable().getOrCreateSchemaId(SCHEMA_LONG),
-            kiji.getSchemaTable().getOrCreateSchemaId(SCHEMA_STRING),
-            kiji.getSchemaTable().getOrCreateSchemaId(TestRecord1.SCHEMA$));
+        final List<AvroSchema> expectedIds = Lists.newArrayList(
+            AvroSchema.newBuilder()
+                .setUid(kiji.getSchemaTable().getOrCreateSchemaId(SCHEMA_LONG))
+                .build(),
+            AvroSchema.newBuilder()
+                .setUid(kiji.getSchemaTable().getOrCreateSchemaId(SCHEMA_STRING))
+                .build(),
+            AvroSchema.newBuilder()
+                .setUid(kiji.getSchemaTable().getOrCreateSchemaId(TestRecord1.SCHEMA$))
+                .build());
         Assert.assertEquals(expectedIds, schemaIds);
 
       } finally {
@@ -129,7 +136,9 @@ public class TestDeveloperValidation extends KijiClientTest {
           .getColumns().get(0)
           .getColumnSchema();
       cellSchema.setReaders(Lists.newArrayList(
-          kiji.getSchemaTable().getOrCreateSchemaId(SCHEMA_LONG)));
+          AvroSchema.newBuilder()
+              .setUid(kiji.getSchemaTable().getOrCreateSchemaId(SCHEMA_LONG))
+              .build()));
 
       kiji.createTable(desc);
       final KijiTable table = kiji.openTable("dev");
@@ -184,7 +193,9 @@ public class TestDeveloperValidation extends KijiClientTest {
           .getColumns().get(0)
           .getColumnSchema();
       cellSchema.setReaders(Lists.newArrayList(
-          kiji.getSchemaTable().getOrCreateSchemaId(TestRecord2.SCHEMA$)));
+          AvroSchema.newBuilder()
+              .setUid(kiji.getSchemaTable().getOrCreateSchemaId(TestRecord2.SCHEMA$))
+              .build()));
 
       kiji.createTable(desc);
       final KijiTable table = kiji.openTable("dev");

@@ -69,6 +69,25 @@ protocol KijiTableLayoutRecords {
     FINAL
   }
 
+  /**
+   * Descriptor of an Avro schema.
+   *
+   * Exactly one of uid and json must be set.
+   */
+  record AvroSchema {
+    /**
+     * Compact, non portable, schema descriptor.
+     * This descriptor is very compact but specific to a given Kiji instance.
+     */
+    union { null, long } uid = null;
+
+    /**
+     * Portable schema descriptor.
+     * This descriptor is portable but very verbose (full JSON representation).
+     */
+    union { null, string } json = null;
+  }
+
   /** How Avro cells are validated. */
   enum AvroValidationPolicy {
     /**
@@ -147,7 +166,7 @@ protocol KijiTableLayoutRecords {
      *
      * Note: This field is only valid when using a table layout with a version >= 1.3.
      */
-    union { null, long } default_reader = null;
+    union { null, AvroSchema } default_reader = null;
 
     /**
      * Depends on schema type:
@@ -156,7 +175,7 @@ protocol KijiTableLayoutRecords {
      *
      * Note: This field is only valid when using a table layout with a version >= 1.3.
      */
-    union { null, array<long> } readers = null;
+    union { null, array<AvroSchema> } readers = null;
 
     /**
      * Depends on schema type:
@@ -165,7 +184,7 @@ protocol KijiTableLayoutRecords {
      *
      * Note: This field is only valid when using a table layout with a version >= 1.3.
      */
-    union { null, array<long> } written = null;
+    union { null, array<AvroSchema> } written = null;
 
     /**
      * Depends on schema type:
@@ -174,7 +193,7 @@ protocol KijiTableLayoutRecords {
      *
      * Note: This field is only valid when using a table layout with a version >= 1.3.
      */
-    union { null, array<long> } writers = null;
+    union { null, array<AvroSchema> } writers = null;
   }
 
   /** Column descriptor. */

@@ -20,9 +20,14 @@
 package org.kiji.schema.layout;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
+import com.google.common.base.Objects;
+
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
 import org.apache.avro.Schema;
 import org.slf4j.Logger;
@@ -32,6 +37,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.avro.AvroSchema;
 import org.kiji.schema.avro.AvroValidationPolicy;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
@@ -40,19 +46,18 @@ import org.kiji.schema.avro.LocalityGroupDesc;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.impl.Versions;
 import org.kiji.schema.util.ProtocolVersion;
 
 /**
  * An experimental table layout builder class.
  * Currently manipulates reader, writer, and written schemas.
+ *
+ * <p> Normalizes table layout descriptors with schema IDs only instead of JSON descriptions. </p>
  */
 @ApiAudience.Private
 public final class TableLayoutBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(TableLayoutBuilder.class);
-
-  /** Schema validation is available from layout-1.3.0 and up. */
-  private static final ProtocolVersion SCHEMA_VALIDATION_VER =
-      ProtocolVersion.parse("layout-1.3.0");
 
   /** Table layout descriptor builder backing this TableLayoutBuilder. */
   private final TableLayoutDesc.Builder mDescBuilder;
@@ -60,24 +65,35 @@ public final class TableLayoutBuilder {
   /** Kiji instance in which to configure schemas. */
   private final Kiji mKiji;
 
+  /** Function that resolves AvroSchema to Schema objects against the specified Kiji instance. */
+  private final AvroSchemaResolver mSchemaResolver;
+
   /**
-   * Construct with an existing reference table.
+   * Initializes a new layout builder from an existing reference layout.
+   *
+   * <p>
+   *   Automatically sets a new layout ID computed from the reference layout ID.
+   *   Normalizes Avro schemas to use schema UIDs only.
+   * </p>
    *
    * @param tableLayoutDesc to build with
    * @param kiji the instance in which to configure schemas
-   * @throws InvalidLayoutException If layout does not support schema validation.
+   * @throws IOException on I/O error.
+   *     In particular, throws InvalidLayoutException if validation is not supported.
    */
   public TableLayoutBuilder(TableLayoutDesc tableLayoutDesc, Kiji kiji)
-      throws InvalidLayoutException {
+      throws IOException {
     final ProtocolVersion layoutVersion = ProtocolVersion.parse(tableLayoutDesc.getVersion());
-    if (SCHEMA_VALIDATION_VER.compareTo(layoutVersion) > 0) {
+    if (Versions.LAYOUT_VALIDATION_VERSION.compareTo(layoutVersion) > 0) {
       throw new InvalidLayoutException("Schema validation is available from "
-          + SCHEMA_VALIDATION_VER + " and up; this layout is " + layoutVersion);
+          + Versions.LAYOUT_VALIDATION_VERSION + " and up; this layout is " + layoutVersion);
     }
     mKiji = kiji;
+    mSchemaResolver = new AvroSchemaResolver(mKiji.getSchemaTable());
     mDescBuilder = TableLayoutDesc.newBuilder(tableLayoutDesc)
         .setReferenceLayout(tableLayoutDesc.getLayoutId())
-        .setLayoutId(null);
+        .setLayoutId(nextLayoutId(tableLayoutDesc.getLayoutId()));
+    normalizeLayoutToSchemaUID();
   }
 
   /**
@@ -151,11 +167,12 @@ public final class TableLayoutBuilder {
   }
 
   /**
-   * Returns a mutable list of registered schemas (READER, WRITER, WRITTEN)
-   * of the provided column name.
-   * The list of schemas comes from a deeply nested record within the mutable
-   * table layout descriptor.
-   * Therefore, mutating this list effectively mutates the table layout descriptor.
+   * Returns a mutable list of registered schemas (READER, WRITER, WRITTEN) of the provided column.
+   *
+   * <p>
+   *   The list of schemas comes from a deeply nested record within the mutable table layout
+   *   descriptor. Therefore, mutating this list effectively mutates the table layout descriptor.
+   * </p>
    *
    * @param columnName whose schema ids to list
    * @param schemaRegistrationType of the schemas to list: (READER, WRITER, WRITTEN).
@@ -164,7 +181,7 @@ public final class TableLayoutBuilder {
    * @throws NoSuchColumnException when column not found
    * @throws InvalidLayoutException if the column is final or non-AVRO
    */
-  private List<Long> getRegisteredSchemaIds(
+  private List<AvroSchema> getMutableRegisteredSchemaList(
       final KijiColumnName columnName,
       final SchemaRegistrationType schemaRegistrationType)
       throws NoSuchColumnException, InvalidLayoutException {
@@ -179,51 +196,49 @@ public final class TableLayoutBuilder {
       throw new InvalidLayoutException("Final or non-AVRO column schema cannot be modified.");
     }
 
-    // Return mutable schema list.
-    switch (schemaRegistrationType) {
-      case WRITER: {
-        if (null == cellSchema.getWriters()) {
-          cellSchema.setWriters(Lists.<Long>newArrayList());
-        }
-        return cellSchema.getWriters();
-      }
-      case READER: {
-        if (null == cellSchema.getReaders()) {
-          cellSchema.setReaders(Lists.<Long>newArrayList());
-        }
-        return cellSchema.getReaders();
-      }
-      case WRITTEN: {
-        if (null == cellSchema.getWritten()) {
-          cellSchema.setWritten(Lists.<Long>newArrayList());
-        }
-        return cellSchema.getWritten();
-      }
-      default: {
-        throw new IllegalArgumentException(
-            "Schema registration type must be READER, WRITER, or WRITTEN: "
-            + schemaRegistrationType);
-      }
-    }
+    final String fieldName = schemaRegistrationType.getCellSchemaFieldName();
+    return (List<AvroSchema>) Preconditions.checkNotNull(cellSchema.get(fieldName));
   }
 
   /**
    * Distinguish reader, writer, and written schema "registration types".
    */
   private static enum SchemaRegistrationType {
-    READER,
-    WRITER,
-    WRITTEN
+    READER("readers"),
+    WRITER("writers"),
+    WRITTEN("written");
+
+    /**
+     * Returns the CellSchema field name this registration type maps to.
+     * @return the CellSchema field name this registration type maps to.
+     */
+    public String getCellSchemaFieldName() {
+      return mCellSchemaFieldName;
+    }
+
+    /** Name of the CellSchema field this registration type maps to. */
+    private final String mCellSchemaFieldName;
+
+    /**
+     * Constructs a registration type with the specified associated CellSchema field name.
+     *
+     * @param fieldName CellSchema field name to associate to this registration type.
+     */
+    SchemaRegistrationType(String fieldName) {
+      mCellSchemaFieldName = fieldName;
+    }
   }
 
   /**
    * Register a (READER | WRITER | WRITTEN) schema to a column.
    *
+   * <p> The Schema is added even if it already exists. </p>
+   *
    * @param columnName at which to register the schema.
    * @param schema to register.
    * @param schemaRegistrationType of the schema to register: (READER, WRITER, WRITTEN).
    * @throws IOException If the parameters are invalid.
-   * @return this.
+   * @return this builder.
    */
   private TableLayoutBuilder withSchema(
       final KijiColumnName columnName,
@@ -234,26 +249,23 @@ public final class TableLayoutBuilder {
     Preconditions.checkNotNull(schema);
     Preconditions.checkNotNull(schemaRegistrationType);
 
-    // Has potential for memory misusage: schemas get added, but never cleaned up.
     final long schemaId = mKiji.getSchemaTable().getOrCreateSchemaId(schema);
-
-    // Update list of schemas.
-    final List<Long> schemas = getRegisteredSchemaIds(columnName, schemaRegistrationType);
-    if (!schemas.add(schemaId)) {
-      LOG.debug("Schema id {} is already registered.", schemaId);
-    }
-
+    final List<AvroSchema> schemas =
+        getMutableRegisteredSchemaList(columnName, schemaRegistrationType);
+    schemas.add(AvroSchema.newBuilder().setUid(schemaId).build());
     return this;
   }
 
   /**
-   * Deregister a (READER | WRITER | WRITTEN) schema to a column.
+   * Unregister a (READER | WRITER | WRITTEN) schema to a column.
    *
-   * @param columnName at which to deregister the schema.
+   * <p> Remove all instances of the specified schema in the list. </p>
+   *
+   * @param columnName at which to unregister the schema.
    * @param schema to register.
-   * @param schemaRegistrationType of the schema to deregister: (READER, WRITER, WRITTEN).
+   * @param schemaRegistrationType of the schema to unregister: (READER, WRITER, WRITTEN).
    * @throws IOException If the parameters are invalid.
-   * @return this.
+   * @return this builder.
    */
   private TableLayoutBuilder withoutSchema(
       final KijiColumnName columnName,
@@ -264,15 +276,16 @@ public final class TableLayoutBuilder {
     Preconditions.checkNotNull(schema);
     Preconditions.checkNotNull(schemaRegistrationType);
 
-    // Has potential for memory misusage: schemas get added, but never cleaned up.
-    final long schemaId = mKiji.getSchemaTable().getOrCreateSchemaId(schema);
-
-    // Update list of schemas.
-    final List<Long> schemas = getRegisteredSchemaIds(columnName, schemaRegistrationType);
-    if (!schemas.remove(schemaId)) {
-      LOG.debug("Schema id {} was not registered.", schemaId);
+    final List<AvroSchema> schemas =
+        getMutableRegisteredSchemaList(columnName, schemaRegistrationType);
+    final Iterator<AvroSchema> it = schemas.iterator();
+    while (it.hasNext()) {
+      final AvroSchema avroSchema = it.next();
+      final Schema other = mSchemaResolver.apply(avroSchema);
+      if (Objects.equal(schema, other)) {
+        it.remove();
+      }
     }
-
     return this;
   }
 
@@ -285,18 +298,15 @@ public final class TableLayoutBuilder {
    *         Returns empty list if schema validation was not previously enabled.
    * @throws IOException if the cellSchema of the column can not be acquired.
    */
-  public List<Schema> getRegisteredSchemas(
+  public Collection<Schema> getRegisteredSchemas(
       final KijiColumnName columnName,
       final SchemaRegistrationType schemaRegistrationType)
       throws IOException {
     Preconditions.checkNotNull(columnName);
     Preconditions.checkNotNull(schemaRegistrationType);
-    final List<Long> schemaIds = getRegisteredSchemaIds(columnName, schemaRegistrationType);
-    final List<Schema> schemas = Lists.newLinkedList();
-    for (long schemaId : schemaIds) {
-      schemas.add(mKiji.getSchemaTable().getSchema(schemaId));
-    }
-    return schemas;
+    final List<AvroSchema> avroSchemas =
+        getMutableRegisteredSchemaList(columnName, schemaRegistrationType);
+    return Collections2.transform(avroSchemas, mSchemaResolver);
   }
 
   /**
@@ -354,10 +364,10 @@ public final class TableLayoutBuilder {
   }
 
   /**
-   * Deregister a reader schema to a column.
+   * Unregister a reader schema to a column.
    *
-   * @param columnName at which to deregister the schema.
-   * @param schema to deregister.
+   * @param columnName at which to unregister the schema.
+   * @param schema to unregister.
    * @throws IOException If the parameters are invalid.
    * @return this.
    */
@@ -369,10 +379,10 @@ public final class TableLayoutBuilder {
   }
 
   /**
-   * Deregister a writer schema to a column.
+   * Unregister a writer schema to a column.
    *
-   * @param columnName at which to deregister the schema.
-   * @param schema to deregister.
+   * @param columnName at which to unregister the schema.
+   * @param schema to unregister.
    * @throws IOException If the parameters are invalid.
    * @return this.
    */
@@ -384,10 +394,10 @@ public final class TableLayoutBuilder {
   }
 
   /**
-   * Deregister a written schema to a column.
+   * Unregister a written schema to a column.
    *
-   * @param columnName at which to deregister the schema.
-   * @param schema to deregister.
+   * @param columnName at which to unregister the schema.
+   * @param schema to unregister.
    * @throws IOException If the parameters are invalid.
    * @return this.
    */
@@ -399,81 +409,42 @@ public final class TableLayoutBuilder {
   }
 
   /**
-   * List registered reader schemas registered at a column.
+   * Lists the reader schemas registered for the specified column.
    *
    * @param columnName whose schemas to list.
    * @return The list of schemas.
-   *         Returns empty list if schema validation was not previously enabled.
+   *     Returns empty list if schema validation was not previously enabled.
    * @throws IOException if the cellSchema of the column can not be acquired.
    */
-  public List<Schema> getRegisteredReaders(final KijiColumnName columnName)
+  public Collection<Schema> getRegisteredReaders(final KijiColumnName columnName)
       throws IOException {
     return getRegisteredSchemas(columnName, SchemaRegistrationType.READER);
   }
 
   /**
-   * List registered writer schemas registered at a column.
+   * Lists the writer schemas registered for the specified column.
    *
    * @param columnName whose schemas to list.
    * @return The list of schemas.
-   *         Returns empty list if schema validation was not previously enabled.
+   *     Returns empty list if schema validation was not previously enabled.
    * @throws IOException if the cellSchema of the column can not be acquired.
    */
-  public List<Schema> getRegisteredWriters(final KijiColumnName columnName)
+  public Collection<Schema> getRegisteredWriters(final KijiColumnName columnName)
       throws IOException {
     return getRegisteredSchemas(columnName, SchemaRegistrationType.WRITER);
   }
 
   /**
-   * List registered written schemas registered at a column.
+   * List the written schemas recorded for the specified column.
    *
    * @param columnName whose schemas to list.
    * @return The list of schemas.
-   *         Returns empty list if schema validation was not previously enabled.
+   *     Returns empty list if schema validation was not previously enabled.
    * @throws IOException if the cellSchema of the column can not be acquired.
    */
-  public List<Schema> getRegisteredWritten(final KijiColumnName columnName)
+  public Collection<Schema> getRegisteredWritten(final KijiColumnName columnName)
       throws IOException {
     return getRegisteredSchemas(columnName, SchemaRegistrationType.WRITTEN);
-  }
-
-  /**
-   * List reader schemas ids registered at a column.
-   *
-   * @param columnName whose schema ids to list.
-   * @return The list of schema ids.
-   *         Returns empty list if schema validation was not previously enabled.
-   * @throws IOException if the cellSchema of the column can not be acquired.
-   */
-  public List<Long> getRegisteredReaderIds(final KijiColumnName columnName)
-      throws IOException {
-    return getRegisteredSchemaIds(columnName, SchemaRegistrationType.READER);
-  }
-
-  /**
-   * List writer schemas ids registered at a column.
-   *
-   * @param columnName whose schema ids to list.
-   * @return The list of schema ids.
-   *         Returns empty list if schema validation was not previously enabled.
-   * @throws IOException if the cellSchema of the column can not be acquired.
-   */
-  public List<Long> getRegisteredWriterIds(final KijiColumnName columnName)
-      throws IOException {
-    return getRegisteredSchemaIds(columnName, SchemaRegistrationType.WRITER);
-  }
-
-  /**
-   * List written schemas ids registered at a column.
-   *
-   * @param columnName whose schema ids to list.
-   * @return The list of schema ids.
-   *         Returns empty list if schema validation was not previously enabled.
-   * @throws IOException if the cellSchema of the column can not be acquired.
-   */
-  public List<Long> getRegisteredWrittenIds(final KijiColumnName columnName)
-      throws IOException {
-    return getRegisteredSchemaIds(columnName, SchemaRegistrationType.WRITTEN);
   }
 
   /**
@@ -526,4 +497,130 @@ public final class TableLayoutBuilder {
     return getColumnSchema(column).getAvroValidationPolicy();
   }
 
+  /**
+   * Normalizes the table layout descriptor to use schema UIDs only.
+   *
+   * @throws IOException on I/O error.
+   */
+  private void normalizeLayoutToSchemaUID() throws IOException {
+    for (LocalityGroupDesc lgdesc : mDescBuilder.getLocalityGroups()) {
+      for (FamilyDesc fdesc : lgdesc.getFamilies()) {
+        if (fdesc.getMapSchema() != null) {
+          normalizeCellSchemaToUID(fdesc.getMapSchema());
+        } else {
+          for (ColumnDesc cdesc : fdesc.getColumns()) {
+            normalizeCellSchemaToUID(cdesc.getColumnSchema());
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Normalizes a CellSchema to use schema UIDs only.
+   *
+   * @param cellSchema CellSchema to normalize.
+   * @throws IOException on I/O error.
+   */
+  private void normalizeCellSchemaToUID(CellSchema cellSchema) throws IOException {
+    switch (cellSchema.getType()) {
+      case AVRO: {
+        // Ensure the lists of schemas are initialized (non null) and normalized to UIDs:
+        if (cellSchema.getReaders() == null) {
+          cellSchema.setReaders(Lists.<AvroSchema>newArrayList());
+        }
+        if (cellSchema.getWriters() == null) {
+          cellSchema.setWriters(Lists.<AvroSchema>newArrayList());
+        }
+        if (cellSchema.getWritten() == null) {
+          cellSchema.setWritten(Lists.<AvroSchema>newArrayList());
+        }
+
+        normalizeAvroSchemaCollectionToUID(cellSchema.getReaders());
+        normalizeAvroSchemaCollectionToUID(cellSchema.getWriters());
+        normalizeAvroSchemaCollectionToUID(cellSchema.getWritten());
+
+        break;
+      }
+      case CLASS:
+      case INLINE:
+      case COUNTER:
+        break;
+      default:
+          throw new InvalidLayoutException(String.format(
+              "Unsupported cell type: %s from CellSchema '%s'.",
+              cellSchema.getType(), cellSchema));
+    }
+  }
+
+  /**
+   * Normalizes a collection of AvroSchema to use schema UIDs only.
+   *
+   * @param avroSchemas Collection of AvroSchema to normalize.
+   * @throws IOException on I/O error.
+   */
+  private void normalizeAvroSchemaCollectionToUID(Collection<AvroSchema> avroSchemas)
+      throws IOException {
+    for (AvroSchema avroSchema : avroSchemas) {
+      normalizeAvroSchemaToUID(avroSchema);
+    }
+  }
+
+  /**
+   * Normalizes an AvroSchema to use schema UIDs only.
+   *
+   * <p> Mutates the AvroSchema in-place. </p>
+   *
+   * @param avroSchema AvroSchema to normalize.
+   * @throws IOException on I/O error.
+   */
+  private void normalizeAvroSchemaToUID(AvroSchema avroSchema) throws IOException {
+    final boolean hasJson = (avroSchema.getJson() != null);
+    final boolean hasUid = (avroSchema.getUid() != null);
+
+    if (hasJson && hasUid) {
+      // Both JSON and UID are filled in, this should not happen, but let's handle it:
+      final Schema schema = new Schema.Parser().parse(avroSchema.getJson());
+      final long schemaId = mKiji.getSchemaTable().getOrCreateSchemaId(schema);
+      if (avroSchema.getUid() != schemaId) {
+        throw new InvalidLayoutException(String.format(
+            "Inconsistent AvroSchema: '%s' : UID %d does not match with JSON descriptor '%s'.",
+            avroSchema, avroSchema.getUid(), avroSchema.getJson()));
+      }
+      avroSchema.setJson(null);  // discard JSON, keep UID only.
+
+    } else if (hasJson) {
+      final Schema schema = new Schema.Parser().parse(avroSchema.getJson());
+      final long schemaId = mKiji.getSchemaTable().getOrCreateSchemaId(schema);
+      avroSchema.setUid(schemaId);
+      avroSchema.setJson(null);
+
+    } else if (hasUid) {
+      // Make sure the UID exists:
+      mKiji.getSchemaTable().getSchema(avroSchema.getUid());
+
+    } else {
+      throw new InvalidLayoutException("AvroSchema has neither JSON nor UID: " + avroSchema);
+    }
+  }
+
+  /**
+   * Computes the layout ID directly following a given layout ID.
+   *
+   * <p>
+   *   Increments the layout ID if it is an integer.
+   *   Otherwise, forge a layout ID containing a timestamp.
+   * </p>
+   *
+   * @param layoutId Layout ID to compute the next sequential ID from.
+   * @return the next sequential layout ID.
+   */
+  private static String nextLayoutId(String layoutId) {
+    try {
+      final long lid = Long.parseLong(layoutId);
+      return Long.toString(lid + 1);
+    } catch (NumberFormatException nfe) {
+      return String.format("layout-with-timestamp-%d", System.currentTimeMillis());
+    }
+  }
 }
