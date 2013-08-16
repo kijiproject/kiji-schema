@@ -97,6 +97,11 @@ public interface HBaseFactory extends PriorityProvider {
   /**
    * Creates and opens a ZooKeeperClient for a given Kiji instance.
    *
+   * <p>
+   *   Caller must release the ZooKeeperClient object with {@link ZooKeeperClient#release()}
+   *   when done with it.
+   * </p>.
+   *
    * @param uri URI of the Kiji instance for which to create a ZooKeeperClient.
    * @return a new open ZooKeeperClient.
    * @throws IOException in case of an error connecting to ZooKeeper.

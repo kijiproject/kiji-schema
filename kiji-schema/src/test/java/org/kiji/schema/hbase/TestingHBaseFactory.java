@@ -28,24 +28,51 @@ import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.zookeeper.KeeperException;
+import org.mortbay.log.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.delegation.Priority;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.RuntimeInterruptedException;
-import org.kiji.schema.impl.DefaultHBaseAdminFactory;
 import org.kiji.schema.impl.DefaultHBaseFactory;
-import org.kiji.schema.impl.DefaultHTableInterfaceFactory;
 import org.kiji.schema.impl.HBaseAdminFactory;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.util.LocalLockFactory;
 import org.kiji.schema.util.LockFactory;
-import org.kiji.schema.util.ZooKeeperLockFactory;
 import org.kiji.testing.fakehtable.FakeHBase;
 
 /** Factory for HBase instances based on URIs. */
 public final class TestingHBaseFactory implements HBaseFactory {
+  private static final Logger LOG = LoggerFactory.getLogger(TestingHBaseFactory.class);
+
+  /** Factory to delegate to. */
+  private static final HBaseFactory DELEGATE = new DefaultHBaseFactory();
+
+  /** Lock object to protect MINI_ZOOKEEPER_CLUSTER and MINIZK_CLIENT. */
+  private static final Object MINIZK_CLUSTER_LOCK = new Object();
+
+  /** ZooKeeper session timeout, in milliseconds. */
+  private static final int ZKCLIENT_SESSION_TIMEOUT = 60 * 1000;  // 1 second
+
+  /**
+   * Singleton MiniZooKeeperCluster for testing.
+   *
+   * Lazily instantiated when the first test requests a ZooKeeperClient for a .fake Kiji instance.
+   *
+   * Once started, the mini-cluster remains alive until the JVM shuts down.
+   */
+  private static MiniZooKeeperCluster mMiniZkCluster;
+
+  /**
+   * ZooKeeperClient used to create chroot directories prior to instantiating test ZooKeeperClients.
+   * Lazily instantiated when the first test requests a ZooKeeperClient for a .fake Kiji instance.
+   *
+   * This client will not be closed properly until the JVM shuts down.
+   */
+  private static ZooKeeperClient mMiniZkClient;
 
   /** Map from fake HBase ID to fake HBase instances. */
   private final Map<String, FakeHBase> mFakeHBase = Maps.newHashMap();
@@ -53,21 +80,16 @@ public final class TestingHBaseFactory implements HBaseFactory {
   /** Map from fake HBase ID to fake (local) lock factories. */
   private final Map<String, LockFactory> mLock = Maps.newHashMap();
 
-  /** Map from fake HBase ID to ZooKeeperClient. */
+  /**
+   * Map from fake HBase ID to ZooKeeperClient.
+   *
+   * <p>
+   *   ZooKeeperClient instances in this map are never released:
+   *   unless client code releases ZooKeeperClient instance more than once,
+   *   the retain counter is always &ge; 1.
+   * </p>
+   */
   private final Map<String, ZooKeeperClient> mZKClients = Maps.newHashMap();
-
-  /**
-   * Singleton MiniZooKeeperCluster for testing. Lazily instantiated when the first test requests a
-   * ZooKeeperClient for a .fake Kiji instance.
-   */
-  private static MiniZooKeeperCluster mMiniZKCluster;
-  private static final Object CLUSTER_LOCK = new Object();
-
-  /**
-   * ZooKeeperClient used to create chroot directories prior to instantiating test ZooKeeperClients.
-   * Lazily instantiated when the first test requests a ZooKeeperClient for a .fake Kiji instance.
-   */
-  private ZooKeeperClient mUtilClient;
 
   /**
    * Public constructor. This should not be directly invoked by users; you should
@@ -125,7 +147,7 @@ public final class TestingHBaseFactory implements HBaseFactory {
     if (fake != null) {
       return fake.getHTableFactory();
     }
-    return DefaultHTableInterfaceFactory.get();
+    return DELEGATE.getHTableInterfaceFactory(uri);
   }
 
   /** {@inheritDoc} */
@@ -135,7 +157,7 @@ public final class TestingHBaseFactory implements HBaseFactory {
     if (fake != null) {
       return fake.getAdminFactory();
     }
-    return DefaultHBaseAdminFactory.get();
+    return DELEGATE.getHBaseAdminFactory(uri);
   }
 
   /** {@inheritDoc} */
@@ -153,7 +175,7 @@ public final class TestingHBaseFactory implements HBaseFactory {
         return newFactory;
       }
     }
-    return new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(uri));
+    return DELEGATE.getLockFactory(uri, conf);
   }
 
   /** Resets the testing HBase factory. */
@@ -170,31 +192,37 @@ public final class TestingHBaseFactory implements HBaseFactory {
   }
 
   /**
-   * Creates a new ZooKeeperClient with a chroot set to the fakeId for a KijiClientTest.  The client
-   * will connect to the testing MiniZooKeeperCluster.
+   * Creates a new ZooKeeperClient with a chroot set to the fakeId for a KijiClientTest.
+   *
+   * <p> The client will connect to the testing MiniZooKeeperCluster. </p>
    *
    * @param fakeId the id of the test instance.
    * @return a new ZooKeeperClient for the test instance.
+   * @throws IOException on I/O error.
    */
-  private ZooKeeperClient getZooKeeperClientForFakeId(String fakeId) {
-    // Test ZooKeeperClients use a chroot to isolate testing environments.
-    final ZooKeeperClient newZKClient = new ZooKeeperClient(
-        "localhost:" + mMiniZKCluster.getClientPort() + "/" + fakeId, 60 * 1000);
-    newZKClient.open();
-    return newZKClient;
-  }
+  private static ZooKeeperClient createZooKeeperClientForFakeId(String fakeId)
+      throws IOException {
 
-  /**
-   * Creates a new ZooKeeperClient from a KijiURI.  This is used when a non-fake
-   * URI is passed to {@link #getZooKeeperClient(org.kiji.schema.KijiURI)}, for instance during
-   * an integration test.  In this case we connect to a regular ZooKeeper which should already be
-   * running instead of the mini zookeeper cluster for unit tests.
-   *
-   * @param uri the KijiURI of the instance for which to create a ZooKeeperClient.
-   * @return a new ZooKeeperClient for the instance addressed by the KijiURI.
-   */
-  public ZooKeeperClient getDefaultZooKeeperClient(final KijiURI uri) throws IOException {
-    return new DefaultHBaseFactory().getZooKeeperClient(uri);
+    // Initializes the Mini ZooKeeperCluster, if necessary:
+    final MiniZooKeeperCluster zkCluster = getMiniZKCluster();
+
+    // Create the chroot node for this fake ID, if necessary:
+    try {
+      final File zkChroot = new File("/" + fakeId);
+      if (mMiniZkClient.exists(zkChroot) == null) {
+        mMiniZkClient.createNodeRecursively(new File("/" + fakeId));
+      }
+    } catch (KeeperException ke) {
+      throw new KijiIOException(ke);
+    }
+
+    // Test ZooKeeperClients use a chroot to isolate testing environments.
+    final String zkAddress = "localhost:" + zkCluster.getClientPort() + "/" + fakeId;
+
+    Log.info("Creating test ZooKeeperClient for address {}", zkAddress);
+    final ZooKeeperClient zkClient = new ZooKeeperClient(zkAddress, ZKCLIENT_SESSION_TIMEOUT);
+    zkClient.open();
+    return zkClient;
   }
 
   /**
@@ -205,11 +233,11 @@ public final class TestingHBaseFactory implements HBaseFactory {
    * @throws IOException in case of an error creating the temporary directory or starting the mini
    *    zookeeper cluster.
    */
-  private void createMiniZKCluster() throws IOException {
-    synchronized (CLUSTER_LOCK) {
-      if (mMiniZKCluster == null) {
+  private static MiniZooKeeperCluster getMiniZKCluster() throws IOException {
+    synchronized (MINIZK_CLUSTER_LOCK) {
+      if (mMiniZkCluster == null) {
         final MiniZooKeeperCluster miniZK = new MiniZooKeeperCluster(new Configuration());
-        final File tempDir = File.createTempFile("temp", "dir");
+        final File tempDir = File.createTempFile("mini-zk-cluster", "dir");
         Preconditions.checkState(tempDir.delete());
         Preconditions.checkState(tempDir.mkdirs());
         try {
@@ -217,11 +245,32 @@ public final class TestingHBaseFactory implements HBaseFactory {
         } catch (InterruptedException ie) {
           throw new RuntimeInterruptedException(ie);
         }
-        mMiniZKCluster = miniZK;
-        mUtilClient =
-            new ZooKeeperClient("localhost:" + mMiniZKCluster.getClientPort(), 60 * 1000);
-        mUtilClient.open();
+        mMiniZkCluster = miniZK;
+
+        final String zkAddress ="localhost:" + mMiniZkCluster.getClientPort();
+        LOG.info("Creating testing utility ZooKeeperClient for {}", zkAddress);
+        mMiniZkClient = new ZooKeeperClient(zkAddress, ZKCLIENT_SESSION_TIMEOUT);
+        mMiniZkClient.open();
       }
+      return mMiniZkCluster;
+    }
+  }
+
+  /**
+   * Returns the ZooKeeperClient to use for the instance with the specified fake ID.
+   *
+   * @param fakeId ID of the fake testing instance to get a ZooKeeperClient for.
+   * @return the ZooKeeperClient for the instance with the specified fake ID.
+   * @throws IOException on I/O error.
+   */
+  private ZooKeeperClient getTestZooKeeperClient(String fakeId) throws IOException {
+    synchronized (mZKClients) {
+      ZooKeeperClient zkClient = mZKClients.get(fakeId);
+      if (null == zkClient) {
+        zkClient = createZooKeeperClientForFakeId(fakeId);
+        mZKClients.put(fakeId, zkClient);
+      }
+      return zkClient.retain();
     }
   }
 
@@ -237,42 +286,10 @@ public final class TestingHBaseFactory implements HBaseFactory {
   public ZooKeeperClient getZooKeeperClient(KijiURI uri) throws IOException {
     final String fakeId = getFakeHBaseID(uri);
     if (fakeId != null) {
-      if (mMiniZKCluster == null) {
-        // Lazily create the mini zookeeper cluster the first time we need it.
-        createMiniZKCluster();
-      }
-      synchronized (mZKClients) {
-        if (mZKClients.containsKey(fakeId)) {
-          // Check that the old client has not been closed before returning it.
-          final ZooKeeperClient zkClient = mZKClients.get(fakeId);
-          if (zkClient.isOpen()) {
-            // If the previous zookeeper client is still open, retain and return it.
-            return zkClient.retain();
-          } else {
-            // If the previous zookeeper client has been closed, make a new one, save it, and return
-            final ZooKeeperClient newZKClient = getZooKeeperClientForFakeId(fakeId);
-            mZKClients.put(fakeId, newZKClient);
-            return newZKClient;
-          }
-        } else {
-          // If we have not yet created a ZooKeeperClient for this fakeId we must first prepare the
-          // chroot directory which will isolate this ZooKeeperClient from others then create, save,
-          // and return the new client.
-          try {
-            // If this is the first time we are creating a ZooKeeperClient for this fakeId, we need
-            // to create the chroot node before opening the ZooKeeperClient.
-            mUtilClient.createNodeRecursively(new File("/" + fakeId));
-          } catch (KeeperException ke) {
-            throw new KijiIOException(ke);
-          }
-          final ZooKeeperClient newZKClient = getZooKeeperClientForFakeId(fakeId);
-          mZKClients.put(fakeId, newZKClient);
-          return newZKClient;
-        }
-      }
-    } else {
-      // If the URI does not address a .fake Kiji instance, return a regular ZooKeeperClient.
-      return getDefaultZooKeeperClient(uri);
+      return getTestZooKeeperClient(fakeId);
     }
+
+    // Not a test instance, delegate to default factory:
+    return DELEGATE.getZooKeeperClient(uri);
   }
 }
