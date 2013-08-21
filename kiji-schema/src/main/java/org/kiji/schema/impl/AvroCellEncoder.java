@@ -25,11 +25,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.annotation.Nonnull;
+
+import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericContainer;
@@ -37,14 +39,26 @@ import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
+import org.apache.zookeeper.KeeperException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.DecodedCell;
+import org.kiji.schema.InternalKijiError;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiCellEncoder;
+import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiEncodingException;
+import org.kiji.schema.KijiIOException;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.AvroValidationPolicy;
 import org.kiji.schema.avro.SchemaStorage;
+import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.InvalidLayoutException;
+import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.TableLayoutBuilder;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.BytesKey;
 
@@ -62,6 +76,8 @@ public final class AvroCellEncoder implements KijiCellEncoder {
   /** Name of the system property to control schema validation. */
   public static final String SCHEMA_VALIDATION_POLICY =
       "org.kiji.schema.impl.AvroCellEncoder.SCHEMA_VALIDATION_POLICY";
+
+  private static final Logger LOG = LoggerFactory.getLogger(AvroCellEncoder.class);
 
   /** Mapping from class names of Avro primitives to their corresponding Avro schemas. */
   public static final Map<String, Schema> PRIMITIVE_SCHEMAS;
@@ -291,8 +307,16 @@ public final class AvroCellEncoder implements KijiCellEncoder {
         break;
       }
       case DEVELOPER: {
-        throw new UnsupportedOperationException(
-            "The \"DEVELOPER\" schema validation mode is not currently supported");
+        if (!mRegisteredWriters.contains(writerSchema)) {
+          LOG.info("Writer schema {} is currently not registered for column {}, registering now.",
+              writerSchema, mCellSpec.getColumnURI());
+          if (mCellSpec.getColumnURI() == null) {
+            throw new InternalKijiError("CellSpec has no column URI: " + mCellSpec);
+          }
+
+          registerWriterSchema(mCellSpec.getColumnURI(), writerSchema);
+        }
+        break;
       }
       case NONE:
         // No-op. No validation required.
@@ -395,5 +419,80 @@ public final class AvroCellEncoder implements KijiCellEncoder {
       writers.add(writerSchema);
     }
     return writers;
+  }
+
+  /**
+   * Computes the layout ID directly following a given layout ID.
+   *
+   * <p>
+   *   Increments the layout ID if it is an integer.
+   *   Otherwise, forge a layout ID containing a timestamp.
+   * </p>
+   *
+   * @param layoutId Layout ID to compute the next sequential ID from.
+   * @return the next sequential layout ID.
+   */
+  private static String nextLayoutId(String layoutId) {
+    try {
+      final long lid = Long.parseLong(layoutId);
+      return Long.toString(lid + 1);
+    } catch (NumberFormatException nfe) {
+      return String.format("layout-developer-%d", System.currentTimeMillis());
+    }
+  }
+
+  /**
+   * Registers a new writer schema in a given column.
+   *
+   * @param columnURI Full URI of the column for which to register a new writer schema.
+   * @param writerSchema Writer schema to register.
+   * @throws IOException on I/O error.
+   */
+  private static void registerWriterSchema(final KijiURI columnURI, final Schema writerSchema)
+      throws IOException {
+    Preconditions.checkArgument(columnURI.getColumns().size() == 1,
+        "Expecting exactly one column in URI, got: %s", columnURI);
+    final KijiColumnName column = columnURI.getColumns().get(0);
+
+    // TODO(???) the layout updater interface is currently HBase specific.
+    //     We should make a backend agnostic API for layout updates.
+    final HBaseKiji kiji = (HBaseKiji) Kiji.Factory.open(columnURI);
+    try {
+      final Function<KijiTableLayout, TableLayoutDesc> update =
+          new Function<KijiTableLayout, TableLayoutDesc>() {
+            /** {@inheritDoc} */
+            @Override
+            public TableLayoutDesc apply(@Nonnull final KijiTableLayout refLayout) {
+              Preconditions.checkNotNull(refLayout);
+              try {
+                final TableLayoutDesc refDesc = refLayout.getDesc();
+                final TableLayoutBuilder builder = new TableLayoutBuilder(refDesc, kiji);
+                builder.withLayoutId(nextLayoutId(refDesc.getLayoutId()));
+                builder.withWriter(column, writerSchema);
+                return builder.build();
+              } catch (InvalidLayoutException ile) {
+                LOG.error("Internal error while updating table layout in DEVELOPER mode: {}", ile);
+                throw new InternalKijiError(ile);
+              } catch (IOException ioe) {
+                LOG.error("I/O error while updating table layout in DEVELOPER mode: {}", ioe);
+                throw new KijiIOException(ioe);
+              }
+            }
+          };
+
+      try {
+        final HBaseTableLayoutUpdater updater =
+            new HBaseTableLayoutUpdater(kiji, columnURI, update);
+        try {
+          updater.update();
+        } finally {
+          updater.close();
+        }
+      } catch (KeeperException ke) {
+        throw new IOException(ke);
+      }
+    } finally {
+      kiji.release();
+    }
   }
 }

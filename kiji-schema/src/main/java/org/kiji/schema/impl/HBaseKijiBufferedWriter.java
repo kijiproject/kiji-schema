@@ -129,6 +129,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
           flush();
         }
         final CellEncoderProvider provider = new CellEncoderProvider(
+            mTable.getURI(),
             capsule.getLayout(),
             mTable.getKiji().getSchemaTable(),
             DefaultKijiCellEncoderFactory.get());

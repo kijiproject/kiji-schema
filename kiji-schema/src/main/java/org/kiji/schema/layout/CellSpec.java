@@ -19,6 +19,7 @@
 
 package org.kiji.schema.layout;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificData;
@@ -30,6 +31,7 @@ import org.kiji.schema.GenericCellDecoderFactory;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiCellEncoderFactory;
 import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaStorage;
@@ -52,6 +54,9 @@ import org.kiji.schema.util.JavaIdentifiers;
 @ApiAudience.Framework
 @ApiStability.Evolving
 public final class CellSpec {
+  /** URI of the column this specification is for. Potentially null. */
+  private KijiURI mColumnURI;
+
   /** Avro record specifying the cell encoding. */
   private CellSchema mCellSchema;
 
@@ -400,6 +405,39 @@ public final class CellSpec {
     default:
       throw new InvalidLayoutException("Invalid schema type: " + cellSchema.getType());
     }
+  }
+
+  /**
+   * Sets the URI of the column this specification is for.
+   *
+   * @param uri URI of the column this specification is for. May be null.
+   * @return this CellSpec.
+   */
+  public CellSpec setColumnURI(KijiURI uri) {
+    Preconditions.checkArgument((uri == null) || (uri.getColumns().size() == 1),
+        "Invalid CellSpec URI '%s' : CellSpec requires a URI for a single column.", uri);
+    mColumnURI = uri;
+    return this;
+  }
+
+  /**
+   * Returns the URI of the column this specification is for. Potentially null.
+   *
+   * @return the URI of the column this specification is for. Potentially null.
+   */
+  public KijiURI getColumnURI() {
+    return mColumnURI;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(CellSpec.class)
+        .add("column_uri", mColumnURI)
+        .add("cell_schema", mCellSchema)
+        .add("reader_schema", mReaderSchema)
+        .add("generic", mDecoderFactory instanceof GenericCellDecoderFactory)
+        .toString();
   }
 
 }

@@ -125,6 +125,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
         mLayoutOutOfDate = true;
         // Update the state of the writer.
         final CellEncoderProvider provider = new CellEncoderProvider(
+            mTable.getURI(),
             capsule.getLayout(),
             mTable.getKiji().getSchemaTable(),
             DefaultKijiCellEncoderFactory.get());

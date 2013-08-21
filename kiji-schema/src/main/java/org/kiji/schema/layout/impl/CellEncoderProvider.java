@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -32,6 +33,7 @@ import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiCellEncoderFactory;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
@@ -55,12 +57,14 @@ public final class CellEncoderProvider {
   /**
    * Initializes a provider for cell encoders.
    *
+   * @param tableURI URI of the table this provider is for.
    * @param layout the KijiTableLayout for which to provide cell encoders.
    * @param schemaTable the KijiSchemaTable from which to retrieve cell schemas.
    * @param factory the CellEncoderFactory with which to build cell encoders.
    * @throws IOException in case of an error reading from the schema table.
    */
   public CellEncoderProvider(
+      final KijiURI tableURI,
       final KijiTableLayout layout,
       final KijiSchemaTable schemaTable,
       final KijiCellEncoderFactory factory)
@@ -85,10 +89,11 @@ public final class CellEncoderProvider {
     // Pro-actively build cell encoders for all columns in the table:
     final Map<String, KijiCellEncoder> encoderMap = Maps.newHashMap();
     for (KijiColumnName column : columns) {
-      final CellSpec cellSpec = layout.getCellSpec(column);
-
-      cellSpec.setSchemaTable(schemaTable);
-      cellSpec.setEncoderFactory(factory);
+      final CellSpec cellSpec = layout.getCellSpec(column)
+          .setColumnURI(
+              KijiURI.newBuilder(tableURI).withColumnNames(ImmutableList.of(column)).build())
+          .setSchemaTable(schemaTable)
+          .setEncoderFactory(factory);
 
       final KijiCellEncoder encoder = cellSpec.getEncoderFactory().create(cellSpec);
       encoderMap.put(column.getName(), encoder);

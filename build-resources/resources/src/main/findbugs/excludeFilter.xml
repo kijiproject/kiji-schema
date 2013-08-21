@@ -116,4 +116,11 @@
     <Class name="org.kiji.schema.layout.impl.TableLayoutMonitor" />
     <Bug pattern="DMI_HARDCODED_ABSOLUTE_FILENAME" />
   </Match>
+
+  <Match>
+    <!-- FindBugs has a bug: http://sourceforge.net/p/findbugs/bugs/1139/ -->
+    <Class name="org.kiji.schema.impl.AvroCellEncoder$1" />
+    <Bug pattern="NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE" />
+  </Match>
+
 </FindBugsFilter>

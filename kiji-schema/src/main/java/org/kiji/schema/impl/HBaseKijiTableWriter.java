@@ -159,6 +159,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
         return;
       }
       final CellEncoderProvider provider = new CellEncoderProvider(
+          mTable.getURI(),
           capsule.getLayout(),
           mTable.getKiji().getSchemaTable(),
           DefaultKijiCellEncoderFactory.get());
