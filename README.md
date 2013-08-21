@@ -1,5 +1,5 @@
-KijiSchema ${project.version}
-=============================
+KijiSchema
+==========
 
 KijiSchema is a layout and schema management layer on top of Apache
 HBase. KijiSchema supports complex, compound data types using Avro
