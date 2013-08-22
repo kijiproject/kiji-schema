@@ -41,11 +41,11 @@ import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.avro.TestRecord1;
 import org.kiji.schema.avro.TestRecord4;
 import org.kiji.schema.avro.TestRecord5;
+import org.kiji.schema.impl.Versions;
 import org.kiji.schema.layout.InvalidLayoutSchemaException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.layout.TableLayoutBuilder;
-import org.kiji.schema.util.ProtocolVersion;
 
 /** Tests for TableLayoutUpdateValidator. */
 public class TestTableLayoutUpdateValidator extends KijiClientTest {
@@ -98,7 +98,7 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
 
   /** Set the system version for this Kiji instance to 2.0. */
   private void setSystemVersion2() throws IOException {
-    getKiji().getSystemTable().setDataVersion(ProtocolVersion.parse("system-2.0"));
+    getKiji().getSystemTable().setDataVersion(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION);
   }
 
   /**

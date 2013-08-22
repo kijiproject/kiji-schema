@@ -60,6 +60,7 @@ import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.impl.Versions;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.ColumnId;
@@ -259,26 +260,8 @@ public final class KijiTableLayout {
 
   // ProtocolVersions specifying when different features were added to layout functionality.
 
-  /** Maximum layout version we can recognize. */
-  private static final ProtocolVersion MAX_LAYOUT_VER = ProtocolVersion.parse("layout-1.3.0");
-
-  /** First version where {@link org.kiji.schema.avro.BloomType}, max_filesize,
-      memstore_flushsize and block_size were supported. */
-  private static final ProtocolVersion BLOCK_SIZE_LAYOUT_VER =
-    ProtocolVersion.parse("layout-1.2.0");
-
-  /** First version where {@link RowKeyFormat2} was supported. */
-  private static final ProtocolVersion RKF2_LAYOUT_VER = ProtocolVersion.parse("layout-1.1.0");
-
-  /** Minimum layout version we can recognize. */
-  private static final ProtocolVersion MIN_LAYOUT_VER = ProtocolVersion.parse("layout-1.0.0");
-
   /** All layout versions must use the format 'kiji-x.y' to specify what version they use. */
   private static final String LAYOUT_PROTOCOL_NAME = "layout";
-
-  /** A simple mapping of deprecated layout versions. This remaps pre-rc4 layouts. */
-  private static final ProtocolVersion DEPRECATED_LAYOUT_VER =
-      ProtocolVersion.parse("kiji-1.0.0");
 
   /**
    * Returns the maximum layout version supported.
@@ -286,7 +269,7 @@ public final class KijiTableLayout {
    * @return the maximum layout version recognized by this version of Kiji.
    */
   public static ProtocolVersion getMaxSupportedLayoutVersion() {
-    return MAX_LAYOUT_VER;
+    return Versions.MAX_LAYOUT_VERSION;
   }
 
   /**
@@ -295,7 +278,7 @@ public final class KijiTableLayout {
    * @return the minimum layout version recognized by this version of Kiji.
    */
   public static ProtocolVersion getMinSupportedLayoutVersion() {
-    return MIN_LAYOUT_VER;
+    return Versions.MIN_LAYOUT_VERSION;
   }
 
   /** Concrete layout of a locality group. */
@@ -1024,24 +1007,26 @@ public final class KijiTableLayout {
     // Check that the version specified in the layout matches the features used.
     // Any compatibility checks belong in this section.
     ProtocolVersion layoutVersion = ProtocolVersion.parse(mDesc.getVersion());
-    if (layoutVersion.equals(DEPRECATED_LAYOUT_VER)) {
-      // Deprecated "kiji-1.0" is compatible with "layout-1.0"
-      layoutVersion = ProtocolVersion.parse("layout-1.0.0");
+    if (Objects.equal(layoutVersion, Versions.LAYOUT_KIJI_1_0_0_DEPRECATED)) {
+      // Deprecated "kiji-1.0" is compatible with "layout-1.0.0"
+      layoutVersion = Versions.LAYOUT_1_0_0;
     }
 
     if (!LAYOUT_PROTOCOL_NAME.equals(layoutVersion.getProtocolName())) {
       final String exceptionMessage;
-      if (DEPRECATED_LAYOUT_VER.getProtocolName().equals(layoutVersion.getProtocolName())) {
+      if (Objects.equal(
+          Versions.LAYOUT_KIJI_1_0_0_DEPRECATED.getProtocolName(),
+          layoutVersion.getProtocolName())) {
         // Warn the user if they tried a version number like 'kiji-0.9' or 'kiji-1.1'.
         exceptionMessage =
             String.format("Deprecated layout version protocol '%s' only valid for version '%s',"
                 + " but received version '%s'. You should specify a layout version protocol"
                 + " as '%s-x.y', not '%s-x.y'.",
-                DEPRECATED_LAYOUT_VER.getProtocolName(),
-                DEPRECATED_LAYOUT_VER.toString(),
-                layoutVersion.toString(),
+                Versions.LAYOUT_KIJI_1_0_0_DEPRECATED.getProtocolName(),
+                Versions.LAYOUT_KIJI_1_0_0_DEPRECATED,
+                layoutVersion,
                 LAYOUT_PROTOCOL_NAME,
-                DEPRECATED_LAYOUT_VER.getProtocolName());
+                Versions.LAYOUT_KIJI_1_0_0_DEPRECATED.getProtocolName());
       } else {
         exceptionMessage = String.format("Invalid version protocol: '%s'. Expected '%s'.",
             layoutVersion.getProtocolName(),
@@ -1050,28 +1035,28 @@ public final class KijiTableLayout {
       throw new InvalidLayoutException(exceptionMessage);
     }
 
-    if (MAX_LAYOUT_VER.compareTo(layoutVersion) < 0) {
+    if (Versions.MAX_LAYOUT_VERSION.compareTo(layoutVersion) < 0) {
       throw new InvalidLayoutException("The maximum layout version we support is "
-          + MAX_LAYOUT_VER + "; this layout requires " + layoutVersion);
-    } else if (MIN_LAYOUT_VER.compareTo(layoutVersion) > 0) {
+          + Versions.MAX_LAYOUT_VERSION + "; this layout requires " + layoutVersion);
+    } else if (Versions.MIN_LAYOUT_VERSION.compareTo(layoutVersion) > 0) {
       throw new InvalidLayoutException("The minimum layout version we support is "
-          + MIN_LAYOUT_VER + "; this layout requires " + layoutVersion);
+          + Versions.MIN_LAYOUT_VERSION + "; this layout requires " + layoutVersion);
     }
 
     // max_filesize and memstore_flushsize were introduced in version 1.2.
-    if (BLOCK_SIZE_LAYOUT_VER.compareTo(layoutVersion) > 0) {
+    if (Versions.BLOCK_SIZE_LAYOUT_VERSION.compareTo(layoutVersion) > 0) {
       if (mDesc.getMaxFilesize() != null) {
         // Cannot use max_filesize if this is the case.
         throw new InvalidLayoutException(
           "Support for specifying max_filesize begins with layout version "
-            + BLOCK_SIZE_LAYOUT_VER.toString());
+            + Versions.BLOCK_SIZE_LAYOUT_VERSION.toString());
       }
 
       if (mDesc.getMemstoreFlushsize() != null) {
         // Cannot use memstore_flushsize if this is the case.
         throw new InvalidLayoutException(
           "Support for specifying memstore_flushsize begins with layout version "
-            + BLOCK_SIZE_LAYOUT_VER.toString());
+            + Versions.BLOCK_SIZE_LAYOUT_VERSION);
       }
     } else {
       if (mDesc.getMaxFilesize() != null && mDesc.getMaxFilesize() <= 0) {
@@ -1084,12 +1069,12 @@ public final class KijiTableLayout {
     }
 
     // Composite keys and RowKeyFormat2 was introduced in version 1.1.
-    if (RKF2_LAYOUT_VER.compareTo(layoutVersion) > 0
+    if (Versions.RKF2_LAYOUT_VERSION.compareTo(layoutVersion) > 0
          && mDesc.getKeysFormat() instanceof RowKeyFormat2) {
       // Cannot use RowKeyFormat2 if this is the case.
       throw new InvalidLayoutException(
           "Support for specifying keys_format as a RowKeyFormat2 begins with layout version "
-          + RKF2_LAYOUT_VER.toString());
+          + Versions.RKF2_LAYOUT_VERSION);
     }
 
     if (!isValidName(getName())) {
@@ -1192,18 +1177,18 @@ public final class KijiTableLayout {
       }
 
       // BloomType, block_size were introduced in version 1.2.
-      if (BLOCK_SIZE_LAYOUT_VER.compareTo(layoutVersion) > 0) {
+      if (Versions.BLOCK_SIZE_LAYOUT_VERSION.compareTo(layoutVersion) > 0) {
         if (lgDesc.getBlockSize() != null) {
           // Cannot use max_filesize if this is the case.
           throw new InvalidLayoutException(
             "Support for specifying block_size begins with layout version "
-              + BLOCK_SIZE_LAYOUT_VER.toString());
+              + Versions.BLOCK_SIZE_LAYOUT_VERSION);
         }
         if (lgDesc.getBloomType() != null) {
           // Cannot use bloom_type if this is the case.
           throw new InvalidLayoutException(
             "Support for specifying bloom_type begins with layout version "
-              + BLOCK_SIZE_LAYOUT_VER.toString());
+              + Versions.BLOCK_SIZE_LAYOUT_VERSION);
         }
       } else {
         if (lgDesc.getBlockSize() != null && lgDesc.getBlockSize() <= 0) {

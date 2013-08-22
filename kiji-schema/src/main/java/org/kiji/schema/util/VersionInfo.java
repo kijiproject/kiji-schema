@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import com.google.common.base.Objects;
+
 import org.apache.hadoop.hbase.TableNotFoundException;
 
 import org.kiji.annotations.ApiAudience;
@@ -31,6 +33,7 @@ import org.kiji.schema.IncompatibleKijiVersionException;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiSystemTable;
+import org.kiji.schema.impl.Versions;
 
 /**
  * Reports on the version numbers associated with this software bundle
@@ -49,23 +52,6 @@ public final class VersionInfo {
       "org/kiji/schema/kiji-schema.properties";
 
   private static final String KIJI_SCHEMA_VERSION_PROP_NAME = "kiji-schema-version";
-
-  /** Protocol version for "system-2.0". */
-  public static final ProtocolVersion SYSTEM_2_0 = ProtocolVersion.parse("system-2.0");
-
-  /**
-   * Deprecated version string. Old 1.0.0-rc releases used 'kiji-1.0' as the instance format
-   * version; this is now the same as 'system-1.0'.
-   */
-  private static final ProtocolVersion DEPRECATED_INSTANCE_VERSION =
-      ProtocolVersion.parse("kiji-1.0");
-
-  /** Version string that represents the first version of the instance format. */
-  private static final ProtocolVersion MIN_INSTANCE_VERSION =
-      ProtocolVersion.parse("system-1.0");
-
-  /** Version string that represents the maximum data version supported by this Kiji client. */
-  private static final ProtocolVersion MAX_INSTANCE_VERSION = SYSTEM_2_0;
 
   /**
    * Loads kiji schema properties.
@@ -116,7 +102,7 @@ public final class VersionInfo {
    * @return A parsed version of the instance format protocol version string.
    */
   public static ProtocolVersion getClientDataVersion() {
-    return MAX_INSTANCE_VERSION;
+    return Versions.MAX_SYSTEM_VERSION;
   }
 
   /**
@@ -203,9 +189,9 @@ public final class VersionInfo {
   static boolean areInstanceVersionsCompatible(
       ProtocolVersion clientVersion, ProtocolVersion clusterVersion) {
 
-    if (clusterVersion.equals(DEPRECATED_INSTANCE_VERSION)) {
+    if (Objects.equal(clusterVersion, Versions.SYSTEM_KIJI_1_0_DEPRECATED)) {
       // The "kiji-1.0" version is equivalent to "system-1.0" in compatibility tests.
-      clusterVersion = MIN_INSTANCE_VERSION;
+      clusterVersion = Versions.SYSTEM_1_0;
     }
 
     // See SCHEMA-469.

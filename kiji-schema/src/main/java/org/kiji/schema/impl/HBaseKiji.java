@@ -77,17 +77,6 @@ public final class HBaseKiji implements Kiji {
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKiji.class.getName());
 
-  /** System version that introduces table layout in ZooKeeper. */
-  private static final ProtocolVersion SYSTEM_2_0 = ProtocolVersion.parse("system-2.0");
-
-
-  /** First layout version where table layout validation may be enabled. */
-  public static final ProtocolVersion LAYOUT_VALIDATION_VER =
-      ProtocolVersion.parse("layout-1.3.0");
-
-  /** Minimum system version required for table layout validation. */
-  public static final ProtocolVersion MIN_SYS_VER_FOR_LAYOUT_VALIDATION = SYSTEM_2_0;
-
   /** The hadoop configuration. */
   private final Configuration mConf;
 
@@ -194,7 +183,7 @@ public final class HBaseKiji implements Kiji {
     }
 
     // TODO(SCHEMA-491) Share ZooKeeperClient instances when possible.
-    if (mSystemTable.getDataVersion().compareTo(SYSTEM_2_0) >= 0) {
+    if (mSystemTable.getDataVersion().compareTo(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION) >= 0) {
       // system-2.0 clients must connect to ZooKeeper:
       //  - to register themselves as table users;
       //  - to receive table layout updates.
@@ -234,14 +223,14 @@ public final class HBaseKiji implements Kiji {
    * @throws InvalidLayoutException if the layout and system versions are incompatible.
    */
   private void ensureValidationCompatibility(TableLayoutDesc layout) throws IOException {
-    final ProtocolVersion updateVersion = ProtocolVersion.parse(layout.getVersion());
+    final ProtocolVersion layoutVersion = ProtocolVersion.parse(layout.getVersion());
     final ProtocolVersion systemVersion = getSystemTable().getDataVersion();
 
-    if (updateVersion.compareTo(LAYOUT_VALIDATION_VER) >= 0
-        && systemVersion.compareTo(MIN_SYS_VER_FOR_LAYOUT_VALIDATION) < 0) {
+    if ((layoutVersion.compareTo(Versions.LAYOUT_VALIDATION_VERSION) >= 0)
+        && (systemVersion.compareTo(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION) < 0)) {
       throw new InvalidLayoutException(
           String.format("Layout version: %s not supported by system version: %s",
-              updateVersion, systemVersion));
+              layoutVersion, systemVersion));
     }
   }
 
@@ -404,7 +393,7 @@ public final class HBaseKiji implements Kiji {
 
     getMetaTable().updateTableLayout(tableLayout.getName(), tableLayout);
 
-    if (getSystemTable().getDataVersion().compareTo(SYSTEM_2_0) >= 0) {
+    if (getSystemTable().getDataVersion().compareTo(Versions.SYSTEM_2_0) >= 0) {
       // system-2.0 clients retrieve the table layout from ZooKeeper as a stream of notifications.
       // Invariant: ZooKeeper hold the most recent layout of the table.
       LOG.debug("Writing initial table layout in ZooKeeper for table {}.", tableURI);
@@ -509,7 +498,7 @@ public final class HBaseKiji implements Kiji {
       newLayout = KijiTableLayout.createUpdatedLayout(update, currentLayout);
     } else {
       // Actually set it.
-      if (mSystemTable.getDataVersion().compareTo(SYSTEM_2_0) >= 0) {
+      if (mSystemTable.getDataVersion().compareTo(Versions.SYSTEM_2_0) >= 0) {
         try {
           // Use ZooKeeper to inform all watchers that a new table layout is available.
           final HBaseTableLayoutUpdater updater =

@@ -35,6 +35,7 @@ import org.junit.Test;
 import org.kiji.schema.IncompatibleKijiVersionException;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiSystemTable;
+import org.kiji.schema.impl.Versions;
 
 public class TestVersionInfo {
   @Test
@@ -47,7 +48,7 @@ public class TestVersionInfo {
   @Test
   public void testGetClientDataVersion() {
     // This is the actual version we expect to be in there right now.
-    assertEquals(ProtocolVersion.parse("system-2.0"), VersionInfo.getClientDataVersion());
+    assertEquals(Versions.MAX_SYSTEM_VERSION, VersionInfo.getClientDataVersion());
   }
 
   @Test

@@ -78,7 +78,7 @@ public class IntegrationTestTableLayoutUpdate extends AbstractKijiIntegrationTes
     }
 
     // Switch the Kiji instance to system-2.0:
-    setDataVersion(uri, ProtocolVersion.parse("system-2.0"));
+    setDataVersion(uri, Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION);
 
     final HBaseKiji kiji = (HBaseKiji) Kiji.Factory.open(uri, getConf());
     try {

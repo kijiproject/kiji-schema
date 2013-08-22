@@ -36,7 +36,7 @@ import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.avro.CellSchema;
-import org.kiji.schema.impl.HBaseKiji;
+import org.kiji.schema.impl.Versions;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.InvalidLayoutSchemaException;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -88,7 +88,7 @@ public final class TableLayoutUpdateValidator {
 
     final ProtocolVersion layoutVersion = ProtocolVersion.parse(layout.getDesc().getVersion());
 
-    if (layoutVersion.compareTo(HBaseKiji.LAYOUT_VALIDATION_VER) < 0) {
+    if (layoutVersion.compareTo(Versions.LAYOUT_VALIDATION_VERSION) < 0) {
       // Layout versions older than layout-1.3.0 do not require validation
       return;
     }

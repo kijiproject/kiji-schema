@@ -325,7 +325,7 @@ public final class HBaseKijiTable implements KijiTable {
         KijiManagedHBaseTableName.getKijiTableName(mTableURI.getInstance(), mName).toString();
 
     // TODO(SCHEMA-504): Add a manual switch to disable ZooKeeper on system-2.0 instances:
-    if (getKiji().getSystemTable().getDataVersion().compareTo(VersionInfo.SYSTEM_2_0) >= 0) {
+    if (getKiji().getSystemTable().getDataVersion().compareTo(Versions.SYSTEM_2_0) >= 0) {
       // system-2.0 clients retrieve the table layout from ZooKeeper notifications:
 
       mLayoutMonitor = createLayoutMonitor(mKiji.getZKClient());
