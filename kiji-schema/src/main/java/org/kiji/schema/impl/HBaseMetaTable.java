@@ -77,8 +77,8 @@ public class HBaseMetaTable implements KijiMetaTable {
   private boolean mIsOpen;
 
   /** The layout table that we delegate the work of storing table layout metadata to. */
-
   private final KijiTableLayoutDatabase mTableLayoutDatabase;
+
   /** The table we delegate storing per table meta data, in the form of key value pairs.  */
   private final KijiTableKeyValueDatabase<?> mTableKeyValueDatabase;
   // TODO: Make KijiTableLayoutDatabase thread-safe,

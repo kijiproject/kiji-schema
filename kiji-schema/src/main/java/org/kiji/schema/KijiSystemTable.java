@@ -42,9 +42,8 @@ import org.kiji.schema.util.ProtocolVersion;
 @Inheritance.Sealed
 public interface KijiSystemTable extends Closeable {
   /**
-   * Gets the version of kiji installed.  This refers to the version of
-   * the meta tables and other administrative kiji info installed, not
-   * the client code.
+   * Gets the version of kiji installed.  This refers to the version of the meta tables and other
+   * administrative kiji info installed, not the client code.
    *
    * @return the version string.
    * @throws IOException If there is an error.
@@ -52,14 +51,35 @@ public interface KijiSystemTable extends Closeable {
   ProtocolVersion getDataVersion() throws IOException;
 
   /**
-   * Sets the version of kiji installed.  This refers to the version of
-   * the meta tables and other administrative kiji info installed, not
-   * the client code.
+   * Sets the version of kiji installed.  This refers to the version of the meta tables and other
+   * administrative kiji info installed, not the client code.
    *
    * @param version the version string.
    * @throws IOException If there is an error.
    */
   void setDataVersion(ProtocolVersion version) throws IOException;
+
+  /**
+   * Gets the version of Kiji security in this instance.  The version of Kiji Security installed
+   * in this instance restricts the granularity and type of access that may be granted to users.
+   *
+   * @return the version string.  Version security-0.0 means security is not installed.
+   * @throws IOException If there is an I/O error.
+   */
+  ProtocolVersion getSecurityVersion() throws IOException;
+
+  /**
+   * Sets the version of Kiji security in this instance.  The version of Kiji Security installed
+   * in this instance restricts the granularity and type of access that may be granted to users.
+   *
+   * Only superusers and users with GRANT permission should be able to set the security version.
+   * Directly setting the security version may result in inconsistent state in this instance,
+   * unless an security version upgrade is performed.
+   *
+   * @param version the version string.
+   * @throws IOException If there is an I/O error.
+   */
+  void setSecurityVersion(ProtocolVersion version) throws IOException;
 
   /**
    * Gets the value associated with a property key.

@@ -31,6 +31,7 @@ import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.Lookups;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.ReferenceCountable;
 
 /**
@@ -178,6 +179,27 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    * @throws IOException If there is an error.
    */
   KijiMetaTable getMetaTable() throws IOException;
+
+  /**
+   * Returns whether security is enabled for this Kiji.
+   *
+   * @return whether security is enabled for this Kiji.
+   * @throws IOException If there is an error.
+   */
+  boolean isSecurityEnabled() throws IOException;
+
+  /**
+   * Gets the security manager for this Kiji.  This method creates a new KijiSecurityManager if one
+   * doesn't exist for this instance already.
+   *
+   * <p>Throws KijiSecurityException if the Kiji security version is not compatible with a
+   * KijiSecurityManager.  Use {@link #isSecurityEnabled()} to check whether security version
+   * is compatible first.</p>
+   *
+   * @return The KijiSecurityManager for this Kiji.
+   * @throws IOException If there is an error opening the KijiSecurityManager.
+   */
+  KijiSecurityManager getSecurityManager() throws IOException;
 
   /**
    * Creates a Kiji table in an HBase instance.

@@ -31,7 +31,6 @@ import org.kiji.schema.KijiInvalidNameException;
  */
 @ApiAudience.Private
 public final class KijiNameValidator {
-
   /** Unused private constructor since this is a utility class. */
   private KijiNameValidator() {}
 

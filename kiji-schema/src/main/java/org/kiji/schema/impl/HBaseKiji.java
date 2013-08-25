@@ -59,6 +59,8 @@ import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.layout.impl.HTableSchemaTranslator;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.layout.impl.ZooKeeperMonitor;
+import org.kiji.schema.security.KijiSecurityException;
+import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.JvmId;
 import org.kiji.schema.util.LockFactory;
@@ -139,6 +141,11 @@ public final class HBaseKiji implements Kiji {
   private HBaseMetaTable mMetaTable;
 
   /**
+   * The security manager for this instance, lazily initialized through {@link #getSecurityManager}.
+   */
+  private KijiSecurityManager mSecurityManager;
+
+  /**
    * Creates a new <code>HBaseKiji</code> instance.
    *
    * <p> Should only be used by Kiji.Factory.open().
@@ -183,6 +190,7 @@ public final class HBaseKiji implements Kiji {
     // Load these lazily.
     mSchemaTable = null;
     mMetaTable = null;
+    mSecurityManager = null;
 
     mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
     mIsOpen.set(true);
@@ -255,12 +263,13 @@ public final class HBaseKiji implements Kiji {
    */
   private void ensureValidationCompatibility(TableLayoutDesc layout) throws IOException {
     final ProtocolVersion layoutVersion = ProtocolVersion.parse(layout.getVersion());
+    final ProtocolVersion systemVersion = getSystemTable().getDataVersion();
 
     if ((layoutVersion.compareTo(Versions.LAYOUT_VALIDATION_VERSION) >= 0)
-        && (mSystemVersion.compareTo(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION) < 0)) {
+        && (systemVersion.compareTo(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION) < 0)) {
       throw new InvalidLayoutException(
           String.format("Layout version: %s not supported by system version: %s",
-              layoutVersion, mSystemVersion));
+              layoutVersion, systemVersion));
     }
   }
 
@@ -317,6 +326,28 @@ public final class HBaseKiji implements Kiji {
       mAdmin = hbaseFactory.getHBaseAdminFactory(mURI).create(getConf());
     }
     return mAdmin;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public boolean isSecurityEnabled() throws IOException {
+    return mSystemTable.getSecurityVersion().compareTo(Versions.MIN_SECURITY_VERSION) >= 0;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public synchronized KijiSecurityManager getSecurityManager() throws IOException {
+    Preconditions.checkState(mIsOpen.get());
+    if (null == mSecurityManager) {
+      if (isSecurityEnabled()) {
+        mSecurityManager = KijiSecurityManager.Factory.create(mURI, getConf(), mHTableFactory);
+      } else {
+        throw new KijiSecurityException("Cannot create a KijiSecurityManager for security version "
+            + mSystemTable.getSecurityVersion() + ". Version must be "
+            + Versions.MIN_SECURITY_VERSION + " or higher.");
+      }
+    }
+    return mSecurityManager;
   }
 
   /** {@inheritDoc} */
@@ -453,6 +484,11 @@ public final class HBaseKiji implements Kiji {
     } catch (TableExistsException tee) {
       throw new KijiAlreadyExistsException(
           String.format("Kiji table '%s' already exists.", tableURI), tableURI);
+    }
+
+    // Set permissions on table after creation, if security is enabled for this Kiji.
+    if (isSecurityEnabled()) {
+      getSecurityManager().reapplyInstancePermissions();
     }
   }
 
@@ -705,10 +741,12 @@ public final class HBaseKiji implements Kiji {
     ResourceUtils.closeOrLog(mMetaTable);
     ResourceUtils.closeOrLog(mSystemTable);
     ResourceUtils.closeOrLog(mSchemaTable);
+    ResourceUtils.closeOrLog(mSecurityManager);
     ResourceUtils.closeOrLog(mAdmin);
     mSchemaTable = null;
     mMetaTable = null;
     mAdmin = null;
+    mSecurityManager = null;
     LOG.debug("{} closed.", this);
   }
 

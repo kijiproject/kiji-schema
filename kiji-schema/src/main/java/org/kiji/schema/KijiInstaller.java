@@ -37,6 +37,7 @@ import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
+import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -112,7 +113,15 @@ public final class KijiInstaller {
       HBaseSystemTable.install(hbaseAdmin, uri, conf, tableFactory);
       HBaseMetaTable.install(hbaseAdmin, uri);
       HBaseSchemaTable.install(hbaseAdmin, uri, conf, tableFactory, lockFactory);
-
+      // Grant the current user all privileges on the instance just created, if security is enabled.
+      final Kiji kiji = Kiji.Factory.open(uri, conf);
+      try {
+        if (kiji.isSecurityEnabled()) {
+          KijiSecurityManager.Installer.installInstanceCreator(uri, conf, tableFactory);
+        }
+      } finally {
+        kiji.release();
+      }
     } finally {
       ResourceUtils.closeOrLog(hbaseAdmin);
     }
@@ -145,6 +154,13 @@ public final class KijiInstaller {
 
     final Kiji kiji = Kiji.Factory.open(uri, conf);
     try {
+      // If security is enabled, make sure the user has GRANT access on the instance
+      // before uninstalling.
+      if (kiji.isSecurityEnabled()) {
+        KijiSecurityManager securityManager = kiji.getSecurityManager();
+        securityManager.checkCurrentGrantAccess();
+      }
+
       for (String tableName : kiji.getTableNames()) {
         LOG.debug("Deleting kiji table " + tableName + "...");
         kiji.deleteTable(tableName);

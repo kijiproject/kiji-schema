@@ -26,7 +26,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.thrift.generated.IllegalArgument;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.common.flags.Flag;
@@ -186,7 +185,7 @@ public final class DeleteTool extends BaseTool {
         }
         case EXACT:
         case LATEST:
-          throw new IllegalArgument(
+          throw new IllegalArgumentException(
               "Row-wide delete with exact or latest timestamp are not implemented.");
         default:
           throw new RuntimeException("Unhandled timestamp mode: " + tsMode);

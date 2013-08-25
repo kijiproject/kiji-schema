@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import com.google.common.base.Objects;
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -46,6 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
@@ -63,7 +65,7 @@ import org.kiji.schema.util.ResourceUtils;
  * <p>The system table (a Kiji system table) is a simple key-value store for system-wide
  * properties of a Kiji installation.  There is a single column family "value".  For a
  * key-value property (K,V), the key K is stored as the row key in the HTable,
- * and the value V is stored in the "value:" column.<p>import org.kiji.schema.KijiURI;
+ * and the value V is stored in the "value:" column.<p>
  */
 @ApiAudience.Private
 public class HBaseSystemTable implements KijiSystemTable {
@@ -76,6 +78,9 @@ public class HBaseSystemTable implements KijiSystemTable {
 
   /** The HBase row key that stores the installed Kiji data format version. */
   public static final String KEY_DATA_VERSION = "data-version";
+
+  /** The HBase row key that stores the Kiji security version. */
+  public static final String SECURITY_PROTOCOL_VERSION = "security-version";
 
   /**
    * The name of the file that stores the current system table defaults that are loaded
@@ -104,7 +109,7 @@ public class HBaseSystemTable implements KijiSystemTable {
    * @param factory HTableInterface factory.
    * @return a new HTableInterface for the Kiji system table.
    * @throws IOException on I/O error.
-   *     <p> Throws KijiNotInstalledException if the Kiji instance does not exist. </p>
+   * @throws KijiNotInstalledException if the Kiji instance does not exist.
    */
   public static HTableInterface newSystemTable(
       KijiURI kijiURI,
@@ -129,7 +134,7 @@ public class HBaseSystemTable implements KijiSystemTable {
    * @param conf the Hadoop configuration.
    * @param factory HTableInterface factory.
    * @throws IOException If there is an error.
-   *     <p> Throws KijiNotInstalledException if the Kiji instance does not exist. </p>
+   * @throws KijiNotInstalledException if the Kiji instance does not exist.
    */
   public HBaseSystemTable(
       KijiURI kijiURI,
@@ -167,6 +172,23 @@ public class HBaseSystemTable implements KijiSystemTable {
   @Override
   public synchronized void setDataVersion(ProtocolVersion version) throws IOException {
     putValue(KEY_DATA_VERSION, Bytes.toBytes(version.toString()));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public synchronized ProtocolVersion getSecurityVersion() throws IOException {
+    byte[] result = getValue(SECURITY_PROTOCOL_VERSION);
+    return result == null
+        ? Versions.UNINSTALLED_SECURITY_VERSION
+        : ProtocolVersion.parse(Bytes.toString(result));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public synchronized void setSecurityVersion(ProtocolVersion version) throws IOException {
+    Preconditions.checkNotNull(version);
+    Kiji.Factory.open(mURI).getSecurityManager().checkCurrentGrantAccess();
+    putValue(SECURITY_PROTOCOL_VERSION, Bytes.toBytes(version.toString()));
   }
 
   /** {@inheritDoc} */

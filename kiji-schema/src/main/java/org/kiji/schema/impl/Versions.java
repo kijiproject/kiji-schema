@@ -108,6 +108,22 @@ public final class Versions {
   /** Minimum layout version recognized by this client. */
   public static final ProtocolVersion MIN_LAYOUT_VERSION = LAYOUT_1_0_0;
 
+
+  // -----------------------------------------------------------------------------------------------
+  // Security versions
+  // -----------------------------------------------------------------------------------------------
+  public static final ProtocolVersion SECURITY_0_0 = ProtocolVersion.parse("security-0.0");
+  public static final ProtocolVersion SECURITY_0_1 = ProtocolVersion.parse("security-0.1");
+
+  // -----------------------------------------------------------------------------------------------
+  // Aliases and semantic names
+
+  /** The protocol version representing uninstalled Security. */
+  public static final ProtocolVersion UNINSTALLED_SECURITY_VERSION = SECURITY_0_0;
+
+  /** Minimum version where security exists.  At this version it is instance-level R/W/G only. */
+  public static final ProtocolVersion MIN_SECURITY_VERSION = SECURITY_0_1;
+
   // -----------------------------------------------------------------------------------------------
 
   /** Utility class cannot be instantiated. */
