@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
@@ -34,7 +35,7 @@ public class TestFinalColumns extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestFinalColumns.class);
 
   @Test
-  public void testFakeKiji() throws Exception {
+  public void testFinalColumns() throws Exception {
     final Kiji kiji = getKiji();
 
     final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.FINAL_COLUMN);
@@ -45,19 +46,33 @@ public class TestFinalColumns extends KijiClientTest {
       final KijiTableWriter writer = table.openTableWriter();
       try {
         final EntityId eid = table.getEntityId("row-key");
-        writer.put(eid, "family", "column", "string value");
+        writer.put(eid, "family", "int", 314159);
+        writer.put(eid, "family", "long", 314159L);
+        writer.put(eid, "family", "double", 3.14159d);
 
         try {
-          writer.put(eid, "family", "column", 1L);
-          fail("Final string column should not accept anything else but strings.");
+          writer.put(eid, "family", "long", 123456);
+          fail("java.lang.Integer is not an acceptable value for Avro long.");
         } catch (KijiEncodingException kee) {
-          LOG.info("Expected error: " + kee);
+          assertTrue(kee.getMessage(),
+              kee.getMessage().contains("java.lang.Integer cannot be cast to java.lang.Long"));
+        }
+
+        try {
+          writer.put(eid, "family", "double", 314159);
+          fail("java.lang.Integer is not an acceptable value for Avro double.");
+        } catch (KijiEncodingException kee) {
+          assertTrue(kee.getMessage(),
+              kee.getMessage().contains("java.lang.Integer cannot be cast to java.lang.Double"));
         }
 
         final KijiTableReader reader = table.openTableReader();
         try {
-          final KijiRowData row = reader.get(eid, KijiDataRequest.create("family", "column"));
-          assertEquals("string value", row.getMostRecentValue("family", "column").toString());
+          final KijiRowData row = reader.get(eid, KijiDataRequest.create("family"));
+          assertEquals(314159, row.getMostRecentValue("family", "int"));
+
+          // Ensures the long value has not been overwritten:
+          assertEquals(314159L, row.getMostRecentValue("family", "long"));
         } finally {
           reader.close();
         }

@@ -254,7 +254,8 @@ public class TestReaderSchema extends KijiClientTest {
         Assert.fail("Converting int to string must fail: got " + read);
       } catch (AvroTypeException ate) {
         // Expected
-        assertTrue(ate.getMessage().contains("Found \"int\", expecting \"string\""));
+        assertTrue(ate.getMessage(),
+            ate.getMessage().contains("Found int, expecting string"));
       }
 
     } finally {
@@ -281,7 +282,8 @@ public class TestReaderSchema extends KijiClientTest {
         Assert.fail("Converting int to string must fail: got " + read);
       } catch (AvroTypeException ate) {
         // Expected
-        assertTrue(ate.getMessage().contains("Found \"int\", expecting {"));
+        assertTrue(ate.getMessage(),
+            ate.getMessage().contains("Found int, expecting org.kiji.schema.avro.TestRecord2"));
       }
 
     } finally {

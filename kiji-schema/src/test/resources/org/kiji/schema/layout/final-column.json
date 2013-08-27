@@ -19,23 +19,23 @@
 {
   name: "table",
   keys_format: {
-    encoding: "HASH",
-    hash_type: "MD5",
-    hash_size: 16
+    encoding: "FORMATTED",
+    components: [{name: "row", type: "STRING"}]
   },
-  locality_groups: [ {
+  locality_groups: [{
     name: "default",
     in_memory: false,
     max_versions: 3,
     ttl_seconds: 2147483647,
     compression_type: "GZ",
-    families: [ {
+    families: [{
       name: "family",
-      columns: [ {
-        name: "column",
-        column_schema: {type: "INLINE", value: '"string"', storage: "FINAL"}
-      } ]
-    } ]
-  } ],
-  version: "layout-1.0"
+      columns: [
+        {name: "int", column_schema: {type: "INLINE", value: '"int"', storage: "FINAL"}},
+        {name: "long", column_schema: {type: "INLINE", value: '"long"', storage: "FINAL"}},
+        {name: "double", column_schema: {type: "INLINE", value: '"double"', storage: "FINAL"}}
+      ]
+    }]
+  }],
+  version: "layout-1.1.0"
 }
