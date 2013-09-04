@@ -281,7 +281,9 @@ public class HBaseTableLayoutUpdater {
       }
 
       final TableLayoutUpdateValidator validator = new TableLayoutUpdateValidator(mKiji);
-      validator.validate(currentLayout, KijiTableLayout.newLayout(update));
+      validator.validate(
+          currentLayout,
+          KijiTableLayout.createUpdatedLayout(update , currentLayout));
 
       final LayoutTracker layoutTracker =
           mMonitor.newTableLayoutTracker(mTableURI, mLayoutUpdateHandler);
@@ -308,9 +310,10 @@ public class HBaseTableLayoutUpdater {
           }
 
           writeMetaTable(update);
-          writeZooKeeper(update);
+          final TableLayoutDesc newLayoutDesc = mNewLayout.getDesc();
+          writeZooKeeper(newLayoutDesc);
 
-          mLayoutUpdateHandler.waitForLayoutNotification(update.getLayoutId());
+          mLayoutUpdateHandler.waitForLayoutNotification(newLayoutDesc.getLayoutId());
 
           // The following is not necessary:
           while (true) {
@@ -318,7 +321,7 @@ public class HBaseTableLayoutUpdater {
             if (newLayoutId == null) {
               LOG.info("Layout update complete for table {}: table has no users.", mTableURI);
               break;
-            } else if (Objects.equal(newLayoutId, update.getLayoutId())) {
+            } else if (Objects.equal(newLayoutId, newLayoutDesc.getLayoutId())) {
               LOG.info("Layout update complete for table {}: all users switched to layout ID {}.",
                   mTableURI, newLayoutId);
               break;

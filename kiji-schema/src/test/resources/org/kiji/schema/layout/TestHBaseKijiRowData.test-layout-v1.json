@@ -1,0 +1,62 @@
+/**
+ * (c) Copyright 2012 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+{
+  name: "row_data_test_table",
+  keys_format: {'org.kiji.schema.avro.RowKeyFormat2': {
+    encoding: "FORMATTED",
+    components: [{name: "row", type: "STRING"}],
+    salt: {}
+  }},
+  locality_groups: [ {
+    name: "default",
+    in_memory: false,
+    max_versions: 3,
+    ttl_seconds: 2147483647,
+    compression_type: "NONE",
+    families: [ {
+      name: "family",
+      columns: [ {
+        name: "empty",
+        column_schema: {type: "INLINE", value: '"string"'}
+      }, {
+        name: "qual0",
+        column_schema: {type: "INLINE", value: '"string"'}
+      }, {
+        name: "qual1",
+        column_schema: {type: "INLINE", value: '"string"'}
+      }, {
+        name: "qual2",
+        column_schema: {type: "INLINE", value: '"string"'}
+      }, {
+        name: "qual3",
+        column_schema: {type: "INLINE", value: '"int"'}
+      }, {
+        name: "nodequal0",
+        column_schema: {type: "CLASS", value: "org.kiji.schema.avro.Node"}
+      }, {
+        name: "nodequal1",
+        column_schema: {type: "CLASS", value: "org.kiji.schema.avro.Node"}
+      } ]
+    }, {
+      name: "map",
+      map_schema: {type: "INLINE", value: '"int"'}
+    } ]
+  } ],
+  version: "layout-1.1.0"
+}

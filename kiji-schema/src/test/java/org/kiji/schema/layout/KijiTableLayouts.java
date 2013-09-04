@@ -117,9 +117,6 @@ public final class KijiTableLayouts {
   public static final String ROW_DATA_TEST =
       "org/kiji/schema/layout/row-data-test.json";
 
-  public static final String ROW_DATA_TEST_WITH_QUAL0_REMOVED =
-      "org/kiji/schema/layout/row-data-test-with-qual0-removed.json";
-
   /** Layout to test sqoop export map. */
   public static final String SQOOP_EXPORT_MAP_TEST =
       "org/kiji/schema/layout/sqoop-export-map-test.json";
@@ -159,10 +156,6 @@ public final class KijiTableLayouts {
   /** Table named 'table' which contains two columns containing different types. */
   public static final String TWO_COLUMN_DIFFERENT_TYPES =
       "org/kiji/schema/layout/two-column-different-types.json";
-
-  /** Layout for table 'writer_schema' to test when a column class is not found. */
-  public static final String WRITER_SCHEMA_TEST =
-      "org/kiji/schema/layout/writer-schema.json";
 
   /** Layout for table 'reader_schema' to test messing with reader schemas. */
   public static final String READER_SCHEMA_TEST =

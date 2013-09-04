@@ -29,7 +29,6 @@ import java.util.NoSuchElementException;
 import java.util.TreeMap;
 
 import com.google.common.base.Objects;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
@@ -37,6 +36,7 @@ import org.apache.avro.Schema;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
 import org.apache.hadoop.hbase.client.Result;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -441,8 +441,9 @@ public final class HBaseKijiRowData implements KijiRowData {
           kijiColumnName = columnNameTranslator.toKijiColumnName(
               new HBaseColumnName(familyEntry.getKey(), columnEntry.getKey()));
         } catch (NoSuchColumnException e) {
-          LOG.info("Ignoring HBase family " + hbaseColumnName
-              + " because it doesn't contain Kiji data.");
+          LOG.info("Ignoring HBase column '{}:{}' because it doesn't contain Kiji data.",
+              Bytes.toStringBinary(hbaseColumnName.getFamily()),
+              Bytes.toStringBinary(hbaseColumnName.getQualifier()));
           continue;
         }
         LOG.debug("Adding family [{}] to getMap() result.", kijiColumnName.getName());

@@ -64,6 +64,18 @@ import org.kiji.schema.util.InstanceBuilder;
 public class TestHBaseKijiRowData extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestHBaseKijiRowData.class);
 
+  /** Test layout. */
+  public static final String TEST_LAYOUT_V1 =
+      "org/kiji/schema/layout/TestHBaseKijiRowData.test-layout-v1.json";
+
+  /** Update for TEST_LAYOUT, with Test layout with column "family:qual0" removed. */
+  public static final String TEST_LAYOUT_V2 =
+      "org/kiji/schema/layout/TestHBaseKijiRowData.test-layout-v2.json";
+
+  /** Layout for table 'writer_schema' to test when a column class is not found. */
+  public static final String WRITER_SCHEMA_TEST =
+      "org/kiji/schema/layout/TestHBaseKijiRowData.writer-schema.json";
+
   private static final String TABLE_NAME = "row_data_test_table";
 
   private byte[] mHBaseFamily;
@@ -136,7 +148,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
   @Before
   public final void setupTestHBaseKijiRowData() throws Exception {
-    getKiji().createTable(KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
+    getKiji().createTable(KijiTableLayouts.getLayout(TEST_LAYOUT_V1));
     mTable = HBaseKijiTable.downcast(getKiji().openTable(TABLE_NAME));
 
     final LayoutCapsule capsule = mTable.getLayoutCapsule();
@@ -507,22 +519,24 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
   @Test
   public void testContainsColumn() throws Exception {
+    final String family = "family";
+    final String qualifier = "qual0";
+    final long timestamp = 1L;
     final Kiji kiji = new InstanceBuilder(getKiji())
-        .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE))
+        .withTable(KijiTableLayouts.getLayout(TEST_LAYOUT_V1))
             .withRow("row1")
-               .withFamily("family")
-                  .withQualifier("column").withValue(1, "foo1")
+                .withFamily(family).withQualifier(qualifier).withValue(timestamp, "foo1")
         .build();
-    final KijiTable table = kiji.openTable("table");
+    final KijiTable table = kiji.openTable(TABLE_NAME);
     try {
       final KijiTableReader reader = table.openTableReader();
       try {
         final KijiRowData row1 = reader.get(table.getEntityId("row1"),
-            KijiDataRequest.create("family", "column"));
-        assertTrue(row1.containsCell("family", "column", 1L));
-        assertFalse(row1.containsCell("family", "column", 2L));
-        assertFalse(row1.containsCell("blope", "column", 1L));
-        assertFalse(row1.containsCell("family", "blope", 1L));
+            KijiDataRequest.create(family, qualifier));
+        assertTrue(row1.containsCell(family, qualifier, timestamp));
+        assertFalse(row1.containsCell(family, qualifier, 2L));
+        assertFalse(row1.containsCell("blope", qualifier, timestamp));
+        assertFalse(row1.containsCell(family, "blope", timestamp));
       } finally {
         reader.close();
       }
@@ -826,7 +840,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   /** Tests that reading an entire family with a column that has been deleted works. */
   @Test
   public void testReadDeletedColumns() throws Exception {
-    new InstanceBuilder(getKiji())
+    final Kiji kiji = getKiji();
+    new InstanceBuilder(kiji)
         .withTable(mTable)
             .withRow("row1")
               .withFamily("family")
@@ -834,13 +849,12 @@ public class TestHBaseKijiRowData extends KijiClientTest {
                   .withQualifier("qual0").withValue(2L, "string2")
         .build();
 
-    final TableLayoutDesc update =
-        KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST_WITH_QUAL0_REMOVED);
+    final TableLayoutDesc update = KijiTableLayouts.getLayout(TEST_LAYOUT_V2);
     update.setReferenceLayout(mTable.getLayout().getDesc().getLayoutId());
-    getKiji().modifyTableLayout(update);
+    kiji.modifyTableLayout(update);
 
     mTable.release();
-    mTable = (HBaseKijiTable) getKiji().openTable(TABLE_NAME);
+    mTable = (HBaseKijiTable) kiji.openTable(TABLE_NAME);
 
     final KijiDataRequest dataRequest = KijiDataRequest.builder()
         .addColumns(ColumnsDef.create().addFamily("family"))
@@ -868,7 +882,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   @Test
   public void testWriterSchemaWhenSpecificRecordClassNotFound() throws Exception {
     final Kiji kiji = getKiji();  // not owned
-    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.WRITER_SCHEMA_TEST));
+    kiji.createTable(KijiTableLayouts.getLayout(WRITER_SCHEMA_TEST));
     final KijiTable table = kiji.openTable("writer_schema");
     try {
       // Write a (generic) record:

@@ -33,6 +33,12 @@ import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 public class TestKijiAdmin extends KijiClientTest {
+  private static final String LAYOUT_V1 = KijiTableLayouts.SIMPLE;
+
+  /** Layout update on top of LAYOUT_V1 with an extra locality group called 'new'. */
+  private static final String LAYOUT_V2 =
+      "org/kiji/schema/layout/simple-update-new-locality-group.json";
+
   private TableLayoutDesc mLayoutDesc;
   private TableLayoutDesc mLayoutDescUpdate;
 
@@ -42,17 +48,20 @@ public class TestKijiAdmin extends KijiClientTest {
 
   @Before
   public void setup() throws IOException {
-    mLayoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
-    mLayoutDescUpdate =
-        KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE_UPDATE_NEW_LOCALITY_GROUP);
+    mLayoutDesc = KijiTableLayouts.getLayout(LAYOUT_V1);
+    mLayoutDescUpdate = KijiTableLayouts.getLayout(LAYOUT_V2);
   }
 
+  // -----------------------------------------------------------------------------------------------
+
+  /** Tests that creating a new table works fine. */
   @Test
   public void testCreateTable() throws Exception {
     getKiji().createTable(mLayoutDesc);
     assertEquals(mLayoutDesc.getName(), getLayout("table").getName());
   }
 
+  /** Tests a layout update that adds a locality group with a column. */
   @Test
   public void testSetTableLayoutAdd() throws Exception {
     getKiji().createTable(mLayoutDesc);
