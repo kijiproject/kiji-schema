@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -40,6 +41,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.io.hfile.Compression;
+import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +51,7 @@ import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiTableNotFoundException;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.SchemaStorage;
@@ -106,6 +109,9 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   public static final String QUALIFIER_LAYOUT_ID = "layout_id";
   private static final byte[] QUALIFIER_LAYOUT_ID_BYTES = Bytes.toBytes(QUALIFIER_LAYOUT_ID);
 
+  /** URI of the Kiji instance this layout database is for. */
+  private final KijiURI mKijiURI;
+
   /** The HTable to use to store the layouts. */
   private final HTableInterface mTable;
 
@@ -137,16 +143,19 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    * <p>This class does not take ownership of the HTable.  The caller should close it when
    * it is no longer needed.</p>
    *
+   * @param kijiURI URI of the Kiji instance this layout database belongs to.
    * @param htable The HTable used to store the layout data.
    * @param family The name of the column family within the HTable used to store layout data.
    * @param schemaTable The Kiji schema table.
    * @throws IOException on I/O error.
    */
   public HBaseTableLayoutDatabase(
+      KijiURI kijiURI,
       HTableInterface htable,
       String family,
       KijiSchemaTable schemaTable)
       throws IOException {
+    mKijiURI = kijiURI;
     mTable = Preconditions.checkNotNull(htable);
     mFamily = Preconditions.checkNotNull(family);
     mFamilyBytes = Bytes.toBytes(mFamily);
@@ -227,7 +236,8 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   public KijiTableLayout getTableLayout(String table) throws IOException {
     final List<KijiTableLayout> layouts = getTableLayoutVersions(table, 1);
     if (layouts.isEmpty()) {
-      throw new KijiTableNotFoundException(table);
+      throw new KijiTableNotFoundException(
+          KijiURI.newBuilder(mKijiURI).withTableName(table).build());
     }
     return layouts.get(0);
   }
@@ -357,14 +367,13 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    * @return The HColumn descriptor.
    */
   public static HColumnDescriptor getHColumnDescriptor(String family) {
-    return new HColumnDescriptor(
-        Bytes.toBytes(family),  // family name
-        HConstants.ALL_VERSIONS,  // max versions
-        Compression.Algorithm.NONE.toString(),  // compression
-        false,  // in-memory
-        true,  // block-cache
-        HConstants.FOREVER,  // tts
-        HColumnDescriptor.DEFAULT_BLOOMFILTER);
+    return new HColumnDescriptor(family)
+        .setMaxVersions(HConstants.ALL_VERSIONS)
+        .setCompressionType(Compression.Algorithm.NONE)
+        .setInMemory(false)
+        .setBlockCacheEnabled(true)
+        .setTimeToLive(HConstants.FOREVER)
+        .setBloomFilterType(BloomType.NONE);
   }
 
   /** {@inheritDoc} */
@@ -446,5 +455,14 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    */
   private byte[] encodeTableLayoutDesc(TableLayoutDesc desc) throws IOException {
     return mCellEncoder.encode(desc);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HBaseTableLayoutDatabase.class)
+        .add("uri", mKijiURI)
+        .add("family", mFamily)
+        .toString();
   }
 }

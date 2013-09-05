@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
@@ -100,7 +101,8 @@ public class TestKijiAdmin extends KijiClientTest {
       getLayout("table");
       fail("An exception should have been thrown.");
     } catch (KijiTableNotFoundException ktnfe) {
-      assertEquals("Table not found: table", ktnfe.getMessage());
+      assertTrue(ktnfe.getMessage().startsWith("KijiTable not found: kiji://"));
+      assertEquals("table", ktnfe.getTableURI().getTable());
     }
   }
 
@@ -111,7 +113,8 @@ public class TestKijiAdmin extends KijiClientTest {
       getKiji().modifyTableLayout(tableLayoutDesc);
       fail("An exception should have been thrown.");
     } catch (KijiTableNotFoundException ktnfe) {
-      assertEquals("Table not found: table", ktnfe.getMessage());
+      assertTrue(ktnfe.getMessage().startsWith("KijiTable not found: kiji://"));
+      assertEquals("table", ktnfe.getTableURI().getTable());
     }
   }
 }

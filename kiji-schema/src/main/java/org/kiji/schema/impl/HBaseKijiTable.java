@@ -56,6 +56,7 @@ import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiReaderFactory;
 import org.kiji.schema.KijiRegion;
 import org.kiji.schema.KijiTable;
+import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
@@ -324,8 +325,12 @@ public final class HBaseKijiTable implements KijiTable {
     mHBaseTableName =
         KijiManagedHBaseTableName.getKijiTableName(mTableURI.getInstance(), mName).toString();
 
+    if (!mKiji.getTableNames().contains(mName)) {
+      throw new KijiTableNotFoundException(mTableURI);
+    }
+
     // TODO(SCHEMA-504): Add a manual switch to disable ZooKeeper on system-2.0 instances:
-    if (getKiji().getSystemTable().getDataVersion().compareTo(Versions.SYSTEM_2_0) >= 0) {
+    if (mKiji.getSystemTable().getDataVersion().compareTo(Versions.SYSTEM_2_0) >= 0) {
       // system-2.0 clients retrieve the table layout from ZooKeeper notifications:
 
       mLayoutMonitor = createLayoutMonitor(mKiji.getZKClient());

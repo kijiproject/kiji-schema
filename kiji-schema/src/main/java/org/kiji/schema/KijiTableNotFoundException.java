@@ -30,21 +30,44 @@ import org.kiji.annotations.ApiStability;
 @ApiAudience.Public
 @ApiStability.Evolving
 public final class KijiTableNotFoundException extends IOException {
-  /** Name of the missing table. */
-  private final String mTableName;
+  /** URI of the missing table. */
+  private final KijiURI mTableURI;
 
   /**
    * Creates a new <code>KijiTableNotFoundException</code> for the specified table.
    *
-   * @param tableName The name of the table that wasn't found.
+   * @param tableURI URI of the table that wasn't found.
+   * @deprecated Use {@link KijiTableNotFoundException#KijiTableNotFoundException(KijiURI).
    */
-  public KijiTableNotFoundException(String tableName) {
-    super("Table not found: " + tableName);
-    mTableName = tableName;
+  @Deprecated
+  public KijiTableNotFoundException(String tableURI) {
+    super("KijiTable not found: " + tableURI);
+    mTableURI = KijiURI.newBuilder(tableURI).build();
   }
 
-  /** @return the name of the missing table. */
+  /**
+   * Creates a new <code>KijiTableNotFoundException</code> for the specified table.
+   *
+   * @param tableURI URI of the table that wasn't found.
+   */
+  public KijiTableNotFoundException(KijiURI tableURI) {
+    super("KijiTable not found: " + tableURI);
+    mTableURI = tableURI;
+  }
+
+  /**
+   * Returns the name of the missing table.
+   * @return the name of the missing table.
+   */
   public String getTableName() {
-    return mTableName;
+    return mTableURI.getTable();
+  }
+
+  /**
+   * Returns the URI of the missing table.
+   * @return the URI of the missing table.
+   */
+  public KijiURI getTableURI() {
+    return mTableURI;
   }
 }

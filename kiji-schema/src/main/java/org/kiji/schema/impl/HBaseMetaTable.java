@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -66,7 +67,10 @@ public class HBaseMetaTable implements KijiMetaTable {
   /** The HBase column family that will store user defined metadata. */
   private static final String META_COLUMN_FAMILY = "meta";
 
-  /**  The HBase table that stores Kiji metadata. */
+  /** URI of the Kiji instance this meta-table belongs to. */
+  private final KijiURI mKijiURI;
+
+  /** The HBase table that stores Kiji metadata. */
   private final HTableInterface mTable;
 
   /** Whether the table is open. */
@@ -94,27 +98,27 @@ public class HBaseMetaTable implements KijiMetaTable {
       Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
-    return factory.create(
-        conf,
-        KijiManagedHBaseTableName.getMetaTableName(kijiURI.getInstance()).toString());
+    final String hbaseTableName =
+        KijiManagedHBaseTableName.getMetaTableName(kijiURI.getInstance()).toString();
+    return factory.create(conf, hbaseTableName);
   }
 
   /**
    * Create a connection to a Kiji meta table backed by an HTable within HBase.
    *
-   * @param kijiURI The KijiURI.
+   * @param kijiURI URI of the Kiji instance this meta-table belongs to.
    * @param conf The Hadoop configuration.
    * @param schemaTable The Kiji schema table.
    * @param factory HTableInterface factory.
    * @throws IOException If there is an error.
    */
-  public HBaseMetaTable(
+  HBaseMetaTable(
       KijiURI kijiURI,
       Configuration conf,
       KijiSchemaTable schemaTable,
       HTableInterfaceFactory factory)
       throws IOException {
-    this(newMetaTable(kijiURI, conf, factory), schemaTable);
+    this(kijiURI, newMetaTable(kijiURI, conf, factory), schemaTable);
   }
 
   /**
@@ -123,13 +127,20 @@ public class HBaseMetaTable implements KijiMetaTable {
    * <p>This class takes ownership of the HTable. It will be closed when this instance is
    * closed.</p>
    *
+   * @param kijiURI URI of the Kiji instance this meta-table belongs to.
    * @param htable The HTable to use for storing Kiji meta data.
    * @param schemaTable The Kiji schema table.
    * @throws IOException If there is an error.
    */
-  public HBaseMetaTable(HTableInterface htable, KijiSchemaTable schemaTable) throws IOException {
-    this(htable,
-        new HBaseTableLayoutDatabase(htable, LAYOUT_COLUMN_FAMILY, schemaTable),
+  private HBaseMetaTable(
+      KijiURI kijiURI,
+      HTableInterface htable,
+      KijiSchemaTable schemaTable)
+      throws IOException {
+    this(
+        kijiURI,
+        htable,
+        new HBaseTableLayoutDatabase(kijiURI, htable, LAYOUT_COLUMN_FAMILY, schemaTable),
         new HBaseTableKeyValueDatabase(htable, META_COLUMN_FAMILY));
   }
 
@@ -139,12 +150,17 @@ public class HBaseMetaTable implements KijiMetaTable {
    * <p>This class takes ownership of the HTable. It will be closed when this instance is
    * closed.</p>
    *
+   * @param kijiURI URI of the Kiji instance this meta-table belongs to.
    * @param htable The HTable to use for storing Kiji meta data.
    * @param tableLayoutDatabase A database of table layouts to delegate layout storage to.
    * @param tableKeyValueDatabase A database of key-value pairs to delegate metadata storage to.
    */
-  public HBaseMetaTable(HTableInterface htable, KijiTableLayoutDatabase tableLayoutDatabase,
+  private HBaseMetaTable(
+      KijiURI kijiURI,
+      HTableInterface htable,
+      KijiTableLayoutDatabase tableLayoutDatabase,
       KijiTableKeyValueDatabase<?> tableKeyValueDatabase) {
+    mKijiURI = kijiURI;
     mIsOpen = true;
     mTable = htable;
     mTableLayoutDatabase = tableLayoutDatabase;
@@ -373,4 +389,12 @@ public class HBaseMetaTable implements KijiMetaTable {
     mTableLayoutDatabase.restoreLayoutsFromBackup(tableName, tableBackup);
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(HBaseMetaTable.class)
+        .add("uri", mKijiURI)
+        .add("open", mIsOpen)
+        .toString();
+  }
 }

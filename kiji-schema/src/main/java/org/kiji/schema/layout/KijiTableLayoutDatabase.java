@@ -58,9 +58,14 @@ public interface KijiTableLayoutDatabase {
   boolean tableExists(String tableName) throws IOException;
 
   /**
-   * Sets a table's layout. Also calls validateAndAssignLayout().
+   * Sets the layout of a table.
    *
-   * @param table The name of the Kiji table to affect.
+   * <p>
+   *   If the table doesn't exist, this creates the initial layout of the table.
+   *   Otherwise, this pushes a new layout on top of the most recent layout.
+   * </p>
+   *
+   * @param table The name of the Kiji table to affect. Must match the table name
    * @param update Descriptor for the layout update.
    * @return the new effective layout.
    * @throws IOException If there is an error.

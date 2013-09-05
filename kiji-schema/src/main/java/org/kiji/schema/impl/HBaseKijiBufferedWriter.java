@@ -170,7 +170,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     try {
       mHTable = mTable.openHTableConnection();
     } catch (TableNotFoundException e) {
-      throw new KijiTableNotFoundException(table.getName());
+      throw new KijiTableNotFoundException(table.getURI());
     }
     mTable.registerLayoutConsumer(mInnerLayoutUpdater);
     Preconditions.checkState(mWriterLayoutCapsule != null,

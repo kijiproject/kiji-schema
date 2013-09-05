@@ -65,7 +65,7 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
         HBaseMetaTable.newMetaTable(
             mKijiURI, getConf(), factory.getHTableInterfaceFactory(mKijiURI));
     final String family = "layout";
-    mTableLayoutDatabase = new HBaseTableLayoutDatabase(htable, family, schemaTable);
+    mTableLayoutDatabase = new HBaseTableLayoutDatabase(mKijiURI, htable, family, schemaTable);
   }
 
   @After
