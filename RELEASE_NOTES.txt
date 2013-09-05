@@ -7,6 +7,8 @@ Version 1.3.0
   * SCHEMA-485. Adds profiling pointcuts for HBase reads/writes.
   * SCHEMA-514. DeleteTool correctly formats the delete confirmation message
       when deleting all entries from a cell.
+  * SCHEMA-543. Added a table layout containing all relevant cell types that
+      can be used in tests.
 
 Version 1.2.0
   * SCHEMA-335, SCHEMA-489. Fix: FormattedEntityId and KijiTableLayout trigger
