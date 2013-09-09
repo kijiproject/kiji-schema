@@ -32,10 +32,10 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.RuntimeInterruptedException;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutTracker;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutUpdateHandler;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.UsersTracker;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.UsersUpdateHandler;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutTracker;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutUpdateHandler;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersTracker;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersUpdateHandler;
 import org.kiji.schema.util.ZooKeeperTest;
 
 /** Tests for TableLayoutMonitor. */
@@ -49,7 +49,7 @@ public class TestTableLayoutMonitor extends ZooKeeperTest {
     try {
       zkClient.open();
 
-      final TableLayoutMonitor monitor = new TableLayoutMonitor(zkClient);
+      final ZooKeeperMonitor monitor = new ZooKeeperMonitor(zkClient);
       try {
 
         final KijiURI tableURI =
@@ -97,7 +97,7 @@ public class TestTableLayoutMonitor extends ZooKeeperTest {
     try {
       zkClient.open();
 
-      final TableLayoutMonitor monitor = new TableLayoutMonitor(zkClient);
+      final ZooKeeperMonitor monitor = new ZooKeeperMonitor(zkClient);
       try {
         final KijiURI tableURI =
             KijiURI.newBuilder(String.format("kiji://%s/kiji_instance/table_name", getZKAddress()))

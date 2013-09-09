@@ -57,19 +57,26 @@ import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.layout.impl.HTableSchemaTranslator;
-import org.kiji.schema.layout.impl.TableLayoutMonitor;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor;
 import org.kiji.schema.util.Debug;
+import org.kiji.schema.util.JvmId;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 
 /**
- * Kiji instance class that contains configuration and table
- * information.  Multiple instances of Kiji can be installed onto a
- * single HBase cluster.  This class represents a single one of those
- * instances.
+ * Kiji instance class that contains configuration and table information.
+ * Multiple instances of Kiji can be installed onto a single HBase cluster.
+ * This class represents a single one of those instances.
+ *
+ * <p>
+ *   An opened Kiji instance ignores changes made to the system version, as seen by
+ *   {@code Kiji.getSystemTable().getDataVersion()}.
+ *   If the system version is modified, the opened Kiji instance should be closed and replaced with
+ *   a new Kiji instance.
+ * </p>
  */
 @ApiAudience.Private
 public final class HBaseKiji implements Kiji {
@@ -101,6 +108,24 @@ public final class HBaseKiji implements Kiji {
    **/
   private final String mConstructorStack;
 
+  /** ZooKeeper client for this Kiji instance. */
+  private final ZooKeeperClient mZKClient;
+
+  /** Monitor to register Kiji instance users. */
+  private final ZooKeeperMonitor mMonitor;
+
+  /** Unique identifier for this Kiji instance as a live Kiji client. */
+  private final String mKijiClientId =
+      String.format("%s;HBaseKiji@%s", JvmId.get(), System.identityHashCode(this));
+
+  /**
+   * Cached copy of the system version, oblivious to system table mutation while the connection to
+   * this Kiji instance lives.
+   * Internally, the Kiji instance must use this version instead of
+   * {@code getSystemTable().getDataVersion()} to avoid inconsistent behaviors.
+   */
+  private final ProtocolVersion mSystemVersion;
+
   /** HBase admin interface. Lazily initialized through {@link #getHBaseAdmin()}. */
   private HBaseAdmin mAdmin = null;
 
@@ -112,9 +137,6 @@ public final class HBaseKiji implements Kiji {
 
   /** The meta table for this kiji instance, or null if it has not been opened yet. */
   private HBaseMetaTable mMetaTable;
-
-  /** ZooKeeper client for this Kiji instance. */
-  private final ZooKeeperClient mZKClient;
 
   /**
    * Creates a new <code>HBaseKiji</code> instance.
@@ -166,7 +188,8 @@ public final class HBaseKiji implements Kiji {
     mIsOpen.set(true);
     LOG.debug("Kiji instance '{}' is now opened.", mURI);
 
-    LOG.debug("Kiji instance '{}' has data version '{}'.", mURI, mSystemTable.getDataVersion());
+    mSystemVersion = mSystemTable.getDataVersion();
+    LOG.debug("Kiji instance '{}' has data version '{}'.", mURI, mSystemVersion);
 
     // Make sure the data version for the client matches the cluster.
     LOG.debug("Validating version for Kiji instance '{}'.", mURI);
@@ -183,14 +206,22 @@ public final class HBaseKiji implements Kiji {
     }
 
     // TODO(SCHEMA-491) Share ZooKeeperClient instances when possible.
-    if (mSystemTable.getDataVersion().compareTo(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION) >= 0) {
+    if (mSystemVersion.compareTo(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION) >= 0) {
       // system-2.0 clients must connect to ZooKeeper:
       //  - to register themselves as table users;
       //  - to receive table layout updates.
       mZKClient = HBaseFactory.Provider.get().getZooKeeperClient(mURI);
+      try {
+        mMonitor = new ZooKeeperMonitor(mZKClient);
+        mMonitor.registerInstanceUser(mURI, mKijiClientId, mSystemVersion.toString());
+      } catch (KeeperException ke) {
+        // Unrecoverable KeeperException:
+        throw new IOException(ke);
+      }
     } else {
       // system-1.x clients do not need a ZooKeeper connection.
       mZKClient = null;
+      mMonitor = null;
     }
 
     mRetainCount.set(1);
@@ -224,13 +255,12 @@ public final class HBaseKiji implements Kiji {
    */
   private void ensureValidationCompatibility(TableLayoutDesc layout) throws IOException {
     final ProtocolVersion layoutVersion = ProtocolVersion.parse(layout.getVersion());
-    final ProtocolVersion systemVersion = getSystemTable().getDataVersion();
 
     if ((layoutVersion.compareTo(Versions.LAYOUT_VALIDATION_VERSION) >= 0)
-        && (systemVersion.compareTo(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION) < 0)) {
+        && (mSystemVersion.compareTo(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION) < 0)) {
       throw new InvalidLayoutException(
           String.format("Layout version: %s not supported by system version: %s",
-              layoutVersion, systemVersion));
+              layoutVersion, mSystemVersion));
     }
   }
 
@@ -393,12 +423,12 @@ public final class HBaseKiji implements Kiji {
 
     getMetaTable().updateTableLayout(tableLayout.getName(), tableLayout);
 
-    if (getSystemTable().getDataVersion().compareTo(Versions.SYSTEM_2_0) >= 0) {
+    if (mSystemVersion.compareTo(Versions.SYSTEM_2_0) >= 0) {
       // system-2.0 clients retrieve the table layout from ZooKeeper as a stream of notifications.
       // Invariant: ZooKeeper hold the most recent layout of the table.
       LOG.debug("Writing initial table layout in ZooKeeper for table {}.", tableURI);
       try {
-        final TableLayoutMonitor monitor = new TableLayoutMonitor(mZKClient);
+        final ZooKeeperMonitor monitor = new ZooKeeperMonitor(mZKClient);
         try {
           final byte[] layoutId = Bytes.toBytes(kijiTableLayout.getDesc().getLayoutId());
             monitor.notifyNewTableLayout(tableURI, layoutId, -1);
@@ -498,7 +528,7 @@ public final class HBaseKiji implements Kiji {
       newLayout = KijiTableLayout.createUpdatedLayout(update, currentLayout);
     } else {
       // Actually set it.
-      if (mSystemTable.getDataVersion().compareTo(Versions.SYSTEM_2_0) >= 0) {
+      if (mSystemVersion.compareTo(Versions.SYSTEM_2_0) >= 0) {
         try {
           // Use ZooKeeper to inform all watchers that a new table layout is available.
           final HBaseTableLayoutUpdater updater =
@@ -658,11 +688,19 @@ public final class HBaseKiji implements Kiji {
       return;
     }
 
+    LOG.debug("Closing {}.", this);
+    if (mMonitor != null) {
+      try {
+        mMonitor.unregisterInstanceUser(mURI, mKijiClientId, mSystemVersion.toString());
+      } catch (KeeperException ke) {
+        // Unrecoverable ZooKeeper error:
+        throw new IOException(ke);
+      }
+    }
     if (mZKClient != null) {
       mZKClient.release();
     }
 
-    LOG.debug("Closing {}.", this);
     ResourceUtils.closeOrLog(mMetaTable);
     ResourceUtils.closeOrLog(mSystemTable);
     ResourceUtils.closeOrLog(mSchemaTable);

@@ -39,10 +39,10 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.RuntimeInterruptedException;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.layout.impl.TableLayoutMonitor;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.UsersTracker;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.UsersUpdateHandler;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersTracker;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersUpdateHandler;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
 import org.kiji.schema.util.ProtocolVersion;
 
@@ -83,7 +83,7 @@ public class IntegrationTestTableLayoutUpdate extends AbstractKijiIntegrationTes
     final HBaseKiji kiji = (HBaseKiji) Kiji.Factory.open(uri, getConf());
     try {
       final ZooKeeperClient zkClient = kiji.getZKClient();
-      final TableLayoutMonitor layoutMonitor = new TableLayoutMonitor(zkClient);
+      final ZooKeeperMonitor layoutMonitor = new ZooKeeperMonitor(zkClient);
       try {
         layoutMonitor.notifyNewTableLayout(tableURI, Bytes.toBytes(layoutId1), -1);
         final BlockingQueue<Multimap<String, String>> queue = Queues.newSynchronousQueue();

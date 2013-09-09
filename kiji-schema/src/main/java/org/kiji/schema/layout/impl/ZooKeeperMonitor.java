@@ -107,8 +107,8 @@ import org.kiji.schema.util.ZooKeeperLock;
  * </ul>
  */
 @ApiAudience.Private
-public final class TableLayoutMonitor implements Closeable {
-  private static final Logger LOG = LoggerFactory.getLogger(TableLayoutMonitor.class);
+public final class ZooKeeperMonitor implements Closeable {
+  private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperMonitor.class);
 
   /** Root path of the ZooKeeper directory node where to write Kiji nodes. */
   private static final File ROOT_ZOOKEEPER_PATH = new File("/kiji-schema");
@@ -125,14 +125,43 @@ public final class TableLayoutMonitor implements Closeable {
   // -----------------------------------------------------------------------------------------------
 
   /**
+   * Reports the ZooKeeper node path for a Kiji instance.
+   *
+   * @param kijiURI URI of a Kiji instance to report the ZooKeeper node path for.
+   * @return the ZooKeeper node path for a Kiji instance.
+   */
+  public static File getInstanceDir(KijiURI kijiURI) {
+    return new File(String.format("%s/instances/%s", ROOT_ZOOKEEPER_PATH, kijiURI.getInstance()));
+  }
+
+  /**
+   * Reports the ZooKeeper root path containing all tables in a Kiji instance.
+   *
+   * @param kijiURI URI of a Kiji instance to report the ZooKeeper node path for.
+   * @return the ZooKeeper node path that contains all the tables in the specified Kiji instance.
+   */
+  public static File getInstanceTablesDir(KijiURI kijiURI) {
+    return new File(getInstanceDir(kijiURI), "tables");
+  }
+
+  /**
+   * Reports the ZooKeeper root path containing all users of a Kiji instance.
+   *
+   * @param kijiURI URI of a Kiji instance to report the ZooKeeper node path for.
+   * @return the ZooKeeper node path that contains all users of the specified Kiji instance.
+   */
+  public static File getInstanceUsersDir(KijiURI kijiURI) {
+    return new File(getInstanceDir(kijiURI), "users");
+  }
+
+  /**
    * Reports the ZooKeeper node path for a Kiji table.
    *
    * @param tableURI URI of a Kiji table to report the ZooKeeper node path for.
    * @return the ZooKeeper node path for a Kiji table.
    */
   public static File getTableDir(KijiURI tableURI) {
-    return new File(String.format("%s/instances/%s/tables/%s",
-        ROOT_ZOOKEEPER_PATH, tableURI.getInstance(), tableURI.getTable()));
+    return new File(getInstanceTablesDir(tableURI), tableURI.getTable());
   }
 
   /**
@@ -182,7 +211,7 @@ public final class TableLayoutMonitor implements Closeable {
    * @param zkClient ZooKeeper client.
    * @throws KeeperException on unrecoverable ZooKeeper error.
    */
-  public TableLayoutMonitor(ZooKeeperClient zkClient) throws KeeperException {
+  public ZooKeeperMonitor(ZooKeeperClient zkClient) throws KeeperException {
     this.mZKClient = zkClient;
     this.mZKClient.createNodeRecursively(ROOT_ZOOKEEPER_PATH);
     // ZooKeeperClient.retain() should be the last line of the constructor.
@@ -242,6 +271,44 @@ public final class TableLayoutMonitor implements Closeable {
 
     final File usersDir = getTableUsersDir(tableURI);
     final String nodeName = makeZKNodeName(userId, layoutId);
+    final File nodePath = new File(usersDir, nodeName);
+    if (this.mZKClient.exists(nodePath) != null) {
+      this.mZKClient.delete(nodePath, -1);
+    }
+  }
+
+  /**
+   * Registers a new user of a Kiji instance.
+   *
+   * @param kijiURI Registers a user for the Kiji instance with this URI.
+   * @param userId ID of the user to register.
+   * @param systemVersion System version used by the Kiji instance user.
+   * @throws KeeperException on unrecoverable ZooKeeper error.
+   */
+  public void registerInstanceUser(KijiURI kijiURI, String userId, String systemVersion)
+      throws KeeperException {
+
+    final File usersDir = getInstanceUsersDir(kijiURI);
+    this.mZKClient.createNodeRecursively(usersDir);
+    final String nodeName = makeZKNodeName(userId, systemVersion);
+    final File nodePath = new File(usersDir, nodeName);
+    final byte[] data = EMPTY_BYTES;
+    this.mZKClient.create(nodePath, data, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL);
+  }
+
+  /**
+   * Unregisters an existing user of a Kiji instance.
+   *
+   * @param kijiURI Registers a user for the Kiji instance with this URI.
+   * @param userId ID of the user to unregister.
+   * @param systemVersion System version used by the Kiji instance user.
+   * @throws KeeperException on unrecoverable ZooKeeper error.
+   */
+  public void unregisterInstanceUser(KijiURI kijiURI, String userId, String systemVersion)
+      throws KeeperException {
+
+    final File usersDir = getInstanceUsersDir(kijiURI);
+    final String nodeName = makeZKNodeName(userId, systemVersion);
     final File nodePath = new File(usersDir, nodeName);
     if (this.mZKClient.exists(nodePath) != null) {
       this.mZKClient.delete(nodePath, -1);
@@ -395,7 +462,7 @@ public final class TableLayoutMonitor implements Closeable {
     private void registerWatcher() {
       try {
         final byte[] layoutUpdate =
-            TableLayoutMonitor.this.mZKClient.getData(mTableLayoutFile, mWatcher, mLayoutStat);
+            ZooKeeperMonitor.this.mZKClient.getData(mTableLayoutFile, mWatcher, mLayoutStat);
         LOG.info("Received layout update for table {}: {}.",
             mTableURI, Bytes.toStringBinary(layoutUpdate));
 
@@ -489,7 +556,7 @@ public final class TableLayoutMonitor implements Closeable {
         @Override
         public void run() {
           try {
-            TableLayoutMonitor.this.mZKClient.createNodeRecursively(mUsersDir);
+            ZooKeeperMonitor.this.mZKClient.createNodeRecursively(mUsersDir);
           } catch (KeeperException ke) {
             LOG.error("Unrecoverable ZooKeeper error: {}", ke.getMessage());
             throw new RuntimeException(ke);
@@ -511,7 +578,7 @@ public final class TableLayoutMonitor implements Closeable {
         // Lists the children nodes of the users ZooKeeper node path for this table,
         // and registers a watcher for updates on the children list:
         final List<String> zkNodeNames =
-            TableLayoutMonitor.this.mZKClient.getChildren(mUsersDir, mWatcher, mStat);
+            ZooKeeperMonitor.this.mZKClient.getChildren(mUsersDir, mWatcher, mStat);
         LOG.info("Received users update for table {}: {}.", mTableURI, zkNodeNames);
 
         final Multimap<String, String> children = HashMultimap.create();

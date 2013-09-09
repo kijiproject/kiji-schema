@@ -41,13 +41,13 @@ import org.kiji.schema.RuntimeInterruptedException;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.layout.impl.TableLayoutMonitor;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutTracker;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutUpdateHandler;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.UsersTracker;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.UsersUpdateHandler;
 import org.kiji.schema.layout.impl.TableLayoutUpdateValidator;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutTracker;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutUpdateHandler;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersTracker;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersUpdateHandler;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.Time;
 
@@ -66,7 +66,7 @@ public class HBaseTableLayoutUpdater {
 
   private final HBaseKiji mKiji;
   private final KijiURI mTableURI;
-  private final TableLayoutMonitor mMonitor;
+  private final ZooKeeperMonitor mMonitor;
   private final ZooKeeperClient mZKClient;
 
   private final UpdaterUsersUpdateHandler mUsersUpdateHandler = new UpdaterUsersUpdateHandler();
@@ -218,7 +218,7 @@ public class HBaseTableLayoutUpdater {
     mKiji.retain();
     mTableURI = tableURI;
     mZKClient = mKiji.getZKClient().retain();
-    mMonitor = new TableLayoutMonitor(mZKClient);
+    mMonitor = new ZooKeeperMonitor(mZKClient);
     mLayoutUpdate = layoutUpdate;
   }
 

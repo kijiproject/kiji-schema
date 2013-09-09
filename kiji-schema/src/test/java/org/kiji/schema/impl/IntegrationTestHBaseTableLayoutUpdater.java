@@ -32,10 +32,10 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.layout.impl.TableLayoutMonitor;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutTracker;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutUpdateHandler;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutTracker;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutUpdateHandler;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
 import org.kiji.schema.util.ProtocolVersion;
 
@@ -71,7 +71,7 @@ public class IntegrationTestHBaseTableLayoutUpdater extends AbstractKijiIntegrat
     final Kiji kiji = Kiji.Factory.open(uri);
     try {
       final ZooKeeperClient zkClient = ((HBaseKiji) kiji).getZKClient();  // owned by kiji
-      final TableLayoutMonitor monitor = new TableLayoutMonitor(zkClient);
+      final ZooKeeperMonitor monitor = new ZooKeeperMonitor(zkClient);
       try {
         kiji.createTable(layout1);
 

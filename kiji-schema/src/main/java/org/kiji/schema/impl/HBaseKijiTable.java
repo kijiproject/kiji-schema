@@ -67,10 +67,10 @@ import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnNameTranslator;
-import org.kiji.schema.layout.impl.TableLayoutMonitor;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutTracker;
-import org.kiji.schema.layout.impl.TableLayoutMonitor.LayoutUpdateHandler;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutTracker;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutUpdateHandler;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.JvmId;
 import org.kiji.schema.util.VersionInfo;
@@ -135,7 +135,7 @@ public final class HBaseKijiTable implements KijiTable {
       String.format("%s;HBaseKijiTable@%s", JvmId.get(), System.identityHashCode(this));
 
   /** Monitor for the layout of this table. */
-  private final TableLayoutMonitor mLayoutMonitor;
+  private final ZooKeeperMonitor mLayoutMonitor;
 
   /**
    * The LayoutUpdateHandler which performs layout modifications. This object's update() method is
@@ -373,10 +373,10 @@ public final class HBaseKijiTable implements KijiTable {
    * @return a new table layout monitor.
    * @throws IOException on ZooKeeper error (wrapped KeeperException).
    */
-  private static TableLayoutMonitor createLayoutMonitor(ZooKeeperClient zkClient)
+  private static ZooKeeperMonitor createLayoutMonitor(ZooKeeperClient zkClient)
       throws IOException {
     try {
-      return new TableLayoutMonitor(zkClient);
+      return new ZooKeeperMonitor(zkClient);
     } catch (KeeperException ke) {
       throw new IOException(ke);
     }

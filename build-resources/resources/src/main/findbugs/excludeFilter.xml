@@ -113,7 +113,7 @@
 
   <Match>
     <!-- An absolute path to a ZooKeeper node is fine. -->
-    <Class name="org.kiji.schema.layout.impl.TableLayoutMonitor" />
+    <Class name="org.kiji.schema.layout.impl.ZooKeeperMonitor" />
     <Bug pattern="DMI_HARDCODED_ABSOLUTE_FILENAME" />
   </Match>
 
