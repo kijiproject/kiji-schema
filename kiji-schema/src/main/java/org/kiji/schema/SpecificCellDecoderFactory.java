@@ -52,16 +52,17 @@ public final class SpecificCellDecoderFactory implements KijiCellDecoderFactory 
   public <T> KijiCellDecoder<T> create(CellSpec cellSpec) throws IOException {
     Preconditions.checkNotNull(cellSpec);
     switch (cellSpec.getCellSchema().getType()) {
-    case CLASS:
-    case INLINE:
-      return new SpecificCellDecoder<T>(cellSpec);
-    case COUNTER:
-      // purposefully forget the type (long) param of cell decoders for counters.
-      @SuppressWarnings("unchecked")
-      final KijiCellDecoder<T> counterCellDecoder = (KijiCellDecoder<T>) CounterCellDecoder.get();
-      return counterCellDecoder;
-    default:
-      throw new RuntimeException("Unhandled cell encoding: " + cellSpec.getCellSchema());
+      case AVRO:
+      case CLASS:
+      case INLINE:
+        return new SpecificCellDecoder<T>(cellSpec);
+      case COUNTER:
+        // purposefully forget the type (long) param of cell decoders for counters.
+        @SuppressWarnings("unchecked")
+        final KijiCellDecoder<T> counterCellDecoder = (KijiCellDecoder<T>) CounterCellDecoder.get();
+        return counterCellDecoder;
+      default:
+        throw new RuntimeException("Unhandled cell encoding: " + cellSpec.getCellSchema());
     }
   }
 
