@@ -486,6 +486,10 @@ public final class CellSpec {
       // Avro encoded cells have various associated schemas: readers, writers, default reader, etc.
       return null;
     }
+    case PROTOBUF: {
+      // Protocol-buffesr have no Avro schema.
+      return null;
+    }
     case RAW_BYTES: {
       // No Avro schema for raw-byte cells:
       return null;

@@ -55,6 +55,8 @@ public final class DefaultKijiCellEncoderFactory implements KijiCellEncoderFacto
       return new AvroCellEncoder(cellSpec);
     case COUNTER:
       return CounterCellEncoder.get();
+    case PROTOBUF:
+      return new ProtobufCellEncoder(cellSpec);
     case RAW_BYTES:
       return new RawBytesCellEncoder(cellSpec);
     default:

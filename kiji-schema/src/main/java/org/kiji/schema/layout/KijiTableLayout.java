@@ -1584,6 +1584,18 @@ public final class KijiTableLayout {
         }
         break;
       }
+      case PROTOBUF: {
+        if (layoutVersion.compareTo(Versions.PROTOBUF_CELL_ENCODING_VERSION) < 0) {
+          throw new InvalidLayoutException(String.format(
+              "Cell type %s requires table layout version >= %s, "
+              + "got version %s in cell specification %s.",
+              schema.getType(),
+              Versions.PROTOBUF_CELL_ENCODING_VERSION,
+              layoutVersion,
+              schema));
+        }
+        break;
+      }
       default:
         throw new InternalKijiError("Unhandled cell type: " + schema);
     }

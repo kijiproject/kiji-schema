@@ -625,6 +625,7 @@ public final class TableLayoutBuilder {
       case CLASS:
       case INLINE:
       case COUNTER:
+      case PROTOBUF:
       case RAW_BYTES:
         break;
       default:

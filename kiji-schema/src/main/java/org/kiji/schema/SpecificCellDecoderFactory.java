@@ -26,6 +26,7 @@ import com.google.common.base.Preconditions;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.impl.CounterCellDecoder;
+import org.kiji.schema.impl.ProtobufCellDecoder;
 import org.kiji.schema.impl.RawBytesCellDecoder;
 import org.kiji.schema.impl.SpecificCellDecoder;
 import org.kiji.schema.layout.CellSpec;
@@ -57,6 +58,8 @@ public final class SpecificCellDecoderFactory implements KijiCellDecoderFactory 
       case CLASS:
       case INLINE:
         return new SpecificCellDecoder<T>(cellSpec);
+      case PROTOBUF:
+        return new ProtobufCellDecoder<T>(cellSpec);
       case RAW_BYTES:
         return new RawBytesCellDecoder(cellSpec);
       case COUNTER:
