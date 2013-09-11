@@ -47,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.CellSchema;
@@ -346,7 +347,7 @@ public final class KijiTableLayout {
           // Force validation of schema:
           final CellSchema referenceSchema =
               (null != reference) ? reference.getDesc().getColumnSchema() : null;
-          validateCellSchema(mDesc.getColumnSchema(), referenceSchema);
+          validateCellSchema(mLayoutVersion, mDesc.getColumnSchema(), referenceSchema);
         }
 
         /** @return A copy of the Avro descriptor for this column. */
@@ -474,7 +475,7 @@ public final class KijiTableLayout {
           // Force validation of schema:
           final CellSchema referenceSchema =
               (null != reference) ? reference.getDesc().getMapSchema() : null;
-          validateCellSchema(mDesc.getMapSchema(), referenceSchema);
+          validateCellSchema(mLayoutVersion, mDesc.getMapSchema(), referenceSchema);
         }
 
         // Build columns:
@@ -871,6 +872,9 @@ public final class KijiTableLayout {
   /** Avro record describing the table layout absolutely (no reference layout required). */
   private final TableLayoutDesc mDesc;
 
+  /** Version of this table layout. */
+  private final ProtocolVersion mLayoutVersion;
+
   /** Locality groups in the table, in no particular order. */
   private final ImmutableList<LocalityGroupLayout> mLocalityGroups;
 
@@ -988,6 +992,24 @@ public final class KijiTableLayout {
     }
   }
 
+  /**
+   * Computes the effective ProtocolVersion from a layout version string.
+   *
+   * <p> Normalizes kiji-1.0 into layout-1.0.0 </p>
+   *
+   * @param version Layout version string.
+   * @return the effective layout ProtocolVersion.
+   */
+  private static ProtocolVersion computeLayoutVersion(String version) {
+    final ProtocolVersion pversion = ProtocolVersion.parse(version);
+    if (Objects.equal(pversion, Versions.LAYOUT_KIJI_1_0_0_DEPRECATED)) {
+      // Deprecated "kiji-1.0" is compatible with "layout-1.0.0"
+      return Versions.LAYOUT_1_0_0;
+    } else {
+      return pversion;
+    }
+  }
+
   // CSOFF: MethodLengthCheck
   /**
    * Constructs a KijiTableLayout from an Avro descriptor and an optional reference layout.
@@ -1006,17 +1028,13 @@ public final class KijiTableLayout {
 
     // Check that the version specified in the layout matches the features used.
     // Any compatibility checks belong in this section.
-    ProtocolVersion layoutVersion = ProtocolVersion.parse(mDesc.getVersion());
-    if (Objects.equal(layoutVersion, Versions.LAYOUT_KIJI_1_0_0_DEPRECATED)) {
-      // Deprecated "kiji-1.0" is compatible with "layout-1.0.0"
-      layoutVersion = Versions.LAYOUT_1_0_0;
-    }
+    mLayoutVersion = computeLayoutVersion(mDesc.getVersion());
 
-    if (!LAYOUT_PROTOCOL_NAME.equals(layoutVersion.getProtocolName())) {
+    if (!Objects.equal(LAYOUT_PROTOCOL_NAME, mLayoutVersion.getProtocolName())) {
       final String exceptionMessage;
       if (Objects.equal(
           Versions.LAYOUT_KIJI_1_0_0_DEPRECATED.getProtocolName(),
-          layoutVersion.getProtocolName())) {
+          mLayoutVersion.getProtocolName())) {
         // Warn the user if they tried a version number like 'kiji-0.9' or 'kiji-1.1'.
         exceptionMessage =
             String.format("Deprecated layout version protocol '%s' only valid for version '%s',"
@@ -1024,27 +1042,27 @@ public final class KijiTableLayout {
                 + " as '%s-x.y', not '%s-x.y'.",
                 Versions.LAYOUT_KIJI_1_0_0_DEPRECATED.getProtocolName(),
                 Versions.LAYOUT_KIJI_1_0_0_DEPRECATED,
-                layoutVersion,
+                mLayoutVersion,
                 LAYOUT_PROTOCOL_NAME,
                 Versions.LAYOUT_KIJI_1_0_0_DEPRECATED.getProtocolName());
       } else {
         exceptionMessage = String.format("Invalid version protocol: '%s'. Expected '%s'.",
-            layoutVersion.getProtocolName(),
+            mLayoutVersion.getProtocolName(),
             LAYOUT_PROTOCOL_NAME);
       }
       throw new InvalidLayoutException(exceptionMessage);
     }
 
-    if (Versions.MAX_LAYOUT_VERSION.compareTo(layoutVersion) < 0) {
+    if (Versions.MAX_LAYOUT_VERSION.compareTo(mLayoutVersion) < 0) {
       throw new InvalidLayoutException("The maximum layout version we support is "
-          + Versions.MAX_LAYOUT_VERSION + "; this layout requires " + layoutVersion);
-    } else if (Versions.MIN_LAYOUT_VERSION.compareTo(layoutVersion) > 0) {
+          + Versions.MAX_LAYOUT_VERSION + "; this layout requires " + mLayoutVersion);
+    } else if (Versions.MIN_LAYOUT_VERSION.compareTo(mLayoutVersion) > 0) {
       throw new InvalidLayoutException("The minimum layout version we support is "
-          + Versions.MIN_LAYOUT_VERSION + "; this layout requires " + layoutVersion);
+          + Versions.MIN_LAYOUT_VERSION + "; this layout requires " + mLayoutVersion);
     }
 
     // max_filesize and memstore_flushsize were introduced in version 1.2.
-    if (Versions.BLOCK_SIZE_LAYOUT_VERSION.compareTo(layoutVersion) > 0) {
+    if (Versions.BLOCK_SIZE_LAYOUT_VERSION.compareTo(mLayoutVersion) > 0) {
       if (mDesc.getMaxFilesize() != null) {
         // Cannot use max_filesize if this is the case.
         throw new InvalidLayoutException(
@@ -1069,7 +1087,7 @@ public final class KijiTableLayout {
     }
 
     // Composite keys and RowKeyFormat2 was introduced in version 1.1.
-    if (Versions.RKF2_LAYOUT_VERSION.compareTo(layoutVersion) > 0
+    if (Versions.RKF2_LAYOUT_VERSION.compareTo(mLayoutVersion) > 0
          && mDesc.getKeysFormat() instanceof RowKeyFormat2) {
       // Cannot use RowKeyFormat2 if this is the case.
       throw new InvalidLayoutException(
@@ -1177,7 +1195,7 @@ public final class KijiTableLayout {
       }
 
       // BloomType, block_size were introduced in version 1.2.
-      if (Versions.BLOCK_SIZE_LAYOUT_VERSION.compareTo(layoutVersion) > 0) {
+      if (Versions.BLOCK_SIZE_LAYOUT_VERSION.compareTo(mLayoutVersion) > 0) {
         if (lgDesc.getBlockSize() != null) {
           // Cannot use max_filesize if this is the case.
           throw new InvalidLayoutException(
@@ -1458,13 +1476,52 @@ public final class KijiTableLayout {
    *
    * Ignores failures due to specific Avro record classes not being present on the classpath.
    *
+   * @param layoutVersion Version of the new table layout.
    * @param schema New cell schema descriptor.
    * @param reference Reference cell schema descriptor, or null.
    * @throws InvalidLayoutException if the cell schema descriptor is invalid
    *     or incompatible with the reference cell schema.
    */
-  private static void validateCellSchema(CellSchema schema, CellSchema reference)
+  private static void validateCellSchema(
+      ProtocolVersion layoutVersion,
+      CellSchema schema,
+      CellSchema reference)
       throws InvalidLayoutException {
+
+    switch (schema.getType()) {
+      case INLINE:
+      case CLASS:
+      case COUNTER:
+        // Nothing to validate
+        break;
+      case AVRO: {
+        if (layoutVersion.compareTo(Versions.LAYOUT_VALIDATION_VERSION) < 0) {
+          throw new InvalidLayoutException(String.format(
+              "Cell type %s requires table layout version >= %s, "
+              + "got version %s in cell specification %s.",
+              schema.getType(),
+              Versions.LAYOUT_VALIDATION_VERSION,
+              layoutVersion,
+              schema));
+        }
+        break;
+      }
+      case RAW_BYTES: {
+        if (layoutVersion.compareTo(Versions.RAW_BYTES_CELL_ENCODING_VERSION) < 0) {
+          throw new InvalidLayoutException(String.format(
+              "Cell type %s requires table layout version >= %s, "
+              + "got version %s in cell specification %s.",
+              schema.getType(),
+              Versions.RAW_BYTES_CELL_ENCODING_VERSION,
+              layoutVersion,
+              schema));
+        }
+        break;
+      }
+      default:
+        throw new InternalKijiError("Unhandled cell type: " + schema);
+    }
+
     // Validate Avro schema through loading and parsing:
     try {
       CellSpec.readAvroSchema(schema);
@@ -1515,7 +1572,6 @@ public final class KijiTableLayout {
             reference, schema));
       }
     }
-    // TODO(SCHEMA-2) Validate compatibility between the new Avro schema and the reference one.
   }
 
   /**

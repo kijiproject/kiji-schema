@@ -91,6 +91,9 @@ public final class Versions {
   /** First layout version where table layout validation may be enabled. */
   public static final ProtocolVersion LAYOUT_VALIDATION_VERSION = LAYOUT_1_3_0;
 
+  /** Layout version that introduces ray bytes cell encoding. */
+  public static final ProtocolVersion RAW_BYTES_CELL_ENCODING_VERSION = LAYOUT_1_3_0;
+
   /**
    * Version of the layout that introduces:
    * <ul>

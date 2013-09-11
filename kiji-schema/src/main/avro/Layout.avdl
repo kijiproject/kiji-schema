@@ -54,7 +54,14 @@ protocol KijiTableLayoutRecords {
      *
      * Note: Schema type 'AVRO' requires table layout version >= 1.3.
      */
-    AVRO
+    AVRO,
+
+    /**
+     * Column contains raw bytes.
+     *
+     * Requires table layout version >= 1.3.
+     */
+    RAW_BYTES
   }
 
   /** How schemas get encoded in cells. */

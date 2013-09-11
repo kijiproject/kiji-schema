@@ -398,6 +398,7 @@ public final class CellSpec {
     }
     // TODO(SCHEMA-457): This should return the default Avro reader schema.
     case AVRO:
+    case RAW_BYTES:
     case COUNTER: {
       // Counters are coded using a Bytes.toBytes(long) and Bytes.toLong(byte[]):
       return null;

@@ -42,6 +42,7 @@ import org.kiji.schema.avro.TestRecord1;
 import org.kiji.schema.avro.TestRecord4;
 import org.kiji.schema.avro.TestRecord5;
 import org.kiji.schema.impl.Versions;
+import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.InvalidLayoutSchemaException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -231,15 +232,27 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
   @Test
   public void testOldLayoutVersions() throws IOException {
     final TableLayoutUpdateValidator validator = new TableLayoutUpdateValidator(getKiji());
-    final TableLayoutDesc desc =
-        KijiTableLayouts.getLayout(INVALID_AVRO_VALIDATION_TEST);
+    {
+      final TableLayoutDesc desc =
+          KijiTableLayouts.getLayout(INVALID_AVRO_VALIDATION_TEST);
+      desc.setVersion(Versions.LAYOUT_1_2_0.toString());
 
-    // Layout-1.2.0 (layout specified in the JSON descriptor) does not support validation and so
-    // will pass even though the layout is internally incompatible.
-    validator.validate(null, KijiTableLayout.newLayout(desc));
+      try {
+        KijiTableLayout.createUpdatedLayout(desc,  null);
+        fail("Must throw InvalidLayoutException "
+            + "because AVRO cell type requires layout version >= 1.3.0");
+      } catch (InvalidLayoutException ile) {
+        LOG.info("Expected error: {}", ile.getMessage());
+        assertTrue(ile.getMessage(),
+            ile.getMessage().contains(
+                "Cell type AVRO requires table layout version >= layout-1.3.0, "
+                + "got version layout-1.2.0"));
+      }
+    }
 
     // Layout-1.3.0 does support validation.  The layout is invalid and will throw an exception.
-    desc.setVersion("layout-1.3.0");
+    final TableLayoutDesc desc =
+        KijiTableLayouts.getLayout(INVALID_AVRO_VALIDATION_TEST);
     try {
       validator.validate(null, KijiTableLayout.newLayout(desc));
       fail("should have thrown InvalidLayoutSchemaException because int and string are "

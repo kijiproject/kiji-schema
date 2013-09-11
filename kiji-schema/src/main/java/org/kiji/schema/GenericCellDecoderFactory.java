@@ -27,6 +27,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.impl.CounterCellDecoder;
 import org.kiji.schema.impl.GenericCellDecoder;
+import org.kiji.schema.impl.RawBytesCellDecoder;
 import org.kiji.schema.layout.CellSpec;
 
 /**
@@ -56,6 +57,8 @@ public final class GenericCellDecoderFactory implements KijiCellDecoderFactory {
       case CLASS:
       case INLINE:
         return new GenericCellDecoder<T>(cellSpec);
+      case RAW_BYTES:
+        return new RawBytesCellDecoder(cellSpec);
       case COUNTER:
         // purposefully forget the type (long) param of cell decoders for counters.
         @SuppressWarnings("unchecked")

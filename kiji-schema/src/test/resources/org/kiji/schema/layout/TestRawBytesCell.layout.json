@@ -17,35 +17,25 @@
  * limitations under the License.
  */
 {
-  name: "invalid_avro_validation_test",
+  name: "table",
   keys_format: {
     encoding: "FORMATTED",
     salt: {hash_size: 2},
-    components: [{name: "row", type: "STRING"}]
+    components: [ {name: "row", type: "STRING"} ]
   },
-  locality_groups: [{
+  locality_groups: [ {
     name: "default",
     in_memory: false,
-    max_versions: 20,
+    max_versions: 3,
     ttl_seconds: 2147483647,
     compression_type: "NONE",
-    families: [{
-      name: "info",
-      aliases: ["profile"],
-      columns: [{
-        name: "fullname",
-        aliases: ["alias"],
-        column_schema: {
-          storage: "UID",
-          type: "AVRO",
-          avro_validation_policy: "STRICT",
-          readers: [{json: '"int"'}],
-          writers: [{json: '"string"'}]
-        }
-      }]
-    }]
-  }],
-  version: "layout-1.3.0",
-  layout_id: null,
-  reference_layout: null
+    families: [ {
+      name: "family",
+      columns: [ {
+        name: "column",
+        column_schema: { type: "RAW_BYTES" }
+      } ]
+    } ]
+  } ],
+  version: "layout-1.3.0"
 }

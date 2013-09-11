@@ -57,7 +57,7 @@ public class TestSchemaValidationOnWrite extends KijiClientTest {
     cellSchema.setWriters(Lists.newArrayList(AvroSchema.newBuilder().setUid(writerUID).build()));
     cellSchema.setType(SchemaType.AVRO);
     cellSchema.setAvroValidationPolicy(AvroValidationPolicy.STRICT);
-    layoutDesc.setVersion("layout-1.2");
+    layoutDesc.setVersion("layout-1.3");
     kiji.createTable(layoutDesc);
 
     final KijiTable table = kiji.openTable("user");
