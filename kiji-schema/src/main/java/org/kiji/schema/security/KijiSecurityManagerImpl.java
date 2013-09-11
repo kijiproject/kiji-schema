@@ -46,11 +46,15 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HBaseKiji;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.Versions;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor;
+import org.kiji.schema.util.Lock;
+import org.kiji.schema.util.ZooKeeperLockFactory;
 
 /**
  * The default implementation of KijiSecurityManager.
  *
- * <p>KijiSecurityManager manages access control for a Kiji instance.</p>
+ * <p>KijiSecurityManager manages access control for a Kiji instance.  It depends on ZooKeeper
+ * locks to ensure atomicity of permissions operations.</p>
  *
  * <p>The current version of Kiji security (security-0.1) is instance-level only.  Users can have
  * READ, WRITE, and/or GRANT access on a Kiji instance.</p>
@@ -70,6 +74,12 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
   /** The HBase ACL (Access Control List) table to use. */
   private final AccessControllerProtocol mAccessController;
+
+  /** The zookeeper lock for this instance. */
+  private final Lock mLock;
+
+  /** The timeout, in seconds, to wait for ZooKeeper locks before throwing an exception. */
+  private static final int LOCK_TIMEOUT = 10;
 
   /**
    * Constructs a new KijiSecurityManager for an instance, with the specified configuration.
@@ -100,6 +110,10 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
     mKiji = Kiji.Factory.get().open(mInstanceUri);
     mSystemTable = mKiji.getSystemTable();
+    final ZooKeeperLockFactory zKLockFactory =
+      new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(instanceUri));
+    mLock = zKLockFactory.create(
+        ZooKeeperMonitor.getInstancePermissionsLock(instanceUri).getAbsolutePath());
 
     // If the Kiji has security version lower than MIN_SECURITY_VERSION, then KijiSecurityManager
     // can't be instantiated.
@@ -112,11 +126,32 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
   /** {@inheritDoc} */
   @Override
+  public void lock() throws IOException {
+    boolean lockSuccessful = mLock.lock(LOCK_TIMEOUT);
+    if (!lockSuccessful) {
+      throw new KijiSecurityException("Acquiring lock on instance " + mInstanceUri
+          + " timed out after " + LOCK_TIMEOUT + " seconds.");
+    }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void unlock() throws IOException {
+    mLock.unlock();
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public void grant(KijiUser user, KijiPermissions.Action action)
       throws IOException {
-    KijiPermissions currentPermissions = getPermissions(user);
-    KijiPermissions newPermissions = currentPermissions.addAction(action);
-    changeInstancePermissions(user, newPermissions);
+    lock();
+    try {
+      KijiPermissions currentPermissions = getPermissions(user);
+      KijiPermissions newPermissions = currentPermissions.addAction(action);
+      changeInstancePermissions(user, newPermissions);
+    } finally {
+      unlock();
+    }
   }
 
   /** {@inheritDoc} */
@@ -131,56 +166,82 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   @Override
   public void revoke(KijiUser user, KijiPermissions.Action action)
       throws IOException {
-    KijiPermissions currentPermissions = getPermissions(user);
-    KijiPermissions newPermissions = currentPermissions.removeAction(action);
-    changeInstancePermissions(user, newPermissions);
+    lock();
+    try {
+      KijiPermissions currentPermissions = getPermissions(user);
+      KijiPermissions newPermissions = currentPermissions.removeAction(action);
+      changeInstancePermissions(user, newPermissions);
+    } finally {
+      unlock();
+    }
   }
 
   /** {@inheritDoc} */
   @Override
   public void revokeAll(KijiUser user) throws IOException {
-    changeInstancePermissions(user, KijiPermissions.emptyPermissions());
+    lock();
+    try {
+      changeInstancePermissions(user, KijiPermissions.emptyPermissions());
+    } finally {
+      unlock();
+    }
   }
 
   /** {@inheritDoc} */
   @Override
   public void reapplyInstancePermissions() throws IOException {
-    Set<KijiUser> allUsers = listUsers();
-    for (KijiUser user : allUsers) {
-      KijiPermissions permissions = getPermissions(user);
-      for (KijiPermissions.Action action : permissions.getActions()) {
-        grant(user, action);
+    lock();
+    try {
+      Set<KijiUser> allUsers = listUsers();
+      for (KijiUser user : allUsers) {
+        KijiPermissions permissions = getPermissions(user);
+        for (KijiPermissions.Action action : permissions.getActions()) {
+          grant(user, action);
+        }
       }
+    } finally {
+      unlock();
     }
   }
+
   /** {@inheritDoc} */
   @Override
   public void applyPermissionsToNewTable(KijiURI tableURI) throws IOException {
-    // The argument must be for a table in the instance this manages.
-    Preconditions.checkArgument(
-        KijiURI.newBuilder(mInstanceUri).withTableName(tableURI.getTable()).build() == tableURI);
-    for (KijiUser user : listUsers()) {
-      changeHTablePermissions(user.getNameBytes(),
-          KijiManagedHBaseTableName
-              .getKijiTableName(tableURI.getInstance(), tableURI.getTable()).toBytes(),
-          getPermissions(user).toHBaseActions());
+    lock();
+    try {
+      // The argument must be for a table in the instance this manages.
+      Preconditions.checkArgument(
+          KijiURI.newBuilder(mInstanceUri).withTableName(tableURI.getTable()).build() == tableURI);
+      for (KijiUser user : listUsers()) {
+        changeHTablePermissions(user.getNameBytes(),
+            KijiManagedHBaseTableName
+                .getKijiTableName(tableURI.getInstance(), tableURI.getTable()).toBytes(),
+            getPermissions(user).toHBaseActions());
+      }
+    } finally {
+      unlock();
     }
   }
 
   /** {@inheritDoc} */
   @Override
   public void grantInstanceCreator(KijiUser user) throws IOException {
-    Set<KijiUser> currentGrantors = getUsersWithPermission(KijiPermissions.Action.GRANT);
-    // This can only be called if there are no grantors, right when the instance is created.
-    if (currentGrantors.size() != 0) {
-      throw new KijiAccessException(
-          "Cannot add user " + user.toString()
-          + " to grantors as the instance creator for instance " + mInstanceUri.getInstance()
-          + " because there are already grantors for this instance.");
+    lock();
+    try {
+      Set<KijiUser> currentGrantors = getUsersWithPermission(KijiPermissions.Action.GRANT);
+      // This can only be called if there are no grantors, right when the instance is created.
+      if (currentGrantors.size() != 0) {
+        throw new KijiAccessException(
+            "Cannot add user " + user.toString()
+                + " to grantors as the instance creator for instance " + mInstanceUri.getInstance()
+                + " because there are already grantors for this instance.");
+      }
+      Set<KijiUser> newGrantor = Collections.singleton(user);
+      putUsersWithPermission(KijiPermissions.Action.GRANT, newGrantor);
+      grantAll(user);
+    } finally {
+      unlock();
     }
-    Set<KijiUser> newGrantor = Collections.singleton(user);
-    putUsersWithPermission(KijiPermissions.Action.GRANT, newGrantor);
-    grantAll(user);
   }
 
   /** {@inheritDoc} */
@@ -285,7 +346,6 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   private void changeInstancePermissions(
       KijiUser user,
       KijiPermissions permissions) throws IOException {
-    // TODO(SCHEMA-533): Lock the Kiji instance when changing permissions.
     LOG.info("Changing user permissions for user " + user
         + " on instance " + mInstanceUri.getInstance()
         + " to actions " + permissions.getActions().toString());

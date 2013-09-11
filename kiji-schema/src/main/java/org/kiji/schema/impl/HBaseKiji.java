@@ -440,55 +440,17 @@ public final class HBaseKiji implements Kiji {
 
     ensureValidationCompatibility(tableLayout);
 
-    // This will validate the layout and may throw an InvalidLayoutException.
-    final KijiTableLayout kijiTableLayout = KijiTableLayout.newLayout(tableLayout);
-
-    if (getMetaTable().tableExists(tableLayout.getName())) {
-      throw new KijiAlreadyExistsException(
-          String.format("Kiji table '%s' already exists.", tableURI), tableURI);
-    }
-
-    if (tableLayout.getKeysFormat() instanceof RowKeyFormat) {
-      LOG.warn("Usage of 'RowKeyFormat' is deprecated. New tables should use 'RowKeyFormat2'.");
-    }
-
-    getMetaTable().updateTableLayout(tableLayout.getName(), tableLayout);
-
-    if (mSystemVersion.compareTo(Versions.SYSTEM_2_0) >= 0) {
-      // system-2.0 clients retrieve the table layout from ZooKeeper as a stream of notifications.
-      // Invariant: ZooKeeper hold the most recent layout of the table.
-      LOG.debug("Writing initial table layout in ZooKeeper for table {}.", tableURI);
-      try {
-        final ZooKeeperMonitor monitor = new ZooKeeperMonitor(mZKClient);
-        try {
-          final byte[] layoutId = Bytes.toBytes(kijiTableLayout.getDesc().getLayoutId());
-            monitor.notifyNewTableLayout(tableURI, layoutId, -1);
-        } finally {
-          monitor.close();
-        }
-      } catch (KeeperException ke) {
-        throw new IOException(ke);
-      }
-    }
-
-    try {
-      final HTableSchemaTranslator translator = new HTableSchemaTranslator();
-      final HTableDescriptor desc =
-          translator.toHTableDescriptor(mURI.getInstance(), kijiTableLayout);
-      LOG.debug("Creating HBase table '{}'.", desc.getNameAsString());
-      if (null != splitKeys) {
-        getHBaseAdmin().createTable(desc, splitKeys);
-      } else {
-        getHBaseAdmin().createTable(desc);
-      }
-    } catch (TableExistsException tee) {
-      throw new KijiAlreadyExistsException(
-          String.format("Kiji table '%s' already exists.", tableURI), tableURI);
-    }
-
-    // Set permissions on table after creation, if security is enabled for this Kiji.
+    // If security is enabled, lock the instance permissions before creating a table.
     if (isSecurityEnabled()) {
-      getSecurityManager().reapplyInstancePermissions();
+      mSecurityManager.lock();
+      try {
+        createTableUnchecked(tableLayout, splitKeys);
+        getSecurityManager().applyPermissionsToNewTable(tableURI);
+      } finally {
+        mSecurityManager.unlock();
+      }
+    } else {
+      createTableUnchecked(tableLayout, splitKeys);
     }
   }
 
@@ -835,5 +797,68 @@ public final class HBaseKiji implements Kiji {
    */
   ZooKeeperClient getZKClient() {
     return mZKClient;
+  }
+
+  /**
+   * Creates a Kiji table in an HBase instance, without checking for validation compatibility and
+   * without applying permissions.
+   *
+   * @param tableLayout The initial layout of the table (with unassigned column ids).
+   * @param splitKeys The initial key boundaries between regions.  There will be splitKeys
+   *     + 1 regions created.  Pass null to specify the default single region.
+   * @throws IOException on I/O error.
+   * @throws KijiAlreadyExistsException if the table already exists.
+   */
+  private void createTableUnchecked(
+      TableLayoutDesc tableLayout,
+      byte[][] splitKeys) throws IOException {
+    final KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableLayout.getName()).build();
+
+    // This will validate the layout and may throw an InvalidLayoutException.
+    final KijiTableLayout kijiTableLayout = KijiTableLayout.newLayout(tableLayout);
+
+    if (getMetaTable().tableExists(tableLayout.getName())) {
+      throw new KijiAlreadyExistsException(
+          String.format("Kiji table '%s' already exists.", tableURI), tableURI);
+    }
+
+    if (tableLayout.getKeysFormat() instanceof RowKeyFormat) {
+      LOG.warn("Usage of 'RowKeyFormat' is deprecated. New tables should use 'RowKeyFormat2'.");
+    }
+
+    getMetaTable().updateTableLayout(tableLayout.getName(), tableLayout);
+
+    if (mSystemVersion.compareTo(Versions.SYSTEM_2_0) >= 0) {
+      // system-2.0 clients retrieve the table layout from ZooKeeper as a stream of notifications.
+      // Invariant: ZooKeeper hold the most recent layout of the table.
+      LOG.debug("Writing initial table layout in ZooKeeper for table {}.", tableURI);
+      try {
+        final ZooKeeperMonitor monitor = new ZooKeeperMonitor(mZKClient);
+        try {
+          final byte[] layoutId = Bytes.toBytes(kijiTableLayout.getDesc().getLayoutId());
+          monitor.notifyNewTableLayout(tableURI, layoutId, -1);
+        } finally {
+          monitor.close();
+        }
+      } catch (KeeperException ke) {
+        throw new IOException(ke);
+      }
+    }
+
+    try {
+      final HTableSchemaTranslator translator = new HTableSchemaTranslator();
+      final HTableDescriptor desc =
+          translator.toHTableDescriptor(mURI.getInstance(), kijiTableLayout);
+      LOG.debug("Creating HBase table '{}'.", desc.getNameAsString());
+      if (null != splitKeys) {
+        getHBaseAdmin().createTable(desc, splitKeys);
+      } else {
+        getHBaseAdmin().createTable(desc);
+      }
+    } catch (TableExistsException tee) {
+      throw new KijiAlreadyExistsException(
+          String.format("Kiji table '%s' already exists.", tableURI), tableURI);
+    }
+
   }
 }

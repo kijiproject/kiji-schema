@@ -135,6 +135,16 @@ public final class ZooKeeperMonitor implements Closeable {
   }
 
   /**
+   * Reports the path of the ZooKeeper node for permissions changes locking.
+   *
+   * @param instanceURI URI of the instance for which to get a lock for permissions changes.
+   * @return the path of the ZooKeeper node used as a lock for permissions changes.
+   */
+  public static File getInstancePermissionsLock(KijiURI instanceURI) {
+    return new File(getInstanceDir(instanceURI), "permissions_lock");
+  }
+
+  /**
    * Reports the ZooKeeper root path containing all tables in a Kiji instance.
    *
    * @param kijiURI URI of a Kiji instance to report the ZooKeeper node path for.
@@ -306,7 +316,6 @@ public final class ZooKeeperMonitor implements Closeable {
    */
   public void unregisterInstanceUser(KijiURI kijiURI, String userId, String systemVersion)
       throws KeeperException {
-
     final File usersDir = getInstanceUsersDir(kijiURI);
     final String nodeName = makeZKNodeName(userId, systemVersion);
     final File nodePath = new File(usersDir, nodeName);

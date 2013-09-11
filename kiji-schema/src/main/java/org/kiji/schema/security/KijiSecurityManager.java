@@ -94,6 +94,22 @@ public interface KijiSecurityManager extends Closeable {
   }
 
   /**
+   * Locks the Kiji instance managed by this.
+   *
+   * <p>This locks instances across all instances of KijiSecurityManager in all processes.</p>
+   *
+   * @throws IOException on I/O error.
+   */
+  void lock() throws IOException;
+
+  /**
+   * Unlocks the Kiji instance managed by this.
+   *
+   * @throws IOException on I/O error.
+   */
+  void unlock() throws IOException;
+
+  /**
    * Grants a user permissions to perform an action.
    *
    * @param user to grant permission to.
@@ -138,7 +154,8 @@ public interface KijiSecurityManager extends Closeable {
 
   /**
    * Applies the correct permissions to a newly-created table in the instance managed  by this
-   * KijiSecurityManager.
+   * KijiSecurityManager.  Kiji uses this when creating a table.  This should not be called outside
+   * of kiji-schema.
    *
    * @param tableURI of the table that was just created.  Must be a URI specifying a table in the
    *     instance managed by this KijiSecurityManager.
