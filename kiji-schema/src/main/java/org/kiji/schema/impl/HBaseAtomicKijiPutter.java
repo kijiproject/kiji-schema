@@ -240,10 +240,17 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
     final HBaseColumnName columnName =
         capsule.getColumnNameTranslator().toHBaseColumnName(kijiColumnName);
+    final byte[] encoded;
 
-    final KijiCellEncoder cellEncoder =
-        capsule.getCellEncoderProvider().getEncoder(family, qualifier);
-    final byte[] encoded = cellEncoder.encode(value);
+    // If passed value is null, then let encoded value be null.
+    // HBase will check for non-existence of cell.
+    if (null == value) {
+      encoded = null;
+    } else {
+      final KijiCellEncoder cellEncoder =
+          capsule.getCellEncoderProvider().getEncoder(family, qualifier);
+      encoded = cellEncoder.encode(value);
+    }
 
     for (KeyValue kv : mHopper) {
       mPut.add(kv);

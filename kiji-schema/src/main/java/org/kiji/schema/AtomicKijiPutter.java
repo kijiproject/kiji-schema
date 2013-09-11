@@ -78,6 +78,7 @@ public interface AtomicKijiPutter extends Closeable {
    * and performs the accumulated puts if the test succeeds.
    *
    * <p>
+   *   <li> If the passed value is null, the check is for the lack of a cell (i.e. non-existance).
    *   <li> If the check fails, the current transaction remains open and unmodified.
    *        It is up to the caller to retry or rollback.
    *   <li> If the commit succeeds, the current transaction is completed and a new transaction

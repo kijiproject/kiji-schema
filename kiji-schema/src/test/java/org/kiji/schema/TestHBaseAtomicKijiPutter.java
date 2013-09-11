@@ -154,6 +154,25 @@ public class TestHBaseAtomicKijiPutter extends KijiClientTest {
   }
 
   @Test
+  public void testCheckNullAndCommit() throws Exception {
+    final EntityId eid = mTable.getEntityId("dynasty");
+    final KijiDataRequest nameRequest = KijiDataRequest.create("info", "name");
+
+    assertEquals(null, mReader.get(eid, nameRequest).getMostRecentCell("info", "name"));
+
+    mPutter.begin(eid);
+    mPutter.put("info", "name", "valois");
+    assertFalse(mPutter.checkAndCommit("info", "name", "henri"));
+
+    assertEquals(null, mReader.get(eid, nameRequest).getMostRecentCell("info", "name"));
+
+    assertTrue(mPutter.checkAndCommit("info", "name", null));
+
+    assertEquals("valois",
+        mReader.get(eid, nameRequest).getMostRecentValue("info", "name").toString());
+  }
+
+  @Test
   public void testSkipBegin() throws Exception {
     try {
       mPutter.put("info", "visits", 45L);
