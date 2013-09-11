@@ -25,8 +25,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.annotation.Nonnull;
-
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Collections2;
@@ -453,7 +451,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
           new Function<KijiTableLayout, TableLayoutDesc>() {
             /** {@inheritDoc} */
             @Override
-            public TableLayoutDesc apply(@Nonnull final KijiTableLayout refLayout) {
+            public TableLayoutDesc apply(final KijiTableLayout refLayout) {
               Preconditions.checkNotNull(refLayout);
               try {
                 final TableLayoutDesc refDesc = refLayout.getDesc();
