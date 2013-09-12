@@ -696,6 +696,7 @@ public final class HBaseKiji implements Kiji {
         // Unrecoverable ZooKeeper error:
         throw new IOException(ke);
       }
+      mMonitor.close();
     }
     if (mZKClient != null) {
       mZKClient.release();
@@ -714,6 +715,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public Kiji retain() {
+    LOG.debug("Retaining {}", this);
     final int counter = mRetainCount.getAndIncrement();
     Preconditions.checkState(counter >= 1,
         "Cannot retain closed Kiji %s: retain counter was %s.", mURI, counter);
@@ -723,6 +725,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public void release() throws IOException {
+    LOG.debug("Releasing {}", this);
     final int counter = mRetainCount.decrementAndGet();
     Preconditions.checkState(counter >= 0,
         "Cannot release closed Kiji %s: retain counter is now %s.", mURI, counter);

@@ -168,6 +168,7 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
     this.mZKAddress = zkAddress;
     this.mSessionTimeoutMS = sessionTimeoutMS;
     this.mRetainCount = new AtomicInteger(1);
+    LOG.debug("Created {}", this);
   }
 
   /**
@@ -198,7 +199,7 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
    */
   private synchronized void createZKClient() {
     try {
-      LOG.debug("Creating ZooKeeper client for {}", mZKAddress);
+      LOG.debug("Creating new ZooKeeper client for address {} in {}", mZKAddress, this);
       mZKClient = new ZooKeeper(mZKAddress, mSessionTimeoutMS, new SessionWatcher());
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
@@ -254,6 +255,7 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
   /** {@inheritDoc} */
   @Override
   public ZooKeeperClient retain() {
+    LOG.debug("Retaining {}", this);
     final int counter = mRetainCount.getAndIncrement();
     Preconditions.checkState(counter >= 1,
         "Cannot retain closed ZooKeeperClient: %s retain counter was %s.",
@@ -264,6 +266,7 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
   /** {@inheritDoc} */
   @Override
   public void release() throws IOException {
+    LOG.debug("Releasing {}", this);
     final int counter = mRetainCount.decrementAndGet();
     Preconditions.checkState(counter >= 0,
         "Cannot release closed ZooKeeperClient: %s retain counter is now %s.",
@@ -278,6 +281,7 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
    * released properly.
    */
   private void close() {
+    LOG.debug("Closing {}", this);
     Preconditions.checkState(mOpened.get(), "Cannot close ZooKeeperClient that is not opened yet.");
     Preconditions.checkState(!mClosed.getAndSet(true),
         "Cannot close ZooKeeperClient multiple times.");
@@ -541,6 +545,7 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
    */
   public String toString() {
     return Objects.toStringHelper(getClass())
+        .add("this", System.identityHashCode(this))
         .add("ZooKeeper_address", mZKAddress)
         .add("Session_timeout_millis", mSessionTimeoutMS)
         .add("Retain_count", mRetainCount.get())
