@@ -333,7 +333,7 @@
 
       <properties>
         <hadoop.version>1.0.3</hadoop.version>
-        <hbase.version>0.94.7</hbase.version>
+        <hbase.version>0.94.7-security</hbase.version>
         <hbase-maven-plugin.version>1.0.11-hadoop1</hbase-maven-plugin.version>
       </properties>
 

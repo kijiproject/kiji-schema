@@ -24,12 +24,12 @@
    /** A user of Kiji.  See org.kiji.schema.security.KijiUser. */
   record KijiUserRecord {
     /** Name of the user. */
-    string name;
+    union { null, string } name = null;
   }
 
   /** A list of users of Kiji. */
   record SecurityUserList {
     /** List of users. */
-    array<KijiUserRecord> users;
+    union { null, array<KijiUserRecord> } users = null;
   }
  }
