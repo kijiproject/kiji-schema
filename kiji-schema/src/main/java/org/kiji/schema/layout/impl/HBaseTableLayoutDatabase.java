@@ -64,6 +64,9 @@ import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
+import org.kiji.schema.layout.TableLayoutBuilder;
+import org.kiji.schema.layout.TableLayoutBuilder.LayoutOptions;
+import org.kiji.schema.layout.TableLayoutBuilder.LayoutOptions.SchemaFormat;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
@@ -167,8 +170,16 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
 
   /** {@inheritDoc} */
   @Override
-  public KijiTableLayout updateTableLayout(String tableName, TableLayoutDesc update)
+  public KijiTableLayout updateTableLayout(String tableName, TableLayoutDesc layoutUpdate)
       throws IOException {
+
+    // Normalize the new layout to use schema UIDs:
+    TableLayoutBuilder layoutBuilder = new TableLayoutBuilder(mSchemaTable);
+    final TableLayoutDesc update = layoutBuilder.normalizeTableLayoutDesc(
+        layoutUpdate,
+        new LayoutOptions()
+            .setSchemaFormat(SchemaFormat.UID));
+
     // Fetch all the layout history:
     final List<KijiTableLayout> layouts =
         getTableLayoutVersions(tableName, HConstants.ALL_VERSIONS);

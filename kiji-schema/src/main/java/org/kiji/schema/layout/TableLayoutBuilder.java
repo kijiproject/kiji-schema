@@ -25,7 +25,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import com.google.common.base.Objects;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.Lists;
@@ -34,8 +33,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.AvroSchema;
 import org.kiji.schema.avro.AvroValidationPolicy;
@@ -62,11 +63,23 @@ public final class TableLayoutBuilder {
   /** Table layout descriptor builder backing this TableLayoutBuilder. */
   private final TableLayoutDesc.Builder mDescBuilder;
 
-  /** Kiji instance in which to configure schemas. */
-  private final Kiji mKiji;
+  /** Table to resolve Avro schemas. */
+  private final KijiSchemaTable mSchemaTable;
 
   /** Function that resolves AvroSchema to Schema objects against the specified Kiji instance. */
   private final AvroSchemaResolver mSchemaResolver;
+
+  /**
+   * Initializes a layout builder with no reference layout.
+   *
+   * @param schemaTable Table to resolve Avro schemas.
+   * @throws IOException on I/O error.
+   */
+  public TableLayoutBuilder(KijiSchemaTable schemaTable) throws IOException {
+    mSchemaTable = schemaTable;
+    mSchemaResolver = new AvroSchemaResolver(schemaTable);
+    mDescBuilder = null;
+  }
 
   /**
    * Initializes a new layout builder from an existing reference layout.
@@ -88,12 +101,17 @@ public final class TableLayoutBuilder {
       throw new InvalidLayoutException("Schema validation is available from "
           + Versions.LAYOUT_VALIDATION_VERSION + " and up; this layout is " + layoutVersion);
     }
-    mKiji = kiji;
-    mSchemaResolver = new AvroSchemaResolver(mKiji.getSchemaTable());
+    mSchemaTable = kiji.getSchemaTable();
+    mSchemaResolver = new AvroSchemaResolver(mSchemaTable);
     mDescBuilder = TableLayoutDesc.newBuilder(tableLayoutDesc)
         .setReferenceLayout(tableLayoutDesc.getLayoutId())
         .setLayoutId(nextLayoutId(tableLayoutDesc.getLayoutId()));
-    normalizeLayoutToSchemaUID();
+
+    // Normalize table layout to use schema UIDs only:
+    normalizeTableLayoutDesc(
+        mDescBuilder,
+        new LayoutOptions()
+            .setSchemaFormat(LayoutOptions.SchemaFormat.UID));
   }
 
   /**
@@ -249,7 +267,7 @@ public final class TableLayoutBuilder {
     Preconditions.checkNotNull(schema);
     Preconditions.checkNotNull(schemaRegistrationType);
 
-    final long schemaId = mKiji.getSchemaTable().getOrCreateSchemaId(schema);
+    final long schemaId = mSchemaTable.getOrCreateSchemaId(schema);
     final List<AvroSchema> schemas =
         getMutableRegisteredSchemaList(columnName, schemaRegistrationType);
     schemas.add(AvroSchema.newBuilder().setUid(schemaId).build());
@@ -498,18 +516,75 @@ public final class TableLayoutBuilder {
   }
 
   /**
-   * Normalizes the table layout descriptor to use schema UIDs only.
+   * Options to normalize table layout descriptors.
+   */
+  public static final class LayoutOptions {
+    /** Ways to represent an Avro schema. */
+    public static enum SchemaFormat {
+      /** Compact but non-portable way to represent an Avro schema. */
+      UID,
+
+      /** Verbose but portable way to represent an Avro schema. */
+      JSON;
+    };
+
+    private SchemaFormat mSchemaFormat = SchemaFormat.JSON;
+
+    /**
+     * Default options to normalize table layout descriptors.
+     */
+    public LayoutOptions() {
+      mSchemaFormat = SchemaFormat.JSON;  // verbose but portable
+    }
+
+    /**
+     * Sets the format to use to encode Avro schema.
+     * @param schemaFormat Format to use to encode Avro schema.
+     * @return this builder.
+     */
+    public LayoutOptions setSchemaFormat(SchemaFormat schemaFormat) {
+      mSchemaFormat = schemaFormat;
+      return this;
+    }
+
+    /**
+     * Returns the format to use to encode Avro schema.
+     * @return the format to use to encode Avro schema.
+     */
+    public SchemaFormat getSchemaFormat() { return mSchemaFormat; }
+  };
+
+  /**
+   * Normalizes a table layout descriptor to use schema UIDs only.
    *
+   * @param desc Table layout descriptor to normalize.
+   * @param options Options describing the normalization to apply.
+   * @return the normalized table layout descriptor.
    * @throws IOException on I/O error.
    */
-  private void normalizeLayoutToSchemaUID() throws IOException {
-    for (LocalityGroupDesc lgdesc : mDescBuilder.getLocalityGroups()) {
+  public TableLayoutDesc normalizeTableLayoutDesc(TableLayoutDesc desc, LayoutOptions options)
+      throws IOException {
+    final TableLayoutDesc.Builder descBuilder = TableLayoutDesc.newBuilder(desc);
+    normalizeTableLayoutDesc(descBuilder, options);
+    return descBuilder.build();
+  }
+
+  /**
+   * Normalizes the table layout descriptor to use schema UIDs only.
+   *
+   * @param descBuilder Builder for the table layout descriptor to normalize.
+   * @param options Options describing the normalization to apply.
+   * @throws IOException on I/O error.
+   */
+  private void normalizeTableLayoutDesc(TableLayoutDesc.Builder descBuilder, LayoutOptions options)
+      throws IOException {
+    for (LocalityGroupDesc lgdesc : descBuilder.getLocalityGroups()) {
       for (FamilyDesc fdesc : lgdesc.getFamilies()) {
         if (fdesc.getMapSchema() != null) {
-          normalizeCellSchemaToUID(fdesc.getMapSchema());
+          normalizeCellSchema(fdesc.getMapSchema(), options);
         } else {
           for (ColumnDesc cdesc : fdesc.getColumns()) {
-            normalizeCellSchemaToUID(cdesc.getColumnSchema());
+            normalizeCellSchema(cdesc.getColumnSchema(), options);
           }
         }
       }
@@ -520,9 +595,11 @@ public final class TableLayoutBuilder {
    * Normalizes a CellSchema to use schema UIDs only.
    *
    * @param cellSchema CellSchema to normalize.
+   * @param options Options describing the normalization to apply.
    * @throws IOException on I/O error.
    */
-  private void normalizeCellSchemaToUID(CellSchema cellSchema) throws IOException {
+  private void normalizeCellSchema(CellSchema cellSchema, LayoutOptions options)
+      throws IOException {
     switch (cellSchema.getType()) {
       case AVRO: {
         // Ensure the lists of schemas are initialized (non null) and normalized to UIDs:
@@ -536,15 +613,19 @@ public final class TableLayoutBuilder {
           cellSchema.setWritten(Lists.<AvroSchema>newArrayList());
         }
 
-        normalizeAvroSchemaCollectionToUID(cellSchema.getReaders());
-        normalizeAvroSchemaCollectionToUID(cellSchema.getWriters());
-        normalizeAvroSchemaCollectionToUID(cellSchema.getWritten());
+        if (cellSchema.getDefaultReader() != null) {
+          normalizeAvroSchema(cellSchema.getDefaultReader(), options);
+        }
+        normalizeAvroSchemaCollection(cellSchema.getReaders(), options);
+        normalizeAvroSchemaCollection(cellSchema.getWriters(), options);
+        normalizeAvroSchemaCollection(cellSchema.getWritten(), options);
 
         break;
       }
       case CLASS:
       case INLINE:
       case COUNTER:
+      case RAW_BYTES:
         break;
       default:
           throw new InvalidLayoutException(String.format(
@@ -557,12 +638,15 @@ public final class TableLayoutBuilder {
    * Normalizes a collection of AvroSchema to use schema UIDs only.
    *
    * @param avroSchemas Collection of AvroSchema to normalize.
+   * @param options Options describing the normalization to apply.
    * @throws IOException on I/O error.
    */
-  private void normalizeAvroSchemaCollectionToUID(Collection<AvroSchema> avroSchemas)
+  private void normalizeAvroSchemaCollection(
+      Collection<AvroSchema> avroSchemas,
+      LayoutOptions options)
       throws IOException {
     for (AvroSchema avroSchema : avroSchemas) {
-      normalizeAvroSchemaToUID(avroSchema);
+      normalizeAvroSchema(avroSchema, options);
     }
   }
 
@@ -572,35 +656,52 @@ public final class TableLayoutBuilder {
    * <p> Mutates the AvroSchema in-place. </p>
    *
    * @param avroSchema AvroSchema to normalize.
+   * @param options Options describing the normalization to apply.
    * @throws IOException on I/O error.
    */
-  private void normalizeAvroSchemaToUID(AvroSchema avroSchema) throws IOException {
+  private void normalizeAvroSchema(AvroSchema avroSchema, LayoutOptions options)
+      throws IOException {
     final boolean hasJson = (avroSchema.getJson() != null);
     final boolean hasUid = (avroSchema.getUid() != null);
 
+    /** Schema this descriptor resolves to. */
+    Schema schema = null;
+
     if (hasJson && hasUid) {
       // Both JSON and UID are filled in, this should not happen, but let's handle it:
-      final Schema schema = new Schema.Parser().parse(avroSchema.getJson());
-      final long schemaId = mKiji.getSchemaTable().getOrCreateSchemaId(schema);
-      if (avroSchema.getUid() != schemaId) {
+      schema = new Schema.Parser().parse(avroSchema.getJson());
+      final Schema schemaFromId = mSchemaTable.getSchema(avroSchema.getUid());
+      if (!Objects.equal(schema, schemaFromId)) {
         throw new InvalidLayoutException(String.format(
             "Inconsistent AvroSchema: '%s' : UID %d does not match with JSON descriptor '%s'.",
             avroSchema, avroSchema.getUid(), avroSchema.getJson()));
       }
-      avroSchema.setJson(null);  // discard JSON, keep UID only.
 
     } else if (hasJson) {
-      final Schema schema = new Schema.Parser().parse(avroSchema.getJson());
-      final long schemaId = mKiji.getSchemaTable().getOrCreateSchemaId(schema);
-      avroSchema.setUid(schemaId);
-      avroSchema.setJson(null);
+      schema = new Schema.Parser().parse(avroSchema.getJson());
 
     } else if (hasUid) {
-      // Make sure the UID exists:
-      mKiji.getSchemaTable().getSchema(avroSchema.getUid());
+      schema = mSchemaTable.getSchema(avroSchema.getUid());
 
     } else {
       throw new InvalidLayoutException("AvroSchema has neither JSON nor UID: " + avroSchema);
+    }
+
+    Preconditions.checkState(schema != null);
+
+    switch (options.getSchemaFormat()) {
+      case UID: {
+        final long schemaId = mSchemaTable.getOrCreateSchemaId(schema);
+        avroSchema.setUid(schemaId);
+        avroSchema.setJson(null);
+        break;
+      }
+      case JSON: {
+        avroSchema.setUid(null);
+        avroSchema.setJson(schema.toString());
+        break;
+      }
+      default: throw new InternalKijiError("Unknown schema format: " + options.getSchemaFormat());
     }
   }
 
