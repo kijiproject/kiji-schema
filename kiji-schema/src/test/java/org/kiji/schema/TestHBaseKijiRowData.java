@@ -353,6 +353,28 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     assertEquals("cat", input.getValue("family", "qual1", 4L).toString());
   }
 
+  /**
+   * Logs the content of an HBaseKijiRowData (debug log-level).
+   *
+   * @param row HBaseKijiRowData to dump.
+   */
+  private static void logDebugRow(HBaseKijiRowData row) {
+    if (!LOG.isDebugEnabled()) {
+      return;
+    }
+    LOG.debug("Dumping content of HBaseKijiRowData {}", row);
+    for (String family : row.getMap().keySet()) {
+      for (String qualifier : row.getMap().get(family).keySet()) {
+        for (Map.Entry<Long, byte[]> entry : row.getMap().get(family).get(qualifier).entrySet()) {
+          final long timestamp = entry.getKey();
+          final byte[] bytes = entry.getValue();
+          LOG.debug("\tcolumn={}:{}\ttimestamp={}\tvalue={}",
+              family, qualifier, timestamp, Bytes.toStringBinary(bytes));
+        }
+      }
+    }
+  }
+
   @Test
   public void testReadColumnTypes() throws IOException {
     final List<KeyValue> kvs = Lists.newArrayList();
@@ -364,13 +386,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         .addColumns(ColumnsDef.create().withMaxVersions(1).add("family", "qual0"))
         .build();
     final HBaseKijiRowData input = new HBaseKijiRowData(mTable, dataRequest, eid, result, null);
-    // FIXME: Testing by logging?
-    for (String family : input.getMap().keySet()) {
-      LOG.debug("Family: {}", family);
-      for (String qual : input.getMap().get(family).keySet()) {
-        LOG.debug("Qualifier: {}", qual);
-      }
-    }
+    logDebugRow(input);
+
     assertFalse(input.containsColumn("not-a-family"));
     assertTrue(input.containsColumn("family"));
     assertTrue(input.containsColumn("family", "qual0"));
@@ -419,7 +436,6 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     // FIXME: Testing by logging?
     for (Map.Entry<String, NavigableMap<Long, CharSequence>> qualToOtherMap
         : stringsByTime.entrySet()) {
-
       LOG.debug("Qualifiers found: {}", qualToOtherMap.getKey());
     }
   }
@@ -558,13 +574,8 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         .addColumns(ColumnsDef.create().withMaxVersions(3).add("family", "qual0"))
         .build();
     final HBaseKijiRowData input = new HBaseKijiRowData(mTable, dataRequest, eid, result, null);
-    // FIXME: What?
-    for (String family : input.getMap().keySet()) {
-      LOG.info("Family: " + family);
-      for (String qual : input.getMap().get(family).keySet()) {
-        LOG.info("Qualifier: " + qual);
-      }
-    }
+    logDebugRow(input);
+
     assertFalse(input.containsColumn("not-a-family"));
     assertTrue(input.containsColumn("family"));
     assertTrue(input.containsColumn("family", "qual0"));
@@ -576,6 +587,22 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     assertTrue(cells.hasNext());
     assertEquals("value2", cells.next().getData().toString());
     assertFalse(cells.hasNext());
+
+    try {
+      input.iterator("unknown_family");
+      fail("HBaseKijiRowData.iterator() should fail on columns with no data request.");
+    } catch (IllegalArgumentException iae) {
+      LOG.info("Expected error: {}", iae.getMessage());
+      assertTrue(iae.getMessage().contains("Column unknown_family has no data request."));
+    }
+
+    try {
+      input.iterator("family", "qual1");
+      fail("HBaseKijiRowData.iterator() should fail on columns with no data request.");
+    } catch (IllegalArgumentException iae) {
+      LOG.info("Expected error: {}", iae.getMessage());
+      assertTrue(iae.getMessage().contains("Column family:qual1 has no data request."));
+    }
   }
 
   @Test
@@ -598,18 +625,27 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     final KijiTableReader reader = mTable.openTableReader();
     try {
-        final KijiRowData row1 = reader.get(mTable.getEntityId("row1"), dataRequest);
-        final Iterator<KijiCell<Integer>> cells = row1.iterator("map");
-        assertTrue(cells.hasNext());
-        final KijiCell<?> cell0 = cells.next();
-        assertEquals("Wrong first cell!", "key0", cell0.getQualifier());
-        assertTrue(cells.hasNext());
-        final KijiCell<?> cell1 = cells.next();
-        assertEquals("Wrong second cell!", "key1", cell1.getQualifier());
-        assertTrue(cells.hasNext());
-        final KijiCell<?> cell2 = cells.next();
-        assertEquals("Wrong third cell!", "key2", cell2.getQualifier());
-        assertFalse(cells.hasNext());
+      final KijiRowData row1 = reader.get(mTable.getEntityId("row1"), dataRequest);
+      final Iterator<KijiCell<Integer>> cells = row1.iterator("map");
+      assertTrue(cells.hasNext());
+      final KijiCell<?> cell0 = cells.next();
+      assertEquals("Wrong first cell!", "key0", cell0.getQualifier());
+      assertTrue(cells.hasNext());
+      final KijiCell<?> cell1 = cells.next();
+      assertEquals("Wrong second cell!", "key1", cell1.getQualifier());
+      assertTrue(cells.hasNext());
+      final KijiCell<?> cell2 = cells.next();
+      assertEquals("Wrong third cell!", "key2", cell2.getQualifier());
+      assertFalse(cells.hasNext());
+
+      final Iterator<KijiCell<Integer>> cellsKey1 = row1.iterator("map", "key1");
+      assertTrue(cellsKey1.hasNext());
+      final KijiCell<Integer> key1Cell = cellsKey1.next();
+      assertEquals("key1", key1Cell.getQualifier());
+      assertEquals(1L, key1Cell.getTimestamp());
+      assertEquals((Integer) 1, key1Cell.getData());
+      assertFalse(cellsKey1.hasNext());
+
     } finally {
       reader.close();
     }
@@ -715,13 +751,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         .build();
 
     final HBaseKijiRowData input = new HBaseKijiRowData(mTable, dataRequest, eid, result, null);
-    // FIXME: What?
-    for (String family : input.getMap().keySet()) {
-      LOG.info("Family: " + family);
-      for (String qual : input.getMap().get(family).keySet()) {
-        LOG.info("Qualifier: " + qual);
-      }
-    }
+    logDebugRow(input);
 
     assertFalse(input.containsColumn("not-a-family"));
     assertTrue(input.containsColumn("family"));

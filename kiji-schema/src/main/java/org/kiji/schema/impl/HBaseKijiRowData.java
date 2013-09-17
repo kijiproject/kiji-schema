@@ -180,8 +180,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       // Get cell decoder.
       mDecoder = rowdata.mDecoderProvider.getDecoder(mColumn.getFamily(), mColumn.getQualifier());
       // Get info about the data request for this column.
-      KijiDataRequest.Column columnRequest = rowdata.mDataRequest.getColumn(mColumn.getFamily(),
-          mColumn.getQualifier());
+      KijiDataRequest.Column columnRequest = rowdata.mDataRequest.getRequestForColumn(mColumn);
       mMaxVersions = columnRequest.getMaxVersions();
       mKVs = rowdata.mResult.raw();
       mNumVersions = 0;
@@ -747,44 +746,57 @@ public final class HBaseKijiRowData implements KijiRowData {
     return result;
   }
 
-
-  /**  {@inheritDoc} */
+  /** {@inheritDoc} */
   @Override
-  public <T> Iterator<KijiCell<T>> iterator(String family, String qualifier) throws
-    IOException {
-    return new KijiCellIterator<T>(new KijiColumnName(family, qualifier), this, mEntityId);
+  public <T> Iterator<KijiCell<T>> iterator(String family, String qualifier)
+      throws IOException {
+    final KijiColumnName column = new KijiColumnName(family, qualifier);
+    Preconditions.checkArgument(
+        mDataRequest.getRequestForColumn(column) != null,
+        "Column %s has no data request.", column);
+    return new KijiCellIterator<T>(column, this, mEntityId);
   }
 
-  /**  {@inheritDoc} */
+  /** {@inheritDoc} */
   @Override
-  public <T> Iterator<KijiCell<T>> iterator(String family) throws
-    IOException {
+  public <T> Iterator<KijiCell<T>> iterator(String family)
+      throws IOException {
+    final KijiColumnName column = new KijiColumnName(family, null);
+    Preconditions.checkArgument(
+        mDataRequest.getRequestForColumn(column) != null,
+        "Column %s has no data request.", column);
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         "iterator(String family) is only enabled"
         + " on map type column families. The column family [%s], is a group type column family."
         + " Please use the iterator(String family, String qualifier) method.",
         family);
-    return new KijiCellIterator<T>(new KijiColumnName(family, null), this, mEntityId);
+    return new KijiCellIterator<T>(column, this, mEntityId);
   }
 
-  /**  {@inheritDoc} */
+  /** {@inheritDoc} */
   @Override
   public <T> Iterable<KijiCell<T>> asIterable(String family, String qualifier) {
-    return new CellIterable<T>(new KijiColumnName(family, qualifier), this, mEntityId);
-
+    final KijiColumnName column = new KijiColumnName(family, qualifier);
+    Preconditions.checkArgument(
+        mDataRequest.getRequestForColumn(column) != null,
+        "Column %s has no data request.", column);
+    return new CellIterable<T>(column, this, mEntityId);
   }
 
-  /**  {@inheritDoc} */
+  /** {@inheritDoc} */
   @Override
   public <T> Iterable<KijiCell<T>> asIterable(String family) {
+    final KijiColumnName column = new KijiColumnName(family, null);
+    Preconditions.checkArgument(
+        mDataRequest.getRequestForColumn(column) != null,
+        "Column %s has no data request.", column);
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         "asIterable(String family) is only enabled"
         + " on map type column families. The column family [%s], is a group type column family."
         + " Please use the asIterable(String family, String qualifier) method.",
         family);
-    return new CellIterable<T>(new KijiColumnName(family, null) , this, mEntityId);
+    return new CellIterable<T>(column, this, mEntityId);
   }
-
 
   /** {@inheritDoc} */
   @Override

@@ -440,15 +440,73 @@ public final class KijiDataRequest implements Serializable {
   }
 
   /**
-   * Gets a <code>Column</code> requested named "<code>family</code>:<code>key</code>", or
-   * null if none exists.
+   * Reports the request for the specified column or family, or null if no such request exists.
    *
    * @param family The requested column family name.
    * @param qualifier The requested column qualifier name.
-   * @return The requested column, or null if none exists.
+   *     Null means no qualifier, ie. reports the request for the entire family.
+   * @return the request for the specified column or family, or null if no such request exists.
    */
   public Column getColumn(String family, String qualifier) {
     return mColumns.get(qualifier != null ? family + ":" + qualifier : family);
+  }
+
+  /**
+   * Reports the request for the specified column or family, or null if no such request exists.
+   *
+   * @param column Requested column or family.
+   * @return the request for the specified column or family, or null if no such request exists.
+   */
+  public Column getColumn(final KijiColumnName column) {
+    return mColumns.get(column.toString());
+  }
+
+  /**
+   * Reports the request that applies for the specified column, or null if no such request exists.
+   *
+   * <p>
+   *   If the column belongs to a map-type family and there is a request for the entire family,
+   *   the request for the entire family is reported.
+   * </p>
+   *
+   * @param family The requested column family name.
+   * @param qualifier The requested column qualifier name.
+   *     Null means no qualifier, ie. reports the request for the entire family.
+   * @return the request that applies for the specified column or family,
+   *     or null if no such request exists.
+   */
+  public Column getRequestForColumn(String family, String qualifier) {
+    final Column column = getColumn(family, qualifier);
+    if (column != null) {
+      return column;
+    }
+    if (qualifier != null) {
+      return getColumn(family, null);
+    }
+    return null;
+  }
+
+  /**
+   * Reports the request the applies for the specified column, or null if no such request exists.
+   *
+   * <p>
+   *   If the column belongs to a map-type family and there is a request for the entire family,
+   *   the request for the entire family is reported.
+   * </p>
+   *
+   * @param columnName Requested column or family.
+   * @return the request that applies for the specified column or family,
+   *     or null if no such request exists.
+   */
+  public Column getRequestForColumn(final KijiColumnName columnName) {
+    final Column column = getColumn(columnName);
+    if (column != null) {
+      return column;
+    }
+    if (columnName.isFullyQualified()) {
+      return getColumn(columnName.getFamily(), null);
+    }
+    return null;
   }
 
   /**
