@@ -45,6 +45,7 @@ import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
+import org.kiji.schema.layout.SchemaTableAvroResolver;
 import org.kiji.schema.util.AvroUtils;
 import org.kiji.schema.util.AvroUtils.SchemaCompatibilityType;
 import org.kiji.schema.util.AvroUtils.SchemaPairCompatibility;
@@ -286,7 +287,7 @@ public final class TableLayoutUpdateValidator {
           }
         }
 
-        final AvroSchemaResolver resolver = new AvroSchemaResolver(mKiji.getSchemaTable());
+        final AvroSchemaResolver resolver = new SchemaTableAvroResolver(mKiji.getSchemaTable());
 
         // Resolve reader Avro schema descriptors to Schema objects:
         final List<Schema> readerSchemas =

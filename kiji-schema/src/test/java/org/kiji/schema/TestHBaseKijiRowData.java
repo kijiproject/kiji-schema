@@ -76,6 +76,10 @@ public class TestHBaseKijiRowData extends KijiClientTest {
   public static final String WRITER_SCHEMA_TEST =
       "org/kiji/schema/layout/TestHBaseKijiRowData.writer-schema.json";
 
+  /** Test layout with version layout-1.3. */
+  public static final String TEST_LAYOUT_V1_3 =
+      "org/kiji/schema/layout/TestHBaseKijiRowData.layout-v1.3.json";
+
   private static final String TABLE_NAME = "row_data_test_table";
 
   private byte[] mHBaseFamily;
@@ -252,6 +256,33 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     } catch (NoSuchColumnException nsce) {
       assertEquals("Table 'row_data_test_table' has no column 'family:no_qualifier'.",
           nsce.getMessage());
+    }
+  }
+
+  /** Tests for KijiRowData.getReaderSchema() with layout-1.3 tables. */
+  @Test
+  public void testGetReaderSchemaLayout13() throws Exception {
+    final Kiji kiji = new InstanceBuilder(getKiji())
+        .withTable(KijiTableLayouts.getLayout(TEST_LAYOUT_V1_3))
+        .build();
+    final KijiTable table = kiji.openTable("table");
+    try {
+      final KijiTableReader reader = table.getReaderFactory().openTableReader();
+      try {
+        final EntityId eid = table.getEntityId("row");
+        final KijiDataRequest dataRequest = KijiDataRequest.builder()
+            .addColumns(ColumnsDef.create().addFamily("family"))
+            .build();
+        final KijiRowData row = reader.get(eid, dataRequest);
+        assertEquals(
+            Schema.Type.STRING,
+            row.getReaderSchema("family", "qual0").getType());
+
+      } finally {
+        reader.close();
+      }
+    } finally {
+      table.release();
     }
   }
 

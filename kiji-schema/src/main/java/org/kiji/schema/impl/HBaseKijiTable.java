@@ -243,6 +243,11 @@ public final class HBaseKijiTable implements KijiTable {
 
       // TODO(SCHEMA-503): the meta-table doesn't provide a way to look-up a layout by ID:
       final KijiTableLayout newLayout = getMostRecentLayout();
+      try {
+          newLayout.setSchemaTable(mKiji.getSchemaTable());
+      } catch (IOException ioe) {
+        throw new KijiIOException(ioe);
+      }
       Preconditions.checkState(
           Objects.equal(newLayout.getDesc().getLayoutId(), newLayoutId),
           "New layout ID %s does not match most recent layout ID %s from meta-table.",
@@ -344,7 +349,8 @@ public final class HBaseKijiTable implements KijiTable {
       // system-1.x clients retrieve the table layout from the meta-table:
 
       // throws KijiTableNotFoundException
-      final KijiTableLayout layout = mKiji.getMetaTable().getTableLayout(name);
+      final KijiTableLayout layout = mKiji.getMetaTable().getTableLayout(name)
+          .setSchemaTable(mKiji.getSchemaTable());
       mLayoutMonitor = null;
       mLayoutTracker = null;
       mLayoutCapsule = new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
@@ -490,6 +496,7 @@ public final class HBaseKijiTable implements KijiTable {
    * @throws IOException in case of an error updating LayoutConsumers.
    */
   void updateLayoutConsumers(KijiTableLayout layout) throws IOException {
+    layout.setSchemaTable(mKiji.getSchemaTable());
     final LayoutCapsule capsule = new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
     synchronized (mLayoutConsumers) {
       for (LayoutConsumer consumer : mLayoutConsumers) {

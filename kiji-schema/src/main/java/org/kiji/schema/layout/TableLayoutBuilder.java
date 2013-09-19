@@ -77,7 +77,7 @@ public final class TableLayoutBuilder {
    */
   public TableLayoutBuilder(KijiSchemaTable schemaTable) throws IOException {
     mSchemaTable = schemaTable;
-    mSchemaResolver = new AvroSchemaResolver(schemaTable);
+    mSchemaResolver = new SchemaTableAvroResolver(schemaTable);
     mDescBuilder = null;
   }
 
@@ -102,7 +102,7 @@ public final class TableLayoutBuilder {
           + Versions.LAYOUT_VALIDATION_VERSION + " and up; this layout is " + layoutVersion);
     }
     mSchemaTable = kiji.getSchemaTable();
-    mSchemaResolver = new AvroSchemaResolver(mSchemaTable);
+    mSchemaResolver = new SchemaTableAvroResolver(mSchemaTable);
     mDescBuilder = TableLayoutDesc.newBuilder(tableLayoutDesc)
         .setReferenceLayout(tableLayoutDesc.getLayoutId())
         .setLayoutId(nextLayoutId(tableLayoutDesc.getLayoutId()));

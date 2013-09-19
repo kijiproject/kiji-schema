@@ -113,7 +113,9 @@ public final class CellDecoderProvider {
       }
 
       // Fills in the missing details to build the decoder:
-      cellSpec.setSchemaTable(schemaTable);
+      if (cellSpec.getSchemaTable() == null) {
+        cellSpec.setSchemaTable(schemaTable);
+      }
       if (cellSpec.getDecoderFactory() == null) {
         cellSpec.setDecoderFactory(factory);
       }

@@ -59,6 +59,7 @@ import org.kiji.schema.layout.AvroSchemaResolver;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.SchemaTableAvroResolver;
 import org.kiji.schema.layout.TableLayoutBuilder;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.BytesKey;
@@ -406,7 +407,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
     if (writerSchemas == null) {
       return null;
     }
-    final AvroSchemaResolver resolver = new AvroSchemaResolver(spec.getSchemaTable());
+    final AvroSchemaResolver resolver = new SchemaTableAvroResolver(spec.getSchemaTable());
     return Sets.newHashSet(Collections2.transform(writerSchemas, resolver));
   }
 

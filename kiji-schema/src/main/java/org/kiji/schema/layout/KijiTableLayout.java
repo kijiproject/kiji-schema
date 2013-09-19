@@ -49,6 +49,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
@@ -894,6 +895,12 @@ public final class KijiTableLayout {
   private final ImmutableSet<KijiColumnName> mColumnNames;
 
   /**
+   * Optional schema table that allows resolution of Avro schemas.
+   * The schema table is injected in the CellSpec instances created from this layout.
+   */
+  private KijiSchemaTable mSchemaTable;
+
+  /**
    * Ensure a row key format (version 1) specified in a layout file is sane.
    * @param format The RowKeyFormat created from the layout file for a table.
    * @throws InvalidLayoutException If the format is invalid.
@@ -1293,51 +1300,77 @@ public final class KijiTableLayout {
   }
   // CSON: MethodLengthCheck
 
-  /** @return the Avro descriptor for this table layout. */
+  /**
+   * Returns the Avro descriptor for this table layout.
+   * @return the Avro descriptor for this table layout.
+   */
   public TableLayoutDesc getDesc() {
     return TableLayoutDesc.newBuilder(mDesc).build();
   }
 
-  /** @return the table name. */
+  /**
+   * Returns the table name.
+   * @return the table name.
+   */
   public String getName() {
     return mDesc.getName();
   }
 
-  /** @return the locality groups in the table, in no particular order. */
+  /**
+   * Returns the locality groups in the table, in no particular order.
+   * @return the locality groups in the table, in no particular order.
+   */
   public Collection<LocalityGroupLayout> getLocalityGroups() {
     return mLocalityGroups;
   }
 
-  /** @return the bidirectional mapping between locality group names (no alias) and IDs. */
+  /**
+   * Returns the bidirectional mapping between locality group names (no alias) and IDs.
+   * @return the bidirectional mapping between locality group names (no alias) and IDs.
+   */
   public BiMap<ColumnId, String> getLocalityGroupIdNameMap() {
     return mLocalityGroupIdNameMap;
   }
 
-  /** @return the map from locality group names and aliases to layouts. */
+  /**
+   * Returns the map from locality group names and aliases to layouts.
+   * @return the map from locality group names and aliases to layouts.
+   */
   public Map<String, LocalityGroupLayout> getLocalityGroupMap() {
     return mLocalityGroupMap;
   }
 
-  /** @return the mapping from family names and aliases to family layouts in the table. */
+  /**
+   * Returns the map from locality group names and aliases to layouts.
+   * @return the map from locality group names and aliases to layouts.
+   */
   public Map<String, FamilyLayout> getFamilyMap() {
     return mFamilyMap;
   }
 
-  /** @return all the families in the table, in no particular order. */
+  /**
+   * Returns all the families in the table, in no particular order.
+   * @return all the families in the table, in no particular order.
+   */
   public Collection<FamilyLayout> getFamilies() {
     return mFamilies;
   }
 
-  /** @return all the primary column names in the table, including map-type families. */
+  /**
+   * Returns all the primary column names in the table, including map-type families.
+   * @return all the primary column names in the table, including map-type families.
+   */
   public Set<KijiColumnName> getColumnNames() {
     return mColumnNames;
   }
 
   /**
-   * Gets the schema for a column.
+   * Reports the raw specification record for the specified column.
    *
-   * @param columnName The name of the column to get the schema for.
-   * @return the schema of the specified column.
+   * <p> Note: in most cases, you should use {@link #getCellSpec(KijiColumnName)}. </p>
+   *
+   * @param columnName Column to reports the raw specification record of.
+   * @return the raw specification record for the specified column.
    * @throws NoSuchColumnException if the column does not exist.
    */
   public CellSchema getCellSchema(KijiColumnName columnName) throws NoSuchColumnException {
@@ -1363,13 +1396,19 @@ public final class KijiTableLayout {
   }
 
   /**
-   * Reports the schema of the specified column.
+   * Reports the Avro schema of the specified column.
+   *
+   * <p> This method will return null in most cases on table with layout validation enabled. </p>
    *
    * @param columnName Column name.
-   * @return the schema of the column.
+   * @return the Avro schema of the column.
    * @throws InvalidLayoutException if the layout is invalid.
    * @throws NoSuchColumnException if the column does not exist.
+   * @deprecated With schema validation and layout 1.3, there is no single Avro schema associated
+   *     with a column anymore.
+   *     Use {@link #getCellSpec(KijiColumnName)} to obtain further details about a column.
    */
+  @Deprecated
   public Schema getSchema(KijiColumnName columnName)
       throws InvalidLayoutException, NoSuchColumnException {
     return CellSpec.readAvroSchema(getCellSchema(columnName));
@@ -1381,18 +1420,23 @@ public final class KijiTableLayout {
    * @param column Column name.
    * @return the cell format for the column.
    * @throws NoSuchColumnException if the column does not exist.
+   * @deprecated Use {@link #getCellSpec(KijiColumnName)} to obtain further details about a column.
    */
+  @Deprecated
   public SchemaStorage getCellFormat(KijiColumnName column) throws NoSuchColumnException {
     return getCellSchema(column).getStorage();
   }
 
   /**
-   * @return the cell specification for a given column.
-   * @param column Column to look up.
+   * Reports the specification of the specified column.
+   *
+   * @param column Column to report the specification of.
+   * @return the specification for the specified column.
    * @throws IOException on I/O error.
    */
   public CellSpec getCellSpec(KijiColumnName column) throws IOException {
-    return CellSpec.fromCellSchema(getCellSchema(column));
+    return CellSpec.fromCellSchema(getCellSchema(column))
+        .setSchemaTable(mSchemaTable);
   }
 
   /**
@@ -1447,6 +1491,28 @@ public final class KijiTableLayout {
     } catch (IOException ioe) {
       throw new RuntimeException(ioe);
     }
+  }
+
+  /**
+   * Binds this table layout to the specified schema table.
+   *
+   * <p> Once set, the schema table bound to a table layout cannot be modified. </p>
+   *
+   * @param schemaTable Avro schema table to bind this layout to.
+   * @return this layout.
+   */
+  public KijiTableLayout setSchemaTable(KijiSchemaTable schemaTable) {
+    Preconditions.checkState(mSchemaTable == null);
+    mSchemaTable = schemaTable;
+    return this;
+  }
+
+  /**
+   * Returns the schema table bound to this table layout. Null means unbound.
+   * @return the schema table bound to this table layout. Null means unbound.
+   */
+  public KijiSchemaTable getSchemaTable() {
+    return mSchemaTable;
   }
 
   // -----------------------------------------------------------------------------------------------

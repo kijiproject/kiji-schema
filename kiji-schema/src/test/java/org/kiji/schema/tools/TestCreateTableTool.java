@@ -166,8 +166,8 @@ public class TestCreateTableTool extends KijiToolTest {
       );
       fail("Should throw InvalidLayoutException");
     } catch (InvalidLayoutException ile) {
-      assertTrue(ile.getMessage().startsWith(
-          "Schema with type 'class' must be a valid Java identifier."));
+      assertTrue(ile.getMessage(), ile.getMessage().startsWith(
+          "Invalid cell specification with Avro class type has invalid class name: '\"string\"'."));
     }
   }
 }

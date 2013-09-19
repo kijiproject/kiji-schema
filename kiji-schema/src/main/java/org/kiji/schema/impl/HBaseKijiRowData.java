@@ -557,12 +557,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public Schema getReaderSchema(String family, String qualifier) throws IOException {
-    final Schema schema = mTableLayout.getSchema(new KijiColumnName(family, qualifier));
-    if (null == schema) {
-      throw new NoSuchColumnException(
-          "Cannot retrieve schema for non-existent column: " + family + ":" + qualifier);
-    }
-    return schema;
+    return mTableLayout.getCellSpec(new KijiColumnName(family, qualifier)).getAvroSchema();
   }
 
   /**

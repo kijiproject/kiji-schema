@@ -153,12 +153,12 @@ public interface KijiRowData {
   NavigableSet<Long> getTimestamps(String family, String qualifier);
 
   /**
-   * Gets the reader schema for a column as declared in the layout of the table this row
-   * comes from.
+   * Gets the Avro reader schema used to decode the specified column, if any.
    *
    * @param family Column family of the desired column schema.
    * @param qualifier Column qualifier of the desired column schema.
    * @return Avro reader schema for the column.
+   *     Null if the column is not encoded using Avro or if the writer schema was used.
    * @throws IOException If there is an error or the column does not exist.
    * @see org.kiji.schema.layout.KijiTableLayout
    */
