@@ -67,6 +67,7 @@ import org.kiji.schema.layout.KijiTableLayoutDatabase;
 import org.kiji.schema.layout.TableLayoutBuilder;
 import org.kiji.schema.layout.TableLayoutBuilder.LayoutOptions;
 import org.kiji.schema.layout.TableLayoutBuilder.LayoutOptions.SchemaFormat;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
@@ -378,13 +379,14 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    * @return The HColumn descriptor.
    */
   public static HColumnDescriptor getHColumnDescriptor(String family) {
-    return new HColumnDescriptor(family)
+    return SchemaPlatformBridge.get().createHColumnDescriptorBuilder(Bytes.toBytes(family))
         .setMaxVersions(HConstants.ALL_VERSIONS)
         .setCompressionType(Compression.Algorithm.NONE)
         .setInMemory(false)
         .setBlockCacheEnabled(true)
         .setTimeToLive(HConstants.FOREVER)
-        .setBloomFilterType(BloomType.NONE);
+        .setBloomType(BloomType.NONE)
+        .build();
   }
 
   /** {@inheritDoc} */

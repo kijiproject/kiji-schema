@@ -54,6 +54,7 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.SystemTableBackup;
 import org.kiji.schema.avro.SystemTableEntry;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.CloseableIterable;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.ProtocolVersion;
@@ -270,13 +271,15 @@ public class HBaseSystemTable implements KijiSystemTable {
     // Install the table.
     HTableDescriptor tableDescriptor = new HTableDescriptor(
         KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString());
-    HColumnDescriptor columnDescriptor = new HColumnDescriptor(Bytes.toBytes(VALUE_COLUMN_FAMILY))
+    HColumnDescriptor columnDescriptor = SchemaPlatformBridge.get()
+        .createHColumnDescriptorBuilder(Bytes.toBytes(VALUE_COLUMN_FAMILY))
         .setMaxVersions(1)
         .setCompressionType(Compression.Algorithm.NONE)
         .setInMemory(false)
         .setBlockCacheEnabled(true)
         .setTimeToLive(HConstants.FOREVER)
-        .setBloomFilterType(BloomType.NONE);
+        .setBloomType(BloomType.NONE)
+        .build();
     tableDescriptor.addFamily(columnDescriptor);
     admin.createTable(tableDescriptor);
 

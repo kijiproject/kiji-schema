@@ -24,10 +24,12 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.KeyValue.KeyComparator;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.io.hfile.HFile;
+import org.apache.hadoop.hbase.regionserver.StoreFile;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Lookups;
@@ -84,17 +86,96 @@ public abstract class SchemaPlatformBridge {
    * @param compressionType to use in the HFile
    * @param comparator the Key comparator to use.
    * @return a newly-opened HFile writer object.
-   * @throws IOException  if there's an error opening the file.
+   * @throws IOException if there's an error opening the file.
    */
-  public abstract HFile.Writer createHFileWriter(Configuration conf,
-      FileSystem fs, Path path, int blockSizeBytes, Compression.Algorithm compressionType,
-      KeyComparator comparator) throws IOException;
+  public abstract HFile.Writer createHFileWriter(
+      Configuration conf,
+      FileSystem fs, Path path, int blockSizeBytes,
+      Compression.Algorithm compressionType,
+      KeyComparator comparator)
+      throws IOException;
+
+  /**
+   * Gets a builder for an HColumnDescriptor.
+   *
+   * @return a builder for an HColumnDescriptor.
+   */
+  public abstract HColumnDescriptorBuilderInterface createHColumnDescriptorBuilder();
+
+  /**
+   * Gets a builder for an HColumnDescriptor for a family.
+   *
+   * @param family of the HColumnDescriptor.
+   * @return a builder for an HColumnDescriptor.
+   */
+  public abstract HColumnDescriptorBuilderInterface createHColumnDescriptorBuilder(byte[] family);
+
+  /**
+   * An interface for HColumnDescriptors, implemented by the bridges.
+   */
+  public interface HColumnDescriptorBuilderInterface {
+    /**
+     * Sets the maxVersions on the HColumnDescriptor.
+     *
+     * @param maxVersions to set.
+     * @return This builder with the maxVersions set.
+     */
+    HColumnDescriptorBuilderInterface setMaxVersions(int maxVersions);
+
+    /**
+     * Sets the compression type on the HColumnDescriptor.
+     *
+     * @param compressionAlgorithm to set the compression type to.
+     * @return This builder with the compressionType set.
+     */
+    HColumnDescriptorBuilderInterface setCompressionType(
+        Compression.Algorithm compressionAlgorithm);
+
+    /**
+     * Sets the inMemory flag on the HColumnDescriptor.
+     *
+     * @param inMemory whether column data should be kept in memory.
+     * @return This builder with the inMemory flag set.
+     */
+    HColumnDescriptorBuilderInterface setInMemory(boolean inMemory);
+
+    /**
+     * Sets whether block cache is enabled on the HColumnDescriptor.
+     *
+     * @param blockCacheEnabled whether the block cache should be enabled on the HColumnDescriptor.
+     * @return This builder with the blockCacheEnabled flag set.
+     */
+    HColumnDescriptorBuilderInterface setBlockCacheEnabled(boolean blockCacheEnabled);
+
+    /**
+     * Sets the timeToLive in the HColumnDescriptor describing the time to live for the column.
+     *
+     * @param timeToLive to set in the HColumnDescriptor.
+     * @return This builder with timeToLive set.
+     */
+    HColumnDescriptorBuilderInterface setTimeToLive(int timeToLive);
+
+    /**
+     * Sets the bloom type used in the HColumnDescriptor.
+     *
+     * @param bloomType to set in the HColumnDescriptor.
+     * @return This builder with the bloomType set.
+     */
+    HColumnDescriptorBuilderInterface setBloomType(StoreFile.BloomType bloomType);
+
+    /**
+     * Returns the HColumnDescriptor.
+     *
+     * @return the HColumnDescriptor with all settings set.
+     */
+    HColumnDescriptor build();
+  }
 
   private static SchemaPlatformBridge mBridge;
 
   /**
    * @return the SchemaPlatformBridge implementation appropriate to the current runtime
-   * conditions.
+   *     conditions.
    */
   public static final synchronized SchemaPlatformBridge get() {
     if (null != mBridge) {

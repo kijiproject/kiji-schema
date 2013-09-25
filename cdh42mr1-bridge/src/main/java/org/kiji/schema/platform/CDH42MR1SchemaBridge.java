@@ -24,11 +24,13 @@ import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.KeyValue.KeyComparator;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.io.hfile.HFile;
+import org.apache.hadoop.hbase.regionserver.StoreFile;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.mapred.JobConf;
 
@@ -85,6 +87,91 @@ public final class CDH42MR1SchemaBridge extends SchemaPlatformBridge {
          .withCompression(compressionType)
          .withComparator(comparator)
          .create();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public HColumnDescriptorBuilderInterface createHColumnDescriptorBuilder() {
+    return new HColumnDescriptorBuilder();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public HColumnDescriptorBuilderInterface createHColumnDescriptorBuilder(byte[] family) {
+    return new HColumnDescriptorBuilder(family);
+  }
+
+  /**
+   * Platform-specific implementation of HColumnDescriptorBuilderInterface.
+   */
+  public static class HColumnDescriptorBuilder implements HColumnDescriptorBuilderInterface {
+    private HColumnDescriptor mHColumnDescriptor;
+
+    /**
+     * Construct a new HColumnDescriptorBuilder.
+     */
+    HColumnDescriptorBuilder() {
+      mHColumnDescriptor = new HColumnDescriptor();
+    }
+
+    /**
+     * Construct a new HColumnDescriptorBuilder with the family specified for the
+     * HColumnDescriptor.
+     *
+     * @param family Family for the HColumnDescriptor.
+     */
+    HColumnDescriptorBuilder(byte[] family) {
+      mHColumnDescriptor = new HColumnDescriptor(family);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public HColumnDescriptorBuilderInterface setMaxVersions(int maxVersions) {
+      mHColumnDescriptor.setMaxVersions(maxVersions);
+      return this;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public HColumnDescriptorBuilderInterface setCompressionType(
+        Compression.Algorithm compressionAlgorithm) {
+      mHColumnDescriptor.setCompressionType(compressionAlgorithm);
+      return this;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public HColumnDescriptorBuilderInterface setInMemory(boolean inMemory) {
+      mHColumnDescriptor.setInMemory(inMemory);
+      return this;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public HColumnDescriptorBuilderInterface setBlockCacheEnabled(boolean blockCacheEnabled) {
+      mHColumnDescriptor.setBlockCacheEnabled(blockCacheEnabled);
+      return this;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public HColumnDescriptorBuilderInterface setTimeToLive(int timeToLive) {
+      mHColumnDescriptor.setTimeToLive(timeToLive);
+      return this;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public HColumnDescriptorBuilderInterface setBloomType(StoreFile.BloomType bloomType) {
+      mHColumnDescriptor.setBloomFilterType(bloomType);
+      return this;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public HColumnDescriptor build() {
+      return new HColumnDescriptor(mHColumnDescriptor);
+    }
   }
 }
 

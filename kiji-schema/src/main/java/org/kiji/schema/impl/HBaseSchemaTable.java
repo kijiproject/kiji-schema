@@ -615,25 +615,29 @@ public class HBaseSchemaTable implements KijiSchemaTable {
 
     final HTableDescriptor hashTableDescriptor = new HTableDescriptor(
         KijiManagedHBaseTableName.getSchemaHashTableName(kijiURI.getInstance()).toString());
-    final HColumnDescriptor hashColumnDescriptor = new HColumnDescriptor(SCHEMA_COLUMN_FAMILY_BYTES)
+    final HColumnDescriptor hashColumnDescriptor = SchemaPlatformBridge.get()
+        .createHColumnDescriptorBuilder(SCHEMA_COLUMN_FAMILY_BYTES)
         .setMaxVersions(maxVersions)
         .setCompressionType(Compression.Algorithm.NONE)
         .setInMemory(false)
         .setBlockCacheEnabled(true)
         .setTimeToLive(HConstants.FOREVER)
-        .setBloomFilterType(BloomType.NONE);
+        .setBloomType(BloomType.NONE)
+        .build();
     hashTableDescriptor.addFamily(hashColumnDescriptor);
     admin.createTable(hashTableDescriptor);
 
     final HTableDescriptor idTableDescriptor = new HTableDescriptor(
         KijiManagedHBaseTableName.getSchemaIdTableName(kijiURI.getInstance()).toString());
-    final HColumnDescriptor idColumnDescriptor = new HColumnDescriptor(SCHEMA_COLUMN_FAMILY_BYTES)
+    final HColumnDescriptor idColumnDescriptor = SchemaPlatformBridge.get()
+        .createHColumnDescriptorBuilder(SCHEMA_COLUMN_FAMILY_BYTES)
         .setMaxVersions(maxVersions)
-        .setCompactionCompressionType(Compression.Algorithm.NONE)
+        .setCompressionType(Compression.Algorithm.NONE)
         .setInMemory(false)
         .setBlockCacheEnabled(true)
         .setTimeToLive(HConstants.FOREVER)
-        .setBloomFilterType(BloomType.NONE);
+        .setBloomType(BloomType.NONE)
+        .build();
     idTableDescriptor.addFamily(idColumnDescriptor);
     admin.createTable(idTableDescriptor);
 
