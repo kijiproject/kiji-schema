@@ -19,7 +19,9 @@
 
 package org.kiji.schema.tools;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
@@ -31,6 +33,8 @@ import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.hbase.HBaseFactory;
+import org.kiji.schema.impl.HBaseSystemTable;
 
 /**
  * A command-line tool for installing kiji instances on hbase clusters.
@@ -42,8 +46,15 @@ public final class InstallTool extends BaseTool {
   @Flag(name="kiji", usage="URI of the Kiji instance to install.")
   private String mKijiURIFlag = KConstants.DEFAULT_INSTANCE_URI;
 
+  @Flag(name="properties-file",
+      usage="The properties file, if any, to use instead of the defaults.")
+  private String mPropertiesFile = null;
+
   /** URI of the Kiji instance to install. */
   private KijiURI mKijiURI = null;
+
+  /** Unmodifiable empty map. */
+  private static final Map<String, String> EMPTY_MAP = Collections.emptyMap();
 
   /** {@inheritDoc} */
   @Override
@@ -79,8 +90,15 @@ public final class InstallTool extends BaseTool {
   protected int run(List<String> nonFlagArgs) throws Exception {
     getPrintStream().println("Creating kiji instance: " + mKijiURI);
     getPrintStream().println("Creating meta tables for kiji instance in hbase...");
+    final Map<String, String> initialProperties = (null == mPropertiesFile)
+            ? EMPTY_MAP
+            : HBaseSystemTable.loadPropertiesFromFileToMap(mPropertiesFile);
     try {
-      KijiInstaller.get().install(mKijiURI, getConf());
+      KijiInstaller.get().install(
+          mKijiURI,
+          HBaseFactory.Provider.get(),
+          initialProperties,
+          getConf());
       getPrintStream().println("Successfully created kiji instance: " + mKijiURI);
       return SUCCESS;
     } catch (KijiAlreadyExistsException kaee) {

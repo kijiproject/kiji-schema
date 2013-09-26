@@ -29,8 +29,6 @@ import java.io.OutputStream;
 
 import org.apache.commons.io.IOUtils;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
@@ -40,8 +38,6 @@ import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ToJson;
 
 public class TestCreateTableTool extends KijiToolTest {
-  private static final Logger LOG = LoggerFactory.getLogger(TestCreateTableTool.class);
-
   /** Path to a region splits files. */
   public static final String REGION_SPLIT_KEY_FILE = "org/kiji/schema/tools/split-keys.txt";
 

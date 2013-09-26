@@ -127,6 +127,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   /** {@inheritDoc} */
   @Override
   public void lock() throws IOException {
+    LOG.debug("Locking permissions for instance: '{}'.", mInstanceUri);
     boolean lockSuccessful = mLock.lock(LOCK_TIMEOUT);
     if (!lockSuccessful) {
       throw new KijiSecurityException("Acquiring lock on instance " + mInstanceUri
@@ -137,6 +138,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   /** {@inheritDoc} */
   @Override
   public void unlock() throws IOException {
+    LOG.debug("Unlocking permissions for instance: '{}'.", mInstanceUri);
     mLock.unlock();
   }
 
@@ -346,9 +348,10 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   private void changeInstancePermissions(
       KijiUser user,
       KijiPermissions permissions) throws IOException {
-    LOG.info("Changing user permissions for user " + user
-        + " on instance " + mInstanceUri.getInstance()
-        + " to actions " + permissions.getActions().toString());
+    LOG.info("Changing user permissions for user {} on instance {} to actions {}.",
+        user,
+        mInstanceUri,
+        permissions.getActions());
 
     // Record the changes in the system table.
     updatePermissions(user, permissions);

@@ -20,6 +20,8 @@
 package org.kiji.schema;
 
 import java.io.IOException;
+import java.util.Collections;
+import java.util.Map;
 
 import com.google.common.base.Joiner;
 import org.apache.hadoop.conf.Configuration;
@@ -63,7 +65,7 @@ public final class KijiInstaller {
    * @throws KijiInvalidNameException if the Kiji instance name is invalid or already exists.
    */
   public void install(KijiURI uri, Configuration conf) throws IOException {
-    install(uri, HBaseFactory.Provider.get(), conf);
+    install(uri, HBaseFactory.Provider.get(), Collections.<String, String>emptyMap(), conf);
   }
 
   /**
@@ -83,11 +85,17 @@ public final class KijiInstaller {
    *
    * @param uri URI of the Kiji instance to install.
    * @param hbaseFactory Factory for HBase instances.
+   * @param properties Map of the initial system properties for installation, to be used in addition
+   *     to the defaults.
    * @param conf Hadoop configuration.
    * @throws IOException on I/O error.
    * @throws KijiInvalidNameException if the instance name is invalid or already exists.
    */
-  public void install(KijiURI uri, HBaseFactory hbaseFactory, Configuration conf)
+  public void install(
+      KijiURI uri,
+      HBaseFactory hbaseFactory,
+      Map<String, String> properties,
+      Configuration conf)
       throws IOException {
     if (uri.getInstance() == null) {
       throw new KijiInvalidNameException(String.format(
@@ -110,17 +118,17 @@ public final class KijiInstaller {
             "Kiji instance '%s' already exists.", uri), uri);
       }
       LOG.info(String.format("Installing kiji instance '%s'.", uri));
-      HBaseSystemTable.install(hbaseAdmin, uri, conf, tableFactory);
+      HBaseSystemTable.install(hbaseAdmin, uri, conf, properties, tableFactory);
       HBaseMetaTable.install(hbaseAdmin, uri);
       HBaseSchemaTable.install(hbaseAdmin, uri, conf, tableFactory, lockFactory);
       // Grant the current user all privileges on the instance just created, if security is enabled.
       final Kiji kiji = Kiji.Factory.open(uri, conf);
       try {
-        if (kiji.isSecurityEnabled()) {
-          KijiSecurityManager.Installer.installInstanceCreator(uri, conf, tableFactory);
-        }
-      } finally {
-        kiji.release();
+          if (kiji.isSecurityEnabled()) {
+              KijiSecurityManager.Installer.installInstanceCreator(uri, conf, tableFactory);
+            }
+        } finally {
+          kiji.release();
       }
     } finally {
       ResourceUtils.closeOrLog(hbaseAdmin);

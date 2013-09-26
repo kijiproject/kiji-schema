@@ -23,12 +23,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -238,17 +240,33 @@ public class HBaseSystemTable implements KijiSystemTable {
   }
 
   /**
-   * Load the system table with the key/value pairs from the properties file named by resource.
+   * Loads a map of properties from the properties file named by resource.
    *
    * @param resource The name of the properties resource holding the defaults.
+   * @return The properties in the file as a Map.
    * @throws IOException If there is an error.
    */
-  protected void loadDefaults(String resource) throws IOException {
+  public static Map<String, String> loadPropertiesFromFileToMap(String resource)
+      throws IOException {
     final Properties defaults = new Properties();
-    defaults.load(getClass().getClassLoader().getResourceAsStream(resource));
-    for (Map.Entry<Object, Object> item : defaults.entrySet()) {
-      final String key = item.getKey().toString();
-      final String value = item.getValue().toString();
+    defaults.load(HBaseSystemTable.class.getClassLoader().getResourceAsStream(resource));
+    return Maps.fromProperties(defaults);
+  }
+
+  /**
+   * Load the system table with the key/value pairs specified in properties.  Default properties are
+   * loaded for any not specified.
+   *
+   * @param properties The properties to load into the system table.
+   * @throws IOException If there is an I/O error.
+   */
+  protected void loadSystemTableProperties(Map<String, String> properties) throws IOException {
+    final Map<String, String> defaults = loadPropertiesFromFileToMap(DEFAULTS_PROPERTIES_FILE);
+    final Map<String, String> newProperties = Maps.newHashMap(defaults);
+    newProperties.putAll(properties);
+    for (Map.Entry<String, String> entry : newProperties.entrySet()) {
+      String key = entry.getKey();
+      String value = entry.getValue();
       putValue(key, Bytes.toBytes(value));
     }
   }
@@ -268,6 +286,26 @@ public class HBaseSystemTable implements KijiSystemTable {
       Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
+    install(admin, kijiURI, conf, Collections.<String, String>emptyMap(), factory);
+  }
+
+  /**
+   * Installs a Kiji system table into a running HBase instance.
+   *
+   * @param admin The HBase cluster to install into.
+   * @param kijiURI The KijiURI.
+   * @param conf The Hadoop configuration.
+   * @param properties The initial system properties to be used in addition to the defaults.
+   * @param factory HTableInterface factory.
+   * @throws IOException If there is an error.
+   */
+  public static void install(
+      HBaseAdmin admin,
+      KijiURI kijiURI,
+      Configuration conf,
+      Map<String, String> properties,
+      HTableInterfaceFactory factory)
+      throws IOException {
     // Install the table.
     HTableDescriptor tableDescriptor = new HTableDescriptor(
         KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString());
@@ -285,7 +323,7 @@ public class HBaseSystemTable implements KijiSystemTable {
 
     HBaseSystemTable systemTable = new HBaseSystemTable(kijiURI, conf, factory);
     try {
-      systemTable.loadDefaults(DEFAULTS_PROPERTIES_FILE);
+      systemTable.loadSystemTableProperties(properties);
     } finally {
       ResourceUtils.closeOrLog(systemTable);
     }
