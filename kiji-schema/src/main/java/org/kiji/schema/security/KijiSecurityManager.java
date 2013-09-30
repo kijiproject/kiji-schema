@@ -190,7 +190,7 @@ public interface KijiSecurityManager extends Closeable {
    * @return all users with any permissions on this instance.
    * @throws IOException on I/O error.
    */
-  Set<KijiUser> listUsers() throws IOException;
+  Set<KijiUser> listAllUsers() throws IOException;
 
   /**
    * Checks whether the current user has grant access, throwing a KijiAccessException if it

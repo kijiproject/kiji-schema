@@ -27,6 +27,7 @@ import java.util.Set;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Sets;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -69,6 +70,9 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
   /** A handle to the Kiji this manages. */
   private final Kiji mKiji;
+
+  /** A handle to the HBaseAdmin of mKiji. */
+  private final HBaseAdmin mAdmin;
 
   /** The system table for the instance this manages. */
   private final KijiSystemTable mSystemTable;
@@ -113,6 +117,8 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
           + Versions.MIN_SECURITY_VERSION + " or higher.");
     }
 
+    mAdmin = ((HBaseKiji) mKiji).getHBaseAdmin();
+
     // Get the access controller.
     HTableInterface accessControlTable = tableFactory
         .create(conf, new String(AccessControlLists.ACL_TABLE_NAME, Charsets.UTF_8));
@@ -123,7 +129,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     final ZooKeeperLockFactory zKLockFactory =
         new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(instanceUri));
     mLock = zKLockFactory.create(
-          ZooKeeperMonitor.getInstancePermissionsLock(instanceUri).getAbsolutePath());
+        ZooKeeperMonitor.getInstancePermissionsLock(instanceUri).getAbsolutePath());
   }
 
   /** {@inheritDoc} */
@@ -175,7 +181,8 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     try {
       KijiPermissions currentPermissions = getPermissions(user);
       KijiPermissions newPermissions = currentPermissions.removeAction(action);
-      setInstancePermissions(user, newPermissions);
+      updatePermissions(user, newPermissions);
+      revokeInstancePermissions(user, newPermissions);
     } finally {
       unlock();
     }
@@ -186,7 +193,9 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   public void revokeAll(KijiUser user) throws IOException {
     lock();
     try {
-      setInstancePermissions(user, KijiPermissions.emptyPermissions());
+      updatePermissions(user, KijiPermissions.emptyPermissions());
+      revokeInstancePermissions(
+          user, KijiPermissions.newWithActions(Sets.newHashSet(KijiPermissions.Action.values())));
     } finally {
       unlock();
     }
@@ -197,7 +206,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   public void reapplyInstancePermissions() throws IOException {
     lock();
     try {
-      Set<KijiUser> allUsers = listUsers();
+      Set<KijiUser> allUsers = listAllUsers();
       for (KijiUser user : allUsers) {
         KijiPermissions permissions = getPermissions(user);
         for (KijiPermissions.Action action : permissions.getActions()) {
@@ -217,8 +226,8 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
       // The argument must be for a table in the instance this manages.
       Preconditions.checkArgument(
           KijiURI.newBuilder(mInstanceUri).withTableName(tableURI.getTable()).build() == tableURI);
-      for (KijiUser user : listUsers()) {
-        changeHTablePermissions(user.getNameBytes(),
+      for (KijiUser user : listAllUsers()) {
+        grantHTablePermissions(user.getNameBytes(),
             KijiManagedHBaseTableName
                 .getKijiTableName(tableURI.getInstance(), tableURI.getTable()).toBytes(),
             getPermissions(user).toHBaseActions());
@@ -270,7 +279,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
   /** {@inheritDoc} */
   @Override
-  public Set<KijiUser> listUsers() throws IOException {
+  public Set<KijiUser> listAllUsers() throws IOException {
     Set<KijiUser> allUsers = new HashSet<KijiUser>();
     for (KijiPermissions.Action action : KijiPermissions.Action.values()) {
       allUsers.addAll(getUsersWithPermission(action));
@@ -300,7 +309,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   private void grantWithoutLock(KijiUser user, KijiPermissions.Action action) throws IOException {
     KijiPermissions currentPermissions = getPermissions(user);
     KijiPermissions newPermissions = currentPermissions.addAction(action);
-    setInstancePermissions(user, newPermissions);
+    grantInstancePermissions(user, newPermissions);
   }
 
   /**
@@ -319,13 +328,14 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     for (KijiPermissions.Action action : KijiPermissions.Action.values()) {
       newPermissions = newPermissions.addAction(action);
     }
-    setInstancePermissions(user, newPermissions);
+    grantInstancePermissions(user, newPermissions);
   }
 
   /**
    * Updates the permissions in the Kiji system table for a user on this Kiji instance.
    *
-   * <p>Use {@link #setInstancePermissions(KijiUser, KijiPermissions)} instead for updating the
+   * <p>Use {@link #grantInstancePermissions(KijiUser, KijiPermissions)}
+   * or {@link #revokeInstancePermissions(KijiUser, KijiPermissions)}instead for updating the
    * permissions in HBase as well as in the Kiji system table.</p>
    *
    * @param user whose permissions to update.
@@ -347,10 +357,11 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   }
 
   /**
-   * Gets a set of users from the key 'key'.
+   * Gets the users with permission 'action' in this instance, as recorded in the Kiji system
+   * table.
    *
    * @param action specifying the permission to get the users of.
-   * @return the list of user with that permission.
+   * @return the list of users with that permission.
    * @throws IOException on I/O exception.
    */
   private Set<KijiUser> getUsersWithPermission(KijiPermissions.Action action) throws IOException {
@@ -364,7 +375,8 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   }
 
   /**
-   * Puts a set of users into the key for action.
+   * Records a set of users as permitted to have action 'action', by recording them in the Kiji
+   * system table.
    *
    * @param action to put the set of users into.
    * @param users to put to that permission.
@@ -378,14 +390,16 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   }
 
   /**
-   * Changes the permissions of an instance, by changing the permissions of all the Kiji meta
-   * tables, and updating the permissions in the system table.
+   * Changes the permissions of an instance, by granting the permissions on of all the Kiji meta
+   * tables.
    *
-   * @param user is the User for whom the permissions are being changed.
-   * @param permissions is the new permissions for the user.
+   * <p>Permissions should be updated with #updatePermissions before calling this method.</p>
+   *
+   * @param user is the User to whom the permissions are being granted.
+   * @param permissions is the new permissions granted to the user.
    * @throws IOException on I/O error.
    */
-  private void setInstancePermissions(
+  private void grantInstancePermissions(
       KijiUser user,
       KijiPermissions permissions) throws IOException {
     LOG.info("Changing user permissions for user {} on instance {} to actions {}.",
@@ -405,18 +419,18 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     } else {
       systemTablePermissions = permissions;
     }
-    changeHTablePermissions(user.getNameBytes(),
+    grantHTablePermissions(user.getNameBytes(),
         KijiManagedHBaseTableName.getSystemTableName(mInstanceUri.getInstance()).toBytes(),
         systemTablePermissions.toHBaseActions());
 
     // Change permissions of the other Kiji meta tables.
-    changeHTablePermissions(user.getNameBytes(),
+    grantHTablePermissions(user.getNameBytes(),
         KijiManagedHBaseTableName.getMetaTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
-    changeHTablePermissions(user.getNameBytes(),
+    grantHTablePermissions(user.getNameBytes(),
         KijiManagedHBaseTableName.getSchemaIdTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
-    changeHTablePermissions(user.getNameBytes(),
+    grantHTablePermissions(user.getNameBytes(),
         KijiManagedHBaseTableName.getSchemaHashTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
 
@@ -429,7 +443,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
                 mInstanceUri.getInstance(),
                 kijiTableName
             ).toBytes();
-        changeHTablePermissions(user.getNameBytes(),
+        grantHTablePermissions(user.getNameBytes(),
             kijiHTableNameBytes,
             permissions.toHBaseActions());
       }
@@ -440,22 +454,67 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   }
 
   /**
-   * Changes the permissions on an HBase table.
+   * Changes the permissions of an instance, by revoking the permissions on of all the Kiji meta
+   * tables.
+   *
+   * <p>Permissions should be updated with #updatePermissions before calling this method.</p>
+   *
+   * @param user User from whom the permissions are being revoked.
+   * @param permissions Permissions to be revoked from the user.
+   * @throws IOException on I/O error.
+   */
+  private void revokeInstancePermissions(
+      KijiUser user,
+      KijiPermissions permissions) throws IOException {
+    // If GRANT permission is revoked, also remove WRITE access to the system table.
+    KijiPermissions systemTablePermissions;
+    if (permissions.allowsAction(KijiPermissions.Action.GRANT)) {
+      systemTablePermissions =
+          permissions.addAction(KijiPermissions.Action.WRITE);
+    } else {
+      systemTablePermissions = permissions;
+    }
+    revokeHTablePermissions(user.getNameBytes(),
+        KijiManagedHBaseTableName.getSystemTableName(mInstanceUri.getInstance()).toBytes(),
+        systemTablePermissions.toHBaseActions());
+
+    // Change permissions of the other Kiji meta tables.
+    revokeHTablePermissions(user.getNameBytes(),
+        KijiManagedHBaseTableName.getMetaTableName(mInstanceUri.getInstance()).toBytes(),
+        permissions.toHBaseActions());
+    revokeHTablePermissions(user.getNameBytes(),
+        KijiManagedHBaseTableName.getSchemaIdTableName(mInstanceUri.getInstance()).toBytes(),
+        permissions.toHBaseActions());
+
+    // Change permissions of all Kiji tables in this instance in HBase.
+    for (String kijiTableName : mKiji.getTableNames()) {
+      byte[] kijiHTableNameBytes =
+          KijiManagedHBaseTableName.getKijiTableName(
+              mInstanceUri.getInstance(),
+              kijiTableName
+          ).toBytes();
+      revokeHTablePermissions(user.getNameBytes(),
+          kijiHTableNameBytes,
+          permissions.toHBaseActions());
+    }
+    LOG.debug("Permissions {} on instance '{}' successfully revoked from user {}.",
+        permissions,
+        mInstanceUri.toOrderedString(),
+        user);
+  }
+
+  /**
+   * Grants the actions to user on an HBase table.
    *
    * @param hUser HBase byte representation of the user whose permissions to change.
    * @param hTableName the HBase table to change permissions on.
    * @param hActions for the user on the table.
    * @throws IOException on I/O error, for example if security is not enabled.
    */
-  private void changeHTablePermissions(
+  private void grantHTablePermissions(
       byte[] hUser,
       byte[] hTableName,
       Action[] hActions) throws IOException {
-    // Get the HBaseAdmin.
-    HBaseKiji hBaseKiji = (HBaseKiji) Kiji.Factory.open(mInstanceUri);
-    HBaseAdmin mAdmin = hBaseKiji.getHBaseAdmin();
-    hBaseKiji.release();
-
     // Construct the HBase UserPermission to grant.
     UserPermission hTablePermission = new UserPermission(
         hUser,
@@ -465,6 +524,40 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
     // Grant the permissions.
     LOG.debug("Changing user permissions for user {} on table {} to HBase Actions {}.",
+        Bytes.toString(hUser),
+        Bytes.toString(hTableName),
+        Arrays.toString(hActions));
+    LOG.debug("Disabling table {}.", Bytes.toString(hTableName));
+    mAdmin.disableTable(hTableName);
+    LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
+    // Grant the permissions.
+    mAccessController.grant(hTablePermission);
+    LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
+    mAdmin.enableTable(hTableName);
+    LOG.debug("Table {} enabled.", Bytes.toString(hTableName));
+  }
+
+  /**
+   * Revokes the actions from user on an HBase table.
+   *
+   * @param hUser HBase byte representation of the user whose permissions to change.
+   * @param hTableName the HBase table to change permissions on.
+   * @param hActions for the user on the table.
+   * @throws IOException on I/O error, for example if security is not enabled.
+   */
+  private void revokeHTablePermissions(
+      byte[] hUser,
+      byte[] hTableName,
+      Action[] hActions) throws IOException {
+    // Construct the HBase UserPermission to revoke.
+    UserPermission hTablePermission = new UserPermission(
+        hUser,
+        hTableName,
+        null,
+        hActions);
+
+    // Grant the permissions.
+    LOG.debug("Revoking user permissions for user {} on table {} to HBase Actions {}.",
         Bytes.toString(hUser),
         Bytes.toString(hTableName),
         Arrays.toString(hActions));
