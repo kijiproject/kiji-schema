@@ -182,8 +182,8 @@ public final class KijiPermissions {
    * @return HBase Actions for all of the permitted Actions with corresponding HBase Actions.
    */
   protected Permission.Action[] toHBaseActions() {
-    Set<Action> mHBaseActions = Sets.union(mActions, HBASE_ACTIONS);
-    Set<Permission.Action> convertedActions = EnumSet.noneOf(Permission.Action.class);
+    final Set<Action> mHBaseActions = Sets.intersection(mActions, HBASE_ACTIONS);
+    final Set<Permission.Action> convertedActions = EnumSet.noneOf(Permission.Action.class);
     for (Action kijiAction : mHBaseActions) {
       convertedActions.add(kijiAction.getHBaseAction());
     }

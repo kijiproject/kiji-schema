@@ -35,6 +35,7 @@ import org.apache.hadoop.hbase.security.access.AccessControlLists;
 import org.apache.hadoop.hbase.security.access.AccessControllerProtocol;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.security.access.UserPermission;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,6 +101,17 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
       Configuration conf,
       HTableInterfaceFactory tableFactory) throws IOException {
     mInstanceUri = instanceUri;
+    mKiji = Kiji.Factory.get().open(mInstanceUri);
+    mSystemTable = mKiji.getSystemTable();
+
+    // If the Kiji has security version lower than MIN_SECURITY_VERSION, then KijiSecurityManager
+    // can't be instantiated.
+    if (mSystemTable.getSecurityVersion().compareTo(Versions.MIN_SECURITY_VERSION) < 0) {
+      mKiji.release();
+      throw new KijiSecurityException("Cannot create a KijiSecurityManager for security version "
+          + mSystemTable.getSecurityVersion() + ". Version must be "
+          + Versions.MIN_SECURITY_VERSION + " or higher.");
+    }
 
     // Get the access controller.
     HTableInterface accessControlTable = tableFactory
@@ -108,20 +120,10 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
         AccessControllerProtocol.class,
         HConstants.EMPTY_START_ROW);
 
-    mKiji = Kiji.Factory.get().open(mInstanceUri);
-    mSystemTable = mKiji.getSystemTable();
     final ZooKeeperLockFactory zKLockFactory =
-      new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(instanceUri));
+        new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(instanceUri));
     mLock = zKLockFactory.create(
-        ZooKeeperMonitor.getInstancePermissionsLock(instanceUri).getAbsolutePath());
-
-    // If the Kiji has security version lower than MIN_SECURITY_VERSION, then KijiSecurityManager
-    // can't be instantiated.
-    if (mSystemTable.getSecurityVersion().compareTo(Versions.MIN_SECURITY_VERSION) < 0) {
-      throw new KijiSecurityException("Cannot create a KijiSecurityManager for security version "
-          + mSystemTable.getSecurityVersion() + ". Version must be "
-          + Versions.MIN_SECURITY_VERSION + " or higher.");
-    }
+          ZooKeeperMonitor.getInstancePermissionsLock(instanceUri).getAbsolutePath());
   }
 
   /** {@inheritDoc} */
@@ -148,9 +150,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
       throws IOException {
     lock();
     try {
-      KijiPermissions currentPermissions = getPermissions(user);
-      KijiPermissions newPermissions = currentPermissions.addAction(action);
-      changeInstancePermissions(user, newPermissions);
+      grantWithoutLock(user, action);
     } finally {
       unlock();
     }
@@ -159,8 +159,11 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   /** {@inheritDoc} */
   @Override
   public void grantAll(KijiUser user) throws IOException {
-    for (KijiPermissions.Action action : KijiPermissions.Action.values()) {
-      grant(user, action);
+    lock();
+    try {
+      grantAllWithoutLock(user);
+    } finally {
+      unlock();
     }
   }
 
@@ -172,7 +175,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     try {
       KijiPermissions currentPermissions = getPermissions(user);
       KijiPermissions newPermissions = currentPermissions.removeAction(action);
-      changeInstancePermissions(user, newPermissions);
+      setInstancePermissions(user, newPermissions);
     } finally {
       unlock();
     }
@@ -183,7 +186,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   public void revokeAll(KijiUser user) throws IOException {
     lock();
     try {
-      changeInstancePermissions(user, KijiPermissions.emptyPermissions());
+      setInstancePermissions(user, KijiPermissions.emptyPermissions());
     } finally {
       unlock();
     }
@@ -234,16 +237,20 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
       // This can only be called if there are no grantors, right when the instance is created.
       if (currentGrantors.size() != 0) {
         throw new KijiAccessException(
-            "Cannot add user " + user.toString()
-                + " to grantors as the instance creator for instance " + mInstanceUri.getInstance()
-                + " because there are already grantors for this instance.");
+            "Cannot add user " + user
+                + " to grantors as the instance creator for instance '"
+                + mInstanceUri.toOrderedString()
+                + "' because there are already grantors for this instance.");
       }
       Set<KijiUser> newGrantor = Collections.singleton(user);
       putUsersWithPermission(KijiPermissions.Action.GRANT, newGrantor);
-      grantAll(user);
+      grantAllWithoutLock(user);
     } finally {
       unlock();
     }
+    LOG.info("Creator permissions on instance '{}' granted to user {}.",
+        mInstanceUri,
+        user.getName());
   }
 
   /** {@inheritDoc} */
@@ -283,9 +290,42 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   }
 
   /**
+   * Grant action to a user, without locking the instance.  When using this method, one must lock
+   * the instance before, and unlock it after.
+   *
+   * @param user User to grant action to.
+   * @param action Action to grant to user.
+   * @throws IOException on I/O error.
+   */
+  private void grantWithoutLock(KijiUser user, KijiPermissions.Action action) throws IOException {
+    KijiPermissions currentPermissions = getPermissions(user);
+    KijiPermissions newPermissions = currentPermissions.addAction(action);
+    setInstancePermissions(user, newPermissions);
+  }
+
+  /**
+   * Grants all actions to a user, without locking the instance.  When using this method, one must
+   * lock the instance before, and unlock it after.
+   *
+   * @param user User to grant all actions to.
+   * @throws IOException on I/O error.
+   */
+  private void grantAllWithoutLock(KijiUser user)
+      throws IOException {
+    LOG.debug("Granting all permissions to user {} on instance '{}'.",
+        user.getName(),
+        mInstanceUri.toOrderedString());
+    KijiPermissions newPermissions = getPermissions(user);
+    for (KijiPermissions.Action action : KijiPermissions.Action.values()) {
+      newPermissions = newPermissions.addAction(action);
+    }
+    setInstancePermissions(user, newPermissions);
+  }
+
+  /**
    * Updates the permissions in the Kiji system table for a user on this Kiji instance.
    *
-   * <p>Use {@link #changeInstancePermissions(KijiUser, KijiPermissions)} instead for updating the
+   * <p>Use {@link #setInstancePermissions(KijiUser, KijiPermissions)} instead for updating the
    * permissions in HBase as well as in the Kiji system table.</p>
    *
    * @param user whose permissions to update.
@@ -345,7 +385,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
    * @param permissions is the new permissions for the user.
    * @throws IOException on I/O error.
    */
-  private void changeInstancePermissions(
+  private void setInstancePermissions(
       KijiUser user,
       KijiPermissions permissions) throws IOException {
     LOG.info("Changing user permissions for user {} on instance {} to actions {}.",
@@ -355,7 +395,6 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
     // Record the changes in the system table.
     updatePermissions(user, permissions);
-
 
     // Change permissions of Kiji system tables in HBase.
     KijiPermissions systemTablePermissions;
@@ -375,16 +414,16 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
         KijiManagedHBaseTableName.getMetaTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
     changeHTablePermissions(user.getNameBytes(),
-        KijiManagedHBaseTableName.getSchemaHashTableName(mInstanceUri.getInstance()).toBytes(),
+        KijiManagedHBaseTableName.getSchemaIdTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
     changeHTablePermissions(user.getNameBytes(),
-        KijiManagedHBaseTableName.getSchemaIdTableName(mInstanceUri.getInstance()).toBytes(),
+        KijiManagedHBaseTableName.getSchemaHashTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
 
     // Change permissions of all Kiji tables in this instance in HBase.
     Kiji kiji = Kiji.Factory.open(mInstanceUri);
     try {
-      for (String kijiTableName : Kiji.Factory.open(mInstanceUri).getTableNames()) {
+      for (String kijiTableName : kiji.getTableNames()) {
         byte[] kijiHTableNameBytes =
             KijiManagedHBaseTableName.getKijiTableName(
                 mInstanceUri.getInstance(),
@@ -397,6 +436,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     } finally {
       kiji.release();
     }
+    LOG.debug("Permissions on instance {} successfully changed.", mInstanceUri);
   }
 
   /**
@@ -424,16 +464,18 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
         hActions);
 
     // Grant the permissions.
-    LOG.info("Changing user permissions for user " + new String(hUser, Charsets.UTF_8)
-        + " on table " + new String(hTableName, Charsets.UTF_8)
-        + " to HBase Actions " + Arrays.toString(hActions));
-    LOG.info("Disabling table " + new String(hTableName, Charsets.UTF_8));
+    LOG.debug("Changing user permissions for user {} on table {} to HBase Actions {}.",
+        Bytes.toString(hUser),
+        Bytes.toString(hTableName),
+        Arrays.toString(hActions));
+    LOG.debug("Disabling table {}.", Bytes.toString(hTableName));
     mAdmin.disableTable(hTableName);
+    LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
     // Grant the permissions.
     mAccessController.grant(hTablePermission);
-    LOG.info("Enabling table " + new String(hTableName, Charsets.UTF_8));
+    LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
     mAdmin.enableTable(hTableName);
-    mAdmin.close();
+    LOG.debug("Table {} enabled.", Bytes.toString(hTableName));
   }
 
   /** {@inheritDoc} */

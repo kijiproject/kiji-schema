@@ -57,7 +57,6 @@ public final class ZooKeeperLock implements Lock, Closeable {
   private File mCreatedPath = null;
   private WatchedEvent mPrecedingEvent = null;
 
-
   /**
    * Constructs a ZooKeeper lock object.
    *
