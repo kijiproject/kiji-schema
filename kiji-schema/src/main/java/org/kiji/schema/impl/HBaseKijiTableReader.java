@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 
@@ -67,8 +67,15 @@ public class HBaseKijiTableReader implements KijiTableReader {
   /** HBase KijiTable to read from. */
   private final HBaseKijiTable mTable;
 
-  /** Becomes true after a successful initialization. */
-  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
+  /** States of a kiji table reader instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSED
+  }
+
+  /** Tracks the state of this KijiTableReader instance. */
+  private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** Map of overridden cell specs. */
   private final Map<KijiColumnName, CellSpec> mCellSpecOverrides;
@@ -197,14 +204,18 @@ public class HBaseKijiTableReader implements KijiTableReader {
 
     // Retain the table only when everything succeeds.
     mTable.retain();
-    mIsOpen.set(true);
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open KijiTableReader instance in state %s.", oldState);
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiRowData get(EntityId entityId, KijiDataRequest dataRequest)
       throws IOException {
-    Preconditions.checkState(mIsOpen.get(), "Reader %s is closed.", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get row from KijiTableReader instance %s in state %s.", this, state);
 
     final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
     // Make sure the request validates against the layout of the table.
@@ -234,7 +245,9 @@ public class HBaseKijiTableReader implements KijiTableReader {
   @Override
   public List<KijiRowData> bulkGet(List<EntityId> entityIds, KijiDataRequest dataRequest)
       throws IOException {
-    Preconditions.checkState(mIsOpen.get(), "Reader %s is closed.", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get rows from KijiTableReader instance %s in state %s.", this, state);
 
     // Bulk gets have some overhead associated with them,
     // so delegate work to get(EntityId, KijiDataRequest) if possible.
@@ -273,7 +286,9 @@ public class HBaseKijiTableReader implements KijiTableReader {
       KijiDataRequest dataRequest,
       KijiScannerOptions kijiScannerOptions)
       throws IOException {
-    Preconditions.checkState(mIsOpen.get(), "Reader %s is closed.", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get scanner from KijiTableReader instance %s in state %s.", this, state);
 
     try {
       EntityId startRow = kijiScannerOptions.getStartRow();
@@ -322,7 +337,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
         .add("id", System.identityHashCode(this))
         .add("table", mTable.getURI())
         .add("layout-version", mReaderLayoutCapsule.getLayout().getDesc().getLayoutId())
-        .addValue(mIsOpen.get() ? "open" : "closed")
+        .add("state", mState.get())
         .toString();
   }
 
@@ -394,12 +409,11 @@ public class HBaseKijiTableReader implements KijiTableReader {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    if (mIsOpen.getAndSet(false)) {
-      mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
-      mTable.release();
-    } else {
-      LOG.error("Cannot close reader {}: reader is not open.", this);
-    }
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close KijiTableReader instance %s in state %s.", this, oldState);
+    mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
+    mTable.release();
   }
 
   /**
@@ -439,8 +453,9 @@ public class HBaseKijiTableReader implements KijiTableReader {
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    if (mIsOpen.get()) {
-      LOG.error("{} is closed in finalize() : please, close reader explicitly.", this);
+    final State state = mState.get();
+    if (state != State.CLOSED) {
+      LOG.warn("Finalizing unclosed KijiTableReader {} in state {}.", this, state);
       close();
     }
     super.finalize();

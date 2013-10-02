@@ -23,8 +23,8 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -97,8 +97,15 @@ public final class HBaseKijiTable implements KijiTable {
   /** URI of this table. */
   private final KijiURI mTableURI;
 
-  /** Whether the table is open. */
-  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
+  /** States of a kiji table instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSED
+  }
+
+  /** Tracks the state of this kiji table. */
+  private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** String representation of the call stack at the time this object is constructed. */
   private final String mConstructorStack;
@@ -368,8 +375,10 @@ public final class HBaseKijiTable implements KijiTable {
     mKiji.retain();
 
     // Table is now open and must be released properly:
-    mIsOpen.set(true);
     mRetainCount.set(1);
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open KijiTable instance in state %s.", oldState);
   }
 
   /**
@@ -452,6 +461,9 @@ public final class HBaseKijiTable implements KijiTable {
    * @throws IOException in case of an error updating the LayoutConsumer.
    */
   public void registerLayoutConsumer(LayoutConsumer consumer) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot register a new layout consumer to a KijiTable in state %s.", state);
     synchronized (mLayoutConsumers) {
       mLayoutConsumers.add(consumer);
     }
@@ -465,6 +477,9 @@ public final class HBaseKijiTable implements KijiTable {
    * @param consumer the LayoutConsumer to unregister.
    */
   public void unregisterLayoutConsumer(LayoutConsumer consumer) {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot unregister a layout consumer from a KijiTable in state %s.", state);
     synchronized (mLayoutConsumers) {
       mLayoutConsumers.remove(consumer);
     }
@@ -482,6 +497,9 @@ public final class HBaseKijiTable implements KijiTable {
    * @return the set of registered layout consumers.
    */
   Set<LayoutConsumer> getLayoutConsumers() {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get a list of layout consumers from a KijiTable in state %s.", state);
     synchronized (mLayoutConsumers) {
       return ImmutableSet.copyOf(mLayoutConsumers);
     }
@@ -496,6 +514,9 @@ public final class HBaseKijiTable implements KijiTable {
    * @throws IOException in case of an error updating LayoutConsumers.
    */
   void updateLayoutConsumers(KijiTableLayout layout) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot update layout consumers for a KijiTable in state %s.", state);
     layout.setSchemaTable(mKiji.getSchemaTable());
     final LayoutCapsule capsule = new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
     synchronized (mLayoutConsumers) {
@@ -519,6 +540,9 @@ public final class HBaseKijiTable implements KijiTable {
    * @throws IOException in case of an error.
    */
   public HTableInterface openHTableConnection() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot open an HTable connection for a KijiTable in state %s.", state);
     return mHTablePool.getTable(mHBaseTableName);
   }
 
@@ -554,6 +578,9 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public KijiTableReader openTableReader() {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot open a table reader on a KijiTable in state %s.", state);
     try {
       return new HBaseKijiTableReader(this);
     } catch (IOException ioe) {
@@ -564,6 +591,9 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public KijiTableWriter openTableWriter() {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot open a table writer on a KijiTable in state %s.", state);
     try {
       return new HBaseKijiTableWriter(this);
     } catch (IOException ioe) {
@@ -574,12 +604,18 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public KijiReaderFactory getReaderFactory() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get the reader factory for a KijiTable in state %s.", state);
     return mReaderFactory;
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiWriterFactory getWriterFactory() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get the writer factory for a KijiTable in state %s.", state);
     return mWriterFactory;
   }
 
@@ -594,6 +630,9 @@ public final class HBaseKijiTable implements KijiTable {
    */
   @Override
   public List<KijiRegion> getRegions() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get the regions for a KijiTable in state %s.", state);
     final HBaseAdmin hbaseAdmin = ((HBaseKiji) getKiji()).getHBaseAdmin();
     final HTableInterface htable = mHTableFactory.create(mConf,  mHBaseTableName);
     try {
@@ -630,9 +669,9 @@ public final class HBaseKijiTable implements KijiTable {
    * @throws IOException on I/O error.
    */
   private void closeResources() throws IOException {
-    final boolean opened = mIsOpen.getAndSet(false);
-    Preconditions.checkState(opened,
-        "HBaseKijiTable.release() on table '%s' already closed.", mTableURI);
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close KijiTable instance %s in state %s.", this, oldState);
 
     if (mLayoutTracker != null) {
       mLayoutTracker.close();
@@ -702,11 +741,9 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    if (mIsOpen.get()) {
-      CLEANUP_LOG.warn(
-          "Finalizing opened HBaseKijiTable '{}' with {} retained references: "
-          + "use KijiTable.release()!",
-          mTableURI, mRetainCount.get());
+    final State state = mState.get();
+    if (state != State.CLOSED) {
+      CLEANUP_LOG.warn("Finalizing unreleased KijiTable {} in state {}.", this, state);
       if (CLEANUP_LOG.isDebugEnabled()) {
         CLEANUP_LOG.debug(
             "HBaseKijiTable '{}' was constructed through:\n{}",
@@ -725,7 +762,7 @@ public final class HBaseKijiTable implements KijiTable {
         .add("uri", mTableURI)
         .add("retain_counter", mRetainCount.get())
         .add("layout_id", getLayoutCapsule().getLayout().getDesc().getLayoutId())
-        .addValue(mIsOpen.get() ? "open" : "closed")
+        .add("state", mState.get())
         .toString();
   }
 

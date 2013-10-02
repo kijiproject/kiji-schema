@@ -76,7 +76,6 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   private static enum State {
     UNINITIALIZED,
     OPEN,
-    CLOSING,
     CLOSED
   }
 
@@ -154,8 +153,8 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     @Override
     public void update(final LayoutCapsule capsule) throws IOException {
       final State state = mState.get();
-      if ((state == State.CLOSED) || (state == State.CLOSING)) {
-        LOG.debug("Writer closing or closed: ignoring layout update.");
+      if (state == State.CLOSED) {
+        LOG.debug("Writer is closed: ignoring layout update.");
         return;
       }
       final CellEncoderProvider provider = new CellEncoderProvider(
@@ -181,7 +180,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
           provider,
           capsule.getLayout(),
           capsule.getColumnNameTranslator());
-      if (mState.get() == State.OPEN) {
+      if (state == State.OPEN) {
         mHTable.flushCommits();
       }
     }
@@ -204,7 +203,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
 
     // Retain the table only when everything succeeds.
     mTable.retain();
-    Preconditions.checkState(mState.compareAndSet(State.UNINITIALIZED, State.OPEN));
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open KijiTableWriter instance in state %s.", oldState);
   }
 
   /** {@inheritDoc} */
@@ -218,7 +219,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public <T> void put(EntityId entityId, String family, String qualifier, long timestamp, T value)
       throws IOException {
-    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot put cell to KijiTableWriter instance %s in state %s.", this, state);
 
     final KijiColumnName columnName = new KijiColumnName(family, qualifier);
     final WriterLayoutCapsule capsule = mWriterLayoutCapsule;
@@ -241,7 +244,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public KijiCell<Long> increment(EntityId entityId, String family, String qualifier, long amount)
       throws IOException {
-    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot increment cell to KijiTableWriter instance %s in state %s.", this, state);
 
     verifyIsCounter(family, qualifier);
 
@@ -293,7 +298,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   /** {@inheritDoc} */
   @Override
   public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {
-    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot delete row while KijiTableWriter %s is in state %s.", this, state);
 
     final Delete delete = new Delete(entityId.getHBaseRowKey(), upToTimestamp, null);
     mHTable.delete(delete);
@@ -309,7 +316,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public void deleteFamily(EntityId entityId, String family, long upToTimestamp)
       throws IOException {
-    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot delete family while KijiTableWriter %s is in state %s.", this, state);
 
     final WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final FamilyLayout familyLayout = capsule.getLayout().getFamilyMap().get(family);
@@ -353,6 +362,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
       FamilyLayout familyLayout,
       long upToTimestamp)
       throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot delete family group while KijiTableWriter %s is in state %s.", this, state);
     final String familyName = Preconditions.checkNotNull(familyLayout.getName());
     // Delete each column in the group according to the layout.
     final Delete delete = new Delete(entityId.getHBaseRowKey());
@@ -389,6 +401,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     //    family that belong to the Kiji column family.
     // 2. Send a delete() for each of the HBase qualifiers found in the previous step.
 
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot delete map family while KijiTableWriter %s is in state %s.", this, state);
     final String familyName = familyLayout.getName();
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
         .toHBaseColumnName(new KijiColumnName(familyName));
@@ -437,7 +452,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public void deleteColumn(EntityId entityId, String family, String qualifier, long upToTimestamp)
       throws IOException {
-    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot delete column while KijiTableWriter %s is in state %s.", this, state);
 
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
         .toHBaseColumnName(new KijiColumnName(family, qualifier));
@@ -456,7 +473,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   @Override
   public void deleteCell(EntityId entityId, String family, String qualifier, long timestamp)
       throws IOException {
-    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot delete cell while KijiTableWriter %s is in state %s.", this, state);
 
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
         .toHBaseColumnName(new KijiColumnName(family, qualifier));
@@ -470,22 +489,22 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   /** {@inheritDoc} */
   @Override
   public void flush() throws IOException {
-    Preconditions.checkState(mState.get() == State.OPEN, "Writer %s is not open.", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot flush KijiTableWriter instance %s in state %s.", this, state);
     mHTable.flushCommits();
   }
 
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    if (!mState.compareAndSet(State.OPEN, State.CLOSING)) {
-      LOG.error("Cannot close writer {} in state {}.", this, mState.get());
-      return;
-    }
+    flush();
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close KijiTableWriter instance %s in state %s.", this, oldState);
     mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
-    mHTable.flushCommits();
     mHTable.close();
     mTable.release();
-    Preconditions.checkState(mState.compareAndSet(State.CLOSING, State.CLOSED));
   }
 
   /** {@inheritDoc} */

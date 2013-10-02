@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
@@ -116,8 +117,15 @@ public final class KijiTablePool implements Closeable {
   /** A cleanup thread for idle connections. */
   private IdleTimeoutThread mCleanupThread;
 
-  /** Whether the table pool is open. */
-  private boolean mIsOpen;
+  /** States of a KijiTablePool instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSED
+  }
+
+  /** Tracks the state of this KijiTablePool instance. */
+  private AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /**
    * Builder class for KijiTablePool instances.  These should be constructed with
@@ -240,7 +248,9 @@ public final class KijiTablePool implements Closeable {
     mIdleTimeout = builder.mIdleTimeout;
     mIdlePollPeriod = builder.mIdlePollPeriod;
     mPoolCache = new HashMap<String, Pool>();
-    mIsOpen = true;
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open KijiTablePool instance in state %s.", oldState);
   }
 
   /**
@@ -267,6 +277,10 @@ public final class KijiTablePool implements Closeable {
    * @throws KijiTablePool.NoCapacityException If the table pool is at capacity.
    */
   public synchronized KijiTable get(String name) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get KijiTable from KijiTablePool instance in state %s.", state);
+
     // Starts a cleanup thread if necessary.
     if (mIdleTimeout > 0L && null == mCleanupThread) {
       LOG.debug("Starting cleanup thread for table pool.");
@@ -275,9 +289,6 @@ public final class KijiTablePool implements Closeable {
     }
 
     LOG.debug("Retrieving a connection for {} from the table pool.", name);
-    if (!mIsOpen) {
-      throw new IllegalStateException("Table pool is closed.");
-    }
 
     if (!mPoolCache.containsKey(name)) {
       mPoolCache.put(name, new Pool(name));
@@ -304,10 +315,9 @@ public final class KijiTablePool implements Closeable {
    */
   @Override
   public synchronized void close() throws IOException {
-    if (!mIsOpen) {
-      LOG.warn("Called close() on a KijiTablePool that was already closed.");
-      return;
-    }
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close KijiTablePool instance in state %s.", oldState);
     if (null != mCleanupThread) {
       mCleanupThread.interrupt();
       try {
@@ -320,13 +330,13 @@ public final class KijiTablePool implements Closeable {
       ResourceUtils.closeOrLog(pool);
     }
     mPoolCache.clear();
-    mIsOpen = false;
   }
 
   @Override
   protected void finalize() throws Throwable {
-    if (mIsOpen) {
-      CLEANUP_LOG.warn("Closing KijiTablePool in finalize(). You should close it explicitly");
+    final State state = mState.get();
+    if (state != State.CLOSED) {
+      CLEANUP_LOG.warn("Finalizing unclosed KijiTablePool instance in state {}.", state);
       close();
     }
     super.finalize();
@@ -339,6 +349,9 @@ public final class KijiTablePool implements Closeable {
    * @return The size of the table pool.
    */
   public int getPoolSize(String tableName) {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get pool size of KijiTablePool instance in state %s.", state);
     return mPoolCache.get(tableName).getPoolSize();
   }
 

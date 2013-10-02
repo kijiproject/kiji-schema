@@ -26,7 +26,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
@@ -121,6 +121,14 @@ public final class ZooKeeperMonitor implements Closeable {
 
   /** Empty byte array used to create ZooKeeper nodes. */
   private static final byte[] EMPTY_BYTES = new byte[0];
+
+  /** States of internal objects. */
+  private static enum State {
+    UNINITIALIZED,
+    INITIALIZED,
+    OPEN,
+    CLOSED
+  }
 
   // -----------------------------------------------------------------------------------------------
 
@@ -417,18 +425,18 @@ public final class ZooKeeperMonitor implements Closeable {
     private final File mTableLayoutFile;
     private final LayoutWatcher mWatcher = new LayoutWatcher();
     private final Stat mLayoutStat = new Stat();
-    private final AtomicBoolean mOpened = new AtomicBoolean(false);
-    private final AtomicBoolean mClosed = new AtomicBoolean(false);
+    private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
     /** Automatically re-registers for new layout updates. */
     private class LayoutWatcher implements Watcher {
       /** {@inheritDoc} */
       @Override
       public void process(WatchedEvent event) {
-        if (!mClosed.get()) {
+        final State state = mState.get();
+        if (state == State.OPEN) {
           registerWatcher();
         } else {
-          LOG.debug("LayoutTracker is closed : dropping layout update.");
+          LOG.debug("LayoutTracker is in state {} : dropping layout update.", state);
           // Do not re-register a watcher.
         }
       }
@@ -444,12 +452,16 @@ public final class ZooKeeperMonitor implements Closeable {
       this.mTableURI = tableURI;
       this.mTableLayoutFile = getTableLayoutFile(tableURI);
       this.mHandler = handler;
+      final State oldState = mState.getAndSet(State.INITIALIZED);
+      Preconditions.checkState(oldState == State.UNINITIALIZED,
+          "Cannot create LayoutTracker instance in state %s.", oldState);
     }
 
     /** Starts the tracker. */
     public void open() {
-      Preconditions.checkState(!mOpened.getAndSet(true),
-          "Cannot start LayoutTracker while already started.");
+      final State oldState = mState.getAndSet(State.OPEN);
+      Preconditions.checkState(oldState == State.INITIALIZED,
+          "Cannot start LayoutTracker instance in state %s.", oldState);
 
       // Always runs registerWatcher() in a separate thread:
       final Thread thread = new Thread() {
@@ -487,10 +499,9 @@ public final class ZooKeeperMonitor implements Closeable {
     /** {@inheritDoc} */
     @Override
     public void close() throws IOException {
-      Preconditions.checkState(mOpened.get(),
-          "Cannot stop a LayoutTracker that has not been started.");
-      Preconditions.checkState(!mClosed.getAndSet(true),
-          "Cannot stop a LayoutTracker multiple times.");
+      final State oldState = mState.getAndSet(State.CLOSED);
+      Preconditions.checkState(oldState == State.OPEN,
+          "Cannot close LayoutTracker instance in state %s.", oldState);
       // ZOOKEEPER-442: There is currently no way to cancel a watch.
       //     All we can do here is to neutralize the handler by setting mClosed.
     }
@@ -526,18 +537,18 @@ public final class ZooKeeperMonitor implements Closeable {
     private final File mUsersDir;
     private final UsersWatcher mWatcher = new UsersWatcher();
     private final Stat mStat = new Stat();
-    private final AtomicBoolean mOpened = new AtomicBoolean(false);
-    private final AtomicBoolean mClosed = new AtomicBoolean(false);
+    private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
     /** Automatically re-registers for users updates. */
     private class UsersWatcher implements Watcher {
       /** {@inheritDoc} */
       @Override
       public void process(WatchedEvent event) {
-        if (!mClosed.get()) {
+        final State state = mState.get();
+        if (state == State.OPEN) {
           registerWatcher();
         } else {
-          LOG.debug("LayoutTracker is closed : dropping layout update.");
+          LOG.debug("LayoutTracker is in state {} : dropping layout update.", state);
           // Do not re-register a watcher.
         }
       }
@@ -553,13 +564,18 @@ public final class ZooKeeperMonitor implements Closeable {
       this.mTableURI = tableURI;
       this.mUsersDir = getTableUsersDir(tableURI);
       this.mHandler = handler;
+      final State oldState = mState.getAndSet(State.INITIALIZED);
+      Preconditions.checkState(oldState == State.UNINITIALIZED,
+          "Cannot open UserTracker instance in state %s.", oldState);
     }
 
     /**
      * Starts the tracker.
      */
     public void open() {
-      Preconditions.checkState(!mOpened.getAndSet(true));
+      final State oldState = mState.getAndSet(State.OPEN);
+      Preconditions.checkState(oldState == State.INITIALIZED,
+          "Cannot open UserTracker instance in state %s.", oldState);
       final Thread thread = new Thread() {
         /** {@inheritDoc} */
         @Override
@@ -618,10 +634,9 @@ public final class ZooKeeperMonitor implements Closeable {
     /** {@inheritDoc} */
     @Override
     public void close() throws IOException {
-      Preconditions.checkState(mOpened.get(),
-          "Cannot stop a UsersTracker that has not been started.");
-      Preconditions.checkState(!mClosed.getAndSet(true),
-          "Cannot stop a UsersTracker multiple times.");
+      final State oldState = mState.getAndSet(State.CLOSED);
+      Preconditions.checkState(oldState == State.OPEN,
+          "Cannot close UsersTracker instance in state %s.", oldState);
       // ZOOKEEPER-442: There is currently no way to cancel a watch.
       //     All we can do here is to neutralize the handler by setting mClosed.
     }

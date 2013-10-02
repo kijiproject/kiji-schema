@@ -22,8 +22,8 @@ package org.kiji.schema.layout.impl;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -84,11 +84,14 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
         return;
       }
 
+      final State state = mState.get();
+
       switch (event.getState()) {
       case SyncConnected: {
         synchronized (ZooKeeperClient.this) {
-          if (mClosed.get()) {
-            LOG.debug("ZooKeeper client session alive notification received after close().");
+          if (state != State.OPEN) {
+            LOG.debug("ZooKeeper client session alive notification received while in state {}.",
+                state);
           } else {
             LOG.debug("ZooKeeper client session {} alive.", mZKClient.getSessionId());
           }
@@ -107,11 +110,10 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
       case Expired: {
         synchronized (ZooKeeperClient.this) {
           LOG.debug("ZooKeeper client session {} died.", mZKClient.getSessionId());
-          Preconditions.checkState(mOpened.get());
-          if (!mClosed.get()) {
+          if (state == State.OPEN) {
             createZKClient();
           } else {
-            LOG.debug("ZooKeeperClient closed, not reopening ZooKeeper session.");
+            LOG.debug("ZooKeeperClient in state {}; not reopening ZooKeeper session.", state);
           }
         }
         break;
@@ -131,11 +133,16 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
   /** Timeout for ZooKeeper sessions, in milliseconds. */
   private final int mSessionTimeoutMS;
 
-  /** Set once the client is opened. */
-  private final AtomicBoolean mOpened = new AtomicBoolean(false);
+  /** States of a ZooKeeper client instance. */
+  private static enum State {
+    UNINITIALIZED,
+    INITIALIZED,
+    OPEN,
+    CLOSED
+  }
 
-  /** Set once the client is closed. */
-  private final AtomicBoolean mClosed = new AtomicBoolean(false);
+  /** Tracks the state of this Zookeeper client. */
+  private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** Represents the number of handles to this ZooKeeperClient. */
   private final AtomicInteger mRetainCount;
@@ -169,14 +176,17 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
     this.mSessionTimeoutMS = sessionTimeoutMS;
     this.mRetainCount = new AtomicInteger(1);
     LOG.debug("Created {}", this);
-  }
+    final State oldState = mState.getAndSet(State.INITIALIZED);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot create SchemaTable instance in state %s.", oldState);  }
 
   /**
    * Starts the ZooKeeper client.
    */
   public void open() {
-    Preconditions.checkState(!mOpened.getAndSet(true),
-        "Cannot open ZooKeeperClient multiple times.");
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.INITIALIZED,
+        "Cannot open ZooKeeperClient in state %s.", oldState);
     Preconditions.checkState(mZKClient == null);
     createZKClient();
   }
@@ -187,7 +197,7 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
    * @return whether this ZooKeeperClient has been opened and not closed.
    */
   public boolean isOpen() {
-    return mOpened.get() && !mClosed.get();
+    return mState.get() == State.OPEN;
   }
 
   /**
@@ -215,14 +225,16 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
    * @return A live ZooKeeper session client, or null.
    */
   public ZooKeeper getZKClient(double timeout) {
-    Preconditions.checkState(mOpened.get());
 
     // Absolute deadline, in seconds since the Epoch:
     final double absoluteDeadline = (timeout > 0) ? (Time.now() + timeout) : 0.0;
+    State state;
 
     synchronized (this) {
       while (true) {
-        Preconditions.checkState(!mClosed.get());
+        state = mState.get();
+        Preconditions.checkState(state == State.OPEN,
+            "Cannot get ZKClient while ZookeeperClient is in state %s.", state);
         if ((mZKClient != null) && mZKClient.getState().isAlive()) {
           return mZKClient;
         } else {
@@ -282,9 +294,9 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
    */
   private void close() {
     LOG.debug("Closing {}", this);
-    Preconditions.checkState(mOpened.get(), "Cannot close ZooKeeperClient that is not opened yet.");
-    Preconditions.checkState(!mClosed.getAndSet(true),
-        "Cannot close ZooKeeperClient multiple times.");
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close ZookeeperClient in state %s.", oldState);
 
     synchronized (this) {
       if (mZKClient == null) {
@@ -555,8 +567,10 @@ public class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient> {
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    if (mRetainCount != null && mRetainCount.get() != 0) {
-      LOG.warn("Finalizing retained ZooKeeperClient, use ZooKeeperClient.release().");
+    final State state = mState.get();
+    if (state != State.CLOSED) {
+      LOG.warn("Finalizing unreleased ZooKeeperClient in state {} with retain count {}.",
+          state, mRetainCount.get());
       close();
     }
     super.finalize();

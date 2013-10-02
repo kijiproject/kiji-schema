@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -73,8 +74,15 @@ public class HBaseMetaTable implements KijiMetaTable {
   /** The HBase table that stores Kiji metadata. */
   private final HTableInterface mTable;
 
-  /** Whether the table is open. */
-  private boolean mIsOpen;
+  /** States of a SchemaTable instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSED
+  }
+
+  /** Tracks the state of this SchemaTable instance. */
+  private AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** The layout table that we delegate the work of storing table layout metadata to. */
   private final KijiTableLayoutDatabase mTableLayoutDatabase;
@@ -161,15 +169,20 @@ public class HBaseMetaTable implements KijiMetaTable {
       KijiTableLayoutDatabase tableLayoutDatabase,
       KijiTableKeyValueDatabase<?> tableKeyValueDatabase) {
     mKijiURI = kijiURI;
-    mIsOpen = true;
     mTable = htable;
     mTableLayoutDatabase = tableLayoutDatabase;
     mTableKeyValueDatabase = tableKeyValueDatabase;
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open MetaTable instance in state %s.", oldState);
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized void deleteTable(String table) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot delete table from MetaTable instance in state %s.", state);
     mTableLayoutDatabase.removeAllTableLayoutVersions(table);
     mTableKeyValueDatabase.removeAllValues(table);
   }
@@ -178,17 +191,26 @@ public class HBaseMetaTable implements KijiMetaTable {
   @Override
   public synchronized KijiTableLayout updateTableLayout(String table, TableLayoutDesc layoutUpdate)
     throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot update table layout in MetaTable instance in state %s.", state);
     return mTableLayoutDatabase.updateTableLayout(table, layoutUpdate);
   }
   /** {@inheritDoc} */
   @Override
   public synchronized KijiTableLayout getTableLayout(String table) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get table layout from MetaTable instance in state %s.", state);
     return mTableLayoutDatabase.getTableLayout(table);
   }
   /** {@inheritDoc} */
   @Override
   public synchronized List<KijiTableLayout> getTableLayoutVersions(String table, int numVersions)
     throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get table layout versions from MetaTable instance in state %s.", state);
     return mTableLayoutDatabase.getTableLayoutVersions(table, numVersions);
   }
 
@@ -196,12 +218,18 @@ public class HBaseMetaTable implements KijiMetaTable {
   @Override
   public synchronized NavigableMap<Long, KijiTableLayout> getTimedTableLayoutVersions(String table,
     int numVersions) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get timed table layout versions from MetaTable instance in state %s.", state);
     return mTableLayoutDatabase.getTimedTableLayoutVersions(table, numVersions);
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized void removeAllTableLayoutVersions(String table) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot remove all table layout versions from MetaTable instance in state %s.", state);
     mTableLayoutDatabase.removeAllTableLayoutVersions(table);
   }
 
@@ -209,37 +237,45 @@ public class HBaseMetaTable implements KijiMetaTable {
   @Override
   public synchronized void removeRecentTableLayoutVersions(String table, int numVersions)
     throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot remove recent table layout versions from MetaTable instance in state %s.", state);
     mTableLayoutDatabase.removeRecentTableLayoutVersions(table, numVersions);
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized List<String> listTables() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot list tables in MetaTable instance in state %s.", state);
     return mTableLayoutDatabase.listTables();
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized boolean tableExists(String tableName) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot check if table exists in MetaTable instance in state %s.", state);
     return mTableLayoutDatabase.tableExists(tableName);
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized void close() throws IOException {
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close MetaTable instance in state %s.", oldState);
     mTable.close();
-    if (!mIsOpen) {
-      LOG.warn("close() called on a KijiMetaTable that was already closed.");
-      return;
-    }
-    mIsOpen = false;
   }
 
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    if (mIsOpen) {
-      CLEANUP_LOG.warn("Closing KijiMetaTable in finalize(). You should close it explicitly");
+    final State state = mState.get();
+    if (state != State.CLOSED) {
+      CLEANUP_LOG.warn("Finalizing unclosed KijiMetaTable instance %s in state %s.", this, state);
       close();
     }
     super.finalize();
@@ -248,6 +284,9 @@ public class HBaseMetaTable implements KijiMetaTable {
   /** {@inheritDoc} */
   @Override
   public synchronized byte[] getValue(String table, String key) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get value from MetaTable instance in state %s.", state);
     return mTableKeyValueDatabase.getValue(table, key);
   }
 
@@ -255,6 +294,9 @@ public class HBaseMetaTable implements KijiMetaTable {
   @Override
   public synchronized KijiMetaTable putValue(String table, String key, byte[] value)
     throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot put value into MetaTable instance in state %s.", state);
     mTableKeyValueDatabase.putValue(table, key, value);
     return this; // Don't expose the delegate object.
   }
@@ -262,24 +304,36 @@ public class HBaseMetaTable implements KijiMetaTable {
   /** {@inheritDoc} */
   @Override
   public synchronized void removeValues(String table, String key) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get removed values from MetaTable instance in state %s.", state);
     mTableKeyValueDatabase.removeValues(table, key);
   }
 
   /** {@inheritDoc} */
   @Override
   public Set<String> tableSet() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get table set from MetaTable instance in state %s.", state);
     return mTableKeyValueDatabase.tableSet();
   }
 
   /** {@inheritDoc} */
   @Override
   public Set<String> keySet(String table) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get key set from MetaTable instance in state %s.", state);
     return mTableKeyValueDatabase.keySet(table);
   }
 
   /** {@inheritDoc} */
   @Override
   public void removeAllValues(String table) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot remove all values from MetaTable instance in state %s.", state);
     mTableKeyValueDatabase.removeAllValues(table);
   }
 
@@ -318,6 +372,9 @@ public class HBaseMetaTable implements KijiMetaTable {
   /** {@inheritDoc} */
   @Override
   public MetaTableBackup toBackup() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot backup MetaTable instance in state %s.", state);
     Map<String, TableBackup> backupEntries = new HashMap<String, TableBackup>();
     List<String> tables = listTables();
     for (String table : tables) {
@@ -336,6 +393,9 @@ public class HBaseMetaTable implements KijiMetaTable {
   /** {@inheritDoc} */
   @Override
   public void fromBackup(MetaTableBackup backup) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot restore backup to MetaTable instance in state %s.", state);
     LOG.info(String.format("Restoring meta table from backup with %d entries.",
         backup.getTables().size()));
     for (Map.Entry<String, TableBackup> tableEntry: backup.getTables().entrySet()) {
@@ -354,12 +414,18 @@ public class HBaseMetaTable implements KijiMetaTable {
   /** {@inheritDoc} */
   @Override
   public TableLayoutsBackup layoutsToBackup(String table) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get layouts to backup from MetaTable instance in state %s.", state);
     return mTableLayoutDatabase.layoutsToBackup(table);
   }
 
   /** {@inheritDoc} */
   @Override
   public List<byte[]> getValues(String table, String key, int numVersions) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get values from MetaTable instance in state %s.", state);
     return mTableKeyValueDatabase.getValues(table, key, numVersions);
   }
 
@@ -367,12 +433,18 @@ public class HBaseMetaTable implements KijiMetaTable {
   @Override
   public NavigableMap<Long, byte[]> getTimedValues(String table, String key, int numVersions)
     throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get timed values from MetaTable instance in state %s.", state);
     return mTableKeyValueDatabase.getTimedValues(table, key, numVersions);
   }
 
   /** {@inheritDoc} */
   @Override
   public KeyValueBackup keyValuesToBackup(String table) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get key values to backup from MetaTable instance in state %s.", state);
     return mTableKeyValueDatabase.keyValuesToBackup(table);
   }
 
@@ -380,12 +452,18 @@ public class HBaseMetaTable implements KijiMetaTable {
   @Override
   public void restoreKeyValuesFromBackup(String table, KeyValueBackup tableBackup) throws
       IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot restore key values from backup from MetaTable instance in state %s.", state);
     mTableKeyValueDatabase.restoreKeyValuesFromBackup(table, tableBackup);
   }
 
   @Override
   public void restoreLayoutsFromBackup(String tableName, TableLayoutsBackup tableBackup) throws
       IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot restore layouts from backup from MetaTable instance in state %s.", state);
     mTableLayoutDatabase.restoreLayoutsFromBackup(tableName, tableBackup);
   }
 
@@ -394,7 +472,7 @@ public class HBaseMetaTable implements KijiMetaTable {
   public String toString() {
     return Objects.toStringHelper(HBaseMetaTable.class)
         .add("uri", mKijiURI)
-        .add("open", mIsOpen)
+        .add("state", mState.get())
         .toString();
   }
 }

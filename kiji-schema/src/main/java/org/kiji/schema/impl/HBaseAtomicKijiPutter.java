@@ -21,7 +21,7 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.HConstants;
@@ -66,11 +66,15 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** The HTableInterface associated with the KijiTable. */
   private final HTableInterface mHTable;
 
-  /** False before instance construction completes. True any time after construction. */
-  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
+  /** States of an atomic kiji putter instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSED
+  }
 
-  /** False before {@link #close()}.  True after close(). */
-  private final AtomicBoolean mIsClosed = new AtomicBoolean(false);
+  /** Tracks the state of this atomic kiji putter. */
+  private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** Object which processes layout update from the KijiTable to which this Writer writes. */
   private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
@@ -120,7 +124,9 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     /** {@inheritDoc} */
     @Override
     public void update(final LayoutCapsule capsule) throws IOException {
-      Preconditions.checkState(!mIsClosed.get(), "Cannot update a closed AtomicKijiPutter.");
+      final State state = mState.get();
+      Preconditions.checkState(state != State.CLOSED,
+          "Cannot update an AtomicKijiPutter instance in state %s.", state);
       synchronized (mLock) {
         mLayoutOutOfDate = true;
         // Update the state of the writer.
@@ -162,11 +168,13 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     mHTable = mTable.openHTableConnection();
     mTable.registerLayoutConsumer(mInnerLayoutUpdater);
     Preconditions.checkState(mWriterLayoutCapsule != null,
-        "AtomicKijiPutter for table: {} failed to initialize.", mTable.getURI());
+        "AtomicKijiPutter for table: %s failed to initialize.", mTable.getURI());
 
     // Retain the table only when everything succeeds.
     table.retain();
-    mIsOpen.set(true);
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open AtomicKijiPutter instance in state %s.", oldState);
   }
 
   /** Resets the current transaction. */
@@ -180,12 +188,11 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** {@inheritDoc} */
   @Override
   public void begin(EntityId eid) {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot begin a transaction on an AtomicKijiPutter instance in state %s.", state);
     // Preconditions.checkArgument() cannot be used here because mEntityId is null between calls to
     // begin().
-    Preconditions.checkState(mIsOpen.get(), "begin() called on an AtomicKijiPutter before "
-        + "construction is complete.");
-    Preconditions.checkState(!mIsClosed.get(), "Cannot begin a transaction on a closed "
-        + "AtomicKijiPutter.");
     if (mPut != null) {
       throw new IllegalStateException(String.format("There is already a transaction in progress on "
           + "row: %s. Call commit(), checkAndCommit(), or rollback() to clear the Put.",
@@ -210,10 +217,9 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   @Override
   public void commit() throws IOException {
     Preconditions.checkState(mPut != null, "commit() must be paired with a call to begin()");
-    Preconditions.checkState(mIsOpen.get(), "commit() called on an AtomicKijiPutter before "
-        + "construction is complete.");
-    Preconditions.checkState(!mIsClosed.get(), "Cannot commit a transaction on a closed "
-        + "AtomicKijiPutter.");
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot commit a transaction on an AtomicKijiPutter instance in state %s.", state);
     // We don't actually need the writer layout capsule here, but we want the layout update check.
     getWriterLayoutCapsule();
     for (KeyValue kv : mHopper) {
@@ -232,10 +238,9 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   public <T> boolean checkAndCommit(String family, String qualifier, T value) throws IOException {
     Preconditions.checkState(mPut != null,
         "checkAndCommit() must be paired with a call to begin()");
-    Preconditions.checkState(mIsOpen.get(), "checkAndCommit() called on an AtomicKijiPutter before "
-        + "construction is complete.");
-    Preconditions.checkState(!mIsClosed.get(), "Cannot checkAndCommit a transaction on a closed "
-        + "AtomicKijiPutter.");
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot checkAndCommit a transaction on an AtomicKijiPutter instance in state %s.", state);
     final WriterLayoutCapsule capsule = getWriterLayoutCapsule();
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
     final HBaseColumnName columnName =
@@ -270,10 +275,9 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   @Override
   public void rollback() {
     Preconditions.checkState(mPut != null, "rollback() must be paired with a call to begin()");
-    Preconditions.checkState(mIsOpen.get(), "rollback() called on an AtomicKijiPutter before "
-        + "construction is complete.");
-    Preconditions.checkState(!mIsClosed.get(), "Cannot rollback a transaction on a closed "
-        + "AtomicKijiPutter.");
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot rollback a transaction on an AtomicKijiPutter instance in state %s.", state);
     reset();
   }
 
@@ -288,10 +292,9 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   public <T> void put(String family, String qualifier, long timestamp, T value) throws IOException {
     Preconditions.checkState(mPut != null, "calls to put() must be between calls to begin() and "
         + "commit(), checkAndCommit(), or rollback()");
-    Preconditions.checkState(mIsOpen.get(), "put() called on an AtomciKijiPutter before "
-        + "construction is complete.");
-    Preconditions.checkState(!mIsClosed.get(), "Cannot add to a transaction on a closed "
-        + "AtomicKijiPutter.");
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot put cell to an AtomicKijiPutter instance in state %s.", state);
     final WriterLayoutCapsule capsule = getWriterLayoutCapsule();
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
     final HBaseColumnName columnName =
@@ -331,18 +334,15 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    Preconditions.checkState(mIsOpen.get(), "Cannot close an AtomicKijiPutter which has not been "
-        + "fully constructed.");
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close an AtomicKijiPutter instance in state %s.", oldState);
     if (mPut != null) {
-      LOG.warn("Closing HBaseAtomicKijiPutter "
-          + "while a transaction on table {} on entity ID {} is in progress. "
-          + "Rolling back transaction.",
-          mEntityId);
-      rollback();
+      LOG.warn("Closing HBaseAtomicKijiPutter while a transaction on table {} on entity ID {} is " +
+          "in progress. Rolling back transaction.", mTable.getURI(), mEntityId);
+      reset();
     }
     mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
-    Preconditions.checkState(
-        !mIsClosed.getAndSet(true), "Cannot close an already closed AtomicKijiPutter.");
     mHTable.close();
     mTable.release();
   }

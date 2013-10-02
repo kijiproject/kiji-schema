@@ -23,8 +23,9 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -72,8 +73,15 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   /** Provider for cell decoders. */
   private final CellDecoderProvider mCellDecoderProvider;
 
-  /** Whether the scanner is open. */
-  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
+  /** States of a row scanner instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSED
+  }
+
+  /** Tracks the state of this row scanner. */
+  private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** Factory for entity IDs. */
   private final EntityIdFactory mEntityIdFactory;
@@ -241,7 +249,9 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
       throw ioe;
     }
 
-    mIsOpen.set(true);
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open KijiRowScanner instance in state %s.", oldState);
   }
 
   /**
@@ -285,13 +295,9 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    final boolean wasOpen = mIsOpen.getAndSet(false);
-    if (!wasOpen) {
-      LOG.warn("Called HBaseKijiRowScanner.close() more than once.");
-      LOG.debug("Stacktrace of extra call to HBaseKijiRowScanner.close():\n{}",
-          Debug.getStackTrace());
-      return;
-    }
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close KijiRowScanner instance in state %s.", oldState);
     mResultScanner.close();
     mHTable.close();
   }
@@ -299,10 +305,12 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    if (mIsOpen.get()) {
+    final State state = mState.get();
+    if (state != State.CLOSED) {
       CLEANUP_LOG.warn(
-          "Closing HBaseKijiRowScanner in finalize() : please close it explicitly!\n"
+          "Finalizing unclosed KijiRowScanner in state {}.\n"
           + "Call stack when the scanner was constructed:\n{}",
+          state,
           mConstructorStack);
       close();
     }
@@ -348,12 +356,18 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     /** {@inheritDoc} */
     @Override
     public boolean hasNext() {
+      final State state = mState.get();
+      Preconditions.checkState(state == State.OPEN,
+          "Cannot check has next on KijiRowScanner instance in state %s.", state);
       return (mNextResult != null);
     }
 
     /** {@inheritDoc} */
     @Override
     public KijiRowData next() {
+      final State state = mState.get();
+      Preconditions.checkState(state == State.OPEN,
+          "Cannot get next on KijiRowScanner instance in state %s.", state);
       if (mNextResult == null) {
         // Comply with the Iterator interface:
         throw new NoSuchElementException();

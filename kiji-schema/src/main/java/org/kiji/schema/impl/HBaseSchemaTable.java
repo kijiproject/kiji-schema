@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -137,8 +138,15 @@ public class HBaseSchemaTable implements KijiSchemaTable {
   /** KijiURI of the Kiji instance this schema table belongs to. */
   private final KijiURI mURI;
 
-  /** Whether this schema table is open. */
-  private boolean mIsOpen = false;
+  /** States of a SchemaTable instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSED
+  }
+
+  /** Tracks the state of this SchemaTable instance. */
+  private AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** Used for testing finalize() behavior. */
   private String mConstructorStack = "";
@@ -281,11 +289,13 @@ public class HBaseSchemaTable implements KijiSchemaTable {
     mZKLock = Preconditions.checkNotNull(zkLock);
     mURI = uri;
 
-    mIsOpen = true;
-
     if (CLEANUP_LOG.isDebugEnabled()) {
       mConstructorStack = Debug.getStackTrace();
     }
+
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open SchemaTable instance in state %s.", oldState);
   }
 
   /**
@@ -298,7 +308,9 @@ public class HBaseSchemaTable implements KijiSchemaTable {
    * @throws IOException on I/O error.
    */
   private synchronized SchemaEntry getOrCreateSchemaEntry(final Schema schema) throws IOException {
-    Preconditions.checkState(mIsOpen, "Schema tables are closed");
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get or create schema entry from SchemaTable instance in state %s.", state);
 
     final BytesKey schemaHash = getSchemaHash(schema);
     final SchemaEntry knownEntry = getSchemaEntry(schemaHash);
@@ -467,7 +479,9 @@ public class HBaseSchemaTable implements KijiSchemaTable {
   /** {@inheritDoc} */
   @Override
   public synchronized SchemaEntry getSchemaEntry(long schemaId) throws IOException {
-    Preconditions.checkState(mIsOpen, "Schema table is closed");
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get schema entry from SchemaTable instance in state %s.", state);
 
     final SchemaEntry existingEntry = mSchemaIdMap.get(schemaId);
     if (existingEntry != null) {
@@ -493,7 +507,9 @@ public class HBaseSchemaTable implements KijiSchemaTable {
   /** {@inheritDoc} */
   @Override
   public synchronized SchemaEntry getSchemaEntry(BytesKey schemaHash) throws IOException {
-    Preconditions.checkState(mIsOpen, "Schema table is closed");
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get schema entry from SchemaTable instance in state %s.", state);
 
     final SchemaEntry existingEntry = mSchemaHashMap.get(schemaHash);
     if (existingEntry != null) {
@@ -558,7 +574,9 @@ public class HBaseSchemaTable implements KijiSchemaTable {
   /** {@inheritDoc} */
   @Override
   public synchronized void flush() throws IOException {
-    Preconditions.checkState(mIsOpen, "Schema table are closed");
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot flush SchemaTable instance in state %s.", state);
     mSchemaIdTable.flushCommits();
     mSchemaHashTable.flushCommits();
   }
@@ -566,22 +584,21 @@ public class HBaseSchemaTable implements KijiSchemaTable {
   /** {@inheritDoc} */
   @Override
   public synchronized void close() throws IOException {
-    if (!mIsOpen) {
-      LOG.warn("close() was called on a schema table that was already closed.");
-      return;
-    }
     flush();
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close SchemaTable instance in state %s.", oldState);
     mSchemaHashTable.close();
     mSchemaIdTable.close();
     ResourceUtils.closeOrLog(mZKLock);
-    mIsOpen = false;
   }
 
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    if (mIsOpen) {
-      CLEANUP_LOG.warn("Closing schema table from finalize(). You should close it explicitly.");
+    final State state = mState.get();
+    if (state != State.CLOSED) {
+      CLEANUP_LOG.warn("Finalizing unclosed SchemaTable instance %s in state %s.", this, state);
       CLEANUP_LOG.debug("Stack when HBaseSchemaTable was constructed:\n" + mConstructorStack);
       close();
     }
@@ -705,7 +722,9 @@ public class HBaseSchemaTable implements KijiSchemaTable {
   /** {@inheritDoc} */
   @Override
   public SchemaTableBackup toBackup() throws IOException {
-    Preconditions.checkState(mIsOpen, "Schema tables are closed");
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot backup SchemaTable instance in state %s.", state);
     mZKLock.lock();
     List<SchemaTableEntry> entries = Lists.newArrayList();
     try {
@@ -738,7 +757,9 @@ public class HBaseSchemaTable implements KijiSchemaTable {
   /** {@inheritDoc} */
   @Override
   public void fromBackup(final SchemaTableBackup backup) throws IOException {
-    Preconditions.checkState(mIsOpen, "Schema tables are closed");
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot restore backup to SchemaTable instance in state %s.", state);
     mZKLock.lock();
     try {
       /** Entries from the schema hash table. */
@@ -1006,7 +1027,7 @@ public class HBaseSchemaTable implements KijiSchemaTable {
   public String toString() {
     return Objects.toStringHelper(HBaseSchemaTable.class)
         .add("uri", mURI)
-        .add("open", mIsOpen)
+        .add("state", mState.get())
         .toString();
   }
 }

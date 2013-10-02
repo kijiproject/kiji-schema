@@ -21,7 +21,7 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.client.Get;
@@ -83,8 +83,15 @@ public final class HBaseMapFamilyPager implements KijiPager {
   /** Column data request for the map-type family to page through. */
   private final KijiDataRequest.Column mColumnRequest;
 
-  /** Flag to determine if the pager is open or closed. */
-  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
+  /** The state of a map family pager instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSED
+  }
+
+  /** Tracks the state of this map family pager. */
+  private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** True only if there is another page of data to read through {@link #next()}. */
   private boolean mHasNext;
@@ -133,12 +140,17 @@ public final class HBaseMapFamilyPager implements KijiPager {
     // Only retain the table if everything else ran fine:
     mTable.retain();
 
-    mIsOpen.set(true);
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open MapFamilyPager instance in state %s.", oldState);
   }
 
   /** {@inheritDoc} */
   @Override
   public boolean hasNext() {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot check has next while MapFamilyPager is in state %s.", state);
     return mHasNext;
   }
 
@@ -151,6 +163,9 @@ public final class HBaseMapFamilyPager implements KijiPager {
   /** {@inheritDoc} */
   @Override
   public KijiRowData next(int pageSize) {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get next while MapFamilyPager is in state %s.", state);
     if (!mHasNext) {
       throw new NoSuchElementException();
     }
@@ -232,8 +247,9 @@ public final class HBaseMapFamilyPager implements KijiPager {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    final boolean closing = mIsOpen.compareAndSet(true, false);
-    Preconditions.checkState(closing, "Cannot close pager: pager is not open.");
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close MapFamilyPager while in state %s", oldState);
     mTable.release();
   }
 }

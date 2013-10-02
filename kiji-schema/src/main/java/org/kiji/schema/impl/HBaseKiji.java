@@ -22,8 +22,8 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -98,8 +98,15 @@ public final class HBaseKiji implements Kiji {
   /** URI for this HBaseKiji instance. */
   private final KijiURI mURI;
 
-  /** Whether the kiji instance is open. */
-  private final AtomicBoolean mIsOpen = new AtomicBoolean(false);
+  /** States of a Kiji instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSED
+  }
+
+  /** Tracks the state of this Kiji instance. */
+  private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** Retain counter. When decreased to 0, the HBase Kiji may be closed and disposed of. */
   private final AtomicInteger mRetainCount = new AtomicInteger(0);
@@ -193,7 +200,11 @@ public final class HBaseKiji implements Kiji {
     mSecurityManager = null;
 
     mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
-    mIsOpen.set(true);
+
+    mRetainCount.set(1);
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open Kiji instance in state %s.", oldState);
     LOG.debug("Kiji instance '{}' is now opened.", mURI);
 
     mSystemVersion = mSystemTable.getDataVersion();
@@ -231,8 +242,6 @@ public final class HBaseKiji implements Kiji {
       mZKClient = null;
       mMonitor = null;
     }
-
-    mRetainCount.set(1);
   }
 
   /**
@@ -288,7 +297,9 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public synchronized KijiSchemaTable getSchemaTable() throws IOException {
-    Preconditions.checkState(mIsOpen.get());
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get schema table for Kiji instance %s in state %s.", this, state);
     if (null == mSchemaTable) {
       mSchemaTable = new HBaseSchemaTable(mURI, mConf, mHTableFactory, mLockFactory);
     }
@@ -298,14 +309,18 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public KijiSystemTable getSystemTable() {
-    Preconditions.checkState(mIsOpen.get());
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get system table for Kiji instance %s in state %s.", this, state);
     return mSystemTable;
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized KijiMetaTable getMetaTable() throws IOException {
-    Preconditions.checkState(mIsOpen.get());
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get meta table for Kiji instance %s in state %s.", this, state);
     if (null == mMetaTable) {
       mMetaTable = new HBaseMetaTable(mURI, mConf, getSchemaTable(), mHTableFactory);
     }
@@ -320,7 +335,9 @@ public final class HBaseKiji implements Kiji {
    * @return The current HBaseAdmin instance for this Kiji.
    */
   public synchronized HBaseAdmin getHBaseAdmin() throws IOException {
-    Preconditions.checkState(mIsOpen.get());
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get HBase admin for Kiji instance %s in state %s.", this, state);
     if (null == mAdmin) {
       final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
       mAdmin = hbaseFactory.getHBaseAdminFactory(mURI).create(getConf());
@@ -337,7 +354,9 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public synchronized KijiSecurityManager getSecurityManager() throws IOException {
-    Preconditions.checkState(mIsOpen.get());
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get security manager for Kiji instance %s in state %s.", this, state);
     if (null == mSecurityManager) {
       if (isSecurityEnabled()) {
         mSecurityManager = KijiSecurityManager.Factory.create(mURI, getConf(), mHTableFactory);
@@ -353,7 +372,9 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public KijiTable openTable(String tableName) throws IOException {
-    Preconditions.checkState(mIsOpen.get(), "HBaseKiji %s is closed", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot open table in Kiji instance %s in state %s.", this, state);
     return new HBaseKijiTable(this, tableName, mConf, mHTableFactory);
   }
 
@@ -435,6 +456,10 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public void createTable(TableLayoutDesc tableLayout, byte[][] splitKeys) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot create table in Kiji instance %s in state %s.", this, state);
+
     final KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableLayout.getName()).build();
     LOG.debug("Creating Kiji table '{}'.", tableURI);
 
@@ -499,7 +524,9 @@ public final class HBaseKiji implements Kiji {
       boolean dryRun,
       PrintStream printStream)
       throws IOException {
-    Preconditions.checkState(mIsOpen.get(), "HBaseKiji %s is closed", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot modify table layout in Kiji instance %s in state %s.", this, state);
     Preconditions.checkNotNull(update);
 
     ensureValidationCompatibility(update);
@@ -652,7 +679,9 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public void deleteTable(String tableName) throws IOException {
-    Preconditions.checkState(mIsOpen.get(), "HBaseKiji %s is closed", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot delete table in Kiji instance %s in state %s.", this, state);
     // Delete from HBase.
     String hbaseTable = KijiManagedHBaseTableName.getKijiTableName(mURI.getInstance(),
         tableName).toString();
@@ -671,7 +700,9 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public List<String> getTableNames() throws IOException {
-    Preconditions.checkState(mIsOpen.get(), "HBaseKiji %s is closed", this);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get table names in Kiji instance %s in state %s.", this, state);
     return getMetaTable().listTables();
   }
 
@@ -681,10 +712,9 @@ public final class HBaseKiji implements Kiji {
    * @throws IOException on I/O error.
    */
   private void close() throws IOException {
-    if (!mIsOpen.getAndSet(false)) {
-      LOG.error("Cannot close {} : not open.", this);
-      return;
-    }
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close Kiji instance %s in state %s.", this, oldState);
 
     LOG.debug("Closing {}.", this);
     if (mMonitor != null) {
@@ -715,10 +745,10 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public Kiji retain() {
-    LOG.debug("Retaining {}", this);
+    LOG.debug("Retaining {}.", this);
     final int counter = mRetainCount.getAndIncrement();
     Preconditions.checkState(counter >= 1,
-        "Cannot retain closed Kiji %s: retain counter was %s.", mURI, counter);
+        "Cannot retain Kiji instance %s: retain counter was %s.", this, counter);
     return this;
   }
 
@@ -728,7 +758,7 @@ public final class HBaseKiji implements Kiji {
     LOG.debug("Releasing {}", this);
     final int counter = mRetainCount.decrementAndGet();
     Preconditions.checkState(counter >= 0,
-        "Cannot release closed Kiji %s: retain counter is now %s.", mURI, counter);
+        "Cannot release Kiji instance %s: retain counter is now %s.", this, counter);
     if (counter == 0) {
       close();
     }
@@ -761,12 +791,9 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    if (mIsOpen.get()) {
-      CLEANUP_LOG.warn(
-          "Finalizing opened resource '{}' with {} retained references. "
-              + "You must release() it.",
-          mURI,
-          mRetainCount.get());
+    final State state = mState.get();
+    if (state != State.CLOSED) {
+      CLEANUP_LOG.warn("Finalizing unreleased HBaseKiji instance {} in state {}.", this, state);
       if (CLEANUP_LOG.isDebugEnabled()) {
         CLEANUP_LOG.debug(
             "HBaseKiji '{}' was constructed through:\n{}",
@@ -785,7 +812,7 @@ public final class HBaseKiji implements Kiji {
         .add("id", System.identityHashCode(this))
         .add("uri", mURI)
         .add("retain-count", mRetainCount)
-        .add("open", mIsOpen)
+        .add("state", mState.get())
         .toString();
   }
 

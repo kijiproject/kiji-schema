@@ -973,7 +973,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
         assertEquals(writerSchema, record.getSchema());
         assertEquals("value", record.get("field").toString());
       } finally {
-        writer.close();
+        reader.close();
       }
 
     } finally {

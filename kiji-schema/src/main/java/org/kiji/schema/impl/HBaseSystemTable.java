@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
@@ -98,8 +99,15 @@ public class HBaseSystemTable implements KijiSystemTable {
   /** The HTable that stores the Kiji instance properties. */
   private final HTableInterface mTable;
 
-  /** Whether the table is open. */
-  private boolean mIsOpen;
+  /** States of a SystemTable instance. */
+  private static enum State {
+    UNINITIALIZED,
+    OPEN,
+    CLOSED
+  }
+
+  /** Tracks the state of this SystemTable instance. */
+  private AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** Used for testing finalize() behavior. */
   private String mConstructorStack = "";
@@ -157,16 +165,21 @@ public class HBaseSystemTable implements KijiSystemTable {
   public HBaseSystemTable(KijiURI uri, HTableInterface htable) {
     mURI = uri;
     mTable = htable;
-    mIsOpen = true;
 
     if (CLEANUP_LOG.isDebugEnabled()) {
       mConstructorStack = Debug.getStackTrace();
     }
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open SystemTable instance in state %s.", oldState);
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized ProtocolVersion getDataVersion() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get data version from SystemTable instance in state %s.", state);
     byte[] result = getValue(KEY_DATA_VERSION);
     return result == null ? null : ProtocolVersion.parse(Bytes.toString(result));
   }
@@ -174,12 +187,18 @@ public class HBaseSystemTable implements KijiSystemTable {
   /** {@inheritDoc} */
   @Override
   public synchronized void setDataVersion(ProtocolVersion version) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot set data version in SystemTable instance in state %s.", state);
     putValue(KEY_DATA_VERSION, Bytes.toBytes(version.toString()));
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized ProtocolVersion getSecurityVersion() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get security version from SystemTable instance in state %s.", state);
     byte[] result = getValue(SECURITY_PROTOCOL_VERSION);
     return result == null
         ? Versions.UNINSTALLED_SECURITY_VERSION
@@ -190,6 +209,9 @@ public class HBaseSystemTable implements KijiSystemTable {
   @Override
   public synchronized void setSecurityVersion(ProtocolVersion version) throws IOException {
     Preconditions.checkNotNull(version);
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot set security version in SystemTable instance in state %s.", state);
     Kiji.Factory.open(mURI).getSecurityManager().checkCurrentGrantAccess();
     putValue(SECURITY_PROTOCOL_VERSION, Bytes.toBytes(version.toString()));
   }
@@ -197,19 +219,18 @@ public class HBaseSystemTable implements KijiSystemTable {
   /** {@inheritDoc} */
   @Override
   public synchronized void close() throws IOException {
-    if (!mIsOpen) {
-      LOG.warn("close() called on a KijiSystemTable that was already closed.");
-      return;
-    }
+    final State oldState = mState.getAndSet(State.CLOSED);
+    Preconditions.checkState(oldState == State.OPEN,
+        "Cannot close KijiSystemTable instance in state %s.", oldState);
     mTable.close();
-    mIsOpen = false;
   }
 
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
-    if (mIsOpen) {
-      CLEANUP_LOG.warn("Closing KijiSystemTable in finalize(). You should close it explicitly");
+    final State state = mState.get();
+    if (state != State.CLOSED) {
+      CLEANUP_LOG.warn("Finalizing unclosed KijiSystemTable instance %s in state %s.", this, state);
       CLEANUP_LOG.debug("Stack when HBaseSystemTable was constructed:\n" + mConstructorStack);
       close();
     }
@@ -219,6 +240,9 @@ public class HBaseSystemTable implements KijiSystemTable {
   /** {@inheritDoc} */
   @Override
   public byte[] getValue(String key) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get value from SystemTable instance in state %s.", state);
     Get get = new Get(Bytes.toBytes(key));
     get.addColumn(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0]);
     Result result = mTable.get(get);
@@ -228,6 +252,9 @@ public class HBaseSystemTable implements KijiSystemTable {
   /** {@inheritDoc} */
   @Override
   public void putValue(String key, byte[] value) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot put value into SystemTable instance in state %s.", state);
     Put put = new Put(Bytes.toBytes(key));
     put.add(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0], value);
     mTable.put(put);
@@ -236,6 +263,9 @@ public class HBaseSystemTable implements KijiSystemTable {
   /** {@inheritDoc} */
   @Override
   public CloseableIterable<SimpleEntry<String, byte[]>> getAll() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get all from SystemTable instance in state %s.", state);
     return new HBaseSystemTableIterable(mTable.getScanner(Bytes.toBytes(VALUE_COLUMN_FAMILY)));
   }
 
@@ -347,6 +377,9 @@ public class HBaseSystemTable implements KijiSystemTable {
   /** {@inheritDoc} */
   @Override
   public SystemTableBackup toBackup() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot backup SystemTable instance in state %s.", state);
     ArrayList<SystemTableEntry> backupEntries = new ArrayList<SystemTableEntry>();
     CloseableIterable<SimpleEntry<String, byte[]>> entries = getAll();
     for (SimpleEntry<String, byte[]> entry : entries) {
@@ -362,6 +395,9 @@ public class HBaseSystemTable implements KijiSystemTable {
   /** {@inheritDoc} */
   @Override
   public void fromBackup(SystemTableBackup backup) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot restore backup to SystemTable instance in state %s.", state);
     LOG.info(String.format("Restoring system table from backup with %d entries.",
         backup.getEntries().size()));
     for (SystemTableEntry entry : backup.getEntries()) {
@@ -449,7 +485,7 @@ public class HBaseSystemTable implements KijiSystemTable {
   public String toString() {
     return Objects.toStringHelper(HBaseSystemTable.class)
         .add("uri", mURI)
-        .add("open", mIsOpen)
+        .add("state", mState.get())
         .toString();
   }
 }
