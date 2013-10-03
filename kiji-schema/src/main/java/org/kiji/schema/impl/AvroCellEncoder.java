@@ -456,10 +456,11 @@ public final class AvroCellEncoder implements KijiCellEncoder {
               Preconditions.checkNotNull(refLayout);
               try {
                 final TableLayoutDesc refDesc = refLayout.getDesc();
-                final TableLayoutBuilder builder = new TableLayoutBuilder(refDesc, kiji);
-                builder.withLayoutId(nextLayoutId(refDesc.getLayoutId()));
-                builder.withWriter(column, writerSchema);
-                return builder.build();
+                return new TableLayoutBuilder(refDesc, kiji)
+                    .withLayoutId(nextLayoutId(refDesc.getLayoutId()))
+                    .withWriter(column, writerSchema)
+                    .withWritten(column, writerSchema)
+                    .build();
               } catch (InvalidLayoutException ile) {
                 LOG.error("Internal error while updating table layout in DEVELOPER mode: {}", ile);
                 throw new InternalKijiError(ile);

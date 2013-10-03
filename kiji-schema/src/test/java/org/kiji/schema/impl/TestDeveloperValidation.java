@@ -103,8 +103,6 @@ public class TestDeveloperValidation extends KijiClientTest {
           writer.close();
         }
 
-        final List<AvroSchema> schemaIds =
-            table.getLayout().getCellSchema(new KijiColumnName("info:user_id")).getWriters();
         final List<AvroSchema> expectedIds = Lists.newArrayList(
             AvroSchema.newBuilder()
                 .setUid(kiji.getSchemaTable().getOrCreateSchemaId(SCHEMA_LONG))
@@ -115,7 +113,14 @@ public class TestDeveloperValidation extends KijiClientTest {
             AvroSchema.newBuilder()
                 .setUid(kiji.getSchemaTable().getOrCreateSchemaId(TestRecord1.SCHEMA$))
                 .build());
-        Assert.assertEquals(expectedIds, schemaIds);
+
+        final List<AvroSchema> writerSchemaIds =
+            table.getLayout().getCellSchema(new KijiColumnName("info:user_id")).getWriters();
+        Assert.assertEquals(expectedIds, writerSchemaIds);
+
+        final List<AvroSchema> writtenSchemaIds =
+            table.getLayout().getCellSchema(new KijiColumnName("info:user_id")).getWritten();
+        Assert.assertEquals(expectedIds, writtenSchemaIds);
 
       } finally {
         table.release();
