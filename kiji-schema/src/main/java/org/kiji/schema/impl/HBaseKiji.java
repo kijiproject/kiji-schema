@@ -465,14 +465,14 @@ public final class HBaseKiji implements Kiji {
 
     ensureValidationCompatibility(tableLayout);
 
-    // If security is enabled, lock the instance permissions before creating a table.
+    // If security is enabled, apply the permissions to the new table.
     if (isSecurityEnabled()) {
-      mSecurityManager.lock();
+      getSecurityManager().lock();
       try {
         createTableUnchecked(tableLayout, splitKeys);
         getSecurityManager().applyPermissionsToNewTable(tableURI);
       } finally {
-        mSecurityManager.unlock();
+        getSecurityManager().unlock();
       }
     } else {
       createTableUnchecked(tableLayout, splitKeys);

@@ -182,7 +182,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
       KijiPermissions currentPermissions = getPermissions(user);
       KijiPermissions newPermissions = currentPermissions.removeAction(action);
       updatePermissions(user, newPermissions);
-      revokeInstancePermissions(user, newPermissions);
+      revokeInstancePermissions(user, KijiPermissions.newWithActions(Sets.newHashSet(action)));
     } finally {
       unlock();
     }
@@ -209,8 +209,17 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
       Set<KijiUser> allUsers = listAllUsers();
       for (KijiUser user : allUsers) {
         KijiPermissions permissions = getPermissions(user);
+        // Grant privileges the user should have.
         for (KijiPermissions.Action action : permissions.getActions()) {
           grant(user, action);
+        }
+        // Revoke privileges the user shouldn't have.
+        Set<KijiPermissions.Action> forbiddenActions =
+            Sets.difference(
+                Sets.newHashSet(KijiPermissions.Action.values()),
+                permissions.getActions());
+        for (KijiPermissions.Action action : forbiddenActions) {
+          revoke(user, action);
         }
       }
     } finally {
@@ -221,19 +230,15 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   /** {@inheritDoc} */
   @Override
   public void applyPermissionsToNewTable(KijiURI tableURI) throws IOException {
-    lock();
-    try {
-      // The argument must be for a table in the instance this manages.
-      Preconditions.checkArgument(
-          KijiURI.newBuilder(mInstanceUri).withTableName(tableURI.getTable()).build() == tableURI);
-      for (KijiUser user : listAllUsers()) {
-        grantHTablePermissions(user.getNameBytes(),
-            KijiManagedHBaseTableName
-                .getKijiTableName(tableURI.getInstance(), tableURI.getTable()).toBytes(),
-            getPermissions(user).toHBaseActions());
-      }
-    } finally {
-      unlock();
+    // The argument must be for a table in the instance this manages.
+    Preconditions.checkArgument(
+        KijiURI.newBuilder(mInstanceUri).withTableName(tableURI.getTable()).build()
+            .equals(tableURI));
+    for (KijiUser user : listAllUsers()) {
+      grantHTablePermissions(user.getNameBytes(),
+          KijiManagedHBaseTableName
+              .getKijiTableName(tableURI.getInstance(), tableURI.getTable()).toBytes(),
+          getPermissions(user).toHBaseActions());
     }
   }
 
@@ -556,7 +561,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
         null,
         hActions);
 
-    // Grant the permissions.
+    // Revoke the permissions.
     LOG.debug("Revoking user permissions for user {} on table {} to HBase Actions {}.",
         Bytes.toString(hUser),
         Bytes.toString(hTableName),
@@ -564,8 +569,8 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     LOG.debug("Disabling table {}.", Bytes.toString(hTableName));
     mAdmin.disableTable(hTableName);
     LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
-    // Grant the permissions.
-    mAccessController.grant(hTablePermission);
+    // Revoke the permissions.
+    mAccessController.revoke(hTablePermission);
     LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
     mAdmin.enableTable(hTableName);
     LOG.debug("Table {} enabled.", Bytes.toString(hTableName));

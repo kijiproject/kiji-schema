@@ -157,6 +157,9 @@ public interface KijiSecurityManager extends Closeable {
    * KijiSecurityManager.  Kiji uses this when creating a table.  This should not be called outside
    * of kiji-schema.
    *
+   * <p>Callers of this method should lock the Kiji instance using #lock first, and unlock after
+   * using #unlock.</p>
+   *
    * @param tableURI of the table that was just created.  Must be a URI specifying a table in the
    *     instance managed by this KijiSecurityManager.
    * @throws IOException on I/O error.
