@@ -247,5 +247,4 @@ public class TestDeveloperValidation extends KijiClientTest {
       kiji.release();
     }
   }
-
 }

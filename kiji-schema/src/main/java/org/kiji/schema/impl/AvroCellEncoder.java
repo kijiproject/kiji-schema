@@ -110,6 +110,8 @@ public final class AvroCellEncoder implements KijiCellEncoder {
         .build();
   }
 
+  private static final Schema NULL_SCHEMA = Schema.create(Schema.Type.NULL);
+
   /**
    * Reports the Avro schema validation policy.
    *
@@ -280,7 +282,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
     Preconditions.checkArgument(cellSpec.isAvro());
     mReaderSchema = mCellSpec.getAvroSchema();
     mSchemaEncoder = createSchemaEncoder(mCellSpec);
-    mRegisteredWriters = getRegisteredWriters(mCellSpec);
+    mRegisteredWriters = flattenAvroUnions(getRegisteredWriters(mCellSpec));
     mValidationPolicy = getAvroValidationPolicy(mCellSpec);
   }
 
@@ -383,7 +385,9 @@ public final class AvroCellEncoder implements KijiCellEncoder {
    * @return an Avro schema representing the type of data specified.
    */
   private <T> Schema getWriterSchema(final T cellValue) {
-    if (cellValue instanceof GenericContainer) {
+    if (cellValue == null) {
+      return NULL_SCHEMA;
+    } else if (cellValue instanceof GenericContainer) {
       return ((GenericContainer) cellValue).getSchema();
     } else if (mValidationPolicy == AvroValidationPolicy.SCHEMA_1_0) {
       // Compute the writer schema using old semantics. This will only validate primitive schemas.
@@ -409,6 +413,37 @@ public final class AvroCellEncoder implements KijiCellEncoder {
     }
     final AvroSchemaResolver resolver = new SchemaTableAvroResolver(spec.getSchemaTable());
     return Sets.newHashSet(Collections2.transform(writerSchemas, resolver));
+  }
+
+  /**
+   * Flatten and expand the unions from a set of schemas.
+   *
+   * <p>
+   *   For example, the set
+   *     <code>{union(null, int), union(null, string)</code>
+   *   will be expanded to
+   *     <code>{null, int, string, union(null, int), union(null, string)}</code>.
+   * </p>
+   *
+   * @param schemas Set of Avro schemas whose unions are to be expanded.
+   * @return the expanded (flattened) set of Avro schemas.
+   *     Null iff schemas is null.
+   */
+  private static Set<Schema> flattenAvroUnions(final Set<Schema> schemas) {
+    if (schemas == null) {
+      return null;
+    }
+    final Set<Schema> expanded = Sets.newHashSet();
+    for (Schema schema : schemas) {
+      expanded.add(schema);
+      if (schema.getType() == Schema.Type.UNION) {
+        for (Schema branch : schema.getTypes()) {
+          Preconditions.checkArgument(branch.getType() != Schema.Type.UNION, branch);
+          expanded.add(branch);
+        }
+      }
+    }
+    return expanded;
   }
 
   /**
