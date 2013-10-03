@@ -483,6 +483,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     }
     mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
     mHTable.flushCommits();
+    mHTable.close();
     mTable.release();
     Preconditions.checkState(mState.compareAndSet(State.CLOSING, State.CLOSED));
   }
