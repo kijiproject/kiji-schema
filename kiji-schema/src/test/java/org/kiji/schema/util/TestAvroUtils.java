@@ -20,20 +20,25 @@
 package org.kiji.schema.util;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-
 import org.apache.avro.Schema;
 import org.codehaus.jackson.node.IntNode;
 import org.junit.Test;
 
-public class TestAvroUtils {
+import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.avro.AvroSchema;
+
+public class TestAvroUtils extends KijiClientTest {
   private static final Schema INT_SCHEMA = Schema.create(Schema.Type.INT);
   private static final Schema STRING_SCHEMA = Schema.create(Schema.Type.STRING);
   private static final Schema NULL_SCHEMA = Schema.create(Schema.Type.NULL);
@@ -334,5 +339,60 @@ public class TestAvroUtils {
     assertTrue(results.getCauses().contains(result1));
     assertTrue(results.getCauses().contains(result2));
     assertTrue(results.getCauses().contains(result3));
+  }
+
+  @Test
+  public void testAvroSchemaEquals() throws IOException {
+    final KijiSchemaTable schemaTable = getKiji().getSchemaTable();
+
+    final long stringUID = schemaTable.getOrCreateSchemaId(STRING_SCHEMA);
+    final long intUID = schemaTable.getOrCreateSchemaId(INT_SCHEMA);
+    final String stringJSON = STRING_SCHEMA.toString();
+    final String intJSON = INT_SCHEMA.toString();
+
+    final AvroSchema stringUIDAS = AvroSchema.newBuilder().setUid(stringUID).build();
+    final AvroSchema stringJSONAS = AvroSchema.newBuilder().setJson(stringJSON).build();
+    final AvroSchema intUIDAS = AvroSchema.newBuilder().setUid(intUID).build();
+    final AvroSchema intJSONAS = AvroSchema.newBuilder().setJson(intJSON).build();
+
+    assertTrue(AvroUtils.avroSchemaEquals(schemaTable, stringUIDAS, stringUIDAS));
+    assertTrue(AvroUtils.avroSchemaEquals(schemaTable, stringUIDAS, stringJSONAS));
+    assertTrue(AvroUtils.avroSchemaEquals(schemaTable, stringJSONAS, stringUIDAS));
+    assertTrue(AvroUtils.avroSchemaEquals(schemaTable, intUIDAS, intUIDAS));
+    assertTrue(AvroUtils.avroSchemaEquals(schemaTable, intUIDAS, intJSONAS));
+    assertTrue(AvroUtils.avroSchemaEquals(schemaTable, intJSONAS, intUIDAS));
+
+    assertFalse(AvroUtils.avroSchemaEquals(schemaTable, stringUIDAS, intUIDAS));
+    assertFalse(AvroUtils.avroSchemaEquals(schemaTable, stringUIDAS, intJSONAS));
+    assertFalse(AvroUtils.avroSchemaEquals(schemaTable, stringJSONAS, intJSONAS));
+    assertFalse(AvroUtils.avroSchemaEquals(schemaTable, stringJSONAS, intUIDAS));
+  }
+
+  @Test
+  public void testAvroSchemaListContains() throws IOException {
+    final KijiSchemaTable schemaTable = getKiji().getSchemaTable();
+
+    final long stringUID = schemaTable.getOrCreateSchemaId(STRING_SCHEMA);
+    final long intUID = schemaTable.getOrCreateSchemaId(INT_SCHEMA);
+    final String stringJSON = STRING_SCHEMA.toString();
+    final String intJSON = INT_SCHEMA.toString();
+
+    final AvroSchema stringUIDAS = AvroSchema.newBuilder().setUid(stringUID).build();
+    final AvroSchema stringJSONAS = AvroSchema.newBuilder().setJson(stringJSON).build();
+    final AvroSchema intUIDAS = AvroSchema.newBuilder().setUid(intUID).build();
+    final AvroSchema intJSONAS = AvroSchema.newBuilder().setJson(intJSON).build();
+
+    final List<AvroSchema> stringList = Lists.newArrayList(stringJSONAS, stringUIDAS);
+    final List<AvroSchema> intList = Lists.newArrayList(intJSONAS, intUIDAS);
+    final List<AvroSchema> bothList = Lists.newArrayList(stringJSONAS, intUIDAS);
+
+    assertTrue(AvroUtils.avroSchemaCollectionContains(schemaTable, stringList, stringJSONAS));
+    assertTrue(AvroUtils.avroSchemaCollectionContains(schemaTable, stringList, stringUIDAS));
+    assertFalse(AvroUtils.avroSchemaCollectionContains(schemaTable, stringList, intUIDAS));
+    assertTrue(AvroUtils.avroSchemaCollectionContains(schemaTable, intList, intJSONAS));
+    assertTrue(AvroUtils.avroSchemaCollectionContains(schemaTable, intList, intUIDAS));
+    assertFalse(AvroUtils.avroSchemaCollectionContains(schemaTable, intList, stringUIDAS));
+    assertTrue(AvroUtils.avroSchemaCollectionContains(schemaTable, bothList, stringJSONAS));
+    assertTrue(AvroUtils.avroSchemaCollectionContains(schemaTable, bothList, intUIDAS));
   }
 }

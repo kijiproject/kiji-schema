@@ -21,13 +21,13 @@ package org.kiji.schema.util;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-
 import org.apache.avro.Schema;
 import org.apache.avro.io.parsing.ResolvingGrammarGenerator;
 import org.apache.avro.io.parsing.Symbol;
@@ -36,6 +36,10 @@ import org.apache.avro.io.parsing.Symbol.ErrorAction;
 import org.apache.avro.io.parsing.Symbol.Repeater;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.avro.AvroSchema;
+import org.kiji.schema.layout.AvroSchemaResolver;
+import org.kiji.schema.layout.SchemaTableAvroResolver;
 
 /**
  * General purpose Avro utilities.
@@ -45,6 +49,50 @@ public final class AvroUtils {
 
   /** Utility class cannot be instantiated. */
   private AvroUtils() {
+  }
+
+  /**
+   * Compares two AvroSchema objects for equality within the context of the given SchemaTable.
+   *
+   * @param schemaTable SchemaTable with which to resolve schema UIDs.
+   * @param first one AvroSchema object to compare for equality.
+   * @param second another AvroSchema object to compare for equality.
+   * @return whether the two objects represent the same Schema.
+   * @throws IOException in case of an error reading from the SchemaTable.
+   */
+  public static boolean avroSchemaEquals(
+      final KijiSchemaTable schemaTable,
+      final AvroSchema first,
+      final AvroSchema second
+  ) throws IOException {
+    final AvroSchemaResolver resolver = new SchemaTableAvroResolver(schemaTable);
+
+    return Objects.equal(resolver.apply(first), resolver.apply(second));
+  }
+
+  /**
+   * Check whether a collection of AvroSchema objects contains a given AvroSchema element, resolving
+   * UIDs using the given KijiSchemaTable.
+   *
+   * @param schemaTable KijiSchemaTable with which to resolve schema UIDs.
+   * @param schemaCollection collection of AvroSchemas to check for the presence of the given
+   *     element.
+   * @param element AvroSchema for whose presence to check in schemaCollection.
+   * @return whether schemaCollection contains element after resolving UIDs using schemaTable.
+   * @throws IOException in case of an error reading from the schema table.
+   */
+  public static boolean avroSchemaCollectionContains(
+      final KijiSchemaTable schemaTable,
+      final Collection<AvroSchema> schemaCollection,
+      final AvroSchema element
+  ) throws IOException {
+    for (AvroSchema schema : schemaCollection) {
+      if (avroSchemaEquals(schemaTable, schema, element)) {
+        return true;
+      }
+    }
+    // If none match, return false.
+    return false;
   }
 
   /**
