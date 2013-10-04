@@ -60,6 +60,9 @@
         <configuration>
           <!-- Avro string compiled to java.lang.String instead of CharSequence -->
           <stringType>String</stringType>
+
+          <!-- Record fields are now private : use accessors always. -->
+          <fieldVisibility>private</fieldVisibility>
         </configuration>
       </plugin>
 
