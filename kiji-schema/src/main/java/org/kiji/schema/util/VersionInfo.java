@@ -33,6 +33,7 @@ import org.kiji.schema.IncompatibleKijiVersionException;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiSystemTable;
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.impl.Versions;
 
 /**
@@ -121,10 +122,10 @@ public final class VersionInfo {
       final ProtocolVersion dataVersion = systemTable.getDataVersion();
       return dataVersion;
     } catch (TableNotFoundException e) {
-      final String instance = kiji.getURI().getInstance();
+      final KijiURI kijiURI = kiji.getURI();
       throw new KijiNotInstalledException(
-          String.format("Kiji instance '%s' is not installed.", instance),
-          instance);
+          String.format("Kiji instance %s is not installed.", kijiURI),
+          kijiURI);
     }
   }
 

@@ -126,7 +126,7 @@ public class HBaseSystemTable implements KijiSystemTable {
     } catch (TableNotFoundException tnfe) {
       throw new KijiNotInstalledException(
           String.format("Kiji instance %s is not installed.", kijiURI),
-          kijiURI.toString());
+          kijiURI);
     }
   }
 

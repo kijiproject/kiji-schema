@@ -262,7 +262,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
       }
     } catch (KijiNotInstalledException knie) {
       getPrintStream().println(knie.getMessage());
-      getPrintStream().println("Try: kiji install --kiji=kiji://.env/" + knie.getInstanceName());
+      getPrintStream().println("Try: kiji install --kiji=" + knie.getURI());
       return FAILURE;
     }
   }

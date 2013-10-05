@@ -19,6 +19,8 @@
 
 package org.kiji.schema;
 
+import com.google.common.base.Preconditions;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 
@@ -29,20 +31,54 @@ public final class KijiNotInstalledException extends RuntimeException {
   /** The instance name of the missing Kiji instance. */
   private final String mInstanceName;
 
+  /** The URI of the missing Kiji instance. */
+  private final KijiURI mURI;
+
   /**
    * Creates a new <code>KijiNotInstalledException</code> with the specified
    * detail message.
    *
    * @param message The exception message.
-   * @param instanceName the Kiji instance name that is not installed.
+   * @param kijiURI The URI for the uninstalled instance.
+   */
+   public KijiNotInstalledException(String message, KijiURI kijiURI) {
+    super(message);
+    mURI = kijiURI;
+    mInstanceName = null;
+  }
+
+  /**
+   * Returns the URI of the missing Kiji instance.
+   * @return the URI of the missing Kiji instance.
+   */
+  public KijiURI getURI() {
+    return mURI;
+  }
+
+  /**
+   * Creates a new <code>KijiNotInstalledException</code> with the specified
+   * detail message.
+   *
+   * @param message The exception message.
+   * @param instanceName The Kiji instance name that is not installed.
+   * @deprecated Use {@link KijiNotInstalledException#KijiNotInstalledException(String, String)}.
    */
   public KijiNotInstalledException(String message, String instanceName) {
     super(message);
     mInstanceName = instanceName;
+    mURI = null;
   }
 
-  /** @return the name of the missing Kiji instance. */
+  /**
+   * Returns the name of the missing Kiji instance.
+   * @return the name of the missing Kiji instance.
+   */
   public String getInstanceName() {
-    return mInstanceName;
+    if (mURI == null) {
+      Preconditions.checkNotNull(mInstanceName != null);
+      return mInstanceName;
+    } else {
+      return mURI.getInstance();
+    }
   }
 }
