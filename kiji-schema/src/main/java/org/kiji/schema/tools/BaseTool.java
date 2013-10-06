@@ -110,6 +110,33 @@ public abstract class BaseTool extends Configured implements KijiTool {
    */
   public static final int FAILURE = 1;
 
+  /** An exception raised when a tool wants to exit printing an error without a stack trace. */
+  protected static class ToolError extends RuntimeException {
+
+    private final String mMessage;
+
+    /**
+     * Instantiate a new ToolError.
+     *
+     * @param message the error message for this tool error.
+     */
+    public ToolError(
+        final String message
+    ) {
+      super(message);
+      mMessage = message;
+    }
+
+    /**
+     * Get the error message for this tool error.
+     *
+     * @return the error message for this tool error.
+     */
+    public String getErrorMessage() {
+      return mMessage;
+    }
+  }
+
   /**
    * Prompts the user for a yes or no answer to the specified question until they provide a valid
    * response (y/n/yes/no case insensitive) and reports the result. If yesNoPrompt is called in
@@ -153,11 +180,12 @@ public abstract class BaseTool extends Configured implements KijiTool {
    *   if the deny pattern matched.
    * @throws IOException if there is a problem reading from the terminal.
    */
-  private boolean confirmationPrompt(String question,
-                                     String hint,
-                                     Pattern confirmPattern,
-                                     Pattern denyPattern)
-      throws IOException {
+  private boolean confirmationPrompt(
+      String question,
+      String hint,
+      Pattern confirmPattern,
+      Pattern denyPattern
+  ) throws IOException {
     Preconditions.checkState(mInteractiveFlag);
     BufferedReader reader = new BufferedReader(new InputStreamReader(getInputStream(), "UTF-8"));
     Boolean yesOrNo = null;
@@ -205,6 +233,21 @@ public abstract class BaseTool extends Configured implements KijiTool {
   }
 
   /**
+   * Pretty print a tool error.
+   *
+   * @param toolError ToolError to pretty print.
+   */
+  private void prettyPrintUserInputError(
+      final ToolError toolError
+  ) {
+    if (mDebugFlag) {
+      toolError.printStackTrace(getPrintStream());
+    } else {
+      getPrintStream().println(toolError.getErrorMessage());
+    }
+  }
+
+  /**
    * Invoke the functionality of this tool, as supplied through its
    * implementation of the abstract methods of this class.
    *
@@ -230,35 +273,40 @@ public abstract class BaseTool extends Configured implements KijiTool {
       }
 
       // Execute custom functionality implemented in subclasses.
-      validateFlags();
-      boolean exceptionThrown = false;
-      int returnFlag = FAILURE;
-
       try {
-        final CommandLogger logger = new CommandLogger();
-        logger.logCommand(
-            new KijiCommand.Builder(this.getClass())
-                .withCommandName(this.getClass().getSimpleName())
-                .withSuccess(true).build(), true);
-        setup();
-        returnFlag = run(nonFlagArgs);
-        return returnFlag;
-      } catch (Exception exn) {
-        exceptionThrown = true;
-        throw exn;
-      } finally {
+        validateFlags();
+        boolean exceptionThrown = false;
+        int returnFlag = FAILURE;
 
-        if (exceptionThrown) {
-          try {
+        try {
+          final CommandLogger logger = new CommandLogger();
+          logger.logCommand(
+              new KijiCommand.Builder(this.getClass())
+                  .withCommandName(this.getClass().getSimpleName())
+                  .withSuccess(true).build(), true);
+          setup();
+          returnFlag = run(nonFlagArgs);
+          return returnFlag;
+        } catch (Exception exn) {
+          exceptionThrown = true;
+          throw exn;
+        } finally {
+
+          if (exceptionThrown) {
+            try {
+              cleanup();
+            } catch (Exception nestedExn) {
+              LOG.error("Nested error in tool cleanup(), "
+                  + "likely caused by error in tool setup() or run(): {}",
+                  nestedExn.getMessage());
+            }
+          } else {
             cleanup();
-          } catch (Exception nestedExn) {
-            LOG.error("Nested error in tool cleanup(), "
-                + "likely caused by error in tool setup() or run(): {}",
-                nestedExn.getMessage());
           }
-        } else {
-          cleanup();
         }
+      } catch (ToolError te) {
+        prettyPrintUserInputError(te);
+        return FAILURE;
       }
     } catch (KijiNotInstalledException knie) {
       getPrintStream().println(knie.getMessage());
