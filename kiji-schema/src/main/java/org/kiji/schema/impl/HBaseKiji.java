@@ -517,6 +517,7 @@ public final class HBaseKiji implements Kiji {
     return modifyTableLayout(update, dryRun, printStream);
   }
 
+  // CSOFF: MethodLength
   /** {@inheritDoc} */
   @Override
   public KijiTableLayout modifyTableLayout(
@@ -675,6 +676,7 @@ public final class HBaseKiji implements Kiji {
 
     return newLayout;
   }
+  // CSON: MethodLength
 
   /** {@inheritDoc} */
   @Override

@@ -116,7 +116,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     CLOSED
   }
 
-  /** Tracks the state of this buffered writer */
+  /** Tracks the state of this buffered writer. */
   private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** Provides for the updating of this Writer in response to a table layout update. */

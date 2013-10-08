@@ -338,8 +338,8 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close an AtomicKijiPutter instance in state %s.", oldState);
     if (mPut != null) {
-      LOG.warn("Closing HBaseAtomicKijiPutter while a transaction on table {} on entity ID {} is " +
-          "in progress. Rolling back transaction.", mTable.getURI(), mEntityId);
+      LOG.warn("Closing HBaseAtomicKijiPutter while a transaction on table {} on entity ID {} is "
+          + "in progress. Rolling back transaction.", mTable.getURI(), mEntityId);
       reset();
     }
     mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
