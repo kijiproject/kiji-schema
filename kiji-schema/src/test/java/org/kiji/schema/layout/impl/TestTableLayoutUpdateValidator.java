@@ -27,7 +27,9 @@ import java.util.List;
 
 import com.google.common.collect.Lists;
 import org.apache.avro.Schema;
+import org.apache.avro.Schema.Field;
 import org.apache.avro.Schema.Type;
+import org.codehaus.jackson.node.IntNode;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +38,7 @@ import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.avro.AvroValidationPolicy;
-import org.kiji.schema.avro.EmptyRecord;
 import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.avro.TestRecord1;
 import org.kiji.schema.avro.TestRecord4;
 import org.kiji.schema.avro.TestRecord5;
 import org.kiji.schema.impl.Versions;
@@ -80,7 +80,6 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
   public static final String AVRO_VALIDATION_UPDATE_TEST =
       "org/kiji/schema/layout/avro-validation-update-test.json";
 
-
   /** Schema containing a single String field. */
   private static final Schema STRING_SCHEMA = Schema.create(Type.STRING);
   /**
@@ -88,19 +87,6 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
    * schema from the previous layout because Int and String are incompatible types.
    */
   private static final Schema INT_SCHEMA = Schema.create(Type.INT);
-  /** Schema containing no fields. */
-  private static final Schema EMPTY_SCHEMA = EmptyRecord.SCHEMA$;
-  /**
-   * Schema containing an optional Int field. This will be readable by the registered Empty schema
-   * from the previous layout because all fields are optional.  The old reader schema will read new
-   * records written with this schema as empty.
-   */
-  private static final Schema OPTIONAL_INT_SCHEMA = TestRecord1.SCHEMA$;
-
-  /** Set the system version for this Kiji instance to 2.0. */
-  private void setSystemVersion2() throws IOException {
-    getKiji().getSystemTable().setDataVersion(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION);
-  }
 
   /**
    * Creates a table with a string reader schema and the given validation policy
@@ -291,24 +277,35 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
     validator.validate(KijiTableLayout.newLayout(desc), KijiTableLayout.newLayout(newDesc));
   }
 
+  /**
+   * Tests the layout update validator on the following scenario:
+   *  - initial layout has a reader for an empty record
+   *  - layout update adds a writer schema with a compatible record with one optional integer.
+   */
   @Test
   public void testValidLayoutUpdate() throws IOException {
-    setSystemVersion2();
-    final Kiji kiji = Kiji.Factory.open(getKiji().getURI());
+    final Kiji kiji = getKiji();
 
     final TableLayoutDesc desc = KijiTableLayouts.getLayout(KijiTableLayouts.SCHEMA_REG_TEST);
     desc.setVersion("layout-1.3.0");
 
+    final Schema emptyRecordSchema = Schema.createRecord("Record", null, "org.ns", false);
+    emptyRecordSchema.setFields(Lists.<Field>newArrayList());
+
+    final Schema optIntRecordSchema = Schema.createRecord("Record", null, "org.ns", false);
+    optIntRecordSchema.setFields(Lists.newArrayList(
+        new Field("a", INT_SCHEMA, null, IntNode.valueOf(0))));
+
     final TableLayoutDesc originalDesc = new TableLayoutBuilder(desc, kiji)
         .withAvroValidationPolicy(
             new KijiColumnName("info:fullname"), AvroValidationPolicy.STRICT)
-        .withReader(new KijiColumnName("info:fullname"), EMPTY_SCHEMA)
+        .withReader(new KijiColumnName("info:fullname"), emptyRecordSchema)
         .build();
 
     kiji.createTable(originalDesc);
 
     final TableLayoutDesc newDesc = new TableLayoutBuilder(originalDesc, kiji)
-        .withWriter(new KijiColumnName("info:fullname"), OPTIONAL_INT_SCHEMA)
+        .withWriter(new KijiColumnName("info:fullname"), optIntRecordSchema)
         .build();
 
     kiji.modifyTableLayout(newDesc);
@@ -316,8 +313,7 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
 
   @Test
   public void testStrictValidation() throws IOException {
-    setSystemVersion2();
-    final Kiji kiji = Kiji.Factory.open(getKiji().getURI());
+    final Kiji kiji = getKiji();
 
     // Strict validation should fail.
     final TableLayoutDesc strictDesc = prepareNewDesc(kiji, AvroValidationPolicy.STRICT);
@@ -335,8 +331,7 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
 
   @Test
   public void testDeveloperValidation() throws IOException {
-    setSystemVersion2();
-    final Kiji kiji = Kiji.Factory.open(getKiji().getURI());
+    final Kiji kiji = getKiji();
 
     // Developer validation should fail.
     final TableLayoutDesc developerDesc = prepareNewDesc(kiji, AvroValidationPolicy.DEVELOPER);
@@ -354,8 +349,7 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
 
   @Test
   public void testNoneValidation() throws IOException {
-    setSystemVersion2();
-    final Kiji kiji = Kiji.Factory.open(getKiji().getURI());
+    final Kiji kiji = getKiji();
 
     // None validation should pass despite the incompatible change.
     final TableLayoutDesc noneDesc = prepareNewDesc(kiji, AvroValidationPolicy.NONE);
@@ -364,8 +358,7 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
 
   @Test
   public void testSchema10Validation() throws IOException {
-    setSystemVersion2();
-    final Kiji kiji = Kiji.Factory.open(getKiji().getURI());
+    final Kiji kiji = getKiji();
 
     // Schema-1.0 validation should pass despite incompatible changes.
     final TableLayoutDesc schema10Desc = prepareNewDesc(kiji, AvroValidationPolicy.SCHEMA_1_0);

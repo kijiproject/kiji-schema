@@ -37,14 +37,14 @@
     families: [{
       name: "info",
       columns: [{
-        name: "user",
+        name: "gender",
         column_schema: {
           storage: "UID",
           type: "AVRO",
           avro_validation_policy: "STRICT",
           readers: [],
-          writers: [ {json: '["null", "string"]'} ],
-          written: [ {json: '["null", "string"]'} ]
+          writers: [],
+          written: []
         }
       }]
     }]

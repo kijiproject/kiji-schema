@@ -26,11 +26,13 @@ protocol TestSchema {
   record EmptyRecord {
   }
 
+  @aliases(["EmptyRecord"])
   record TestRecord1 {
     /** Optional integer. */
     int integer = -1;
   }
 
+  @aliases(["EmptyRecord", "TestRecord1", "TestRecord3"])
   record TestRecord2 {
     /** Optional integer field. */
     int integer = -2;
