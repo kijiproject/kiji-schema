@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -116,8 +115,11 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     CLOSED
   }
 
-  /** Tracks the state of this buffered writer. */
-  private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
+  /**
+   * Tracks the state of this buffered writer.
+   * Reads and writes to mState must by synchronized by mInternalLock.
+   */
+  private State mState = State.UNINITIALIZED;
 
   /** Provides for the updating of this Writer in response to a table layout update. */
   private final class InnerLayoutUpdater implements LayoutConsumer {
@@ -125,12 +127,13 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     @Override
     public void update(final LayoutCapsule capsule) throws IOException {
       synchronized (mInternalLock) {
-        final State state = mState.get();
-        Preconditions.checkState(state != State.CLOSED,
-            "Cannot update layout of BufferedWriter in state %s.", state);
-        if (state == State.OPEN) {
-          LOG.info("Flushing buffer from BufferedWriter for table: {} in preparation for layout "
-              + "update.", mTable.getURI());
+        if (mState == State.CLOSED) {
+          LOG.debug("BufferedWriter instance is closed; ignoring layout update.");
+          return;
+        }
+        if (mState == State.OPEN) {
+          LOG.info("Flushing buffer from HBaseKijiBufferedWriter for table: {} in preparation for"
+              + " layout update.", mTable.getURI());
           flush();
         }
 
@@ -142,7 +145,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
         // If the capsule is null this is the initial setup and we do not need a log message.
         if (mWriterLayoutCapsule != null) {
           LOG.debug(
-              "Updating layout used by KijiBufferedWriter: "
+              "Updating layout used by HBaseKijiBufferedWriter: "
               + "{} for table: {} from version: {} to: {}",
               this,
               mTable.getURI(),
@@ -150,7 +153,8 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
               capsule.getLayout().getDesc().getLayoutId());
         } else {
           LOG.debug(
-              "Initializing KijiBufferedWriter: {} for table: {} with table layout version: {}",
+              "Initializing HBaseKijiBufferedWriter: {} for table: "
+                  + "{} with table layout version: {}",
               this,
               mTable.getURI(),
               capsule.getLayout().getDesc().getLayoutId());
@@ -180,14 +184,16 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     }
     mTable.registerLayoutConsumer(mInnerLayoutUpdater);
     Preconditions.checkState(mWriterLayoutCapsule != null,
-        "KijiBufferedWriter for table: %s failed to initialize.", mTable.getURI());
+        "HBaseKijiBufferedWriter for table: %s failed to initialize.", mTable.getURI());
 
     SchemaPlatformBridge.get().setAutoFlush(mHTable, false);
     // Retain the table only after everything else succeeded:
     mTable.retain();
-    final State oldState = mState.getAndSet(State.OPEN);
-    Preconditions.checkState(oldState == State.UNINITIALIZED,
-        "Cannot open KijiBufferedWriter instance in state %s.", oldState);
+    synchronized (mInternalLock) {
+      Preconditions.checkState(mState == State.UNINITIALIZED,
+          "Cannot open HBaseKijiBufferedWriter instance in state %s.", mState);
+      mState = State.OPEN;
+    }
   }
 
   // ----------------------------------------------------------------------------------------------
@@ -206,6 +212,8 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   private void updateBuffer(EntityId entityId, byte[] family, byte[] qualifier,
       long timestamp, byte[] value) throws IOException {
     synchronized (mInternalLock) {
+      Preconditions.checkState(mState == State.OPEN,
+          "Cannot write to BufferedWriter instance in state %s.", mState);
       if (mPutBuffer.containsKey(entityId)) {
         mCurrentWriteBufferSize -= mPutBuffer.get(entityId).heapSize();
         mPutBuffer.get(entityId).add(family, qualifier,
@@ -234,10 +242,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   @Override
   public <T> void put(EntityId entityId, String family, String qualifier, long timestamp, T value)
       throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot put cell to BufferedWriter instance %s in state %s.", this, state);
-
     final KijiColumnName columnName = new KijiColumnName(family, qualifier);
     final WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final HBaseColumnName hbaseColumnName =
@@ -281,9 +285,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   /** {@inheritDoc} */
   @Override
   public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot delete row while BufferedWriter %s is in state %s.", this, state);
     final Delete delete = new Delete(entityId.getHBaseRowKey(), upToTimestamp, null);
     updateBuffer(delete);
   }
@@ -298,10 +299,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   @Override
   public void deleteFamily(EntityId entityId, String family, long upToTimestamp)
       throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot delete family while BufferedWriter %s is in state %s.", this, state);
-
     final WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final FamilyLayout familyLayout = capsule.getLayout().getFamilyMap().get(family);
     if (null == familyLayout) {
@@ -344,9 +341,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
       FamilyLayout familyLayout,
       long upToTimestamp)
       throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot delete family group while BufferedWriter %s is in state %s.", this, state);
     final String familyName = Preconditions.checkNotNull(familyLayout.getName());
     // Delete each column in the group according to the layout.
     final Delete delete = new Delete(entityId.getHBaseRowKey());
@@ -376,9 +370,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
    */
   private void deleteMapFamily(EntityId entityId, FamilyLayout familyLayout, long upToTimestamp)
       throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot delete map family while BufferedWriter %s is in state %s.", this, state);
     // Since multiple Kiji column families are mapped into a single HBase column family,
     // we have to do this delete in a two-step transaction:
     //
@@ -434,9 +425,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   @Override
   public void deleteColumn(EntityId entityId, String family, String qualifier, long upToTimestamp)
       throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot delete column while BufferedWriter %s is in state %s.", this, state);
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
         .toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
@@ -454,9 +442,6 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   @Override
   public void deleteCell(EntityId entityId, String family, String qualifier, long timestamp)
       throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot delete cell while BufferedWriter %s is in state %s.", state);
     final HBaseColumnName hbaseColumnName =
         mTable.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
@@ -469,25 +454,25 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   /** {@inheritDoc} */
   @Override
   public void setBufferSize(long bufferSize) throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot set buffer size of BufferedWriter instance %s in state %s.", this, state);
-    Preconditions.checkArgument(bufferSize > 0,
-        "Buffer size cannot be negative, got %s.", bufferSize);
-    mMaxWriteBufferSize = bufferSize;
-    if (mCurrentWriteBufferSize > mMaxWriteBufferSize) {
-      flush();
+    synchronized (mInternalLock) {
+      Preconditions.checkState(mState == State.OPEN,
+          "Cannot set buffer size of BufferedWriter instance %s in state %s.", this, mState);
+      Preconditions.checkArgument(bufferSize > 0,
+          "Buffer size cannot be negative, got %s.", bufferSize);
+      mMaxWriteBufferSize = bufferSize;
+      if (mCurrentWriteBufferSize > mMaxWriteBufferSize) {
+        flush();
+      }
+      SchemaPlatformBridge.get().setWriteBufferSize(mHTable, bufferSize);
     }
-    SchemaPlatformBridge.get().setWriteBufferSize(mHTable, bufferSize);
   }
 
   /** {@inheritDoc} */
   @Override
   public void flush() throws IOException {
     synchronized (mInternalLock) {
-      final State state = mState.get();
-      Preconditions.checkState(state == State.OPEN,
-          "Cannot flush BufferedWriter instance %s in state %s.", this, state);
+      Preconditions.checkState(mState == State.OPEN,
+          "Cannot flush BufferedWriter instance %s in state %s.", this, mState);
       if (mDeleteBuffer.size() > 0) {
         mHTable.delete(mDeleteBuffer);
         mDeleteBuffer.clear();
@@ -506,26 +491,27 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    flush();
-    final State oldState = mState.getAndSet(State.OPEN);
-    Preconditions.checkState(oldState == State.OPEN,
-        "Cannot close BufferedWriter instance %s in state %s.", this, oldState);
-    mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
-    mHTable.close();
-    mTable.release();
+    synchronized (mInternalLock) {
+      flush();
+      Preconditions.checkState(mState == State.OPEN,
+          "Cannot close BufferedWriter instance %s in state %s.", this, mState);
+      mState = State.CLOSED;
+      mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
+      mHTable.close();
+      mTable.release();
+    }
   }
 
   /** {@inheritDoc} */
   @Override
   protected void finalize() throws Throwable {
     try {
-      final State state = mState.get();
-      if (state != State.CLOSED) {
-        LOG.warn("Finalizing unclosed KijiBufferedWriter {} in state {}.", this, state);
+      if (mState != State.CLOSED) {
+        LOG.warn("Finalizing unclosed HBaseKijiBufferedWriter {} in state {}.", this, mState);
         close();
       }
     } catch (Throwable thr) {
-      LOG.warn("Throwable thrown by close() in finalize of KijiBufferedWriter: {}\n{}",
+      LOG.warn("Throwable thrown by close() in finalize of HBaseKijiBufferedWriter: {}\n{}",
           thr.getMessage(), StringUtils.stringifyException(thr));
     } finally {
       super.finalize();

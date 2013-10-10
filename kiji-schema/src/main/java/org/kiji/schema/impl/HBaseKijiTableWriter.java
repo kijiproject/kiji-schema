@@ -62,6 +62,9 @@ import org.kiji.schema.platform.SchemaPlatformBridge;
 /**
  * Makes modifications to a Kiji table by sending requests directly to HBase from the local client.
  *
+ * <p> This writer flushes immediately to HBase, so there is no need to call flush() explicitly.
+ * All put, increment, delete, and verify operations will cause a synchronous RPC call to HBase.
+ * </p>
  * <p> This writer acquires a dedicated HTable object for its entire life span. </p>
  * <p> This class is not thread-safe and must be synchronized externally. </p>
  */
@@ -176,13 +179,12 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
             mTable.getURI(),
             capsule.getLayout().getDesc().getLayoutId());
       }
+      // Normally we would atomically flush and update mWriterLayoutCapsule here,
+      // but since this writer is unbuffered, the flush is unnecessary
       mWriterLayoutCapsule = new WriterLayoutCapsule(
           provider,
           capsule.getLayout(),
           capsule.getColumnNameTranslator());
-      if (state == State.OPEN) {
-        mHTable.flushCommits();
-      }
     }
   }
 
@@ -489,16 +491,12 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   /** {@inheritDoc} */
   @Override
   public void flush() throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot flush KijiTableWriter instance %s in state %s.", this, state);
-    mHTable.flushCommits();
+    LOG.debug("KijiTableWriter does not need to be flushed.");
   }
 
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    flush();
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close KijiTableWriter instance %s in state %s.", this, oldState);

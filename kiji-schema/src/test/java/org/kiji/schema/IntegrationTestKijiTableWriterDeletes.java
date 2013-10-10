@@ -76,7 +76,6 @@ public class IntegrationTestKijiTableWriterDeletes extends AbstractKijiIntegrati
     mWriter.put(mTable.getEntityId("alpha"), "map", "key2", 3L, "3");
     mWriter.put(mTable.getEntityId("alpha"), "memoryMap", "key1", 2L, "2");
     mWriter.put(mTable.getEntityId("alpha"), "memoryMap", "key2", 4L, "4");
-    mWriter.flush();
 
     mReader = mTable.openTableReader();
     KijiRowData result = mReader.get(mTable.getEntityId("alpha"), mDataRequest);

@@ -75,7 +75,6 @@ public class TestFormattedRowKeys extends KijiClientTest {
     LOG.info("Populating test table.");
 
     mWriter.put(mTable.getEntityId("x", "a", "bc"), "family", "column", "1");
-    mWriter.flush();
 
     KijiRowData result = mReader.get(mTable.getEntityId("x", "a", "bc"), mDataRequest);
     assertTrue(result.containsColumn("family", "column"));
@@ -113,8 +112,6 @@ public class TestFormattedRowKeys extends KijiClientTest {
     for (EntityId eid: expected) {
       mWriter.put(eid, "family", "column", "1");
     }
-
-    mWriter.flush();
 
     final KijiRowScanner scanner = mReader.getScanner(mDataRequest);
     try {
