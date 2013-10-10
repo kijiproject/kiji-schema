@@ -28,8 +28,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.proto.test.Test.AnotherOne;
-import org.kiji.proto.test.Test.Record;
+import org.kiji.proto.test.TestProtocolBuffers.AnotherOne;
+import org.kiji.proto.test.TestProtocolBuffers.Record;
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.layout.KijiTableLayouts;
 
@@ -72,9 +72,9 @@ public class TestProtobufCell extends KijiClientTest {
       } catch (IOException ioe) {
         LOG.info("Expected error: {}", ioe.getMessage());
         Assert.assertTrue(ioe.getMessage().contains(
-            "Protocol buffer of class 'org.kiji.proto.test.Test$AnotherOne' "
+            "Protocol buffer of class 'org.kiji.proto.test.TestProtocolBuffers$AnotherOne' "
             + "(message name 'test.AnotherOne') "
-            + "does not match expected class 'org.kiji.proto.test.Test$Record' "
+            + "does not match expected class 'org.kiji.proto.test.TestProtocolBuffers$Record' "
             + "(message name 'test.Record')"));
       }
 

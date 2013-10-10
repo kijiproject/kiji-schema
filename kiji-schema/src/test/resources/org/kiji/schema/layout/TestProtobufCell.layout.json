@@ -36,7 +36,7 @@
         column_schema: {
           type: "PROTOBUF",
           protobuf_full_name: "test.Record",
-          protobuf_class_name: "org.kiji.proto.test.Test$Record"
+          protobuf_class_name: "org.kiji.proto.test.TestProtocolBuffers$Record"
         }
       } ]
     } ]

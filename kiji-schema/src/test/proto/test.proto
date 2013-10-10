@@ -20,6 +20,7 @@
 package test;
 
 option java_package = "org.kiji.proto.test";
+option java_outer_classname = "TestProtocolBuffers";
 
 /** Protocol buffer used for testing purposes. */
 message Record {

@@ -36,7 +36,8 @@
   <properties>
     <aspectj-maven-plugin.version>1.4</aspectj-maven-plugin.version>
     <aspectjrt.version>1.7.2</aspectjrt.version>
-    <protobuf.version>2.5.0</protobuf.version>
+    <!-- Protocol library version must match the version Hadoop/HBase rely on. -->
+    <protobuf.version>2.4.0a</protobuf.version>
   </properties>
 
   <build>
@@ -240,6 +241,8 @@
       <groupId>com.google.protobuf</groupId>
       <artifactId>protobuf-java</artifactId>
       <version>${protobuf.version}</version>
+      <!-- Make sure Kiji doesn't override the protobuf library that comes with Hadoop/HBase. -->
+      <scope>provided</scope>
     </dependency>
 
     <dependency>

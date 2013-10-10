@@ -3,140 +3,57 @@
 
 package org.kiji.proto.test;
 
-public final class Test {
-  private Test() {}
+public final class TestProtocolBuffers {
+  private TestProtocolBuffers() {}
   public static void registerAllExtensions(
       com.google.protobuf.ExtensionRegistry registry) {
   }
   public interface RecordOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
-
+    
     // optional int32 id = 1 [default = -1];
-    /**
-     * <code>optional int32 id = 1 [default = -1];</code>
-     */
     boolean hasId();
-    /**
-     * <code>optional int32 id = 1 [default = -1];</code>
-     */
     int getId();
   }
-  /**
-   * Protobuf type {@code test.Record}
-   *
-   * <pre>
-   ** Protocol buffer used for testing purposes. 
-   * </pre>
-   */
   public static final class Record extends
       com.google.protobuf.GeneratedMessage
       implements RecordOrBuilder {
     // Use Record.newBuilder() to construct.
-    private Record(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+    private Record(Builder builder) {
       super(builder);
-      this.unknownFields = builder.getUnknownFields();
     }
-    private Record(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
-
+    private Record(boolean noInit) {}
+    
     private static final Record defaultInstance;
     public static Record getDefaultInstance() {
       return defaultInstance;
     }
-
+    
     public Record getDefaultInstanceForType() {
       return defaultInstance;
     }
-
-    private final com.google.protobuf.UnknownFieldSet unknownFields;
-    @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-        getUnknownFields() {
-      return this.unknownFields;
-    }
-    private Record(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      initFields();
-      int mutable_bitField0_ = 0;
-      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder();
-      try {
-        boolean done = false;
-        while (!done) {
-          int tag = input.readTag();
-          switch (tag) {
-            case 0:
-              done = true;
-              break;
-            default: {
-              if (!parseUnknownField(input, unknownFields,
-                                     extensionRegistry, tag)) {
-                done = true;
-              }
-              break;
-            }
-            case 8: {
-              bitField0_ |= 0x00000001;
-              id_ = input.readInt32();
-              break;
-            }
-          }
-        }
-      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-        throw e.setUnfinishedMessage(this);
-      } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e.getMessage()).setUnfinishedMessage(this);
-      } finally {
-        this.unknownFields = unknownFields.build();
-        makeExtensionsImmutable();
-      }
-    }
+    
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return org.kiji.proto.test.Test.internal_static_test_Record_descriptor;
+      return org.kiji.proto.test.TestProtocolBuffers.internal_static_test_Record_descriptor;
     }
-
+    
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return org.kiji.proto.test.Test.internal_static_test_Record_fieldAccessorTable
-          .ensureFieldAccessorsInitialized(
-              org.kiji.proto.test.Test.Record.class, org.kiji.proto.test.Test.Record.Builder.class);
+      return org.kiji.proto.test.TestProtocolBuffers.internal_static_test_Record_fieldAccessorTable;
     }
-
-    public static com.google.protobuf.Parser<Record> PARSER =
-        new com.google.protobuf.AbstractParser<Record>() {
-      public Record parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new Record(input, extensionRegistry);
-      }
-    };
-
-    @java.lang.Override
-    public com.google.protobuf.Parser<Record> getParserForType() {
-      return PARSER;
-    }
-
+    
     private int bitField0_;
     // optional int32 id = 1 [default = -1];
     public static final int ID_FIELD_NUMBER = 1;
     private int id_;
-    /**
-     * <code>optional int32 id = 1 [default = -1];</code>
-     */
     public boolean hasId() {
       return ((bitField0_ & 0x00000001) == 0x00000001);
     }
-    /**
-     * <code>optional int32 id = 1 [default = -1];</code>
-     */
     public int getId() {
       return id_;
     }
-
+    
     private void initFields() {
       id_ = -1;
     }
@@ -144,11 +61,11 @@ public final class Test {
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
       if (isInitialized != -1) return isInitialized == 1;
-
+      
       memoizedIsInitialized = 1;
       return true;
     }
-
+    
     public void writeTo(com.google.protobuf.CodedOutputStream output)
                         throws java.io.IOException {
       getSerializedSize();
@@ -157,12 +74,12 @@ public final class Test {
       }
       getUnknownFields().writeTo(output);
     }
-
+    
     private int memoizedSerializedSize = -1;
     public int getSerializedSize() {
       int size = memoizedSerializedSize;
       if (size != -1) return size;
-
+    
       size = 0;
       if (((bitField0_ & 0x00000001) == 0x00000001)) {
         size += com.google.protobuf.CodedOutputStream
@@ -172,109 +89,113 @@ public final class Test {
       memoizedSerializedSize = size;
       return size;
     }
-
+    
     private static final long serialVersionUID = 0L;
     @java.lang.Override
     protected java.lang.Object writeReplace()
         throws java.io.ObjectStreamException {
       return super.writeReplace();
     }
-
-    public static org.kiji.proto.test.Test.Record parseFrom(
+    
+    public static org.kiji.proto.test.TestProtocolBuffers.Record parseFrom(
         com.google.protobuf.ByteString data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
+      return newBuilder().mergeFrom(data).buildParsed();
     }
-    public static org.kiji.proto.test.Test.Record parseFrom(
+    public static org.kiji.proto.test.TestProtocolBuffers.Record parseFrom(
         com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
     }
-    public static org.kiji.proto.test.Test.Record parseFrom(byte[] data)
+    public static org.kiji.proto.test.TestProtocolBuffers.Record parseFrom(byte[] data)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
+      return newBuilder().mergeFrom(data).buildParsed();
     }
-    public static org.kiji.proto.test.Test.Record parseFrom(
+    public static org.kiji.proto.test.TestProtocolBuffers.Record parseFrom(
         byte[] data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
     }
-    public static org.kiji.proto.test.Test.Record parseFrom(java.io.InputStream input)
+    public static org.kiji.proto.test.TestProtocolBuffers.Record parseFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return PARSER.parseFrom(input);
+      return newBuilder().mergeFrom(input).buildParsed();
     }
-    public static org.kiji.proto.test.Test.Record parseFrom(
+    public static org.kiji.proto.test.TestProtocolBuffers.Record parseFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return PARSER.parseFrom(input, extensionRegistry);
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
     }
-    public static org.kiji.proto.test.Test.Record parseDelimitedFrom(java.io.InputStream input)
+    public static org.kiji.proto.test.TestProtocolBuffers.Record parseDelimitedFrom(java.io.InputStream input)
         throws java.io.IOException {
-      return PARSER.parseDelimitedFrom(input);
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
     }
-    public static org.kiji.proto.test.Test.Record parseDelimitedFrom(
+    public static org.kiji.proto.test.TestProtocolBuffers.Record parseDelimitedFrom(
         java.io.InputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return PARSER.parseDelimitedFrom(input, extensionRegistry);
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
     }
-    public static org.kiji.proto.test.Test.Record parseFrom(
+    public static org.kiji.proto.test.TestProtocolBuffers.Record parseFrom(
         com.google.protobuf.CodedInputStream input)
         throws java.io.IOException {
-      return PARSER.parseFrom(input);
+      return newBuilder().mergeFrom(input).buildParsed();
     }
-    public static org.kiji.proto.test.Test.Record parseFrom(
+    public static org.kiji.proto.test.TestProtocolBuffers.Record parseFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      return PARSER.parseFrom(input, extensionRegistry);
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
     }
-
+    
     public static Builder newBuilder() { return Builder.create(); }
     public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.kiji.proto.test.Test.Record prototype) {
+    public static Builder newBuilder(org.kiji.proto.test.TestProtocolBuffers.Record prototype) {
       return newBuilder().mergeFrom(prototype);
     }
     public Builder toBuilder() { return newBuilder(this); }
-
+    
     @java.lang.Override
     protected Builder newBuilderForType(
         com.google.protobuf.GeneratedMessage.BuilderParent parent) {
       Builder builder = new Builder(parent);
       return builder;
     }
-    /**
-     * Protobuf type {@code test.Record}
-     *
-     * <pre>
-     ** Protocol buffer used for testing purposes. 
-     * </pre>
-     */
     public static final class Builder extends
         com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.kiji.proto.test.Test.RecordOrBuilder {
+       implements org.kiji.proto.test.TestProtocolBuffers.RecordOrBuilder {
       public static final com.google.protobuf.Descriptors.Descriptor
           getDescriptor() {
-        return org.kiji.proto.test.Test.internal_static_test_Record_descriptor;
+        return org.kiji.proto.test.TestProtocolBuffers.internal_static_test_Record_descriptor;
       }
-
+      
       protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
           internalGetFieldAccessorTable() {
-        return org.kiji.proto.test.Test.internal_static_test_Record_fieldAccessorTable
-            .ensureFieldAccessorsInitialized(
-                org.kiji.proto.test.Test.Record.class, org.kiji.proto.test.Test.Record.Builder.class);
+        return org.kiji.proto.test.TestProtocolBuffers.internal_static_test_Record_fieldAccessorTable;
       }
-
-      // Construct using org.kiji.proto.test.Test.Record.newBuilder()
+      
+      // Construct using org.kiji.proto.test.TestProtocolBuffers.Record.newBuilder()
       private Builder() {
         maybeForceBuilderInitialization();
       }
-
-      private Builder(
-          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      
+      private Builder(BuilderParent parent) {
         super(parent);
         maybeForceBuilderInitialization();
       }
@@ -285,37 +206,47 @@ public final class Test {
       private static Builder create() {
         return new Builder();
       }
-
+      
       public Builder clear() {
         super.clear();
         id_ = -1;
         bitField0_ = (bitField0_ & ~0x00000001);
         return this;
       }
-
+      
       public Builder clone() {
         return create().mergeFrom(buildPartial());
       }
-
+      
       public com.google.protobuf.Descriptors.Descriptor
           getDescriptorForType() {
-        return org.kiji.proto.test.Test.internal_static_test_Record_descriptor;
+        return org.kiji.proto.test.TestProtocolBuffers.Record.getDescriptor();
       }
-
-      public org.kiji.proto.test.Test.Record getDefaultInstanceForType() {
-        return org.kiji.proto.test.Test.Record.getDefaultInstance();
+      
+      public org.kiji.proto.test.TestProtocolBuffers.Record getDefaultInstanceForType() {
+        return org.kiji.proto.test.TestProtocolBuffers.Record.getDefaultInstance();
       }
-
-      public org.kiji.proto.test.Test.Record build() {
-        org.kiji.proto.test.Test.Record result = buildPartial();
+      
+      public org.kiji.proto.test.TestProtocolBuffers.Record build() {
+        org.kiji.proto.test.TestProtocolBuffers.Record result = buildPartial();
         if (!result.isInitialized()) {
           throw newUninitializedMessageException(result);
         }
         return result;
       }
-
-      public org.kiji.proto.test.Test.Record buildPartial() {
-        org.kiji.proto.test.Test.Record result = new org.kiji.proto.test.Test.Record(this);
+      
+      private org.kiji.proto.test.TestProtocolBuffers.Record buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.kiji.proto.test.TestProtocolBuffers.Record result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.kiji.proto.test.TestProtocolBuffers.Record buildPartial() {
+        org.kiji.proto.test.TestProtocolBuffers.Record result = new org.kiji.proto.test.TestProtocolBuffers.Record(this);
         int from_bitField0_ = bitField0_;
         int to_bitField0_ = 0;
         if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
@@ -326,172 +257,440 @@ public final class Test {
         onBuilt();
         return result;
       }
-
+      
       public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.kiji.proto.test.Test.Record) {
-          return mergeFrom((org.kiji.proto.test.Test.Record)other);
+        if (other instanceof org.kiji.proto.test.TestProtocolBuffers.Record) {
+          return mergeFrom((org.kiji.proto.test.TestProtocolBuffers.Record)other);
         } else {
           super.mergeFrom(other);
           return this;
         }
       }
-
-      public Builder mergeFrom(org.kiji.proto.test.Test.Record other) {
-        if (other == org.kiji.proto.test.Test.Record.getDefaultInstance()) return this;
+      
+      public Builder mergeFrom(org.kiji.proto.test.TestProtocolBuffers.Record other) {
+        if (other == org.kiji.proto.test.TestProtocolBuffers.Record.getDefaultInstance()) return this;
         if (other.hasId()) {
           setId(other.getId());
         }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
-
+      
       public final boolean isInitialized() {
         return true;
       }
-
+      
       public Builder mergeFrom(
           com.google.protobuf.CodedInputStream input,
           com.google.protobuf.ExtensionRegistryLite extensionRegistry)
           throws java.io.IOException {
-        org.kiji.proto.test.Test.Record parsedMessage = null;
-        try {
-          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
-        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (org.kiji.proto.test.Test.Record) e.getUnfinishedMessage();
-          throw e;
-        } finally {
-          if (parsedMessage != null) {
-            mergeFrom(parsedMessage);
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
+          int tag = input.readTag();
+          switch (tag) {
+            case 0:
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
+            default: {
+              if (!parseUnknownField(input, unknownFields,
+                                     extensionRegistry, tag)) {
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
+              }
+              break;
+            }
+            case 8: {
+              bitField0_ |= 0x00000001;
+              id_ = input.readInt32();
+              break;
+            }
           }
         }
-        return this;
       }
+      
       private int bitField0_;
-
+      
       // optional int32 id = 1 [default = -1];
       private int id_ = -1;
-      /**
-       * <code>optional int32 id = 1 [default = -1];</code>
-       */
       public boolean hasId() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
-      /**
-       * <code>optional int32 id = 1 [default = -1];</code>
-       */
       public int getId() {
         return id_;
       }
-      /**
-       * <code>optional int32 id = 1 [default = -1];</code>
-       */
       public Builder setId(int value) {
         bitField0_ |= 0x00000001;
         id_ = value;
         onChanged();
         return this;
       }
-      /**
-       * <code>optional int32 id = 1 [default = -1];</code>
-       */
       public Builder clearId() {
         bitField0_ = (bitField0_ & ~0x00000001);
         id_ = -1;
         onChanged();
         return this;
       }
-
+      
       // @@protoc_insertion_point(builder_scope:test.Record)
     }
-
+    
     static {
       defaultInstance = new Record(true);
       defaultInstance.initFields();
     }
-
+    
     // @@protoc_insertion_point(class_scope:test.Record)
   }
-
+  
   public interface AnotherOneOrBuilder
       extends com.google.protobuf.MessageOrBuilder {
-
+    
     // optional int32 id = 1 [default = -1];
-    /**
-     * <code>optional int32 id = 1 [default = -1];</code>
-     */
     boolean hasId();
-    /**
-     * <code>optional int32 id = 1 [default = -1];</code>
-     */
     int getId();
-
+    
     // optional string text = 2;
-    /**
-     * <code>optional string text = 2;</code>
-     */
     boolean hasText();
-    /**
-     * <code>optional string text = 2;</code>
-     */
-    java.lang.String getText();
-    /**
-     * <code>optional string text = 2;</code>
-     */
-    com.google.protobuf.ByteString
-        getTextBytes();
+    String getText();
   }
-  /**
-   * Protobuf type {@code test.AnotherOne}
-   *
-   * <pre>
-   ** Another one. 
-   * </pre>
-   */
   public static final class AnotherOne extends
       com.google.protobuf.GeneratedMessage
       implements AnotherOneOrBuilder {
     // Use AnotherOne.newBuilder() to construct.
-    private AnotherOne(com.google.protobuf.GeneratedMessage.Builder<?> builder) {
+    private AnotherOne(Builder builder) {
       super(builder);
-      this.unknownFields = builder.getUnknownFields();
     }
-    private AnotherOne(boolean noInit) { this.unknownFields = com.google.protobuf.UnknownFieldSet.getDefaultInstance(); }
-
+    private AnotherOne(boolean noInit) {}
+    
     private static final AnotherOne defaultInstance;
     public static AnotherOne getDefaultInstance() {
       return defaultInstance;
     }
-
+    
     public AnotherOne getDefaultInstanceForType() {
       return defaultInstance;
     }
-
-    private final com.google.protobuf.UnknownFieldSet unknownFields;
-    @java.lang.Override
-    public final com.google.protobuf.UnknownFieldSet
-        getUnknownFields() {
-      return this.unknownFields;
+    
+    public static final com.google.protobuf.Descriptors.Descriptor
+        getDescriptor() {
+      return org.kiji.proto.test.TestProtocolBuffers.internal_static_test_AnotherOne_descriptor;
     }
-    private AnotherOne(
-        com.google.protobuf.CodedInputStream input,
+    
+    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+        internalGetFieldAccessorTable() {
+      return org.kiji.proto.test.TestProtocolBuffers.internal_static_test_AnotherOne_fieldAccessorTable;
+    }
+    
+    private int bitField0_;
+    // optional int32 id = 1 [default = -1];
+    public static final int ID_FIELD_NUMBER = 1;
+    private int id_;
+    public boolean hasId() {
+      return ((bitField0_ & 0x00000001) == 0x00000001);
+    }
+    public int getId() {
+      return id_;
+    }
+    
+    // optional string text = 2;
+    public static final int TEXT_FIELD_NUMBER = 2;
+    private java.lang.Object text_;
+    public boolean hasText() {
+      return ((bitField0_ & 0x00000002) == 0x00000002);
+    }
+    public String getText() {
+      java.lang.Object ref = text_;
+      if (ref instanceof String) {
+        return (String) ref;
+      } else {
+        com.google.protobuf.ByteString bs = 
+            (com.google.protobuf.ByteString) ref;
+        String s = bs.toStringUtf8();
+        if (com.google.protobuf.Internal.isValidUtf8(bs)) {
+          text_ = s;
+        }
+        return s;
+      }
+    }
+    private com.google.protobuf.ByteString getTextBytes() {
+      java.lang.Object ref = text_;
+      if (ref instanceof String) {
+        com.google.protobuf.ByteString b = 
+            com.google.protobuf.ByteString.copyFromUtf8((String) ref);
+        text_ = b;
+        return b;
+      } else {
+        return (com.google.protobuf.ByteString) ref;
+      }
+    }
+    
+    private void initFields() {
+      id_ = -1;
+      text_ = "";
+    }
+    private byte memoizedIsInitialized = -1;
+    public final boolean isInitialized() {
+      byte isInitialized = memoizedIsInitialized;
+      if (isInitialized != -1) return isInitialized == 1;
+      
+      memoizedIsInitialized = 1;
+      return true;
+    }
+    
+    public void writeTo(com.google.protobuf.CodedOutputStream output)
+                        throws java.io.IOException {
+      getSerializedSize();
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        output.writeInt32(1, id_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        output.writeBytes(2, getTextBytes());
+      }
+      getUnknownFields().writeTo(output);
+    }
+    
+    private int memoizedSerializedSize = -1;
+    public int getSerializedSize() {
+      int size = memoizedSerializedSize;
+      if (size != -1) return size;
+    
+      size = 0;
+      if (((bitField0_ & 0x00000001) == 0x00000001)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeInt32Size(1, id_);
+      }
+      if (((bitField0_ & 0x00000002) == 0x00000002)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeBytesSize(2, getTextBytes());
+      }
+      size += getUnknownFields().getSerializedSize();
+      memoizedSerializedSize = size;
+      return size;
+    }
+    
+    private static final long serialVersionUID = 0L;
+    @java.lang.Override
+    protected java.lang.Object writeReplace()
+        throws java.io.ObjectStreamException {
+      return super.writeReplace();
+    }
+    
+    public static org.kiji.proto.test.TestProtocolBuffers.AnotherOne parseFrom(
+        com.google.protobuf.ByteString data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.kiji.proto.test.TestProtocolBuffers.AnotherOne parseFrom(
+        com.google.protobuf.ByteString data,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      initFields();
-      int mutable_bitField0_ = 0;
-      com.google.protobuf.UnknownFieldSet.Builder unknownFields =
-          com.google.protobuf.UnknownFieldSet.newBuilder();
-      try {
-        boolean done = false;
-        while (!done) {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.kiji.proto.test.TestProtocolBuffers.AnotherOne parseFrom(byte[] data)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data).buildParsed();
+    }
+    public static org.kiji.proto.test.TestProtocolBuffers.AnotherOne parseFrom(
+        byte[] data,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws com.google.protobuf.InvalidProtocolBufferException {
+      return newBuilder().mergeFrom(data, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.kiji.proto.test.TestProtocolBuffers.AnotherOne parseFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.kiji.proto.test.TestProtocolBuffers.AnotherOne parseFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    public static org.kiji.proto.test.TestProtocolBuffers.AnotherOne parseDelimitedFrom(java.io.InputStream input)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.kiji.proto.test.TestProtocolBuffers.AnotherOne parseDelimitedFrom(
+        java.io.InputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      Builder builder = newBuilder();
+      if (builder.mergeDelimitedFrom(input, extensionRegistry)) {
+        return builder.buildParsed();
+      } else {
+        return null;
+      }
+    }
+    public static org.kiji.proto.test.TestProtocolBuffers.AnotherOne parseFrom(
+        com.google.protobuf.CodedInputStream input)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input).buildParsed();
+    }
+    public static org.kiji.proto.test.TestProtocolBuffers.AnotherOne parseFrom(
+        com.google.protobuf.CodedInputStream input,
+        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+        throws java.io.IOException {
+      return newBuilder().mergeFrom(input, extensionRegistry)
+               .buildParsed();
+    }
+    
+    public static Builder newBuilder() { return Builder.create(); }
+    public Builder newBuilderForType() { return newBuilder(); }
+    public static Builder newBuilder(org.kiji.proto.test.TestProtocolBuffers.AnotherOne prototype) {
+      return newBuilder().mergeFrom(prototype);
+    }
+    public Builder toBuilder() { return newBuilder(this); }
+    
+    @java.lang.Override
+    protected Builder newBuilderForType(
+        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
+      Builder builder = new Builder(parent);
+      return builder;
+    }
+    public static final class Builder extends
+        com.google.protobuf.GeneratedMessage.Builder<Builder>
+       implements org.kiji.proto.test.TestProtocolBuffers.AnotherOneOrBuilder {
+      public static final com.google.protobuf.Descriptors.Descriptor
+          getDescriptor() {
+        return org.kiji.proto.test.TestProtocolBuffers.internal_static_test_AnotherOne_descriptor;
+      }
+      
+      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
+          internalGetFieldAccessorTable() {
+        return org.kiji.proto.test.TestProtocolBuffers.internal_static_test_AnotherOne_fieldAccessorTable;
+      }
+      
+      // Construct using org.kiji.proto.test.TestProtocolBuffers.AnotherOne.newBuilder()
+      private Builder() {
+        maybeForceBuilderInitialization();
+      }
+      
+      private Builder(BuilderParent parent) {
+        super(parent);
+        maybeForceBuilderInitialization();
+      }
+      private void maybeForceBuilderInitialization() {
+        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
+        }
+      }
+      private static Builder create() {
+        return new Builder();
+      }
+      
+      public Builder clear() {
+        super.clear();
+        id_ = -1;
+        bitField0_ = (bitField0_ & ~0x00000001);
+        text_ = "";
+        bitField0_ = (bitField0_ & ~0x00000002);
+        return this;
+      }
+      
+      public Builder clone() {
+        return create().mergeFrom(buildPartial());
+      }
+      
+      public com.google.protobuf.Descriptors.Descriptor
+          getDescriptorForType() {
+        return org.kiji.proto.test.TestProtocolBuffers.AnotherOne.getDescriptor();
+      }
+      
+      public org.kiji.proto.test.TestProtocolBuffers.AnotherOne getDefaultInstanceForType() {
+        return org.kiji.proto.test.TestProtocolBuffers.AnotherOne.getDefaultInstance();
+      }
+      
+      public org.kiji.proto.test.TestProtocolBuffers.AnotherOne build() {
+        org.kiji.proto.test.TestProtocolBuffers.AnotherOne result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(result);
+        }
+        return result;
+      }
+      
+      private org.kiji.proto.test.TestProtocolBuffers.AnotherOne buildParsed()
+          throws com.google.protobuf.InvalidProtocolBufferException {
+        org.kiji.proto.test.TestProtocolBuffers.AnotherOne result = buildPartial();
+        if (!result.isInitialized()) {
+          throw newUninitializedMessageException(
+            result).asInvalidProtocolBufferException();
+        }
+        return result;
+      }
+      
+      public org.kiji.proto.test.TestProtocolBuffers.AnotherOne buildPartial() {
+        org.kiji.proto.test.TestProtocolBuffers.AnotherOne result = new org.kiji.proto.test.TestProtocolBuffers.AnotherOne(this);
+        int from_bitField0_ = bitField0_;
+        int to_bitField0_ = 0;
+        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
+          to_bitField0_ |= 0x00000001;
+        }
+        result.id_ = id_;
+        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
+          to_bitField0_ |= 0x00000002;
+        }
+        result.text_ = text_;
+        result.bitField0_ = to_bitField0_;
+        onBuilt();
+        return result;
+      }
+      
+      public Builder mergeFrom(com.google.protobuf.Message other) {
+        if (other instanceof org.kiji.proto.test.TestProtocolBuffers.AnotherOne) {
+          return mergeFrom((org.kiji.proto.test.TestProtocolBuffers.AnotherOne)other);
+        } else {
+          super.mergeFrom(other);
+          return this;
+        }
+      }
+      
+      public Builder mergeFrom(org.kiji.proto.test.TestProtocolBuffers.AnotherOne other) {
+        if (other == org.kiji.proto.test.TestProtocolBuffers.AnotherOne.getDefaultInstance()) return this;
+        if (other.hasId()) {
+          setId(other.getId());
+        }
+        if (other.hasText()) {
+          setText(other.getText());
+        }
+        this.mergeUnknownFields(other.getUnknownFields());
+        return this;
+      }
+      
+      public final boolean isInitialized() {
+        return true;
+      }
+      
+      public Builder mergeFrom(
+          com.google.protobuf.CodedInputStream input,
+          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
+          throws java.io.IOException {
+        com.google.protobuf.UnknownFieldSet.Builder unknownFields =
+          com.google.protobuf.UnknownFieldSet.newBuilder(
+            this.getUnknownFields());
+        while (true) {
           int tag = input.readTag();
           switch (tag) {
             case 0:
-              done = true;
-              break;
+              this.setUnknownFields(unknownFields.build());
+              onChanged();
+              return this;
             default: {
               if (!parseUnknownField(input, unknownFields,
                                      extensionRegistry, tag)) {
-                done = true;
+                this.setUnknownFields(unknownFields.build());
+                onChanged();
+                return this;
               }
               break;
             }
@@ -507,429 +706,47 @@ public final class Test {
             }
           }
         }
-      } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-        throw e.setUnfinishedMessage(this);
-      } catch (java.io.IOException e) {
-        throw new com.google.protobuf.InvalidProtocolBufferException(
-            e.getMessage()).setUnfinishedMessage(this);
-      } finally {
-        this.unknownFields = unknownFields.build();
-        makeExtensionsImmutable();
       }
-    }
-    public static final com.google.protobuf.Descriptors.Descriptor
-        getDescriptor() {
-      return org.kiji.proto.test.Test.internal_static_test_AnotherOne_descriptor;
-    }
-
-    protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-        internalGetFieldAccessorTable() {
-      return org.kiji.proto.test.Test.internal_static_test_AnotherOne_fieldAccessorTable
-          .ensureFieldAccessorsInitialized(
-              org.kiji.proto.test.Test.AnotherOne.class, org.kiji.proto.test.Test.AnotherOne.Builder.class);
-    }
-
-    public static com.google.protobuf.Parser<AnotherOne> PARSER =
-        new com.google.protobuf.AbstractParser<AnotherOne>() {
-      public AnotherOne parsePartialFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws com.google.protobuf.InvalidProtocolBufferException {
-        return new AnotherOne(input, extensionRegistry);
-      }
-    };
-
-    @java.lang.Override
-    public com.google.protobuf.Parser<AnotherOne> getParserForType() {
-      return PARSER;
-    }
-
-    private int bitField0_;
-    // optional int32 id = 1 [default = -1];
-    public static final int ID_FIELD_NUMBER = 1;
-    private int id_;
-    /**
-     * <code>optional int32 id = 1 [default = -1];</code>
-     */
-    public boolean hasId() {
-      return ((bitField0_ & 0x00000001) == 0x00000001);
-    }
-    /**
-     * <code>optional int32 id = 1 [default = -1];</code>
-     */
-    public int getId() {
-      return id_;
-    }
-
-    // optional string text = 2;
-    public static final int TEXT_FIELD_NUMBER = 2;
-    private java.lang.Object text_;
-    /**
-     * <code>optional string text = 2;</code>
-     */
-    public boolean hasText() {
-      return ((bitField0_ & 0x00000002) == 0x00000002);
-    }
-    /**
-     * <code>optional string text = 2;</code>
-     */
-    public java.lang.String getText() {
-      java.lang.Object ref = text_;
-      if (ref instanceof java.lang.String) {
-        return (java.lang.String) ref;
-      } else {
-        com.google.protobuf.ByteString bs = 
-            (com.google.protobuf.ByteString) ref;
-        java.lang.String s = bs.toStringUtf8();
-        if (bs.isValidUtf8()) {
-          text_ = s;
-        }
-        return s;
-      }
-    }
-    /**
-     * <code>optional string text = 2;</code>
-     */
-    public com.google.protobuf.ByteString
-        getTextBytes() {
-      java.lang.Object ref = text_;
-      if (ref instanceof java.lang.String) {
-        com.google.protobuf.ByteString b = 
-            com.google.protobuf.ByteString.copyFromUtf8(
-                (java.lang.String) ref);
-        text_ = b;
-        return b;
-      } else {
-        return (com.google.protobuf.ByteString) ref;
-      }
-    }
-
-    private void initFields() {
-      id_ = -1;
-      text_ = "";
-    }
-    private byte memoizedIsInitialized = -1;
-    public final boolean isInitialized() {
-      byte isInitialized = memoizedIsInitialized;
-      if (isInitialized != -1) return isInitialized == 1;
-
-      memoizedIsInitialized = 1;
-      return true;
-    }
-
-    public void writeTo(com.google.protobuf.CodedOutputStream output)
-                        throws java.io.IOException {
-      getSerializedSize();
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        output.writeInt32(1, id_);
-      }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        output.writeBytes(2, getTextBytes());
-      }
-      getUnknownFields().writeTo(output);
-    }
-
-    private int memoizedSerializedSize = -1;
-    public int getSerializedSize() {
-      int size = memoizedSerializedSize;
-      if (size != -1) return size;
-
-      size = 0;
-      if (((bitField0_ & 0x00000001) == 0x00000001)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeInt32Size(1, id_);
-      }
-      if (((bitField0_ & 0x00000002) == 0x00000002)) {
-        size += com.google.protobuf.CodedOutputStream
-          .computeBytesSize(2, getTextBytes());
-      }
-      size += getUnknownFields().getSerializedSize();
-      memoizedSerializedSize = size;
-      return size;
-    }
-
-    private static final long serialVersionUID = 0L;
-    @java.lang.Override
-    protected java.lang.Object writeReplace()
-        throws java.io.ObjectStreamException {
-      return super.writeReplace();
-    }
-
-    public static org.kiji.proto.test.Test.AnotherOne parseFrom(
-        com.google.protobuf.ByteString data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static org.kiji.proto.test.Test.AnotherOne parseFrom(
-        com.google.protobuf.ByteString data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static org.kiji.proto.test.Test.AnotherOne parseFrom(byte[] data)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data);
-    }
-    public static org.kiji.proto.test.Test.AnotherOne parseFrom(
-        byte[] data,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws com.google.protobuf.InvalidProtocolBufferException {
-      return PARSER.parseFrom(data, extensionRegistry);
-    }
-    public static org.kiji.proto.test.Test.AnotherOne parseFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input);
-    }
-    public static org.kiji.proto.test.Test.AnotherOne parseFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input, extensionRegistry);
-    }
-    public static org.kiji.proto.test.Test.AnotherOne parseDelimitedFrom(java.io.InputStream input)
-        throws java.io.IOException {
-      return PARSER.parseDelimitedFrom(input);
-    }
-    public static org.kiji.proto.test.Test.AnotherOne parseDelimitedFrom(
-        java.io.InputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return PARSER.parseDelimitedFrom(input, extensionRegistry);
-    }
-    public static org.kiji.proto.test.Test.AnotherOne parseFrom(
-        com.google.protobuf.CodedInputStream input)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input);
-    }
-    public static org.kiji.proto.test.Test.AnotherOne parseFrom(
-        com.google.protobuf.CodedInputStream input,
-        com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-        throws java.io.IOException {
-      return PARSER.parseFrom(input, extensionRegistry);
-    }
-
-    public static Builder newBuilder() { return Builder.create(); }
-    public Builder newBuilderForType() { return newBuilder(); }
-    public static Builder newBuilder(org.kiji.proto.test.Test.AnotherOne prototype) {
-      return newBuilder().mergeFrom(prototype);
-    }
-    public Builder toBuilder() { return newBuilder(this); }
-
-    @java.lang.Override
-    protected Builder newBuilderForType(
-        com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-      Builder builder = new Builder(parent);
-      return builder;
-    }
-    /**
-     * Protobuf type {@code test.AnotherOne}
-     *
-     * <pre>
-     ** Another one. 
-     * </pre>
-     */
-    public static final class Builder extends
-        com.google.protobuf.GeneratedMessage.Builder<Builder>
-       implements org.kiji.proto.test.Test.AnotherOneOrBuilder {
-      public static final com.google.protobuf.Descriptors.Descriptor
-          getDescriptor() {
-        return org.kiji.proto.test.Test.internal_static_test_AnotherOne_descriptor;
-      }
-
-      protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
-          internalGetFieldAccessorTable() {
-        return org.kiji.proto.test.Test.internal_static_test_AnotherOne_fieldAccessorTable
-            .ensureFieldAccessorsInitialized(
-                org.kiji.proto.test.Test.AnotherOne.class, org.kiji.proto.test.Test.AnotherOne.Builder.class);
-      }
-
-      // Construct using org.kiji.proto.test.Test.AnotherOne.newBuilder()
-      private Builder() {
-        maybeForceBuilderInitialization();
-      }
-
-      private Builder(
-          com.google.protobuf.GeneratedMessage.BuilderParent parent) {
-        super(parent);
-        maybeForceBuilderInitialization();
-      }
-      private void maybeForceBuilderInitialization() {
-        if (com.google.protobuf.GeneratedMessage.alwaysUseFieldBuilders) {
-        }
-      }
-      private static Builder create() {
-        return new Builder();
-      }
-
-      public Builder clear() {
-        super.clear();
-        id_ = -1;
-        bitField0_ = (bitField0_ & ~0x00000001);
-        text_ = "";
-        bitField0_ = (bitField0_ & ~0x00000002);
-        return this;
-      }
-
-      public Builder clone() {
-        return create().mergeFrom(buildPartial());
-      }
-
-      public com.google.protobuf.Descriptors.Descriptor
-          getDescriptorForType() {
-        return org.kiji.proto.test.Test.internal_static_test_AnotherOne_descriptor;
-      }
-
-      public org.kiji.proto.test.Test.AnotherOne getDefaultInstanceForType() {
-        return org.kiji.proto.test.Test.AnotherOne.getDefaultInstance();
-      }
-
-      public org.kiji.proto.test.Test.AnotherOne build() {
-        org.kiji.proto.test.Test.AnotherOne result = buildPartial();
-        if (!result.isInitialized()) {
-          throw newUninitializedMessageException(result);
-        }
-        return result;
-      }
-
-      public org.kiji.proto.test.Test.AnotherOne buildPartial() {
-        org.kiji.proto.test.Test.AnotherOne result = new org.kiji.proto.test.Test.AnotherOne(this);
-        int from_bitField0_ = bitField0_;
-        int to_bitField0_ = 0;
-        if (((from_bitField0_ & 0x00000001) == 0x00000001)) {
-          to_bitField0_ |= 0x00000001;
-        }
-        result.id_ = id_;
-        if (((from_bitField0_ & 0x00000002) == 0x00000002)) {
-          to_bitField0_ |= 0x00000002;
-        }
-        result.text_ = text_;
-        result.bitField0_ = to_bitField0_;
-        onBuilt();
-        return result;
-      }
-
-      public Builder mergeFrom(com.google.protobuf.Message other) {
-        if (other instanceof org.kiji.proto.test.Test.AnotherOne) {
-          return mergeFrom((org.kiji.proto.test.Test.AnotherOne)other);
-        } else {
-          super.mergeFrom(other);
-          return this;
-        }
-      }
-
-      public Builder mergeFrom(org.kiji.proto.test.Test.AnotherOne other) {
-        if (other == org.kiji.proto.test.Test.AnotherOne.getDefaultInstance()) return this;
-        if (other.hasId()) {
-          setId(other.getId());
-        }
-        if (other.hasText()) {
-          bitField0_ |= 0x00000002;
-          text_ = other.text_;
-          onChanged();
-        }
-        this.mergeUnknownFields(other.getUnknownFields());
-        return this;
-      }
-
-      public final boolean isInitialized() {
-        return true;
-      }
-
-      public Builder mergeFrom(
-          com.google.protobuf.CodedInputStream input,
-          com.google.protobuf.ExtensionRegistryLite extensionRegistry)
-          throws java.io.IOException {
-        org.kiji.proto.test.Test.AnotherOne parsedMessage = null;
-        try {
-          parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
-        } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-          parsedMessage = (org.kiji.proto.test.Test.AnotherOne) e.getUnfinishedMessage();
-          throw e;
-        } finally {
-          if (parsedMessage != null) {
-            mergeFrom(parsedMessage);
-          }
-        }
-        return this;
-      }
+      
       private int bitField0_;
-
+      
       // optional int32 id = 1 [default = -1];
       private int id_ = -1;
-      /**
-       * <code>optional int32 id = 1 [default = -1];</code>
-       */
       public boolean hasId() {
         return ((bitField0_ & 0x00000001) == 0x00000001);
       }
-      /**
-       * <code>optional int32 id = 1 [default = -1];</code>
-       */
       public int getId() {
         return id_;
       }
-      /**
-       * <code>optional int32 id = 1 [default = -1];</code>
-       */
       public Builder setId(int value) {
         bitField0_ |= 0x00000001;
         id_ = value;
         onChanged();
         return this;
       }
-      /**
-       * <code>optional int32 id = 1 [default = -1];</code>
-       */
       public Builder clearId() {
         bitField0_ = (bitField0_ & ~0x00000001);
         id_ = -1;
         onChanged();
         return this;
       }
-
+      
       // optional string text = 2;
       private java.lang.Object text_ = "";
-      /**
-       * <code>optional string text = 2;</code>
-       */
       public boolean hasText() {
         return ((bitField0_ & 0x00000002) == 0x00000002);
       }
-      /**
-       * <code>optional string text = 2;</code>
-       */
-      public java.lang.String getText() {
+      public String getText() {
         java.lang.Object ref = text_;
-        if (!(ref instanceof java.lang.String)) {
-          java.lang.String s = ((com.google.protobuf.ByteString) ref)
-              .toStringUtf8();
+        if (!(ref instanceof String)) {
+          String s = ((com.google.protobuf.ByteString) ref).toStringUtf8();
           text_ = s;
           return s;
         } else {
-          return (java.lang.String) ref;
+          return (String) ref;
         }
       }
-      /**
-       * <code>optional string text = 2;</code>
-       */
-      public com.google.protobuf.ByteString
-          getTextBytes() {
-        java.lang.Object ref = text_;
-        if (ref instanceof String) {
-          com.google.protobuf.ByteString b = 
-              com.google.protobuf.ByteString.copyFromUtf8(
-                  (java.lang.String) ref);
-          text_ = b;
-          return b;
-        } else {
-          return (com.google.protobuf.ByteString) ref;
-        }
-      }
-      /**
-       * <code>optional string text = 2;</code>
-       */
-      public Builder setText(
-          java.lang.String value) {
+      public Builder setText(String value) {
         if (value == null) {
     throw new NullPointerException();
   }
@@ -938,40 +755,29 @@ public final class Test {
         onChanged();
         return this;
       }
-      /**
-       * <code>optional string text = 2;</code>
-       */
       public Builder clearText() {
         bitField0_ = (bitField0_ & ~0x00000002);
         text_ = getDefaultInstance().getText();
         onChanged();
         return this;
       }
-      /**
-       * <code>optional string text = 2;</code>
-       */
-      public Builder setTextBytes(
-          com.google.protobuf.ByteString value) {
-        if (value == null) {
-    throw new NullPointerException();
-  }
-  bitField0_ |= 0x00000002;
+      void setText(com.google.protobuf.ByteString value) {
+        bitField0_ |= 0x00000002;
         text_ = value;
         onChanged();
-        return this;
       }
-
+      
       // @@protoc_insertion_point(builder_scope:test.AnotherOne)
     }
-
+    
     static {
       defaultInstance = new AnotherOne(true);
       defaultInstance.initFields();
     }
-
+    
     // @@protoc_insertion_point(class_scope:test.AnotherOne)
   }
-
+  
   private static com.google.protobuf.Descriptors.Descriptor
     internal_static_test_Record_descriptor;
   private static
@@ -982,7 +788,7 @@ public final class Test {
   private static
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_test_AnotherOne_fieldAccessorTable;
-
+  
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
     return descriptor;
@@ -993,8 +799,8 @@ public final class Test {
     java.lang.String[] descriptorData = {
       "\n\031src/test/proto/test.proto\022\004test\"\030\n\006Rec" +
       "ord\022\016\n\002id\030\001 \001(\005:\002-1\"*\n\nAnotherOne\022\016\n\002id\030" +
-      "\001 \001(\005:\002-1\022\014\n\004text\030\002 \001(\tB\025\n\023org.kiji.prot" +
-      "o.test"
+      "\001 \001(\005:\002-1\022\014\n\004text\030\002 \001(\tB*\n\023org.kiji.prot" +
+      "o.testB\023TestProtocolBuffers"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
       new com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner() {
@@ -1006,13 +812,17 @@ public final class Test {
           internal_static_test_Record_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_test_Record_descriptor,
-              new java.lang.String[] { "Id", });
+              new java.lang.String[] { "Id", },
+              org.kiji.proto.test.TestProtocolBuffers.Record.class,
+              org.kiji.proto.test.TestProtocolBuffers.Record.Builder.class);
           internal_static_test_AnotherOne_descriptor =
             getDescriptor().getMessageTypes().get(1);
           internal_static_test_AnotherOne_fieldAccessorTable = new
             com.google.protobuf.GeneratedMessage.FieldAccessorTable(
               internal_static_test_AnotherOne_descriptor,
-              new java.lang.String[] { "Id", "Text", });
+              new java.lang.String[] { "Id", "Text", },
+              org.kiji.proto.test.TestProtocolBuffers.AnotherOne.class,
+              org.kiji.proto.test.TestProtocolBuffers.AnotherOne.Builder.class);
           return null;
         }
       };
@@ -1021,6 +831,6 @@ public final class Test {
         new com.google.protobuf.Descriptors.FileDescriptor[] {
         }, assigner);
   }
-
+  
   // @@protoc_insertion_point(outer_class_scope)
 }
