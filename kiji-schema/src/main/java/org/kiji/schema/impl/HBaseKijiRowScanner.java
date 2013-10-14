@@ -295,7 +295,7 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    final State oldState = mState.getAndSet(State.OPEN);
+    final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close KijiRowScanner instance in state %s.", oldState);
     mResultScanner.close();
