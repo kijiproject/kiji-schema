@@ -347,7 +347,7 @@ public final class AvroUtils {
         final Schema reader,
         final Schema writer
     ) {
-      LOG.info("Checking compatibility of reader {} with writer {}", reader, writer);
+      LOG.debug("Checking compatibility of reader {} with writer {}", reader, writer);
       final ReaderWriter pair = new ReaderWriter(reader, writer);
       final SchemaCompatibilityType existing = mMemoizeMap.get(pair);
       if (existing != null) {
