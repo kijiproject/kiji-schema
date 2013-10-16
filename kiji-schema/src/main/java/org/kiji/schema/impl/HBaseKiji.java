@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
@@ -86,6 +87,9 @@ public final class HBaseKiji implements Kiji {
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKiji.class.getName());
 
+  /** Global counter to generate unique HBaseKiji client IDs. */
+  private static final AtomicLong INSTANCE_COUNTER = new AtomicLong(0);
+
   /** The hadoop configuration. */
   private final Configuration mConf;
 
@@ -125,7 +129,7 @@ public final class HBaseKiji implements Kiji {
 
   /** Unique identifier for this Kiji instance as a live Kiji client. */
   private final String mKijiClientId =
-      String.format("%s;HBaseKiji@%s", JvmId.get(), System.identityHashCode(this));
+      String.format("%s;HBaseKiji@%s", JvmId.get(), INSTANCE_COUNTER.getAndIncrement());
 
   /**
    * Cached copy of the system version, oblivious to system table mutation while the connection to

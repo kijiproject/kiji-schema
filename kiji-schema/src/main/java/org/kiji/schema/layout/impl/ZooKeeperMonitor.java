@@ -268,6 +268,8 @@ public final class ZooKeeperMonitor implements Closeable {
   public void registerTableUser(KijiURI tableURI, String userId, String layoutId)
       throws KeeperException {
 
+    LOG.debug("Registering user '{}' for Kiji table '{}' with layout ID '{}'.",
+        userId, tableURI, layoutId);
     final File usersDir = getTableUsersDir(tableURI);
     this.mZKClient.createNodeRecursively(usersDir);
     final String nodeName = makeZKNodeName(userId, layoutId);
@@ -306,6 +308,8 @@ public final class ZooKeeperMonitor implements Closeable {
   public void registerInstanceUser(KijiURI kijiURI, String userId, String systemVersion)
       throws KeeperException {
 
+    LOG.debug("Registering user '{}' for Kiji instance '{}' with system version '{}'.",
+        userId, kijiURI, systemVersion);
     final File usersDir = getInstanceUsersDir(kijiURI);
     this.mZKClient.createNodeRecursively(usersDir);
     final String nodeName = makeZKNodeName(userId, systemVersion);

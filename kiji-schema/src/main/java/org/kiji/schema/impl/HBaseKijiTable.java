@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
@@ -88,6 +89,8 @@ public final class HBaseKijiTable implements KijiTable {
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKijiTable.class.getName());
 
+  private static final AtomicLong TABLE_COUNTER = new AtomicLong(0);
+
   /** The kiji instance this table belongs to. */
   private final HBaseKiji mKiji;
 
@@ -139,7 +142,7 @@ public final class HBaseKijiTable implements KijiTable {
 
   /** Unique identifier for this KijiTable instance as a live Kiji client. */
   private final String mKijiClientId =
-      String.format("%s;HBaseKijiTable@%s", JvmId.get(), System.identityHashCode(this));
+      String.format("%s;HBaseKijiTable@%s", JvmId.get(), TABLE_COUNTER.getAndIncrement());
 
   /** Monitor for the layout of this table. */
   private final ZooKeeperMonitor mLayoutMonitor;
