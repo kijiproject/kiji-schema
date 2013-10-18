@@ -118,7 +118,7 @@ public abstract class BaseTool extends Configured implements KijiTool {
     /**
      * Instantiate a new ToolError.
      *
-     * @param message the error message for this tool error.
+     * @param message the error message to print for the user.
      */
     public ToolError(
         final String message
@@ -134,6 +134,45 @@ public abstract class BaseTool extends Configured implements KijiTool {
      */
     public String getErrorMessage() {
       return mMessage;
+    }
+  }
+
+  /**
+   * Exit with a return code of FAILURE after printing the specified error message.
+   *
+   * @param message the error message to print before exiting.
+   */
+  protected static void exitWithErrorMessage(
+      final String message
+  ) {
+    throw new ToolError(message);
+  }
+
+  /**
+   * Exit with a return code of FAILURE after printing the specified formatted error message.
+   *
+   * @param format String format of the error message to print before exiting.
+   * @param arguments arguments to the string format.
+   */
+  protected static void exitWithFormattedErrorMessage(
+      final String format,
+      final Object... arguments
+  ) {
+    throw new ToolError(String.format(format, arguments));
+  }
+
+  /**
+   * Pretty print a tool error.
+   *
+   * @param toolError ToolError to pretty print.
+   */
+  private void prettyPrintUserInputError(
+      final ToolError toolError
+  ) {
+    if (mDebugFlag) {
+      toolError.printStackTrace(getPrintStream());
+    } else {
+      getPrintStream().println(toolError.getErrorMessage());
     }
   }
 
@@ -230,21 +269,6 @@ public abstract class BaseTool extends Configured implements KijiTool {
     }
     getPrintStream().println("Aborted.");
     return false;
-  }
-
-  /**
-   * Pretty print a tool error.
-   *
-   * @param toolError ToolError to pretty print.
-   */
-  private void prettyPrintUserInputError(
-      final ToolError toolError
-  ) {
-    if (mDebugFlag) {
-      toolError.printStackTrace(getPrintStream());
-    } else {
-      getPrintStream().println(toolError.getErrorMessage());
-    }
   }
 
   /**
