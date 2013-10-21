@@ -57,6 +57,7 @@ import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiReaderFactory;
 import org.kiji.schema.KijiRegion;
 import org.kiji.schema.KijiTable;
+import org.kiji.schema.KijiTableAnnotator;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
@@ -664,6 +665,15 @@ public final class HBaseKijiTable implements KijiTable {
     } finally {
       htable.close();
     }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KijiTableAnnotator openTableAnnotator() throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get the TableAnnotator for a table in state: %s.", state);
+    return new HBaseKijiTableAnnotator(this);
   }
 
   /**

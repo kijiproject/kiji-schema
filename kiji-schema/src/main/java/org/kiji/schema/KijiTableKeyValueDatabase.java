@@ -36,6 +36,11 @@ import org.kiji.schema.avro.KeyValueBackup;
  * functionality of KijiTableKeyValueDatabase via the {@link org.kiji.schema.KijiMetaTable}.
  * </p>
  *
+ * <p>
+ *   Non-framework users wishing to set key-value pairs on a per-table basis should use the
+ *   {@link KijiTableAnnotator}.
+ * </p>
+ *
  * @param <T> the type of the class implementing KijiTableKeyValueDatabase, to be used
  *     in putValue()'s return type.
  */

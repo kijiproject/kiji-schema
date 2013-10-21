@@ -19,6 +19,7 @@
 
 package org.kiji.schema.hbase;
 
+import com.google.common.base.Objects;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
@@ -45,12 +46,28 @@ public final class HBaseColumnName {
   /**
    * Creates a new <code>HBaseColumnName</code> instance.
    *
-   * @param family The column family.
-   * @param qualifier The column qualifier.
+   * @param family HBase column family.
+   * @param qualifier HBase column qualifier.
    */
   public HBaseColumnName(byte[] family, byte[] qualifier) {
     mFamily = family;
     mQualifier = qualifier;
+  }
+
+  /**
+   * Creates a new <code>HBaseColumnName</code> instance.
+   *
+   * @param family HBase family as a String.
+   * @param qualifier HBase qualifier as a String.
+   */
+  public HBaseColumnName(
+      final String family,
+      final String qualifier
+  ) {
+    mFamily = Bytes.toBytes(family);
+    mQualifier = Bytes.toBytes(qualifier);
+    mFamilyString = family;
+    mQualifierString = qualifier;
   }
 
   /**
@@ -104,7 +121,7 @@ public final class HBaseColumnName {
   /** {@inheritDoc} */
   @Override
   public int hashCode() {
-    return toString().hashCode();
+    return Objects.hashCode(mFamily, mQualifier);
   }
 
   /** {@inheritDoc} */

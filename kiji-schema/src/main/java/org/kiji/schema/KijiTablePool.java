@@ -597,6 +597,12 @@ public final class KijiTablePool implements Closeable {
     public List<KijiRegion> getRegions() throws IOException {
       return mTable.getRegions();
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public KijiTableAnnotator openTableAnnotator() throws IOException {
+      return mTable.openTableAnnotator();
+    }
   }
 
   /**

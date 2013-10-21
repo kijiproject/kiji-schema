@@ -174,4 +174,12 @@ public interface KijiTable extends ReferenceCountable<KijiTable> {
    * @throws IOException If there is an error retrieving the regions of this table.
    */
   List<KijiRegion> getRegions() throws IOException;
+
+  /**
+   * Get a table and column annotator for this table.
+   *
+   * @return a table and column annotator for this table.
+   * @throws IOException in case of an error getting the meta table.
+   */
+  KijiTableAnnotator openTableAnnotator() throws IOException;
 }
