@@ -36,6 +36,13 @@ import org.kiji.schema.layout.CellSpec;
 public interface KijiReaderFactory {
 
   /**
+   * Get the table from which readers built by this factory will read.
+   *
+   * @return the table from which readers built by this factory will read.
+   */
+  KijiTable getTable();
+
+  /**
    * Opens a new reader for the KijiTable associated with this reader factory.
    *
    * <p> The caller of this method is responsible for closing the reader. </p>

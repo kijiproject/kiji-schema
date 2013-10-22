@@ -3,6 +3,8 @@
                               KijiSchema Release Notes
 
 Version 1.3.1
+  * SCHEMA-586. KijiTableReaderPool now supports managing a pool of open KijiTableReaders for
+      thread safe concurrent reads.
   * SCHEMA-544. Introduce new layout version 1.4 with PROTOBUF cell encoding.
   * SCHEMA-574. Fixed broken validation logic from Avro.
   * SCHEMA-581. Fixed potential race condition in client IDs used to identify

@@ -25,7 +25,6 @@ import java.util.Map;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiReaderFactory;
-import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.layout.CellSpec;
 
 /** Factory for Table Writers. */
@@ -46,13 +45,19 @@ public final class HBaseKijiReaderFactory implements KijiReaderFactory {
 
   /** {@inheritDoc} */
   @Override
-  public KijiTableReader openTableReader() throws IOException {
+  public HBaseKijiTable getTable() {
+    return mTable;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public HBaseKijiTableReader openTableReader() throws IOException {
     return new HBaseKijiTableReader(mTable);
   }
 
   /** {@inheritDoc} */
   @Override
-  public KijiTableReader openTableReader(Map<KijiColumnName, CellSpec> overrides)
+  public HBaseKijiTableReader openTableReader(Map<KijiColumnName, CellSpec> overrides)
       throws IOException {
     return new HBaseKijiTableReader(mTable, overrides);
   }
