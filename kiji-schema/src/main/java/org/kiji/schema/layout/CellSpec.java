@@ -24,6 +24,9 @@ import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
 import org.apache.avro.specific.SpecificData;
 import org.apache.avro.specific.SpecificRecord;
+import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
@@ -55,6 +58,8 @@ import org.kiji.schema.util.JavaIdentifiers;
 @ApiAudience.Framework
 @ApiStability.Evolving
 public final class CellSpec {
+  private static final Logger LOG = LoggerFactory.getLogger(CellSpec.class);
+
   /** URI of the column this specification is for. Potentially null. */
   private KijiURI mColumnURI = null;
 
@@ -487,7 +492,7 @@ public final class CellSpec {
       return null;
     }
     case PROTOBUF: {
-      // Protocol-buffesr have no Avro schema.
+      // Protocol-buffer have no Avro schema.
       return null;
     }
     case RAW_BYTES: {
@@ -521,13 +526,30 @@ public final class CellSpec {
     }
 
     try {
-      final Class<?> avroClass = Class.forName(className);
-      return SpecificData.get().getSchema(avroClass);
-    } catch (RuntimeException re) {
-      throw new InvalidLayoutException("Java class is not a valid Avro type: " + className);
+      final Class<? extends SpecificRecord> avroClass =
+          Class.forName(className).asSubclass(SpecificRecord.class);
+      return getSchemaFromClass(avroClass);
     } catch (ClassNotFoundException cnfe) {
       throw new SchemaClassNotFoundException(
           "Java class " + className + " was not found on the classpath.");
+    }
+  }
+
+  /**
+   * Reports the Avro schema from a generated class.
+   *
+   * @param klass Generated class to report the schema of.
+   * @return Avro schema of the specified generated class.
+   * @throws InvalidLayoutException if the specified class does not correspond to a valid Avro type.
+   */
+  public static Schema getSchemaFromClass(Class<? extends SpecificRecord> klass)
+      throws InvalidLayoutException {
+    try {
+      return SpecificData.get().getSchema(klass);
+    } catch (RuntimeException re) {
+      LOG.debug("Error accessing schema from Avro class: {}",
+          StringUtils.stringifyException(re));
+      throw new InvalidLayoutException("Java class is not a valid Avro type: " + klass.getName());
     }
   }
 
