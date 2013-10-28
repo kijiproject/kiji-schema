@@ -96,14 +96,11 @@ public class TestKijiDataRequestBuilder {
   @Test
   public void testNoRedundantColumn() {
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().add("info", "foo").add("info", "foo");
-
     try {
-      builder.build();
-      fail("An exception should have been thrown.");
-    } catch (IllegalStateException ise) {
-      assertEquals("Duplicate definition for column 'Column{name=info:foo, maxVersions=1, "
-          + "filter=null, pageSize=0}'.", ise.getMessage());
+      builder.newColumnsDef().add("info", "foo").add("info", "foo");
+      fail("Should have thrown exception for redundant add");
+    } catch (IllegalArgumentException ise) {
+      assertEquals("Duplicate request for column 'info:foo'.", ise.getMessage());
     }
   }
 
@@ -116,8 +113,8 @@ public class TestKijiDataRequestBuilder {
       builder.build();
       fail("An exception should have been thrown.");
     } catch (IllegalStateException ise) {
-      assertEquals("Duplicate definition for column 'Column{name=info:foo, maxVersions=1, "
-          + "filter=null, pageSize=0}'.", ise.getMessage());
+      assertEquals("Duplicate definition for column 'Column{name=info:foo, max_versions=1, "
+          + "filter=null, page_size=0, reader_spec=null}'.", ise.getMessage());
     }
   }
 

@@ -30,21 +30,28 @@ import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
 import org.junit.Test;
 
+import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
+import org.kiji.schema.layout.ColumnReaderSpec;
+
+/** Tests for KijiDataRequest and KijiDataRequestBuilder. */
 public class TestKijiDataRequest {
+
+  /** Checks that KijiDataRequest serializes and deserializes correctly. */
   @Test
-  public void testSerializability() throws IOException, ClassNotFoundException {
-    KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().add("foo", "bar1")
-        .add("foo", "bar2")
-        .add("foo", "bar3")
-        .add("foo", "bar4");
-    KijiDataRequest expected = builder.build();
+  public void testSerializability() throws Exception {
+    final KijiDataRequest expected = KijiDataRequest.builder()
+        .addColumns(ColumnsDef.create()
+            .add("foo", "bar1")
+            .add("foo", "bar2")
+            .add("foo", "bar3", ColumnReaderSpec.bytes())
+            .add("foo", "bar4")
+        )
+        .build();
 
     ByteArrayOutputStream byteOutput = new ByteArrayOutputStream();
     new ObjectOutputStream(byteOutput).writeObject(expected);
@@ -155,8 +162,8 @@ public class TestKijiDataRequest {
     try {
       KijiDataRequest.builder().newColumnsDef().addFamily("family:qualifier");
       fail("An exception should have been thrown.");
-    } catch (IllegalArgumentException iae) {
-      assertEquals("Family name cannot contain ':', but got 'family:qualifier'.", iae.getMessage());
+    } catch (KijiInvalidNameException kine) {
+      assertEquals("Invalid family name: family:qualifier", kine.getMessage());
     }
   }
 

@@ -21,15 +21,18 @@ package org.kiji.schema;
 
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.filter.KijiColumnFilter;
+import org.kiji.schema.layout.ColumnReaderSpec;
 
 /**
  * <p>Builds a request for columns of data to read from a Kiji table.</p>
@@ -128,6 +131,8 @@ public final class KijiDataRequestBuilder {
   /** True if we already built an object. */
   private boolean mIsBuilt = false;
 
+  // -----------------------------------------------------------------------------------------------
+
   /**
    * Defines properties associated with one or more columns in a request for Kiji table columns.
    *
@@ -166,6 +171,9 @@ public final class KijiDataRequestBuilder {
 
     /** Columns in this definition. */
     private List<KijiColumnName> mColumns = Lists.newArrayList();
+
+    /** Optional per-column specification of read properties used to decode cells. */
+    private Map<KijiColumnName, ColumnReaderSpec> mColumnReaderSpec = Maps.newHashMap();
 
     /** Creates a new requested <code>ColumnsDef</code> builder. */
     private ColumnsDef() {
@@ -263,44 +271,124 @@ public final class KijiDataRequestBuilder {
 
     /**
      * Adds a column to the data request, using the properties associated with this
-     * KijiDataRequestBuilder.ColumnsDef object. Once you call this method, you may not
-     * call property-setting methods like withPageSize() on this same object.
+     * KijiDataRequestBuilder.ColumnsDef object.
+     *
+     * <p>
+     *   Data request properties cannot be modified (using <code>withX()</code> methods)
+     *   after columns have been added to the column request (using <code>add()</code> methods).
+     * </p>
      *
      * @param family the column family to retrieve as a map.
      * @return this column request builder instance.
+     * @throws KijiInvalidNameException if the family name is invalid.
      */
-    public ColumnsDef addFamily(String family) {
-      Preconditions.checkNotNull(family);
-      Preconditions.checkArgument(!family.contains(":"),
-          "Family name cannot contain ':', but got '%s'.", family);
+    public ColumnsDef addFamily(final String family) {
       return add(new KijiColumnName(family, null));
     }
 
     /**
-     * Adds a column to the data request, using the properties associated with this
-     * KijiDataRequestBuilder.ColumnsDef object. Once you call this method, you may not
-     * call property-setting methods like withPageSize() on this same object.
+     * Requests data from a map-type family, and specifies read properties for that family.
      *
-     * @param family the column family of the column to retrieve.
-     * @param qualifier the qualifier of the column to retrieve.
+     * <p>
+     *   Data request properties cannot be modified (using <code>withX()</code> methods)
+     *   after columns have been added to the column request (using <code>add()</code> methods).
+     * </p>
+     *
+     * @param family Map-type family to request data from.
+     * @param columnReaderSpec Read properties to apply when decoding cells from the column family.
      * @return this column request builder instance.
+     * @throws KijiInvalidNameException if the family name is invalid.
      */
-    public ColumnsDef add(String family, String qualifier) {
-      return add(new KijiColumnName(family, qualifier));
+    public ColumnsDef addFamily(
+        final String family,
+        final ColumnReaderSpec columnReaderSpec
+    ) {
+      return add(new KijiColumnName(family, null), columnReaderSpec);
     }
 
     /**
      * Adds a column to the data request, using the properties associated with this
-     * KijiDataRequestBuilder.ColumnsDef object. Once you call this method, you may not
-     * call property-setting methods like withPageSize() on this same object.
+     * KijiDataRequestBuilder.ColumnsDef object.
+     *
+     * <p>
+     *   Data request properties cannot be modified (using <code>withX()</code> methods)
+     *   after columns have been added to the column request (using <code>add()</code> methods).
+     * </p>
+     *
+     * @param family the column family of the column to retrieve.
+     * @param qualifier the qualifier of the column to retrieve.
+     * @return this column request builder instance.
+     * @throws KijiInvalidNameException if the column name is invalid.
+     */
+    public ColumnsDef add(
+        final String family,
+        final String qualifier
+    ) {
+      return add(new KijiColumnName(family, qualifier));
+    }
+
+    /**
+     * Requests data from a column and specifies read properties for that column.
+     *
+     * <p>
+     *   Data request properties cannot be modified (using <code>withX()</code> methods)
+     *   after columns have been added to the column request (using <code>add()</code> methods).
+     * </p>
+     *
+     * @param family Family of the column to request data from.
+     * @param qualifier Qualifier of the column to request data from.
+     *     Null means request an entire map-type family.
+     * @param columnReaderSpec Read properties to apply when decoding cells from the column.
+     * @return this column request builder instance.
+     * @throws KijiInvalidNameException if the column name is invalid.
+     */
+    public ColumnsDef add(
+        final String family,
+        final String qualifier,
+        final ColumnReaderSpec columnReaderSpec
+    ) {
+      return add(new KijiColumnName(family, qualifier), columnReaderSpec);
+    }
+
+    /**
+     * Adds a column to the data request, using the properties associated with this
+     * KijiDataRequestBuilder.ColumnsDef object.
+     *
+     * <p>
+     *   Data request properties cannot be modified (using <code>withX()</code> methods)
+     *   after columns have been added to the column request (using <code>add()</code> methods).
+     * </p>
      *
      * @param column the column name to retrieve.
      * @return this column request builder instance.
      */
-    public ColumnsDef add(KijiColumnName column) {
+    public ColumnsDef add(final KijiColumnName column) {
+      return add(column, null);
+    }
+
+    /**
+     * Adds a column to the data request, using the properties associated with this
+     * KijiDataRequestBuilder.ColumnsDef object.
+     *
+     * <p>
+     *   Data request properties cannot be modified (using <code>withX()</code> methods)
+     *   after columns have been added to the column request (using <code>add()</code> methods).
+     * </p>
+     *
+     * @param column the column name to retrieve.
+     * @param columnReaderSpec Specification of read properties used when decoding cells.
+     * @return this column request builder instance.
+     */
+    public ColumnsDef add(
+        final KijiColumnName column,
+        final ColumnReaderSpec columnReaderSpec
+    ) {
       Preconditions.checkState(!mSealed,
           "Cannot add more columns to this ColumnsDef after build() has been called.");
+      Preconditions.checkArgument(!mColumnReaderSpec.containsKey(column),
+          "Duplicate request for column '%s'.", column);
       mColumns.add(column);
+      mColumnReaderSpec.put(column, columnReaderSpec);
       return this;
     }
 
@@ -329,7 +417,7 @@ public final class KijiDataRequestBuilder {
       // Values not previously initialized are now set to default values.
       // This builder is immutable after this method is called, so this is ok.
       if (mPageSize == null) {
-        mPageSize = 0; // disable paging.
+        mPageSize = KijiDataRequest.PAGING_DISABLED;
       }
 
       if (mMaxVersions == null) {
@@ -339,11 +427,19 @@ public final class KijiDataRequestBuilder {
       final List<KijiDataRequest.Column> columns = Lists.newArrayListWithCapacity(mColumns.size());
       for (KijiColumnName column: mColumns) {
         columns.add(new KijiDataRequest.Column(
-            column.getFamily(), column.getQualifier(), mMaxVersions, mFilter, mPageSize));
+            column.getFamily(),
+            column.getQualifier(),
+            mMaxVersions,
+            mFilter,
+            mPageSize,
+            mColumnReaderSpec.get(column)
+        ));
       }
       return columns;
     }
   }
+
+  // -----------------------------------------------------------------------------------------------
 
   /**
    * Constructor. Package-private; use {@link KijiDataRequest#builder()} to get an

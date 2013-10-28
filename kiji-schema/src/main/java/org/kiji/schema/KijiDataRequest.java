@@ -36,6 +36,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.filter.KijiColumnFilter;
+import org.kiji.schema.layout.ColumnReaderSpec;
 
 /**
  * <p>Describes a request for columns of data to read from a Kiji table.</p>
@@ -79,6 +80,9 @@ public final class KijiDataRequest implements Serializable {
   /** Serialization version. */
   public static final long serialVersionUID = 1L;
 
+  /** Page size used to indicate that pagination is not requested. */
+  public static final int PAGING_DISABLED = 0;
+
   /** Empty data request which will return an empty KijiRowData when used with KijiTableReader. */
   private static final KijiDataRequest EMPTY_REQUEST = KijiDataRequest.builder().build();
 
@@ -91,41 +95,62 @@ public final class KijiDataRequest implements Serializable {
   /** The maximum timestamp of cells to be read (exclusive). */
   private final long mMaxTimestamp;
 
+  // -----------------------------------------------------------------------------------------------
+
   /**
-   * Describes a request for a Kiji Table column.
+   * Describes a data request for a column in a Kiji table.
    */
   @ApiAudience.Public
   public static final class Column implements Serializable {
     /** Serialization version. */
     public static final long serialVersionUID = 1L;
 
-    /** The column family requested. */
+    /** Column family requested. Never null. */
     private final String mFamily;
-    /** The column qualifier requested (may be null, which means any qualifier). */
+
+    /** Column qualifier requested. Null means all qualifiers in the family. */
     private final String mQualifier;
-    /** The maximum number of versions from the column to read (of the most recent). */
+
+    /** Maximum number of the most recent versions to read from the column. */
     private final int mMaxVersions;
-    /** A column filter (may be null). */
+
+    /** Column filter. Null means none. */
     private final KijiColumnFilter mFilter;
-    /** The number of cells per page (zero means no paging). */
+
+    /** When using pagination, number of cells per page. Zero means no paging. */
     private final int mPageSize;
+
+    /**
+     * Read properties used to decode cells from this column.
+     * Null means use the default properties from the table layout.
+     */
+    private final ColumnReaderSpec mReaderSpec;
 
     /**
      * Creates a new request for the latest version of the cell in <code>family:qualifier</code>.
      *
      * @param family The name of the column family to request.
-     * @param qualifier The name of the column qualifier to request.
+     * @param qualifier The name of the column qualifier to request. Null means all qualifiers.
      * @param maxVersions the max versions of the column to request.
      * @param filter a column filter to attach to the results of this column request.
      * @param pageSize the default number of cells per page to retrieve at a time.
+     * @param columnReaderSpec read properties used when decoding cells from this column.
+     *     Null means use the default properties from the table layout.
      */
-    Column(String family, String qualifier, int maxVersions, KijiColumnFilter filter,
-        int pageSize) {
+    Column(
+        final String family,
+        final String qualifier,
+        final int maxVersions,
+        final KijiColumnFilter filter,
+        final int pageSize,
+        final ColumnReaderSpec columnReaderSpec
+    ) {
       mFamily = family;
       mQualifier = qualifier;
       mMaxVersions = maxVersions;
       mFilter = filter;
       mPageSize = pageSize;
+      mReaderSpec = columnReaderSpec;
     }
 
     /**
@@ -199,27 +224,46 @@ public final class KijiDataRequest implements Serializable {
      * @return Whether paging is enabled.
      */
     public boolean isPagingEnabled() {
-      return 0 != mPageSize;
+      return mPageSize != PAGING_DISABLED;
+    }
+
+    /**
+     * Returns the read properties requested when decode this column.
+     * @return the read properties requested when decode this column.
+     *     Null means use the default read properties from the table layout.
+     */
+    public ColumnReaderSpec getReaderSpec() {
+      return mReaderSpec;
     }
 
     /** {@inheritDoc} */
     @Override
-    public boolean equals(Object other) {
-      if (!(other instanceof Column)) {
+    public boolean equals(Object object) {
+      if (!(object instanceof Column)) {
         return false;
       }
-      final Column otherCol = (Column) other;
+      final Column that = (Column) object;
+      // TODO: figure out why mFilter is ignored here!
       return new EqualsBuilder()
-          .append(getName(), otherCol.getName())
-          .append(mMaxVersions, otherCol.mMaxVersions)
-          .append(mPageSize, otherCol.mPageSize)
+          .append(this.mFamily, that.mFamily)
+          .append(this.mQualifier, that.mQualifier)
+          .append(this.mMaxVersions, that.mMaxVersions)
+          .append(this.mPageSize, that.mPageSize)
+          .append(this.mReaderSpec, that.mReaderSpec)
           .isEquals();
     }
 
     /** {@inheritDoc} */
     @Override
     public int hashCode() {
-      return toString().hashCode();
+      return Objects.hashCode(
+          mFamily,
+          mQualifier,
+          mMaxVersions,
+          mFilter,
+          mPageSize,
+          mReaderSpec
+      );
     }
 
     /** {@inheritDoc} */
@@ -227,12 +271,15 @@ public final class KijiDataRequest implements Serializable {
     public String toString() {
       return Objects.toStringHelper(Column.class)
           .add("name", getName())
-          .add("maxVersions", getMaxVersions())
-          .add("filter", getFilter())
-          .add("pageSize", getPageSize())
+          .add("max_versions", mMaxVersions)
+          .add("filter", mFilter)
+          .add("page_size", mPageSize)
+          .add("reader_spec", mReaderSpec)
           .toString();
     }
   }
+
+  // -----------------------------------------------------------------------------------------------
 
   /**
    * Constructor. Package-private; invoked by {@link KijiDataRequestBuilder#build()}
@@ -314,6 +361,7 @@ public final class KijiDataRequest implements Serializable {
    * @param col2 the other column definition to use as input.
    * @return a new Column request for family:qualifier, with properties merged from
    *     col1 and col2.
+   * @throws IllegalStateException if the column requests cannot be merged.
    */
   private static Column mergeColumn(String family, String qualifier, Column col1, Column col2) {
     assert null != col1;
@@ -328,7 +376,21 @@ public final class KijiDataRequest implements Serializable {
 
     int maxVersions = Math.max(col1.getMaxVersions(), col2.getMaxVersions());
 
-    return new Column(family, qualifier, maxVersions, null, pageSize);
+    // Merge column read properties. We don't actually merge but enforce consistency:
+    final ColumnReaderSpec readerSpec;
+    if (col1.getReaderSpec() == null) {
+      readerSpec = col2.getReaderSpec();
+    } else if (col2.getReaderSpec() == null) {
+      readerSpec = col1.getReaderSpec();
+    } else if (Objects.equal(col1.getReaderSpec(), col2.getReaderSpec())) {
+      readerSpec = col1.getReaderSpec();
+    } else {
+      throw new IllegalStateException(String.format(
+          "Cannot merge reader specifications {} with {} for column '{}:{}'",
+          col1.getReaderSpec(), col2.getReaderSpec(), family, qualifier));
+    }
+
+    return new Column(family, qualifier, maxVersions, null, pageSize, readerSpec);
   }
 
   /**
