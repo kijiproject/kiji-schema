@@ -383,6 +383,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
    * @param <T> is the java type of the specified value.
    * @param cellValue to get the Avro schema of.
    * @return an Avro schema representing the type of data specified.
+   * @throws KijiEncodingException if no Avro writer schema can be inferred from cellValue.
    */
   private <T> Schema getWriterSchema(final T cellValue) {
     if (cellValue == null) {
@@ -394,7 +395,12 @@ public final class AvroCellEncoder implements KijiCellEncoder {
       return mReaderSchema;
     } else {
       final String className = cellValue.getClass().getCanonicalName();
-      return PRIMITIVE_SCHEMAS.get(className);
+      final Schema schema = PRIMITIVE_SCHEMAS.get(className);
+      if (schema == null) {
+        throw new KijiEncodingException(String.format(
+            "Unable to infer Avro writer schema for value: '%s'", cellValue));
+      }
+      return schema;
     }
   }
 
