@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+# -*- mode: python -*-
+# -*- coding: utf-8 -*-
+
+"""Build file for kiji-schema.
+
+The purpose of this script is to build the KijiSchema artifacts as fast as
+possible.
+
+Usage:
+    build [path/to/maven/local/repo]
+"""
+
+import os
+import shutil
+import sys
+import time
+
+
+def Rename(src, dst):
+  """Rename the file refered to by src as dst.
+
+  This wrapper allows to use named parameters.
+  os.rename() doesn't allow named parameters on some platforms.
+  """
+  os.rename(src, dst)
+
+
+def Main(args):
+  this = os.path.abspath(args[0])
+  root = os.path.dirname(os.path.dirname(os.path.dirname(this)))
+
+  maven_local_repo = os.path.join(os.environ['HOME'], '.m2', 'repository')
+  if len(args) > 1:
+    maven_local_repo=args[1]
+
+  os.chdir(root)
+  exit_code = os.system("""\
+      mvn \
+          -Dmaven.repo.local=%(maven_local_repo)s \
+          --no-snapshot-updates \
+          -DskipTests -DskipVerify -Dmaven.javadoc.skip=true \
+          clean \
+          install \
+  """ % {
+      'maven_local_repo': maven_local_repo,
+  })
+  assert (exit_code == 0)
+
+  # Profiling jar depends on the various bridges:
+  os.chdir(os.path.join(root, 'kiji-schema'))
+
+  now_ms = int(time.time() * 1000)
+  saved_target = os.path.join(root, 'kiji-schema', 'target.%d' % now_ms)
+  target = os.path.join(root, 'kiji-schema', 'target')
+  Rename(src=target, dst=saved_target)
+
+  exit_code = os.system("""\
+      mvn \
+          -Dmaven.repo.local=%(maven_local_repo)s \
+          --no-snapshot-updates \
+          -DskipTests -DskipVerify -Dmaven.javadoc.skip=true \
+          -Pprofiling -Dclassifier=profiling \
+          clean \
+          package \
+  """ % {
+      'maven_local_repo': maven_local_repo,
+  })
+  assert (exit_code == 0)
+
+  exit_code = os.system("""\
+      mvn \
+          -Dmaven.repo.local=%(maven_local_repo)s \
+          --no-snapshot-updates \
+          -DskipTests -DskipVerify -Dmaven.javadoc.skip=true \
+          -Pprofiling \
+          install:install-file -Dfile=$PWD/target/kiji-schema-'${project.version}'-profiling.jar \
+              -DpomFile=pom.xml -Dclassifier=profiling -Dpackaging=jar \
+  """ % {
+      'maven_local_repo': maven_local_repo,
+  })
+  assert (exit_code == 0)
+
+  shutil.rmtree(target)
+  Rename(src=saved_target, dst=target)
+
+
+if __name__ == '__main__':
+  Main(sys.argv)
