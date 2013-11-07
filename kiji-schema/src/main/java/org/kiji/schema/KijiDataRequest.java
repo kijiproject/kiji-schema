@@ -79,6 +79,9 @@ public final class KijiDataRequest implements Serializable {
   /** Serialization version. */
   public static final long serialVersionUID = 1L;
 
+  /** Empty data request which will return an empty KijiRowData when used with KijiTableReader. */
+  private static final KijiDataRequest EMPTY_REQUEST = KijiDataRequest.builder().build();
+
   /** Unmodifiable map from full column name to Column describing the request. */
   private final Map<String, Column> mColumns;
 
@@ -248,6 +251,16 @@ public final class KijiDataRequest implements Serializable {
       builder.put(col.getName(), col);
     }
     mColumns = builder.build();
+  }
+
+  /**
+   * Empty data request which will return an empty row data from a {@link KijiTableReader} without a
+   * trip to the underlying storage.
+   *
+   * @return an empty data request.
+   */
+  public static KijiDataRequest empty() {
+    return EMPTY_REQUEST;
   }
 
   /**
