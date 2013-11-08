@@ -20,24 +20,38 @@
 package org.kiji.schema.util;
 
 import java.util.List;
+import java.util.Map;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.filter.ColumnPaginationFilter;
 import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.util.Bytes;
-
 import org.apache.hadoop.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 
 /** Debugging utilities. */
 @ApiAudience.Private
 public final class Debug {
-  /** @return a string representation of the current stack trace. */
+  private static final Logger LOG = LoggerFactory.getLogger(Debug.class);
+
+  /** Ruler to help formatting log statements. */
+  private static final String LINE = Strings.repeat("-", 80);
+
+  /**
+   * Returns a string representation of the current stack trace.
+   * @return a string representation of the current stack trace.
+   */
   public static String getStackTrace() {
     try {
       throw new Exception();
@@ -80,6 +94,56 @@ public final class Debug {
     } else {
       return filter.toString();
     }
+  }
+
+  /**
+   * Formats a collection of key-value pairs, for logging purposes.
+   *
+   * @param entries Key-value pairs to format.
+   * @return the formatted list of key-value pairs.
+   * @param <K> Type of the keys.
+   * @param <V> Type of the values.
+   */
+  public static <K, V> String toLogString(Iterable<Map.Entry<K, V>> entries) {
+    final Map<String, V> map = Maps.newTreeMap();
+    for (Map.Entry<K, V> entry : entries) {
+      map.put(entry.getKey().toString(), entry.getValue());
+    }
+    final StringBuilder sb = new StringBuilder();
+    for (Map.Entry<String, V> entry : map.entrySet()) {
+      sb.append(String.format("%s: \"%s\"%n",
+          entry.getKey(), StringEscapeUtils.escapeJava(entry.getValue().toString())));
+    }
+    return sb.toString();
+  }
+
+  /**
+   * Logs the process configuration, for debugging purposes.
+   *
+   * Note: this is very verbose.
+   *
+   * @param conf Configuration to log.
+   */
+  public static void logConfiguration(final Configuration conf) {
+    LOG.info(LINE);
+    LOG.info("Using Job tracker: {}", conf.get("mapred.job.tracker"));
+    LOG.info("Using default HDFS: {}", conf.get("fs.defaultFS"));
+    LOG.info("Using HBase: quorum: {} - client port: {}",
+        conf.get("hbase.zookeeper.quorum"), conf.get("hbase.zookeeper.property.clientPort"));
+
+    LOG.info(LINE);
+    LOG.info("Using Avro package: {}", Package.getPackage("org.apache.avro"));
+
+    LOG.info(LINE);
+
+    LOG.info("Environment variables:\n{}\n{}\n{}",
+        LINE, toLogString(System.getenv().entrySet()), LINE);
+    LOG.info("System properties:\n{}\n{}\n{}",
+        LINE, toLogString(System.getProperties().entrySet()), LINE);
+    LOG.info("Classpath:\n{}\n{}\n{}",
+        LINE, Joiner.on("\n").join(System.getProperty("java.class.path").split(":")), LINE);
+    LOG.info("Hadoop configuration:\n{}\n{}\n{}",
+        LINE, toLogString(conf), LINE);
   }
 
   /** Utility class cannot be instantiated. */

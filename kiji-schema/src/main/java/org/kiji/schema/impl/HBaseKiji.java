@@ -192,11 +192,15 @@ public final class HBaseKiji implements Kiji {
     // Check for an instance name.
     Preconditions.checkArgument(mURI.getInstance() != null,
         "KijiURI '%s' does not specify a Kiji instance name.", mURI);
-    LOG.debug(
-        "Opening kiji instance '{}'"
-        + " with client software version '{}'"
-        + " and client data version '{}'.",
-        mURI, VersionInfo.getSoftwareVersion(), VersionInfo.getClientDataVersion());
+
+    if (LOG.isDebugEnabled()) {
+      Debug.logConfiguration(mConf);
+      LOG.debug(
+          "Opening kiji instance '{}'"
+          + " with client software version '{}'"
+          + " and client data version '{}'.",
+          mURI, VersionInfo.getSoftwareVersion(), VersionInfo.getClientDataVersion());
+    }
 
     // Load these lazily.
     mSchemaTable = null;
