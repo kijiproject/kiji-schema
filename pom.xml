@@ -39,7 +39,7 @@
     <kiji-checkin.version>1.0.4-SNAPSHOT</kiji-checkin.version>
     <kiji-delegation.version>1.0.0</kiji-delegation.version>
     <kiji-platforms.version>1.3.0</kiji-platforms.version>
-    <fake-hbase.version>0.1.2</fake-hbase.version>
+    <fake-hbase.version>0.1.3</fake-hbase.version>
 
     <!--
        The Hadoop and HBase versions to use in the default "cdh4" profile
