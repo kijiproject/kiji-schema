@@ -471,6 +471,13 @@ public final class AvroUtils {
 
       } else {
         // Reader and writer have different schema types:
+
+        // Handle the corner case where writer is a union of a singleton branch: { X } === X
+        if ((writer.getType() == Schema.Type.UNION)
+            && writer.getTypes().size() == 1) {
+          return getCompatibility(reader, writer.getTypes().get(0));
+        }
+
         switch (reader.getType()) {
           case NULL: return SchemaCompatibilityType.INCOMPATIBLE;
           case BOOLEAN: return SchemaCompatibilityType.INCOMPATIBLE;

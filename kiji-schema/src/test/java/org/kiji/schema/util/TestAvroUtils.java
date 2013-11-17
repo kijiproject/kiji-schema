@@ -400,6 +400,10 @@ public class TestAvroUtils extends KijiClientTest {
       new ReaderWriter(INT_UNION_SCHEMA, EMPTY_UNION_SCHEMA),
       new ReaderWriter(LONG_UNION_SCHEMA, INT_UNION_SCHEMA),
 
+      // Special case of singleton unions:
+      new ReaderWriter(INT_UNION_SCHEMA, INT_SCHEMA),
+      new ReaderWriter(INT_SCHEMA, INT_UNION_SCHEMA),
+
       // Tests involving records:
       new ReaderWriter(EMPTY_RECORD1, EMPTY_RECORD1),
       new ReaderWriter(EMPTY_RECORD1, A_INT_RECORD1),
