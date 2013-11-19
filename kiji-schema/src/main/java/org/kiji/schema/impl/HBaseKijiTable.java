@@ -41,7 +41,6 @@ import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.zookeeper.KeeperException;
@@ -117,9 +116,6 @@ public final class HBaseKijiTable implements KijiTable {
   /** HTableInterfaceFactory for creating new HTables associated with this KijiTable. */
   private final HTableInterfaceFactory mHTableFactory;
 
-  /** Factory for HTableInterface, compatible with the HTablePool. */
-  private final HBaseTableInterfaceFactory mHBaseTableFactory;
-
   /** The factory for EntityIds. */
   private final EntityIdFactory mEntityIdFactory;
 
@@ -136,7 +132,7 @@ public final class HBaseKijiTable implements KijiTable {
   private final KijiReaderFactory mReaderFactory;
 
   /** Pool of HTable connections. Safe for concurrent access. */
-  private final HTablePool mHTablePool;
+  private final KijiHTablePool mHTablePool;
 
   /** Name of the HBase table backing this Kiji table. */
   private final String mHBaseTableName;
@@ -372,8 +368,7 @@ public final class HBaseKijiTable implements KijiTable {
 
     mEntityIdFactory = createEntityIdFactory(mLayoutCapsule);
 
-    mHBaseTableFactory = new HBaseTableInterfaceFactory();
-    mHTablePool = new HTablePool(mConf, Integer.MAX_VALUE, mHBaseTableFactory);
+    mHTablePool = new KijiHTablePool(mName, (HBaseKiji)getKiji(), mHTableFactory);
 
     // Retain the Kiji instance only if open succeeds:
     mKiji.retain();
@@ -547,7 +542,7 @@ public final class HBaseKijiTable implements KijiTable {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot open an HTable connection for a KijiTable in state %s.", state);
-    return mHTablePool.getTable(mHBaseTableName);
+    return mHTablePool.getTable();
   }
 
   /**
@@ -847,33 +842,6 @@ public final class HBaseKijiTable implements KijiTable {
       }
     } catch (TableNotFoundException tnfe) {
       throw new InternalKijiError(tnfe);
-    }
-  }
-
-  /**
-   * Factory for HTableInterface, implementing the HBase factory interface.
-   *
-   * <p> The only purpose of this factory is to provide HTableInterface for HTablePool. </p>
-   * <p> Wraps a Kiji HTableInterfaceFactory into an HBase HTableInterfaceFactory. </p>
-   * <p> The HBase factory is not allowed to throw I/O Exception, and must wrap them. </p>
-   */
-  private final class HBaseTableInterfaceFactory
-      implements org.apache.hadoop.hbase.client.HTableInterfaceFactory {
-    /** {@inheritDoc} */
-    @Override
-    public HTableInterface createHTableInterface(Configuration conf, byte[] tableName) {
-      try {
-        LOG.debug("Creating new connection for Kiji table {}", mTableURI);
-        return mHTableFactory.create(conf, Bytes.toString(tableName));
-      } catch (IOException ioe) {
-        throw new KijiIOException(ioe);
-      }
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public void releaseHTableInterface(HTableInterface table) throws IOException {
-      table.close();
     }
   }
 }

@@ -118,7 +118,7 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
     /**
      * Set the minimum number of idle readers which the pool will attempt to maintain. If active +
      * idle would exceed max, this minimum will not be enforced. This field is optional and defaults
-     * to {@link GenericObjectPool.DEFAULT_MIN_IDLE}.
+     * to {@link GenericObjectPool#DEFAULT_MIN_IDLE}.
      *
      * @param minIdle the minimum number of idle readers which the pool will attempt to maintain.
      * @return this.
@@ -136,7 +136,7 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
 
     /**
      * Set the maximum number of idle readers which may be maintained at a time. This field is
-     * optional and defaults to {@link GenericObjectPool.DEFAULT_MAX_IDLE}.
+     * optional and defaults to {@link GenericObjectPool#DEFAULT_MAX_IDLE}.
      *
      * @param maxIdle maximum number of idle readers.
      * @return this.
@@ -154,7 +154,7 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
 
     /**
      * Set the maximum number of simultaneously active readers. This field is optional and defaults
-     * to {@link GenericObjectPool.DEFAULT_MAX_ACTIVE}.
+     * to {@link GenericObjectPool#DEFAULT_MAX_ACTIVE}.
      *
      * @param maxActive maximum number of active readers before
      *     {@link org.kiji.schema.KijiTableReaderPool#borrowObject()} changes its behavior according
@@ -176,7 +176,7 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
      * Set the time in milliseconds after which a reader may be evicted for idleness. Readers are
      * not guaranteed to be evicted when this time has elapsed, but they may not be evicted before
      * it. This field is optional and defaults to
-     * {@link GenericObjectPool.DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS}.
+     * {@link GenericObjectPool#DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS}.
      *
      * @param minEvictableIdleTime time in milliseconds a reader must remain idle before it may be
      *     evicted.
@@ -195,7 +195,7 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
 
     /**
      * Set the time in milliseconds between automatic eviction of idle readers. This field is
-     * optional and defaults to {@link GenericObjectPool.DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS}.
+     * optional and defaults to {@link GenericObjectPool#DEFAULT_TIME_BETWEEN_EVICTION_RUNS_MILLIS}.
      *
      * @param timeBetweenEvictionRuns time in milliseconds to wait between evicting readers which
      *     have been idle longer than the allowed duration.
@@ -215,7 +215,7 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
     /**
      * Set the behavior of {@link org.kiji.schema.KijiTableReaderPool#borrowObject()} when the pool
      * is at maximum capacity. This field is optional and defaults to
-     * {@link GenericObjectPool.DEFAULT_WHEN_EXHAUSTED_ACTION}.
+     * {@link GenericObjectPool#DEFAULT_WHEN_EXHAUSTED_ACTION}.
      *
      * @param whenExhaustedAction behavior of
      *     {@link org.kiji.schema.KijiTableReaderPool#borrowObject()} when the pool is at maximum
@@ -235,7 +235,7 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
     /**
      * Set the maximum time (in milliseconds) to wait for an object to become available when using
      * {@link WhenExhaustedAction#BLOCK}. This field is optional and defaults to
-     * {@link GenericObjectPool.DEFAULT_MAX_WAIT}.
+     * {@link GenericObjectPool#DEFAULT_MAX_WAIT}.
      *
      * @param maxWait time in milliseconds to wait for an object to become available when borrowing.
      * @return this.
