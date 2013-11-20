@@ -21,6 +21,7 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 
 import com.google.common.base.Preconditions;
 import org.apache.avro.Schema;
@@ -29,9 +30,16 @@ import org.apache.avro.io.DecoderFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.DecodedCell;
+import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiCellDecoder;
+import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.avro.AvroSchema;
+import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.SchemaTableAvroResolver;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.BytesKey;
 import org.kiji.schema.util.Hasher;
@@ -46,9 +54,6 @@ import org.kiji.schema.util.Hasher;
  */
 @ApiAudience.Private
 public abstract class AvroCellDecoder<T> implements KijiCellDecoder<T> {
-
-  /** Specification of the cell encoding. */
-  private final CellSpec mCellSpec;
 
   /** Schema decoder. */
   private final SchemaDecoder mSchemaDecoder;
@@ -163,12 +168,99 @@ public abstract class AvroCellDecoder<T> implements KijiCellDecoder<T> {
    */
   private static SchemaDecoder createSchemaDecoder(CellSpec cellSpec) throws IOException {
     switch (cellSpec.getCellSchema().getStorage()) {
-    case HASH: return new SchemaHashDecoder(cellSpec.getSchemaTable());
-    case UID: return new SchemaIdDecoder(cellSpec.getSchemaTable());
-    case FINAL: return new FinalSchemaDecoder(cellSpec.getAvroSchema());
-    default:
-      throw new RuntimeException(
-          "Unexpected cell schema: " + cellSpec.getCellSchema().getStorage());
+      case HASH: return new SchemaHashDecoder(cellSpec.getSchemaTable());
+      case UID: return new SchemaIdDecoder(cellSpec.getSchemaTable());
+      case FINAL: return new FinalSchemaDecoder(cellSpec.getAvroSchema());
+      default: throw new InternalKijiError(
+            "Unexpected cell storage in cell schema: " + cellSpec.getCellSchema());
+    }
+  }
+
+  /**
+   * Get the Avro Schema for a given column marked FINAL in a given layout. This will either be
+   * defined INLINE as a Schema JSON or it will be the only writer schema in the layout 1.3+
+   * Avro writers field.
+   *
+   * @param layout table layout from which to get the Schema for the given column.
+   * @param column column for which to get the Schema.
+   * @return Avro Schema of the given column.
+   * @throws NoSuchColumnException in case the column does not exist.
+   */
+  private static Schema getSchemaForFinalColumn(KijiTableLayout layout, KijiColumnName column)
+      throws NoSuchColumnException {
+    final List<AvroSchema> writers =
+        layout.getCellSchema(column).getWriters();
+    if (null == writers) {
+      return new Schema.Parser().parse(layout.getCellSchema(column).getValue());
+    } else {
+      Preconditions.checkState(writers.size() == 1,
+          "FINAL columns must have exactly one writer schema, found: " + writers);
+      return new SchemaTableAvroResolver(layout.getSchemaTable()).apply(writers.get(0));
+    }
+  }
+
+  /**
+   * Creates a schema decoder.
+   *
+   * @param layout KijiTableLayout from which to get storage information.
+   * @param spec Specification of the cell encoding.
+   * @return a new schema decoder.
+   * @throws IOException on I/O error.
+   */
+  private static SchemaDecoder createSchemaDecoder(KijiTableLayout layout,
+      BoundColumnReaderSpec spec) throws IOException {
+    final CellSchema cellSchema = layout.getCellSchema(spec.getColumn());
+
+    switch (cellSchema.getStorage()) {
+      case HASH: {
+        return new SchemaHashDecoder(layout.getSchemaTable());
+      }
+      case UID: {
+        return new SchemaIdDecoder(layout.getSchemaTable());
+      }
+      case FINAL: {
+        switch (spec.getColumnReaderSpec().getAvroReaderSchemaType()) {
+          case DEFAULT:
+          case WRITER: {
+            return new FinalSchemaDecoder(getSchemaForFinalColumn(layout, spec.getColumn()));
+          }
+          case EXPLICIT: {
+            return new FinalSchemaDecoder(spec.getColumnReaderSpec().getAvroReaderSchema());
+          }
+          default: {
+            throw new InternalKijiError(
+                "Unknown Avro reader schema type from reader spec: " + spec.getColumnReaderSpec());
+          }
+        }
+      }
+      default: {
+        throw new InternalKijiError(
+            "Unknown cell schema storage from CellSchema: " + cellSchema);
+      }
+    }
+  }
+
+  /**
+   * Get the Avro Schema to use to decode cells.
+   *
+   * @param layout KijiTableLayout from which to get storage information.
+   * @param spec Specification of the cell encoding.
+   * @return the Avro Schema to use to decode cells.
+   * @throws IOException in case the specified column does not exist.
+   */
+  private static Schema getReaderSchema(KijiTableLayout layout, BoundColumnReaderSpec spec)
+      throws IOException {
+    switch (spec.getColumnReaderSpec().getAvroReaderSchemaType()) {
+      case DEFAULT: {
+        final CellSchema cellSchema = layout.getCellSchema(spec.getColumn());
+        final SchemaTableAvroResolver resolver =
+            new SchemaTableAvroResolver(layout.getSchemaTable());
+        return resolver.apply(cellSchema.getDefaultReader());
+      }
+      case EXPLICIT: return spec.getColumnReaderSpec().getAvroReaderSchema();
+      case WRITER: return null;
+      default: throw new InternalKijiError(
+          "Unknown AvroReaderSchemaType: " + spec.getColumnReaderSpec().getAvroReaderSchemaType());
     }
   }
 
@@ -181,10 +273,22 @@ public abstract class AvroCellDecoder<T> implements KijiCellDecoder<T> {
    * @throws IOException on I/O error.
    */
   protected AvroCellDecoder(CellSpec cellSpec) throws IOException {
-    mCellSpec = Preconditions.checkNotNull(cellSpec);
-    Preconditions.checkArgument(mCellSpec.isAvro());
+    Preconditions.checkNotNull(cellSpec);
+    Preconditions.checkArgument(cellSpec.isAvro());
     mSchemaDecoder = createSchemaDecoder(cellSpec);
-    mReaderSchema = mCellSpec.getAvroSchema();
+    mReaderSchema = cellSpec.getAvroSchema();
+  }
+
+  /**
+   * Initializes an abstract KijiAvroCellDecoder.
+   *
+   * @param layout KijiTableLayout from which to get storage information.
+   * @param spec Specification of the cell encoding.
+   * @throws IOException on I/O error.
+   */
+  protected AvroCellDecoder(KijiTableLayout layout, BoundColumnReaderSpec spec) throws IOException {
+    mSchemaDecoder = createSchemaDecoder(layout, spec);
+    mReaderSchema = getReaderSchema(layout, spec);
   }
 
   /**

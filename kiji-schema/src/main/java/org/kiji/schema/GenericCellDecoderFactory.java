@@ -25,11 +25,13 @@ import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.schema.impl.BoundColumnReaderSpec;
 import org.kiji.schema.impl.CounterCellDecoder;
 import org.kiji.schema.impl.GenericCellDecoder;
 import org.kiji.schema.impl.ProtobufCellDecoder;
 import org.kiji.schema.impl.RawBytesCellDecoder;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.KijiTableLayout;
 
 /**
  * Factory for Kiji cell decoders using GenericCellDecoder to handle record-based schemas.
@@ -68,8 +70,31 @@ public final class GenericCellDecoderFactory implements KijiCellDecoderFactory {
         final KijiCellDecoder<T> counterCellDecoder = (KijiCellDecoder<T>) CounterCellDecoder.get();
         return counterCellDecoder;
       default:
-        throw new RuntimeException("Unhandled cell encoding: " + cellSpec.getCellSchema());
+        throw new InternalKijiError("Unhandled cell encoding: " + cellSpec.getCellSchema());
     }
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public <T> KijiCellDecoder<T> create(KijiTableLayout layout, BoundColumnReaderSpec spec)
+      throws IOException {
+    Preconditions.checkNotNull(layout);
+    Preconditions.checkNotNull(spec);
+    switch (spec.getColumnReaderSpec().getEncoding()) {
+      case RAW_BYTES:
+        return new RawBytesCellDecoder<T>(spec);
+      case AVRO:
+        return new GenericCellDecoder<T>(layout, spec);
+      case PROTOBUF:
+        return new ProtobufCellDecoder<T>(layout, spec);
+      case COUNTER:
+        // purposefully forget the type (long) param of cell decoders for counters.
+        @SuppressWarnings("unchecked")
+        final KijiCellDecoder<T> counterCellDecoder = (KijiCellDecoder<T>) CounterCellDecoder.get();
+        return counterCellDecoder;
+      default:
+        throw new InternalKijiError(
+            "Unhandled cell encoding in reader spec: " + spec.getColumnReaderSpec());
+    }
+  }
 }

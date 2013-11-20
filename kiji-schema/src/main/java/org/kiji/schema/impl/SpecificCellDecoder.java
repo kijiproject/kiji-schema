@@ -27,6 +27,7 @@ import org.apache.avro.specific.SpecificDatumReader;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.KijiTableLayout;
 
 /**
  * Decodes cells encoded using Avro into specific types.
@@ -43,6 +44,18 @@ public final class SpecificCellDecoder<T> extends AvroCellDecoder<T> {
    */
   public SpecificCellDecoder(CellSpec cellSpec) throws IOException {
     super(cellSpec);
+  }
+
+  /**
+   * Initializes a cell decoder that creates specific Avro types.
+   *
+   * @param layout KijiTableLayout from which to get storage information.
+   * @param spec Specification of the cell encoding.
+   * @throws IOException on I/O error.
+   */
+  public SpecificCellDecoder(KijiTableLayout layout, BoundColumnReaderSpec spec)
+      throws IOException {
+    super(layout, spec);
   }
 
   /** {@inheritDoc} */

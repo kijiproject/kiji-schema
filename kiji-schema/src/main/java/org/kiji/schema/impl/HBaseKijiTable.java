@@ -586,7 +586,7 @@ public final class HBaseKijiTable implements KijiTable {
     Preconditions.checkState(state == State.OPEN,
         "Cannot open a table reader on a KijiTable in state %s.", state);
     try {
-      return new HBaseKijiTableReader(this);
+      return HBaseKijiTableReader.create(this);
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }

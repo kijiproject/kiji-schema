@@ -31,6 +31,8 @@ import org.kiji.schema.DecodedCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.ColumnReaderSpec.Encoding;
+import org.kiji.schema.layout.KijiTableLayout;
 
 /**
  * Deserializes an HBase cell encoded as a Protocol Buffer.
@@ -39,9 +41,6 @@ import org.kiji.schema.layout.CellSpec;
  */
 @ApiAudience.Private
 public class ProtobufCellDecoder<T> implements KijiCellDecoder<T> {
-
-  /** Specification of the cell encoding. */
-  private final CellSpec mCellSpec;
 
   /** Class of the protocol buffer to decode. */
   private final Class<? extends AbstractMessageLite> mProtoClass;
@@ -52,18 +51,46 @@ public class ProtobufCellDecoder<T> implements KijiCellDecoder<T> {
   // -----------------------------------------------------------------------------------------------
 
   /**
-   * Initializes an abstract KijiAvroCellDecoder.
+   * Initializes a ProtobufCellDecoder.
    *
    * @param cellSpec Specification of the cell encoding.
    * @throws IOException on I/O error.
    */
   public ProtobufCellDecoder(CellSpec cellSpec) throws IOException {
-    mCellSpec = Preconditions.checkNotNull(cellSpec);
+    Preconditions.checkNotNull(cellSpec);
     Preconditions.checkArgument(
-        mCellSpec.getCellSchema().getType() == SchemaType.PROTOBUF);
-    final String className = mCellSpec.getCellSchema().getProtobufClassName();
+        cellSpec.getCellSchema().getType() == SchemaType.PROTOBUF);
+    final String className = cellSpec.getCellSchema().getProtobufClassName();
     try {
-      mProtoClass = (Class<? extends AbstractMessageLite>) Class.forName(className);
+      mProtoClass = Class.forName(className).asSubclass(AbstractMessageLite.class);
+    } catch (ClassNotFoundException cnfe) {
+      throw new IOException(cnfe);
+    }
+
+    try {
+      mParseFromMethod = mProtoClass.getMethod("parseFrom", byte[].class);
+    } catch (NoSuchMethodException nsme) {
+      throw new IOException(nsme);
+    }
+  }
+
+  /**
+   * Initializes a ProtobufCellDecoder.
+   *
+   * @param layout KijiTableLayout from which to get the Protobuf class name.
+   * @param spec Specification of the cell encoding.
+   * @throws IOException on I/O error.
+   */
+  public ProtobufCellDecoder(KijiTableLayout layout, BoundColumnReaderSpec spec)
+      throws IOException {
+    Preconditions.checkNotNull(layout);
+    Preconditions.checkNotNull(spec);
+    Preconditions.checkArgument(
+        spec.getColumnReaderSpec().getEncoding() == Encoding.PROTOBUF);
+    final String className =
+        layout.getCellSchema(spec.getColumn()).getProtobufClassName();
+    try {
+      mProtoClass = Class.forName(className).asSubclass(AbstractMessageLite.class);
     } catch (ClassNotFoundException cnfe) {
       throw new IOException(cnfe);
     }

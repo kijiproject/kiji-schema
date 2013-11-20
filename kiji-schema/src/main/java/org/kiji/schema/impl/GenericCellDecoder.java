@@ -27,6 +27,7 @@ import org.apache.avro.io.DatumReader;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.KijiTableLayout;
 
 /**
  * Decodes cells encoded using Avro into generic types.
@@ -43,6 +44,17 @@ public class GenericCellDecoder<T> extends AvroCellDecoder<T> {
    */
   public GenericCellDecoder(CellSpec cellSpec) throws IOException {
     super(cellSpec);
+  }
+
+  /**
+   * Initializes a cell decoder that creates generic Avro types.
+   *
+   * @param layout KijiTableLayout from which to get storage information.
+   * @param spec Specification of the cell encoding.
+   * @throws IOException on I/O error.
+   */
+  public GenericCellDecoder(KijiTableLayout layout, BoundColumnReaderSpec spec) throws IOException {
+    super(layout, spec);
   }
 
   /** {@inheritDoc} */

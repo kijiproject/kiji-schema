@@ -52,13 +52,19 @@ public final class HBaseKijiReaderFactory implements KijiReaderFactory {
   /** {@inheritDoc} */
   @Override
   public HBaseKijiTableReader openTableReader() throws IOException {
-    return new HBaseKijiTableReader(mTable);
+    return HBaseKijiTableReader.create(mTable);
   }
 
   /** {@inheritDoc} */
   @Override
   public HBaseKijiTableReader openTableReader(Map<KijiColumnName, CellSpec> overrides)
       throws IOException {
-    return new HBaseKijiTableReader(mTable, overrides);
+    return HBaseKijiTableReader.createWithCellSpecOverrides(mTable, overrides);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public HBaseKijiTableReader openTableReader(KijiTableReaderOptions options) throws IOException {
+    return HBaseKijiTableReader.createWithOptions(mTable, options);
   }
 }

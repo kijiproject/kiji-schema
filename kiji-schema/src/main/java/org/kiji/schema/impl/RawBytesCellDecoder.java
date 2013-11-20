@@ -28,6 +28,7 @@ import org.kiji.schema.DecodedCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.ColumnReaderSpec.Encoding;
 
 /**
  * Deserializes an HBase cell as a raw byte array.
@@ -37,19 +38,26 @@ import org.kiji.schema.layout.CellSpec;
 @ApiAudience.Private
 public class RawBytesCellDecoder<T> implements KijiCellDecoder<T> {
 
-  /** Specification of the cell encoding. */
-  private final CellSpec mCellSpec;
-
   /**
    * Initializes a new RawBytesCellDecoder.
    *
    * @param cellSpec Specification of the cell encoding.
-   * @throws IOException on I/O error.
    */
-  public RawBytesCellDecoder(CellSpec cellSpec) throws IOException {
-    mCellSpec = Preconditions.checkNotNull(cellSpec);
+  public RawBytesCellDecoder(CellSpec cellSpec) {
+    Preconditions.checkNotNull(cellSpec);
     Preconditions.checkArgument(
-        mCellSpec.getCellSchema().getType() == SchemaType.RAW_BYTES);
+        cellSpec.getCellSchema().getType() == SchemaType.RAW_BYTES);
+  }
+
+  /**
+   * Initializes a new RawBytesCellDecoder.
+   *
+   * @param spec Specification of the cell encoding.
+   */
+  public RawBytesCellDecoder(BoundColumnReaderSpec spec) {
+    Preconditions.checkNotNull(spec);
+    Preconditions.checkArgument(
+        spec.getColumnReaderSpec().getEncoding() == Encoding.RAW_BYTES);
   }
 
   /** {@inheritDoc} */

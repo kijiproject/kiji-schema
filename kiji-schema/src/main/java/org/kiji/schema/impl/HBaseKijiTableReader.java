@@ -21,15 +21,17 @@ package org.kiji.schema.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Result;
@@ -43,15 +45,20 @@ import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestValidator;
+import org.kiji.schema.KijiReaderFactory;
+import org.kiji.schema.KijiReaderFactory.KijiTableReaderOptions;
+import org.kiji.schema.KijiReaderFactory.KijiTableReaderOptions.OnDecoderCacheMiss;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.filter.KijiRowFilter;
 import org.kiji.schema.filter.KijiRowFilterApplicator;
 import org.kiji.schema.hbase.HBaseScanOptions;
 import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.ColumnReaderSpec;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
@@ -61,11 +68,13 @@ import org.kiji.schema.layout.impl.ColumnNameTranslator;
  * Reads from a kiji table by sending the requests directly to the HBase tables.
  */
 @ApiAudience.Private
-public class HBaseKijiTableReader implements KijiTableReader {
+public final class HBaseKijiTableReader implements KijiTableReader {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTableReader.class);
 
   /** HBase KijiTable to read from. */
   private final HBaseKijiTable mTable;
+  /** Behavior when a cell decoder cannot be found. */
+  private final OnDecoderCacheMiss mOnDecoderCacheMiss;
 
   /** States of a kiji table reader instance. */
   private static enum State {
@@ -77,8 +86,14 @@ public class HBaseKijiTableReader implements KijiTableReader {
   /** Tracks the state of this KijiTableReader instance. */
   private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
-  /** Map of overridden cell specs. */
+  /** Map of overridden CellSpecs to use when reading. Null when mOverrides is not null. */
   private final Map<KijiColumnName, CellSpec> mCellSpecOverrides;
+
+  /** Map of overridden column read specifications. Null when mCellSpecOverrides is not null. */
+  private final Map<KijiColumnName, BoundColumnReaderSpec> mOverrides;
+
+  /** Map of backup column read specifications. Null when mCellSpecOverrides is not null. */
+  private final Collection<BoundColumnReaderSpec> mAlternatives;
 
   /** Object which processes layout update from the KijiTable from which this Reader reads. */
   private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
@@ -146,13 +161,21 @@ public class HBaseKijiTableReader implements KijiTableReader {
   private final class InnerLayoutUpdater implements LayoutConsumer {
     /** {@inheritDoc} */
     @Override
-    public void update(final LayoutCapsule capsule) throws IOException {
-      final CellDecoderProvider provider = new CellDecoderProvider(
-          capsule.getLayout(),
-          mTable.getKiji().getSchemaTable(),
-          SpecificCellDecoderFactory.get(),
-          mCellSpecOverrides);
-      // If the capsule is null this is the initial setup and we do not need a log message.
+    public void update(LayoutCapsule capsule) throws IOException {
+      final CellDecoderProvider provider;
+      if (null != mCellSpecOverrides) {
+        provider = new CellDecoderProvider(
+            capsule.getLayout(),
+            mTable.getKiji().getSchemaTable(),
+            SpecificCellDecoderFactory.get(),
+            mCellSpecOverrides);
+      } else {
+        provider = new CellDecoderProvider(
+            capsule.getLayout(),
+            mOverrides,
+            mAlternatives,
+            mOnDecoderCacheMiss);
+      }
       if (mReaderLayoutCapsule != null) {
         LOG.debug(
             "Updating layout used by KijiTableReader: {} for table: {} from version: {} to: {}",
@@ -161,6 +184,7 @@ public class HBaseKijiTableReader implements KijiTableReader {
             mReaderLayoutCapsule.getLayout().getDesc().getLayoutId(),
             capsule.getLayout().getDesc().getLayoutId());
       } else {
+        // If the capsule is null this is the initial setup and we need a different log message.
         LOG.debug("Initializing KijiTableReader: {} for table: {} with table layout version: {}",
             this,
             mTable.getURI(),
@@ -177,27 +201,123 @@ public class HBaseKijiTableReader implements KijiTableReader {
    * Creates a new <code>HBaseKijiTableReader</code> instance that sends the read requests
    * directly to HBase.
    *
-   * @param table The kiji table to read from.
+   * @param table Kiji table from which to read.
    * @throws IOException on I/O error.
+   * @return a new HBaseKijiTableReader.
    */
-  public HBaseKijiTableReader(HBaseKijiTable table) throws IOException {
-    this(table, Maps.<KijiColumnName, CellSpec>newHashMap());
+  public static HBaseKijiTableReader create(
+      final HBaseKijiTable table
+  ) throws IOException {
+    return new HBaseKijiTableReader(table, KijiTableReaderOptions.ALL_DEFAULTS);
   }
 
   /**
-   * Creates a new <code>HBaseKijiTableReader</code> instance that sends the read requests
-   * directly to HBase.
+   * Creates a new <code>HbaseKijiTableReader</code> instance that sends read requests directly to
+   * HBase.
    *
-   * @param table The kiji table to read from.
-   * @param layoutOverride Map of column layout overrides.
+   * @param table Kiji table from which to read.
+   * @param overrides layout overrides to modify read behavior.
+   * @return a new HBaseKijiTableReader.
+   * @throws IOException in case of an error opening the reader.
+   */
+  public static HBaseKijiTableReader createWithCellSpecOverrides(
+      final HBaseKijiTable table,
+      final Map<KijiColumnName, CellSpec> overrides
+  ) throws IOException {
+    return new HBaseKijiTableReader(table, overrides);
+  }
+
+  /**
+   * Create a new <code>HBaseKijiTableReader</code> instance that sends read requests directly to
+   * HBase.
+   *
+   * @param table Kiji table from which to read.
+   * @param options configuration options for this KijiTableReader.
+   * @return a new HBaseKijiTableReader.
+   * @throws IOException in case of an error opening the reader.
+   */
+  public static HBaseKijiTableReader createWithOptions(
+      final HBaseKijiTable table,
+      final KijiTableReaderOptions options
+  ) throws IOException {
+    return new HBaseKijiTableReader(table, options);
+  }
+
+  /**
+   * Open a table reader whose behavior is customized by overriding CellSpecs.
+   *
+   * @param table Kiji table from which this reader will read.
+   * @param cellSpecOverrides specifications of overriding read behaviors.
+   * @throws IOException in case of an error opening the reader.
+   */
+  private HBaseKijiTableReader(
+      final HBaseKijiTable table,
+      final Map<KijiColumnName, CellSpec> cellSpecOverrides
+  ) throws IOException {
+    mTable = table;
+    mCellSpecOverrides = cellSpecOverrides;
+    mOnDecoderCacheMiss = KijiReaderFactory.KijiTableReaderOptions.Builder.DEFAULT_CACHE_MISS;
+    mOverrides = null;
+    mAlternatives = null;
+
+    mTable.registerLayoutConsumer(mInnerLayoutUpdater);
+    Preconditions.checkState(mReaderLayoutCapsule != null,
+        "KijiTableReader for table: %s failed to initialize.", mTable.getURI());
+
+    // Retain the table only when everything succeeds.
+    mTable.retain();
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open KijiTableReader instance in state %s.", oldState);
+  }
+
+  /**
+   * Creates a new <code>HBaseKijiTableReader</code> instance that sends read requests directly to
+   * HBase.
+   *
+   * @param table Kiji table from which to read.
+   * @param options configuration options for this KijiTableReader.
    * @throws IOException on I/O error.
    */
-  public HBaseKijiTableReader(
-      HBaseKijiTable table,
-      Map<KijiColumnName, CellSpec> layoutOverride)
-      throws IOException {
+  private HBaseKijiTableReader(
+      final HBaseKijiTable table,
+      final KijiTableReaderOptions options
+  ) throws IOException {
     mTable = table;
-    mCellSpecOverrides = layoutOverride;
+    mOnDecoderCacheMiss = options.getOnDecoderCacheMiss();
+
+    final KijiTableLayout layout = mTable.getLayout();
+    final Set<KijiColumnName> layoutColumns = layout.getColumnNames();
+    final Map<KijiColumnName, BoundColumnReaderSpec> boundOverrides = Maps.newHashMap();
+    for (Map.Entry<KijiColumnName, ColumnReaderSpec> override
+        : options.getColumnReaderSpecOverrides().entrySet()) {
+      final KijiColumnName column = override.getKey();
+      if (!layoutColumns.contains(column)
+          && !layoutColumns.contains(new KijiColumnName(column.getFamily()))) {
+        throw new NoSuchColumnException(String.format(
+            "KijiTableLayout: %s does not contain column: %s", layout, column));
+      } else {
+        boundOverrides.put(column,
+            BoundColumnReaderSpec.create(override.getValue(), column));
+      }
+    }
+    mOverrides = boundOverrides;
+    final Collection<BoundColumnReaderSpec> boundAlternatives = Sets.newHashSet();
+    for (Map.Entry<KijiColumnName, ColumnReaderSpec> altsEntry
+        : options.getColumnReaderSpecAlternatives().entries()) {
+      final KijiColumnName column = altsEntry.getKey();
+      if (!layoutColumns.contains(column)
+          && !layoutColumns.contains(new KijiColumnName(column.getFamily()))) {
+        throw new NoSuchColumnException(String.format(
+            "KijiTableLayout: %s does not contain column: %s", layout, column));
+      } else {
+        boundAlternatives.add(
+            BoundColumnReaderSpec.create(altsEntry.getValue(), altsEntry.getKey()));
+      }
+    }
+    mAlternatives = boundAlternatives;
+    mCellSpecOverrides = null;
+
     mTable.registerLayoutConsumer(mInnerLayoutUpdater);
     Preconditions.checkState(mReaderLayoutCapsule != null,
         "KijiTableReader for table: %s failed to initialize.", mTable.getURI());

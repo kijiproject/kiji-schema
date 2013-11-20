@@ -24,7 +24,9 @@ import java.io.IOException;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
+import org.kiji.schema.impl.BoundColumnReaderSpec;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.KijiTableLayout;
 
 /** Interface for factories of KijiCellDecoder instances. */
 @ApiAudience.Framework
@@ -41,4 +43,17 @@ public interface KijiCellDecoderFactory {
    * @param <T> Type of the value to decode.
    */
   <T> KijiCellDecoder<T> create(CellSpec cellSpec) throws IOException;
+
+  /**
+   * Creates a new Kiji cell decoder.
+   *
+   * @param layout KijiTableLayout from which to retrieve storage information.
+   * @param spec Specification of the cell encoding.
+   * @return a new Kiji cell decoder.
+   * @throws IOException on I/O error.
+   *
+   * @param <T> Type of the value to decode.
+   */
+  <T> KijiCellDecoder<T> create(KijiTableLayout layout, BoundColumnReaderSpec spec)
+      throws IOException;
 }
