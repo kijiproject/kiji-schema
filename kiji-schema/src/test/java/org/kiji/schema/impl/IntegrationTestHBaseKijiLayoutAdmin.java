@@ -23,13 +23,9 @@ import static org.junit.Assert.assertEquals;
 import java.io.IOException;
 
 import com.google.common.collect.Lists;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
-import org.apache.hadoop.hbase.util.Bytes;
 
 import org.junit.After;
 import org.junit.Before;
@@ -41,7 +37,6 @@ import org.kiji.schema.avro.BloomType;
 import org.kiji.schema.avro.LocalityGroupDesc;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -62,11 +57,16 @@ public class IntegrationTestHBaseKijiLayoutAdmin extends AbstractKijiIntegration
   private static final long EXPECTED_MEMSTORE_FLUSHSIZE = 268435456L;
   private static final long EXPECTED_BLOCKSIZE = 64;
 
-  private Kiji mKiji;
+  private HBaseKiji mKiji;
 
   @Before
   public void setUp() throws Exception {
-    mKiji = Kiji.Factory.get().open(getKijiURI());
+    Kiji kiji = Kiji.Factory.get().open(getKijiURI());
+    if (kiji instanceof HBaseKiji) {
+      mKiji = (HBaseKiji) kiji;
+    } else {
+      throw new UnsupportedOperationException("Cannot test a non-HBase Kiji.");
+    }
   }
 
   @After
@@ -236,13 +236,7 @@ public class IntegrationTestHBaseKijiLayoutAdmin extends AbstractKijiIntegration
 
   private HTableDescriptor getHbaseTableDescriptor(String kijiTableName) throws IOException {
     KijiManagedHBaseTableName mPhysicalTableName =
-      KijiManagedHBaseTableName.getKijiTableName(getKijiURI().getInstance(),
-      kijiTableName);
-
-    final HBaseFactory factory = HBaseFactory.Provider.get();
-    Configuration mConf = HBaseConfiguration.create();
-    HBaseAdmin mHBaseAdmin = factory.getHBaseAdminFactory(getHBaseURI()).create(mConf);
-    byte[] tableNameAsBytes = Bytes.toBytes(mPhysicalTableName.toString());
-    return mHBaseAdmin.getTableDescriptor(tableNameAsBytes);
+      KijiManagedHBaseTableName.getKijiTableName(getKijiURI().getInstance(), kijiTableName);
+    return mKiji.getHBaseAdmin().getTableDescriptor(mPhysicalTableName.toBytes());
   }
 }

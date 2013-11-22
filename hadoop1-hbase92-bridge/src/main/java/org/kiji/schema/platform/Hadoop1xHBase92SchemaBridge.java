@@ -54,6 +54,7 @@ public final class Hadoop1xHBase92SchemaBridge extends SchemaPlatformBridge {
   @Override
   public void setAutoFlush(HTableInterface hTable, boolean autoFlush) {
     // The HTable implementation of HTableInterface can do this; downcast if available.
+    // setAutoFlush is not a member of HTableInterface in HBase 0.92.X
     if (hTable instanceof HTable) {
       ((HTable) hTable).setAutoFlush(autoFlush);
     } else {
@@ -67,6 +68,7 @@ public final class Hadoop1xHBase92SchemaBridge extends SchemaPlatformBridge {
   public void setWriteBufferSize(HTableInterface hTable, long bufSize)
       throws IOException {
     // The HTable implementation of HTableInterface can do this; downcast if available.
+    // setWriteBufferSize is not a member of HTableInterface in HBase 0.92.X
     if (hTable instanceof HTable) {
       ((HTable) hTable).setWriteBufferSize(bufSize);
     } else {

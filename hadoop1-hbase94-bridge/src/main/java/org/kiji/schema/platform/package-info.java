@@ -19,6 +19,10 @@
 
 /**
  * Hadoop 1.x and HBase 0.94.x-backed provider of the KijiSchema PlatformBridge API.
- * Requires HBase 0.94.7 or higher.
+ * This bridge handles the following Hadoop / HBase distributions:
+ * <ul>
+ *    <li>Apache Hadoop1.x with HBase 0.94.2+</li>
+ *    <li>MapR's distribution of HBase</li>
+ * </ul>
  */
 package org.kiji.schema.platform;

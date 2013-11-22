@@ -50,7 +50,7 @@ public final class Hadoop1xHBase94SchemaBridgeFactory extends SchemaPlatformBrid
     String hadoopVer = org.apache.hadoop.util.VersionInfo.getVersion();
     String hbaseVer = org.apache.hadoop.hbase.util.VersionInfo.getVersion();
 
-    if (hadoopVer.matches("1\\.[0-9\\.]+") && hbaseVer.matches("0\\.94\\.[0-9\\.]+")) {
+    if (hadoopVer.matches("1\\.[0-9\\.]+") && hbaseVer.matches("0\\.94\\.[0-9\\.]+(\\-\\w+)?")) {
       // Hadoop 1.x.x and HBase 0.94.x match correctly; use this bridge.
       return Priority.NORMAL;
     } else {

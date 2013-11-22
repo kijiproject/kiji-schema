@@ -3,6 +3,7 @@
                               KijiSchema Release Notes
 
 Version 1.3.4
+  * SCHEMA-604. Adds support for MapR's distribution of HBase.
   * SCHEMA-557. Removes HTablePool usage.
   * SCHEMA-605. Fixes compatibility with the latest 1.X Hadoop and 0.94.X HBase releases.
 
