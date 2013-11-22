@@ -26,7 +26,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.KeyValue.KeyComparator;
-import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.Compression;
@@ -53,26 +52,16 @@ public final class Hadoop1xHBase94SchemaBridge extends SchemaPlatformBridge {
   /** {@inheritDoc} */
   @Override
   public void setAutoFlush(HTableInterface hTable, boolean autoFlush) {
-    // The HTable implementation of HTableInterface can do this; downcast if available.
-    if (hTable instanceof HTable) {
-      ((HTable) hTable).setAutoFlush(autoFlush);
-    } else {
-      LOG.error("Cannot set autoFlush=" + autoFlush + " for HTableInterface impl "
-          + hTable.getClass().getName());
-    }
+    // setAutoFlush is added to HTableInterface in HBase 0.94.2
+    hTable.setAutoFlush(autoFlush);
   }
 
   /** {@inheritDoc} */
   @Override
   public void setWriteBufferSize(HTableInterface hTable, long bufSize)
       throws IOException {
-    // The HTable implementation of HTableInterface can do this; downcast if available.
-    if (hTable instanceof HTable) {
-      ((HTable) hTable).setWriteBufferSize(bufSize);
-    } else {
-      LOG.error("Cannot set writeBufSize=" + bufSize + " for HTableInterface impl "
-          + hTable.getClass().getName());
-    }
+    // setWriteBufferSize is added to HTableInterface in HBase 0.94.2
+    hTable.setWriteBufferSize(bufSize);
   }
 
   /** {@inheritDoc} */
