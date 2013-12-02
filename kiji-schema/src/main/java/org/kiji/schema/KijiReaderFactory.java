@@ -91,7 +91,7 @@ public interface KijiReaderFactory {
       ) {
         Preconditions.checkNotNull(behavior, "OnDecoderCacheMiss behavior may not be null.");
         Preconditions.checkState(null == mOnDecoderCacheMiss,
-            "OnDecoderCacheMiss is already seto to: " + mOnDecoderCacheMiss);
+            "OnDecoderCacheMiss is already set to: " + mOnDecoderCacheMiss);
         mOnDecoderCacheMiss = behavior;
         return this;
       }
@@ -154,8 +154,8 @@ public interface KijiReaderFactory {
           final Multimap<KijiColumnName, ColumnReaderSpec> alternatives
       ) {
         Preconditions.checkNotNull(alternatives, "ColumnReaderSpec alternatives may not be null.");
-        Preconditions.checkState(
-            null == mAlternatives, "ColumnReaderSpec backups already set to: " + mAlternatives);
+        Preconditions.checkState(null == mAlternatives,
+            "ColumnReaderSpec alternatives already set to: " + mAlternatives);
         mAlternatives = alternatives;
         return this;
       }
