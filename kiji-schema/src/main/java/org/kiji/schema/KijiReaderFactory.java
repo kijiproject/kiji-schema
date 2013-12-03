@@ -22,15 +22,9 @@ package org.kiji.schema;
 import java.io.IOException;
 import java.util.Map;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableSetMultimap;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Multimap;
-
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.layout.CellSpec;
-import org.kiji.schema.layout.ColumnReaderSpec;
 
 /**
  * Interface for table reader factories.
@@ -41,264 +35,6 @@ import org.kiji.schema.layout.ColumnReaderSpec;
 @ApiStability.Experimental
 public interface KijiReaderFactory {
 
-  /** Options governing behavior of KijiTableReader instances. */
-  public static final class KijiTableReaderOptions {
-
-    /** A KijiTableReaderOptions instance with all values set to default. */
-    public static final KijiTableReaderOptions ALL_DEFAULTS = Builder.create().build();
-
-    /** Builder for KijiTableReaderOptions. */
-    public static final class Builder {
-
-      /**
-       * By default, build and cache new cell decoders for unknown {@link ColumnReaderSpec}
-       * overrides.
-       */
-      public static final OnDecoderCacheMiss DEFAULT_CACHE_MISS =
-          OnDecoderCacheMiss.BUILD_AND_CACHE;
-
-      /** By default, do not override any column read behaviors. */
-      public static final Map<KijiColumnName, ColumnReaderSpec> DEFAULT_READER_SPEC_OVERRIDES =
-          Maps.newHashMap();
-
-      /** By default, do not include any alternate column reader specs. */
-      public static final Multimap<KijiColumnName, ColumnReaderSpec>
-          DEFAULT_READER_SPEC_ALTERNATIVES = ImmutableSetMultimap.of();
-
-      /**
-       * Create a new Builder for KijiTableReaderOptions.
-       *
-       * @return a new Builder.
-       */
-      public static Builder create() {
-        return new Builder();
-      }
-
-      private OnDecoderCacheMiss mOnDecoderCacheMiss = null;
-      private Map<KijiColumnName, ColumnReaderSpec> mOverrides = null;
-      private Multimap<KijiColumnName, ColumnReaderSpec> mAlternatives = null;
-
-      /**
-       * Configure the KijiTableReaderOptions to include the given OnDecoderCacheMiss behavior.
-       *
-       * @param behavior OnDecoderCacheMiss behavior to use when a {@link ColumnReaderSpec} override
-       *     specified in a {@link KijiDataRequest} cannot be found in the prebuilt cache of cell
-       *     decoders.
-       * @return this builder.
-       */
-      public Builder withOnDecoderCacheMiss(
-          final OnDecoderCacheMiss behavior
-      ) {
-        Preconditions.checkNotNull(behavior, "OnDecoderCacheMiss behavior may not be null.");
-        Preconditions.checkState(null == mOnDecoderCacheMiss,
-            "OnDecoderCacheMiss is already set to: " + mOnDecoderCacheMiss);
-        mOnDecoderCacheMiss = behavior;
-        return this;
-      }
-
-      /**
-       * Get the configured OnDecoderCacheMiss behavior or null if none has been set.
-       *
-       * @return the configured OnDecoderCacheMiss behavior or null if none has been set.
-       */
-      public OnDecoderCacheMiss getOnDecoderCacheMiss() {
-        return mOnDecoderCacheMiss;
-      }
-
-      /**
-       * Configure the KijiTableReaderOptions to include the given ColumnReaderSpec overrides. These
-       * ColumnReaderSpecs will be used to determine read behavior for associated columns. These
-       * overrides will change the default behavior of the associated column when read by this
-       * reader, even when no ColumnReaderSpec is specified in a KijiDataRequest.
-       *
-       * @param overrides mapping from columns to overriding read behavior for those columns.
-       * @return this builder.
-       */
-      public Builder withColumnReaderSpecOverrides(
-          final Map<KijiColumnName, ColumnReaderSpec> overrides
-      ) {
-        Preconditions.checkNotNull(overrides, "ColumnReaderSpec overrides may not be null.");
-        Preconditions.checkState(
-            null == mOverrides, "ColumnReaderSpec overrides are already set to: " + mOverrides);
-        mOverrides = overrides;
-        return this;
-      }
-
-      /**
-       * Get the configured ColumnReaderSpec overrides or null if none have been set.
-       *
-       * @return the configured ColumnReaderSpec overrides or null if none have been set.
-       */
-      public Map<KijiColumnName, ColumnReaderSpec> getColumnReaderSpecOverrides() {
-        return mOverrides;
-      }
-
-      /**
-       * Configure the KijiTableReaderOptions to include the given ColumnReaderSpecs as alternate
-       * reader schema options for the associated columns. Setting these alternatives does not
-       * change the behavior of associated columns when ColumnReaderSpecs are not included in
-       * KijiDataRequests. ColumnReaderSpecs included here can be used as reader spec overrides in
-       * KijiDataRequests without triggering {@link OnDecoderCacheMiss#FAIL} and without the cost
-       * associated with constructing a new cell decoder.
-       *
-       * <p>
-       *   Note: ColumnReaderSpec overrides provided to
-       *   {@link #withColumnReaderSpecOverrides(java.util.Map)} should not be duplicated here.
-       * </p>
-       *
-       * @param alternatives mapping from columns to reader spec alternatives which the
-       *     KijiTableReader will accept as overrides in data requests.
-       * @return this builder.
-       */
-      public Builder withColumnReaderSpecAlternatives(
-          final Multimap<KijiColumnName, ColumnReaderSpec> alternatives
-      ) {
-        Preconditions.checkNotNull(alternatives, "ColumnReaderSpec alternatives may not be null.");
-        Preconditions.checkState(null == mAlternatives,
-            "ColumnReaderSpec alternatives already set to: " + mAlternatives);
-        mAlternatives = alternatives;
-        return this;
-      }
-
-      /**
-       * Get the configured ColumnReaderSpec alternatives or null if none have been set.
-       *
-       * @return the configured ColumnReaderSpec alternatives or null if none have been set.
-       */
-      public Multimap<KijiColumnName, ColumnReaderSpec> getColumnReaderSpecAlternatives() {
-        return mAlternatives;
-      }
-
-      /**
-       * Build a new KijiTableReaderOptions from the values set in this builder.
-       *
-       * @return a new KijiTableReaderOptions from the values set in this builder.
-       */
-      public KijiTableReaderOptions build() {
-        if (null == mOnDecoderCacheMiss) {
-          mOnDecoderCacheMiss = DEFAULT_CACHE_MISS;
-        }
-        if (null == mOverrides) {
-          mOverrides = DEFAULT_READER_SPEC_OVERRIDES;
-        }
-        if (null == mAlternatives) {
-          mAlternatives = DEFAULT_READER_SPEC_ALTERNATIVES;
-        }
-
-        return new KijiTableReaderOptions(mOnDecoderCacheMiss, mOverrides, mAlternatives);
-      }
-    }
-
-    /**
-     * Optional behavior when a {@link ColumnReaderSpec} override specified in a
-     * {@link KijiDataRequest} used with this reader is not found in the prebuilt cache of cell
-     * decoders. Default is BUILD_AND_CACHE.
-     */
-    public static enum OnDecoderCacheMiss {
-      /** Throw an exception to indicate that the override is not supported. */
-      FAIL,
-      /** Build a new cell decoder based on the override and store it to the cache. */
-      BUILD_AND_CACHE,
-      /** Build a new cell decoder based on the override, but do not store it to the cache. */
-      BUILD_DO_NOT_CACHE
-    }
-
-    /**
-     * Convenience method for creating a KijiTableReaderOptions with the given OnDecoderCacheMiss
-     * behavior and defaults for all other options.
-     *
-     * @param behavior Behavior of the reader when a cell decoder cannot be found for a
-     *     {@link ColumnReaderSpec} override specified in a {@link KijiDataRequest}.
-     * @return a new KijiTableReaderOptions with the given OnDecoderCacheMiss behavior and defaults
-     *     for all other options.
-     */
-    public static KijiTableReaderOptions createWithOnDecoderCacheMiss(
-        final OnDecoderCacheMiss behavior
-    ) {
-      return Builder.create().withOnDecoderCacheMiss(behavior).build();
-    }
-
-    /**
-     * Convenience method for creating a KijiTableReaderOptions with the given
-     * {@link ColumnReaderSpec} overrides and defaults for all other options.
-     *
-     * @param overrides mapping from columns to overriding read behavior for those columns. These
-     *     overrides will change the default behavior of the associated column when read by this
-     *     reader, even when no ColumnReaderSpec is specified in a KijiDataRequest.
-     * @return a new KijiTableReaderOptions with the given read behavior overrides and defaults for
-     *     all other options.
-     */
-    public static KijiTableReaderOptions createWithColumnReaderSpecOverrides(
-        final Map<KijiColumnName, ColumnReaderSpec> overrides
-    ) {
-      return Builder.create().withColumnReaderSpecOverrides(overrides).build();
-    }
-
-    /**
-     * Convenience method for creating a KijiTableReaderOptions with the given
-     * {@link ColumnReaderSpec} alternatives and defaults for all other options.
-     *
-     * @param alternatives mapping from columns to alternative read behaviors for those columns.
-     *     These alternatives will not change the default read behavior of the associated column.
-     * @return a new KijiTableReaderOptions with the given read behavior alternatives and defaults
-     *     for all other options.
-     */
-    public static KijiTableReaderOptions createWithColumnReaderSpecAlternatives(
-        final Multimap<KijiColumnName, ColumnReaderSpec> alternatives
-    ) {
-      return Builder.create().withColumnReaderSpecAlternatives(alternatives).build();
-    }
-
-    private final OnDecoderCacheMiss mOnDecoderCacheMiss;
-    private final Map<KijiColumnName, ColumnReaderSpec> mOverrides;
-    private final Multimap<KijiColumnName, ColumnReaderSpec> mAlternates;
-
-    /**
-     * Initializes a new KijiTableReaderOptions.
-     *
-     * @param onDecoderCacheMiss behavior of the reader when a cell decoder cannot be found for a
-     *     {@link ColumnReaderSpec} override specified in a {@link KijiDataRequest}.
-     * @param overrides mapping from columns to overriding read behavior for those columns.
-     * @param alternates mapping from columns to alternative read behaviors for those columns.
-     */
-    private KijiTableReaderOptions(
-        final OnDecoderCacheMiss onDecoderCacheMiss,
-        final Map<KijiColumnName, ColumnReaderSpec> overrides,
-        final Multimap<KijiColumnName, ColumnReaderSpec> alternates
-    ) {
-      mOnDecoderCacheMiss = onDecoderCacheMiss;
-      mOverrides = overrides;
-      mAlternates = alternates;
-    }
-
-    /**
-     * Get the {@link OnDecoderCacheMiss} behavior from these options.
-     *
-     * @return the {@link OnDecoderCacheMiss} behavior from these options.
-     */
-    public OnDecoderCacheMiss getOnDecoderCacheMiss() {
-      return mOnDecoderCacheMiss;
-    }
-
-    /**
-     * Get the column reader behavior overrides from these options.
-     *
-     * @return the column reader behavior overrides from these options.
-     */
-    public Map<KijiColumnName, ColumnReaderSpec> getColumnReaderSpecOverrides() {
-      return mOverrides;
-    }
-
-    /**
-     * Get the column reader spec alternatives from these options.
-     *
-     * @return the column reader spec alternatives from these options.
-     */
-    public Multimap<KijiColumnName, ColumnReaderSpec> getColumnReaderSpecAlternatives() {
-      return mAlternates;
-    }
-  }
-
   /**
    * Get the table from which readers built by this factory will read.
    *
@@ -308,6 +44,11 @@ public interface KijiReaderFactory {
 
   /**
    * Opens a new reader for the KijiTable associated with this reader factory.
+   *
+   * <p>
+   *   This method is equivalent of <code>readerBuilder().build()</code>. It sets all options to
+   *   their default values.
+   * </p>
    *
    * <p> The caller of this method is responsible for closing the reader. </p>
    * <p>
@@ -434,11 +175,47 @@ public interface KijiReaderFactory {
   KijiTableReader openTableReader(Map<KijiColumnName, CellSpec> overrides) throws IOException;
 
   /**
-   * Opens a new reader for the KijiTable associated with this reader factory.
+   * Get a new KijiTableReaderBuilder which builds readers for the table associated with this
+   * factory.
    *
-   * @param options configuration for the KijiTableReader.
-   * @return a new KijiTableReader.
-   * @throws IOException in case of an error opening the reader.
+   * <p>
+   *   The reader builder provides several options for setting the behavior of a table reader.
+   *   <ul>
+   *     <li>
+   *       OnDecoderCacheMiss allows setting the reader's behavior when no cell decoder is found in
+   *       the reader's cache for a particular read request. This may happen if a user specifies a
+   *       ColumnReaderSpec as an override in a KijiDataRequest without having specified that
+   *       ColumnReaderSpec during construction of the reader. This option defaults to
+   *       BUILD_AND_CACHE which causes the reader to build new cell decoders for overrides from
+   *       data requests and store them in its cache to serve future requests.
+   *     </li>
+   *     <li>
+   *       ColumnReaderSpec overrides allow setting the default read behavior per column. If an
+   *       override exists for a column, data requests which include that column will be fulfilled
+   *       according to the specification in the ColumnReaderSpec, even if the data request did not
+   *       explicitly request the override. If a data request includes a ColumnReaderSpec override
+   *       different from the override specified during construction of the reader, the data
+   *       request's override will take precedence. This option defaults to not override any
+   *       columns.
+   *     </li>
+   *     <li>
+   *       ColumnReaderSpec alternatives instruct the reader to create cell decoders for all
+   *       specified ColumnReaderSpecs, but not to override the default read behavior. Setting these
+   *       alternatives can improve performance and will prevent exceptions when using
+   *       {@link org.kiji.schema.KijiTableReaderBuilder.OnDecoderCacheMiss#FAIL} if the
+   *       ColumnReaderSpec override in a KijiDataRequest was also specified in the alternatives
+   *       map during construction of the reader. This option defaults to not include any
+   *       alternatives.
+   *     </li>
+   *   </ul>
+   * </p>
+   *
+   * <p>
+   *   Readers returned from this builder must be closed when they are no longer needed to release
+   *   underlying resources.
+   * </p>
+   *
+   * @return a new KijiTableReaderBuilder.
    */
-  KijiTableReader openTableReader(KijiTableReaderOptions options) throws IOException;
+  KijiTableReaderBuilder readerBuilder();
 }

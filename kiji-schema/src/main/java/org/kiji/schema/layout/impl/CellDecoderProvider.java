@@ -37,9 +37,9 @@ import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellDecoderFactory;
 import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.KijiReaderFactory;
-import org.kiji.schema.KijiReaderFactory.KijiTableReaderOptions.OnDecoderCacheMiss;
 import org.kiji.schema.KijiSchemaTable;
+import org.kiji.schema.KijiTableReaderBuilder;
+import org.kiji.schema.KijiTableReaderBuilder.OnDecoderCacheMiss;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.impl.BoundColumnReaderSpec;
 import org.kiji.schema.layout.CellSpec;
@@ -60,8 +60,7 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
  *   At construction time, cell decoders may be customized by specifying BoundColumnReaderSpec
  *   instances to overlay on top of the actual table layout, using the constructor:
  *   {@link #CellDecoderProvider(org.kiji.schema.layout.KijiTableLayout, java.util.Map,
- *   java.util.Collection,
- *   org.kiji.schema.KijiReaderFactory.KijiTableReaderOptions.OnDecoderCacheMiss)}.
+ *   java.util.Collection, org.kiji.schema.KijiTableReaderBuilder.OnDecoderCacheMiss)}.
  * </p>
  * <p>
  *   CellSpec customizations include:
@@ -146,7 +145,7 @@ public final class CellDecoderProvider {
     }
     mColumnDecoderMap = ImmutableMap.copyOf(decoderMap);
     mSpecDecoderMap = Maps.newHashMap();
-    mOnDecoderCacheMiss = KijiReaderFactory.KijiTableReaderOptions.Builder.DEFAULT_CACHE_MISS;
+    mOnDecoderCacheMiss = KijiTableReaderBuilder.DEFAULT_CACHE_MISS;
   }
 
   /**

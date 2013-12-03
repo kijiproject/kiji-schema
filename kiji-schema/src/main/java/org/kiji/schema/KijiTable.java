@@ -122,10 +122,15 @@ public interface KijiTable extends ReferenceCountable<KijiTable> {
   /**
    * Opens a KijiTableReader for this table.
    *
-   * <p> The caller of this method is responsible for closing the returned reader.
+   * <p>
+   *   This method is equivalent to <code>getReaderFactory().readerBuilder().build()</code>. It sets
+   *   all options to their default values.
+   * </p>
+   *
+   * <p> The caller of this method is responsible for closing the returned reader. </p>
    * <p> The reader returned by this method does not provide any isolation guarantee.
    *     In particular, you should assume that the underlying resources (connections, buffers, etc)
-   *     are used concurrently for other purposes.
+   *     are used concurrently for other purposes. </p>
    *
    * @return A KijiTableReader for this table.
    * @throws KijiIOException Future implementations may throw unchecked KijiIOException.

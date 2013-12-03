@@ -49,8 +49,8 @@ import org.kiji.schema.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiPager;
-import org.kiji.schema.KijiReaderFactory;
 import org.kiji.schema.KijiRowData;
+import org.kiji.schema.KijiTableReaderBuilder;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
@@ -103,7 +103,7 @@ public final class HBaseKijiRowData implements KijiRowData {
         capsule.getLayout(),
         Maps.<KijiColumnName, BoundColumnReaderSpec>newHashMap(),
         Sets.<BoundColumnReaderSpec>newHashSet(),
-        KijiReaderFactory.KijiTableReaderOptions.Builder.DEFAULT_CACHE_MISS);
+        KijiTableReaderBuilder.DEFAULT_CACHE_MISS);
   }
 
   /**

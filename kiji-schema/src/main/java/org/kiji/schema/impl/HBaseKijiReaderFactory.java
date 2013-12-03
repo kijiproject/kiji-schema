@@ -64,7 +64,8 @@ public final class HBaseKijiReaderFactory implements KijiReaderFactory {
 
   /** {@inheritDoc} */
   @Override
-  public HBaseKijiTableReader openTableReader(KijiTableReaderOptions options) throws IOException {
-    return HBaseKijiTableReader.createWithOptions(mTable, options);
+  public HBaseKijiTableReaderBuilder readerBuilder() {
+    return HBaseKijiTableReaderBuilder.create(mTable);
   }
+
 }

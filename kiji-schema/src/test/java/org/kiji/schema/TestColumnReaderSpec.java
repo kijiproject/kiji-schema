@@ -35,8 +35,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
-import org.kiji.schema.KijiReaderFactory.KijiTableReaderOptions;
-import org.kiji.schema.KijiReaderFactory.KijiTableReaderOptions.OnDecoderCacheMiss;
+import org.kiji.schema.KijiTableReaderBuilder.OnDecoderCacheMiss;
 import org.kiji.schema.avro.EmptyRecord;
 import org.kiji.schema.avro.TestRecord1;
 import org.kiji.schema.layout.ColumnReaderSpec;
@@ -106,8 +105,8 @@ public class TestColumnReaderSpec extends KijiClientTest {
     final KijiTable table = getKiji().openTable("table");
     try {
       final EntityId eid = table.getEntityId("row");
-      final KijiTableReader reader = table.getReaderFactory().openTableReader(
-          KijiTableReaderOptions.createWithOnDecoderCacheMiss(OnDecoderCacheMiss.FAIL));
+      final KijiTableReader reader = table.getReaderFactory().readerBuilder()
+          .withOnDecoderCacheMiss(OnDecoderCacheMiss.FAIL).buildAndOpen();
       try {
         final KijiRowData data = reader.get(table.getEntityId("row"), request);
         try {
@@ -136,12 +135,11 @@ public class TestColumnReaderSpec extends KijiClientTest {
     final KijiTable table = getKiji().openTable("table");
     try {
       final EntityId eid = table.getEntityId("row");
-      final KijiTableReader reader = table.getReaderFactory().openTableReader(
-          KijiTableReaderOptions.Builder.create()
-              .withOnDecoderCacheMiss(OnDecoderCacheMiss.FAIL)
-              .withColumnReaderSpecOverrides(ImmutableMap.of(
-                  EMPTY, ColumnReaderSpec.avroReaderSchemaSpecific(TestRecord1.class)))
-              .build());
+      final KijiTableReader reader = table.getReaderFactory().readerBuilder()
+          .withOnDecoderCacheMiss(OnDecoderCacheMiss.FAIL)
+          .withColumnReaderSpecOverrides(ImmutableMap.of(
+              EMPTY, ColumnReaderSpec.avroReaderSchemaSpecific(TestRecord1.class)))
+          .buildAndOpen();
       try {
         final KijiRowData normalData = reader.get(eid, normalRequest);
         final TestRecord1 record1 = normalData.getMostRecentValue("family", "empty");
@@ -171,11 +169,10 @@ public class TestColumnReaderSpec extends KijiClientTest {
       final EntityId eid = table.getEntityId("row");
       final Multimap<KijiColumnName, ColumnReaderSpec> alts = ImmutableSetMultimap.of(
           EMPTY, ColumnReaderSpec.avroReaderSchemaSpecific(TestRecord1.class));
-      final KijiTableReader reader = table.getReaderFactory().openTableReader(
-          KijiTableReaderOptions.Builder.create()
-              .withOnDecoderCacheMiss(OnDecoderCacheMiss.FAIL)
-              .withColumnReaderSpecAlternatives(alts)
-              .build());
+      final KijiTableReader reader = table.getReaderFactory().readerBuilder()
+          .withOnDecoderCacheMiss(OnDecoderCacheMiss.FAIL)
+          .withColumnReaderSpecAlternatives(alts)
+          .buildAndOpen();
       try {
         final KijiRowData normalData = reader.get(eid, normalRequest);
         final EmptyRecord emptyRecord = normalData.getMostRecentValue("family", "empty");

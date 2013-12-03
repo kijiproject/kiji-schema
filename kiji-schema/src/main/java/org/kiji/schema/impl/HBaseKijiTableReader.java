@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Multimap;
 import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -45,12 +46,11 @@ import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestValidator;
-import org.kiji.schema.KijiReaderFactory;
-import org.kiji.schema.KijiReaderFactory.KijiTableReaderOptions;
-import org.kiji.schema.KijiReaderFactory.KijiTableReaderOptions.OnDecoderCacheMiss;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.KijiTableReaderBuilder;
+import org.kiji.schema.KijiTableReaderBuilder.OnDecoderCacheMiss;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.filter.KijiRowFilter;
@@ -208,7 +208,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
   public static HBaseKijiTableReader create(
       final HBaseKijiTable table
   ) throws IOException {
-    return new HBaseKijiTableReader(table, KijiTableReaderOptions.ALL_DEFAULTS);
+    return HBaseKijiTableReaderBuilder.create(table).buildAndOpen();
   }
 
   /**
@@ -232,15 +232,22 @@ public final class HBaseKijiTableReader implements KijiTableReader {
    * HBase.
    *
    * @param table Kiji table from which to read.
-   * @param options configuration options for this KijiTableReader.
+   * @param onDecoderCacheMiss behavior to use when a {@link ColumnReaderSpec} override
+   *     specified in a {@link KijiDataRequest} cannot be found in the prebuilt cache of cell
+   *     decoders.
+   * @param overrides mapping from columns to overriding read behavior for those columns.
+   * @param alternatives mapping from columns to reader spec alternatives which the
+   *     KijiTableReader will accept as overrides in data requests.
    * @return a new HBaseKijiTableReader.
    * @throws IOException in case of an error opening the reader.
    */
   public static HBaseKijiTableReader createWithOptions(
       final HBaseKijiTable table,
-      final KijiTableReaderOptions options
+      final OnDecoderCacheMiss onDecoderCacheMiss,
+      final Map<KijiColumnName, ColumnReaderSpec> overrides,
+      final Multimap<KijiColumnName, ColumnReaderSpec> alternatives
   ) throws IOException {
-    return new HBaseKijiTableReader(table, options);
+    return new HBaseKijiTableReader(table, onDecoderCacheMiss, overrides, alternatives);
   }
 
   /**
@@ -256,7 +263,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
   ) throws IOException {
     mTable = table;
     mCellSpecOverrides = cellSpecOverrides;
-    mOnDecoderCacheMiss = KijiReaderFactory.KijiTableReaderOptions.Builder.DEFAULT_CACHE_MISS;
+    mOnDecoderCacheMiss = KijiTableReaderBuilder.DEFAULT_CACHE_MISS;
     mOverrides = null;
     mAlternatives = null;
 
@@ -276,21 +283,28 @@ public final class HBaseKijiTableReader implements KijiTableReader {
    * HBase.
    *
    * @param table Kiji table from which to read.
-   * @param options configuration options for this KijiTableReader.
+   * @param onDecoderCacheMiss behavior to use when a {@link ColumnReaderSpec} override
+   *     specified in a {@link KijiDataRequest} cannot be found in the prebuilt cache of cell
+   *     decoders.
+   * @param overrides mapping from columns to overriding read behavior for those columns.
+   * @param alternatives mapping from columns to reader spec alternatives which the
+   *     KijiTableReader will accept as overrides in data requests.
    * @throws IOException on I/O error.
    */
   private HBaseKijiTableReader(
       final HBaseKijiTable table,
-      final KijiTableReaderOptions options
+      final OnDecoderCacheMiss onDecoderCacheMiss,
+      final Map<KijiColumnName, ColumnReaderSpec> overrides,
+      final Multimap<KijiColumnName, ColumnReaderSpec> alternatives
   ) throws IOException {
     mTable = table;
-    mOnDecoderCacheMiss = options.getOnDecoderCacheMiss();
+    mOnDecoderCacheMiss = onDecoderCacheMiss;
 
     final KijiTableLayout layout = mTable.getLayout();
     final Set<KijiColumnName> layoutColumns = layout.getColumnNames();
     final Map<KijiColumnName, BoundColumnReaderSpec> boundOverrides = Maps.newHashMap();
     for (Map.Entry<KijiColumnName, ColumnReaderSpec> override
-        : options.getColumnReaderSpecOverrides().entrySet()) {
+        : overrides.entrySet()) {
       final KijiColumnName column = override.getKey();
       if (!layoutColumns.contains(column)
           && !layoutColumns.contains(new KijiColumnName(column.getFamily()))) {
@@ -304,7 +318,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     mOverrides = boundOverrides;
     final Collection<BoundColumnReaderSpec> boundAlternatives = Sets.newHashSet();
     for (Map.Entry<KijiColumnName, ColumnReaderSpec> altsEntry
-        : options.getColumnReaderSpecAlternatives().entries()) {
+        : alternatives.entries()) {
       final KijiColumnName column = altsEntry.getKey();
       if (!layoutColumns.contains(column)
           && !layoutColumns.contains(new KijiColumnName(column.getFamily()))) {
