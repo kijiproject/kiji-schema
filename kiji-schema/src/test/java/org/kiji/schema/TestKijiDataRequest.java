@@ -36,6 +36,7 @@ import java.io.ObjectOutputStream;
 import org.junit.Test;
 
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
+import org.kiji.schema.avro.TestRecord1;
 import org.kiji.schema.layout.ColumnReaderSpec;
 
 /** Tests for KijiDataRequest and KijiDataRequestBuilder. */
@@ -62,6 +63,22 @@ public class TestKijiDataRequest {
     KijiDataRequest actual = (KijiDataRequest) (new ObjectInputStream(byteInput).readObject());
 
     assertEquals(expected, actual);
+  }
+
+  /** Checks that KijiDataRequest with schema overrides serializes and deserializes correctly. */
+  @Test
+  public void testSchemaOverrideSerializability() throws Exception {
+    final KijiColumnName columnName = new KijiColumnName("family", "empty");
+    final KijiDataRequest overrideRequest = KijiDataRequest.builder()
+        .addColumns(ColumnsDef.create()
+            .add(columnName, ColumnReaderSpec.avroReaderSchemaSpecific(TestRecord1.class))).build();
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    final ObjectOutputStream oos = new ObjectOutputStream(baos);
+    oos.writeObject(overrideRequest);
+    final ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
+    final ObjectInputStream ois = new ObjectInputStream(bais);
+    final KijiDataRequest deserializedRequest = (KijiDataRequest) ois.readObject();
+    assertEquals(overrideRequest, deserializedRequest);
   }
 
   @Test

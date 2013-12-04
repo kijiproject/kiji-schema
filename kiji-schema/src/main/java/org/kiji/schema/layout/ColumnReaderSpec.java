@@ -240,7 +240,7 @@ public final class ColumnReaderSpec
    * Avro reader schema to use. This field is mutable so that it can be manually set during
    * {@link #readObject(java.io.ObjectInputStream)}, it should not be mutated.
    */
-  private Schema mAvroReaderSchema;
+  private transient Schema mAvroReaderSchema;
 
   /** Avro reader schema class to use. */
   private final Class<? extends SpecificRecord> mAvroReaderSchemaClass;
