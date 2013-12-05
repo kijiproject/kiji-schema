@@ -145,9 +145,7 @@ public class InstanceBuilder {
   }
 
   /**
-   * Adds a table to the testing environment.
-   *
-   * <p> Note: This will replace any existing added tables with the same name.
+   * Populate an existing table in the testing environment.
    *
    * @param table An existing Kiji table to populate.
    * @return A builder to continue building with.
