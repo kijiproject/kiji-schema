@@ -29,6 +29,7 @@ import java.util.UUID;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -193,9 +194,18 @@ public abstract class AbstractKijiIntegrationTest {
    * @return an HBase configuration to work against.
    */
   protected Configuration createConfiguration() {
-    return (null != mStandaloneConf)
+    final Configuration conf = (null != mStandaloneConf)
         ? HBaseConfiguration.create(mStandaloneConf)
         : HBaseConfiguration.create();
+
+    // Set the mapred.output.dir to a unique temporary directory for each integration test:
+    final String tempDir = conf.get("hadoop.tmp.dir");
+    Preconditions.checkNotNull(
+        tempDir,
+        "hadoop.tmp.dir must be set in the configuration for integration tests to use.");
+    conf.set("mapred.output.dir", new Path(tempDir, UUID.randomUUID().toString()).toString());
+
+    return conf;
   }
 
   /**
