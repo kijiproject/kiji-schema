@@ -22,8 +22,8 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 
 import com.google.common.collect.ImmutableList;
-
 import junit.framework.Assert;
+import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,6 +42,7 @@ public class TestHBaseMetaTable extends KijiClientTest {
 
   private KijiURI mKijiURI;
   private HBaseMetaTable mMetaTable;
+  private HBaseAdmin mAdmin;
 
   @Before
   public final void setupTest() throws IOException {
@@ -52,8 +53,9 @@ public class TestHBaseMetaTable extends KijiClientTest {
         String.format("%s_%s", getClass().getSimpleName(), mTestName.getMethodName());
     mKijiURI = KijiURI.newBuilder(hbaseURI).withInstanceName(instanceName).build();
     final HBaseFactory factory = HBaseFactory.Provider.get();
+    mAdmin = factory.getHBaseAdminFactory(mKijiURI).create(getConf());
 
-    HBaseMetaTable.install(factory.getHBaseAdminFactory(mKijiURI).create(getConf()), mKijiURI);
+    HBaseMetaTable.install(mAdmin, mKijiURI);
 
     mMetaTable = new HBaseMetaTable(
         mKijiURI, getConf(), schemaTable, factory.getHTableInterfaceFactory(mKijiURI));
@@ -63,6 +65,7 @@ public class TestHBaseMetaTable extends KijiClientTest {
   public final void teardownTest() throws IOException {
     mMetaTable.close();
     mMetaTable = null;
+    HBaseMetaTable.uninstall(mAdmin, mKijiURI);
   }
 
   @Test
