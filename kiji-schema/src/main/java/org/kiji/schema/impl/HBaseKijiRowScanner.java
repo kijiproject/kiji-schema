@@ -31,6 +31,7 @@ import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.ScannerTimeoutException;
+import org.apache.hadoop.hbase.regionserver.LeaseException;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -328,6 +329,19 @@ public class HBaseKijiRowScanner implements KijiRowScanner {
     for (int nretries = 0; nretries < MAX_RETRIES_ON_TIMEOUT; ++nretries) {
       try {
         return mResultScanner.next();
+
+      } catch (LeaseException le) {
+        if (!mReopenScannerOnTimeout) {
+          LOG.debug("HBase scanner timed out and user disabled automatic scanner reopening.");
+          throw new KijiIOException(
+              "HBase scanner timed out and user disabled automatic scanner reopening.", le);
+        } else {
+          // The HBase scanner timed out, re-open a new one:
+          LOG.debug("HBase scanner timed out: closing and reopening a new scanner.");
+          mResultScanner.close();
+          mResultScanner = openResultScanner();
+          continue;
+        }
 
       } catch (ScannerTimeoutException ste) {
         if (!mReopenScannerOnTimeout) {
