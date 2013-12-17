@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Multimap;
 import org.apache.commons.pool.PoolableObjectFactory;
 import org.apache.commons.pool.impl.GenericObjectPool;
 import org.slf4j.Logger;
@@ -30,8 +31,10 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.schema.KijiTableReaderBuilder.OnDecoderCacheMiss;
 import org.kiji.schema.KijiTableReaderPool.PooledKijiTableReader;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.ColumnReaderSpec;
 
 /**
  * Maintains a pool of opened KijiTableReaders for reuse.
@@ -70,7 +73,10 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
     }
 
     private KijiReaderFactory mReaderFactory = null;
-    private Map<KijiColumnName, CellSpec> mOverrides;
+    private Map<KijiColumnName, CellSpec> mCellSpecOverrides = null;
+    private Map<KijiColumnName, ColumnReaderSpec> mColumnReaderSpecOverrides = null;
+    private Multimap<KijiColumnName, ColumnReaderSpec> mColumnReaderSpecAlternatives = null;
+    private OnDecoderCacheMiss mOnDecoderCacheMiss = null;
     private Integer mMinIdle = null;
     private Integer mMaxIdle = null;
     private Integer mMaxActive = null;
@@ -109,9 +115,9 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
         final Map<KijiColumnName, CellSpec> overrides
     ) {
       Preconditions.checkNotNull(overrides, "CellSpec overrides may not be null.");
-      Preconditions.checkState(
-          null == mOverrides, "CellSpec overrides are already set to: %s", mOverrides);
-      mOverrides = overrides;
+      Preconditions.checkState(null == mCellSpecOverrides,
+          "CellSpec overrides are already set to: %s", mCellSpecOverrides);
+      mCellSpecOverrides = overrides;
       return this;
     }
 
@@ -252,6 +258,191 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
     }
 
     /**
+     * Set the ColumnReaderSpec overrides which will be used as the default read behavior for
+     * readers served from this pool. This field may not be set with CellSpec overrides.
+     *
+     * @param overrides mapping from column names to overriding ColumnReaderSpecs which will be the
+     *     default read behavior for readers served from this pool.
+     * @return this.
+     */
+    public Builder withColumnReaderSpecOverrides(
+        final Map<KijiColumnName, ColumnReaderSpec> overrides
+    ) {
+      Preconditions.checkNotNull(overrides, "ColumnReaderSpec overrides may not be null.");
+      Preconditions.checkState(null == mColumnReaderSpecOverrides,
+          "ColumnReaderSpec overrides are already set to: %s", mColumnReaderSpecOverrides);
+      Preconditions.checkState(null == mCellSpecOverrides, "ColumnReaderSpec overrides are mutually"
+          + " exclusive with CellSpec CellSpec overrides are already set to: %s",
+          mCellSpecOverrides);
+      mColumnReaderSpecOverrides = overrides;
+      return this;
+    }
+
+    /**
+     * Set the ColumnReaderSpec alternatives for which cell decoders will be available, but which
+     * will not change the default behavior of read requests. Column name, ColumnReaderSpec pairs in
+     * this list will not trigger failures when OnDecoderCacheMiss is set to FAIL. This field may
+     * not be set with CellSpec overrides.
+     *
+     * @param alternatives mapping from column names to alternative ColumnReaderSpecs which will be
+     *     available from readers served by this pool.
+     * @return this.
+     */
+    public Builder withColumnReaderSpecAlternatives(
+        final Multimap<KijiColumnName, ColumnReaderSpec> alternatives
+    ) {
+      Preconditions.checkNotNull(alternatives, "ColumnReaderSpec alternatives may not be null.");
+      Preconditions.checkState(null == mColumnReaderSpecAlternatives,
+          "ColumnReaderSpec alternatives are already set to: %s", mColumnReaderSpecAlternatives);
+      Preconditions.checkState(null == mCellSpecOverrides, "ColumnReaderSpec alternatives are "
+          + "mutually exclusive with CellSpec overrides. CellSpec overrides are already set to: %s",
+          mCellSpecOverrides);
+      mColumnReaderSpecAlternatives = alternatives;
+      return this;
+    }
+
+    /**
+     * Set the behavior of readers served by this pool when they cannot find a cell decoder. This
+     * field may not be set with CellSpec overrides.
+     *
+     * @param onDecoderCacheMissBehavior behavior of readers served by this pool when they cannot
+     *     find a cell decoder.
+     * @return this.
+     */
+    public Builder withOnDecoderCacheMissBehavior(
+        final OnDecoderCacheMiss onDecoderCacheMissBehavior
+    ) {
+      Preconditions.checkNotNull(onDecoderCacheMissBehavior,
+          "OnDecoderCacheMiss behavior may not be null.");
+      Preconditions.checkState(null == mOnDecoderCacheMiss,
+          "OnDecoderCacheMiss behavior is already set to: %s", mOnDecoderCacheMiss);
+      mOnDecoderCacheMiss = onDecoderCacheMissBehavior;
+      return this;
+    }
+
+    /**
+     * Get the KijiReaderFactory configured in this Builder, or null if none has been set.
+     *
+     * @return the KijiReaderFactory.
+     */
+    public KijiReaderFactory getReaderFactory() {
+      return mReaderFactory;
+    }
+
+    /**
+     * Get the CellSpec overrides configured in this Builder, or null if none has been set.
+     * @return the CellSpec overrides.
+     */
+    public Map<KijiColumnName, CellSpec> getCellSpecOverrides() {
+      return mCellSpecOverrides;
+    }
+
+    /**
+     * Get the minimum number of idle readers before the reaper thread may begin garbage collection
+     * configured in this Builder, or null if none has been set.
+     *
+     * @return the minimum number of idle readers before the reaper thread may begin garbage
+     *     collection.
+     */
+    public Integer getMinIdle() {
+      return mMinIdle;
+    }
+
+    /**
+     * Get the maximum number of idle readers the pool will allow to exist at a time configured in
+     * this Builder, or null if none has been set.
+     *
+     * @return the maximum number of idle readers the pool will allow to exist at a time.
+     */
+    public Integer getMaxIdle() {
+      return mMaxIdle;
+    }
+
+    /**
+     * Get the maximum number of active (borrowed + idle) readers the pool will allow to exist at a
+     * time configured in this Builder, or null if none has been set.
+     *
+     * @return the maximum number of active (borrowed + idle) readers the pool will allow to exist
+     *     at a time.
+     */
+    public Integer getMaxActive() {
+      return mMaxActive;
+    }
+
+    /**
+     * Get the minimum idle time in milliseconds before a reader may be garbage collected configured
+     * in this Builder, or null if none has been set.
+     *
+     * @return the minimum idle time in milliseconds before a reader may be garbage collected.
+     */
+    public Long getMinEvictableIdleTime() {
+      return mMinEvictableIdleTime;
+    }
+
+    /**
+     * Get the time in milliseconds between eviction runs configured in this Builder, or null if
+     * none has been set.
+     *
+     * @return the time in milliseconds between eviction runs.
+     */
+    public Long getTimeBetweenEvictionRuns() {
+      return mTimeBetweenEvictionRuns;
+    }
+
+    /**
+     * Get the WhenExhaustedAction configured in this Builder, or null if none has been set.
+     *
+     * @return the WhenExhaustedAction.
+     */
+    public WhenExhaustedAction getWhenExhaustedAction() {
+      return mWhenExhaustedAction;
+    }
+
+    /**
+     * Get the maximum time in milliseconds the borrowObject method should block before throwing an
+     * exception when the WhenExhaustedAction is set to BLOCK configured in this Builder, or null if
+     * none has been set.
+     *
+     * @return the maximum time in milliseconds the borrowObject method should block before throwing
+     * an exception when the WhenExhaustedAction is set to BLOCK.
+     */
+    public Long getMaxWait() {
+      return mMaxWait;
+    }
+
+    /**
+     * Get the ColumnReaderSpec overrides configured in this Builder, or null if none have been set.
+     *
+     * @return  the ColumnReaderSpec overrides configured in this Builder, or null if none have been
+     *     set.
+     */
+    public Map<KijiColumnName, ColumnReaderSpec> getColumnReaderSpecOverrides() {
+      return mColumnReaderSpecOverrides;
+    }
+
+    /**
+     * Get the ColumnReaderSpec alternatives configured in this Builder, or null if none have been
+     * set.
+     *
+     * @return  the ColumnReaderSpec alternatives configured in this Builder, or null if none have
+     *     been set.
+     */
+    public Multimap<KijiColumnName, ColumnReaderSpec> getColumnReaderSpecAlternatives() {
+      return mColumnReaderSpecAlternatives;
+    }
+
+    /**
+     * Get the configured OnDecoderCacheMiss behavior from this Builder, or null if none has been
+     * set.
+     *
+     * @return the configured OnDecoderCacheMiss behavior from this Builder, or null if none has
+     * been set.
+     */
+    public OnDecoderCacheMiss getOnDecoderCacheMiss() {
+      return mOnDecoderCacheMiss;
+    }
+
+    /**
      * Build a new KijiTableReaderPool from the configured options.
      *
      * @return a new KijiTableReaderPool.
@@ -296,7 +487,26 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
       config.testOnBorrow = GenericObjectPool.DEFAULT_TEST_ON_BORROW;
       config.testOnReturn = GenericObjectPool.DEFAULT_TEST_ON_RETURN;
       config.testWhileIdle = GenericObjectPool.DEFAULT_TEST_WHILE_IDLE;
-      return KijiTableReaderPool.create(mReaderFactory, mOverrides, config);
+
+      if (null == mCellSpecOverrides) {
+        if (null == mColumnReaderSpecOverrides) {
+          mColumnReaderSpecOverrides = KijiTableReaderBuilder.DEFAULT_READER_SPEC_OVERRIDES;
+        }
+        if (null == mColumnReaderSpecAlternatives) {
+          mColumnReaderSpecAlternatives = KijiTableReaderBuilder.DEFAULT_READER_SPEC_ALTERNATIVES;
+        }
+        if (null == mOnDecoderCacheMiss) {
+          mOnDecoderCacheMiss = KijiTableReaderBuilder.DEFAULT_CACHE_MISS;
+        }
+        return KijiTableReaderPool.create(
+            mReaderFactory,
+            mColumnReaderSpecOverrides,
+            mColumnReaderSpecAlternatives,
+            mOnDecoderCacheMiss,
+            config);
+      } else {
+        return KijiTableReaderPool.create(mReaderFactory, mCellSpecOverrides, config);
+      }
     }
   }
 
@@ -333,6 +543,28 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
   }
 
   /**
+   * Create a new KijiTableReaderPool which uses the given reader factory to create reader objects.
+   *
+   * @param readerFactory KijiReaderFactory from which to get new reader instances.
+   * @param overrides ColumnReaderSpec overrides with which to build the readers.
+   * @param alternatives ColumnReaderSpec alternatives with which to build the readers.
+   * @param onDecoderCacheMiss Behavior of the reader when a cell decoder cannot be found.
+   * @param config Configuration which describes the behavior of the pool.
+   * @return a new KijiTableReaderPool.
+   */
+  public static KijiTableReaderPool create(
+      final KijiReaderFactory readerFactory,
+      final Map<KijiColumnName, ColumnReaderSpec> overrides,
+      final Multimap<KijiColumnName, ColumnReaderSpec> alternatives,
+      final OnDecoderCacheMiss onDecoderCacheMiss,
+      final GenericObjectPool.Config config
+  ) {
+    final PooledKijiTableReaderFactory factory = new PooledKijiTableReaderFactory(
+        readerFactory, overrides, alternatives, onDecoderCacheMiss);
+    return new KijiTableReaderPool(factory, config);
+  }
+
+  /**
    * Factory for pooled KijiTableReaders. Users of KijiTableReaderPool should never need to see this
    * class. An instance of this class may only serve one KijiTableReaderPool at a time.
    */
@@ -340,7 +572,10 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
       implements PoolableObjectFactory<PooledKijiTableReader> {
 
     private final KijiReaderFactory mFactoryDelegate;
-    private final Map<KijiColumnName, CellSpec> mOverrides;
+    private final Map<KijiColumnName, CellSpec> mCellSpecOverrides;
+    private final Map<KijiColumnName, ColumnReaderSpec> mColumnReaderSpecOverrides;
+    private final Multimap<KijiColumnName, ColumnReaderSpec> mColumnReaderSpecAlternatives;
+    private final OnDecoderCacheMiss mOnDecoderCacheMiss;
     /**
      * This pool must be set using {@link #setPool(KijiTableReaderPool)} before any other operations
      * are attempted.
@@ -359,7 +594,31 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
         final Map<KijiColumnName, CellSpec> overrides
     ) {
       mFactoryDelegate = factoryDelegate;
-      mOverrides = overrides;
+      mCellSpecOverrides = overrides;
+      mColumnReaderSpecOverrides = null;
+      mColumnReaderSpecAlternatives = null;
+      mOnDecoderCacheMiss = null;
+    }
+
+    /**
+     * Initialize a new PooledKijiTableReaderFactory wrapping the given KijiReaderFactory.
+     *
+     * @param factoryDelegate KijiReaderFactory to be wrapped by this factory.
+     * @param overrides ColumnReaderSpec overrides with which to build the readers.
+     * @param alternatives ColumnReaderSpec alternatives with which to build the readers.
+     * @param onDecoderCacheMiss Behavior of the reader when a cell decoder cannot be found.
+     */
+    public PooledKijiTableReaderFactory(
+        final KijiReaderFactory factoryDelegate,
+        final Map<KijiColumnName, ColumnReaderSpec> overrides,
+        final Multimap<KijiColumnName, ColumnReaderSpec> alternatives,
+        final OnDecoderCacheMiss onDecoderCacheMiss
+    ) {
+      mFactoryDelegate = factoryDelegate;
+      mColumnReaderSpecOverrides = overrides;
+      mColumnReaderSpecAlternatives = alternatives;
+      mOnDecoderCacheMiss = onDecoderCacheMiss;
+      mCellSpecOverrides = null;
     }
 
     /**
@@ -378,8 +637,17 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
     /** {@inheritDoc} */
     @Override
     public PooledKijiTableReader makeObject() throws Exception {
-      final KijiTableReader innerReader = (null != mOverrides && !mOverrides.isEmpty())
-          ? mFactoryDelegate.openTableReader(mOverrides) : mFactoryDelegate.openTableReader();
+      final KijiTableReader innerReader;
+      if (null == mCellSpecOverrides) {
+        innerReader = mFactoryDelegate.readerBuilder()
+            .withColumnReaderSpecOverrides(mColumnReaderSpecOverrides)
+            .withColumnReaderSpecAlternatives(mColumnReaderSpecAlternatives)
+            .withOnDecoderCacheMiss(mOnDecoderCacheMiss)
+            .buildAndOpen();
+      } else {
+        innerReader = mFactoryDelegate.openTableReader(mCellSpecOverrides);
+      }
+
       return new PooledKijiTableReader(innerReader, mPool);
     }
 

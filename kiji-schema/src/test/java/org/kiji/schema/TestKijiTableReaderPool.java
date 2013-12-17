@@ -25,11 +25,15 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
+import com.google.common.collect.ImmutableMap;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.KijiTableReaderPool.Builder.WhenExhaustedAction;
+import org.kiji.schema.avro.EmptyRecord;
+import org.kiji.schema.avro.TestRecord1;
+import org.kiji.schema.layout.ColumnReaderSpec;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
 
@@ -104,6 +108,45 @@ public class TestKijiTableReaderPool {
       reader3.close();
     } finally {
       pool.close();
+    }
+  }
+
+  @Test
+  public void testColumnReaderSpecOptions() throws Exception {
+    final Kiji kiji = new InstanceBuilder()
+        .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.READER_SCHEMA_TEST))
+            .withRow("row")
+                .withFamily("family")
+                    .withQualifier("empty")
+                        .withValue(5, EmptyRecord.newBuilder().build())
+        .build();
+    try {
+      final KijiTable table = kiji.openTable("table");
+      try {
+        final KijiTableReaderPool pool = KijiTableReaderPool.Builder.create()
+            .withReaderFactory(table.getReaderFactory())
+            .withColumnReaderSpecOverrides(ImmutableMap.of(
+                new KijiColumnName("family", "empty"),
+                ColumnReaderSpec.avroReaderSchemaSpecific(TestRecord1.class))
+            ).build();
+        try {
+          final KijiTableReader reader = pool.borrowObject();
+          try {
+            final KijiDataRequest request = KijiDataRequest.create("family", "empty");
+            final TestRecord1 record1 =
+                reader.get(table.getEntityId("row"), request).getMostRecentValue("family", "empty");
+            assertEquals(Integer.valueOf(-1), record1.getInteger());
+          } finally {
+            reader.close();
+          }
+        } finally {
+          pool.close();
+        }
+      } finally {
+        table.release();
+      }
+    } finally {
+      kiji.release();
     }
   }
 }
