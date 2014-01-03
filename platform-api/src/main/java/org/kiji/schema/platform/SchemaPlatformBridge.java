@@ -177,12 +177,16 @@ public abstract class SchemaPlatformBridge {
    * @return the SchemaPlatformBridge implementation appropriate to the current runtime
    *     conditions.
    */
-  public static final synchronized SchemaPlatformBridge get() {
+  public static final SchemaPlatformBridge get() {
     if (null != mBridge) {
       return mBridge;
     }
-    mBridge = Lookups.getPriority(SchemaPlatformBridgeFactory.class).lookup().getBridge();
-    return mBridge;
+    synchronized (SchemaPlatformBridge.class) {
+      if (null == mBridge) {
+        mBridge = Lookups.getPriority(SchemaPlatformBridgeFactory.class).lookup().getBridge();
+      }
+      return mBridge;
+    }
   }
 }
 

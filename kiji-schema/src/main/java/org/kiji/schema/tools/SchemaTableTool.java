@@ -44,27 +44,33 @@ import org.kiji.schema.util.BytesKey;
  * To register a new schema from a file:
  * <pre>
  *   kiji schema-table kiji://hbase-address/instance-name/ \
- *       --register=path/to/schema/definition \
+ *       --register=path/to/schema/definition
  * </pre>
  *
  * To look up a schema's id and hash from a schema definition:
  * <pre>
  *   kiji schema-table kiji://hbase-address/instance-name/ \
- *       --lookup=path/to/schema/definition \
+ *       --lookup=path/to/schema/definition
  * </pre>
  *
  * To get a schema definition and hash from a UID:
  * <pre>
  *   kiji schema-table kiji://hbase-address/instance-name/ \
  *       --get-schema-by-id=2 \
- *       --output=path/to/schema/write/definition \
+ *       [--output=path/to/schema/write/definition]
  * </pre>
  *
  * To get a schema definition and UID from a hash:
  * <pre>
  *   kiji schema-table kiji://hbase-address/instance-name/ \
  *       --get-schema-by-hash=ef:52:4e:a1:b9:1e:73:17:3d:93:8a:de:36:c1:db:32 \
- *       --output=path/to/schema/write/definition \
+ *       [--output=path/to/schema/write/definition]
+ * </pre>
+ *
+ * To list all schemas in an instance:
+ * <pre>
+ *   kiji schema-table kiji://hbase-address/instance-name/ \
+ *       --list=true
  * </pre>
  *
  * --interactive=false will suppress existing file warnings (old files will be overwritten by new
@@ -90,8 +96,12 @@ public final class SchemaTableTool extends BaseTool {
   @Flag(name="get-schema-by-hash", usage="hash of the schema to retrieve from the schema table.")
   private String mGetByHashFlag = null;
 
-  @Flag(name="output", usage="Path to the file to write schema defintions retrieved from the "
-      + "schema table. (will overwrite if the file already exists, pending confirmation)")
+  @Flag(name="list", usage="Set to true to list all the registered schemas in the kiji instance.")
+  private Boolean mListFlag = null;
+
+  @Flag(name="output", usage="Path to the file to write schema definitions retrieved from the "
+      + "schema table (will overwrite if the file already exists, pending confirmation). "
+      + "If not provided will output to standard out instead.")
   private String mOutputFlag = null;
 
   /** URI of the Kiji instance housing the target schema table. */
@@ -122,18 +132,14 @@ public final class SchemaTableTool extends BaseTool {
   @Override
   protected void validateFlags() throws Exception {
     // Ensures that only one operation flag is specified at a time.
-    final boolean register= mRegisterFlag != null && !mRegisterFlag.isEmpty();
-    final boolean lookup= mLookupFlag != null && !mLookupFlag.isEmpty();
-    final boolean id = mGetByIdFlag != null;
-    final boolean hash= mGetByHashFlag != null && !mGetByHashFlag.isEmpty();
+    int count = 0;
+    count += (mRegisterFlag != null && !mRegisterFlag.isEmpty()) ? 1 : 0;
+    count += (mLookupFlag != null && !mLookupFlag.isEmpty()) ? 1 : 0;
+    count += (mGetByIdFlag != null) ? 1 : 0;
+    count += (mGetByHashFlag != null && !mGetByHashFlag.isEmpty()) ? 1 : 0;
+    count += (mListFlag != null && mListFlag) ? 1 : 0;
     Preconditions.checkArgument(
-        (register ^ lookup) ^ (id ^ hash), "Specify exactly one operation.");
-
-    // Ensures that output files are specified as needed.
-    if (mGetByIdFlag != null || (mGetByHashFlag != null && !mGetByHashFlag.isEmpty())) {
-      Preconditions.checkArgument(mOutputFlag != null && !mOutputFlag.isEmpty(),
-          "Specify an output file when using get-schema-by-id or get-schema-by-hash");
-    }
+        count == 1, "Specify exactly one operation.");
   }
 
   /**
@@ -220,24 +226,32 @@ public final class SchemaTableTool extends BaseTool {
     Preconditions.checkArgument(
         schema != null, "No schema definition with ID: %s", mGetByIdFlag);
 
-    // Attempt to write the definition to the output file.
-    try {
-      if (writeDefinitionToFile(schema)) {
-        // Print the results.
-        if (isInteractive()) {
-          getPrintStream().print("Schema hash of the given schema is: ");
+    if (isInteractive()) {
+      getPrintStream().print("Schema hash of the given schema is: ");
+    }
+    getPrintStream().println(table.getSchemaHash(schema));
+    if (mOutputFlag != null && !mOutputFlag.isEmpty()) {
+      // Attempt to write to the output file.
+      try {
+        if (writeDefinitionToFile(schema)) {
+          if (isInteractive()) {
+            getPrintStream().printf("Schema definition written to: %s%n", mOutputFlag);
+          }
+          return SUCCESS;
+        } else {
+          return FAILURE;
         }
-        getPrintStream().println(table.getSchemaHash(table.getSchema(mGetByIdFlag)));
-        if (isInteractive()) {
-          getPrintStream().printf("Schema definition written to: %s", mOutputFlag);
-        }
-        return SUCCESS;
-      } else {
-        return FAILURE;
+      } catch (IOException ioe) {
+        LOG.error("Error writing to file: {}", mOutputFlag);
+        throw ioe;
       }
-    } catch (IOException ioe) {
-      LOG.error("Error writing to file: {}", mOutputFlag);
-      throw ioe;
+    } else {
+      // Print the schema to standard out.
+      if (isInteractive()) {
+        getPrintStream().println("Schema:");
+      }
+      getPrintStream().println(schema.toString());
+      return SUCCESS;
     }
   }
 
@@ -253,25 +267,51 @@ public final class SchemaTableTool extends BaseTool {
     final SchemaEntry sEntry = table.getSchemaEntry(bytesKey);
     final Schema schema = sEntry.getSchema();
 
-    // Attempt to write the definition to the output file.
-    try {
-      if (writeDefinitionToFile(schema)) {
-        // Print the results.
-        if (isInteractive()) {
-          getPrintStream().print("Schema ID for the given schema is: ");
-        }
-        getPrintStream().println(sEntry.getId());
-        if (isInteractive()) {
-          getPrintStream().printf("Schema definition written to: %s", mOutputFlag);
-        }
-        return SUCCESS;
-      } else {
-        return FAILURE;
-      }
-    } catch (IOException ioe) {
-      LOG.error("Error writing to file: {}", mOutputFlag);
-      throw ioe;
+    if (isInteractive()) {
+      getPrintStream().print("Schema ID for the given schema is: ");
     }
+    getPrintStream().println(sEntry.getId());
+    if (mOutputFlag != null && !mOutputFlag.isEmpty()) {
+      // Attempt to write the definition to the output file.
+      try {
+        if (writeDefinitionToFile(schema)) {
+          if (isInteractive()) {
+            getPrintStream().printf("Schema definition written to: %s%n", mOutputFlag);
+          }
+          return SUCCESS;
+        } else {
+          return FAILURE;
+        }
+      } catch (IOException ioe) {
+        LOG.error("Error writing to file: {}", mOutputFlag);
+        throw ioe;
+      }
+    } else {
+      // Print the schema to standard out.
+      if (isInteractive()) {
+        getPrintStream().println("Schema:");
+      }
+      getPrintStream().println(schema.toString());
+      return SUCCESS;
+    }
+  }
+
+  /**
+   * List all schemas in the table.
+   *
+   * @return The Tool exit code.
+   * @throws IOException in case of an error.
+   */
+  private int list() throws IOException {
+    final KijiSchemaTable schemaTable = mKiji.getSchemaTable();
+    long id = 0;
+    Schema schema = schemaTable.getSchema(id);
+    while (null != schema) {
+      getPrintStream().printf("%d: %s%n", id, schema.toString());
+      schema = schemaTable.getSchema(++id);
+    }
+
+    return SUCCESS;
   }
 
   /** {@inheritDoc} */
@@ -290,6 +330,8 @@ public final class SchemaTableTool extends BaseTool {
         return getById();
       } else if (mGetByHashFlag != null && !mGetByHashFlag.isEmpty()) {
         return getByHash();
+      } else if (mListFlag) {
+        return list();
       } else {
         throw new InternalKijiError("No operation specified.");
       }

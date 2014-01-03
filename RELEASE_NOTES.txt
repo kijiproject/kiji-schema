@@ -3,17 +3,20 @@
                               KijiSchema Release Notes
 
 Version 1.3.4
+  * SCHEMA-627. The schema table tool now permits listing all schemas and
+      output to StdOut.
   * SCHEMA-604. Adds support for MapR's distribution of HBase.
   * SCHEMA-557. Removes HTablePool usage.
-  * SCHEMA-605. Fixes compatibility with the latest 1.X Hadoop and 0.94.X HBase releases.
+  * SCHEMA-605. Fixes compatibility with the latest 1.X Hadoop and 0.94.X
+      HBase releases.
 
 Version 1.3.3
-  * SCHEMA-584. KijiTableAnnotator now supports storing string key-value annotations on tables and
-      columns.
+  * SCHEMA-584. KijiTableAnnotator now supports storing string key-value
+      annotations on tables and columns.
 
 Version 1.3.2
-  * SCHEMA-586. KijiTableReaderPool now supports managing a pool of open KijiTableReaders for
-      thread safe concurrent reads.
+  * SCHEMA-586. KijiTableReaderPool now supports managing a pool of open
+      KijiTableReaders for thread safe concurrent reads.
 
 Version 1.3.1
   * SCHEMA-544. Introduce new layout version 1.4 with PROTOBUF cell encoding.

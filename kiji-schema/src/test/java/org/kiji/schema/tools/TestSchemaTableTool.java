@@ -20,6 +20,8 @@
 package org.kiji.schema.tools;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -90,6 +92,30 @@ public class TestSchemaTableTool extends KijiToolTest {
     assertEquals(mSimpleSchema, new Schema.Parser().parse(mFile));
   }
 
+  /**
+   * Similar to the above, but expects output on standard out.
+   * @throws Exception
+   */
+  @Test
+  public void testGetSchemaByIdStdOut() throws Exception {
+    final long simpleSchemaId = getKiji().getSchemaTable().getOrCreateSchemaId(mSimpleSchema);
+    assertEquals(BaseTool.SUCCESS, runTool(new SchemaTableTool(),
+        getKiji().getURI().toString(),
+        "--get-schema-by-id=" + simpleSchemaId
+    ));
+    assertTrue(mToolOutputStr.contains(mSimpleSchema.toString()));
+  }
+
+  @Test
+  public void testList() throws Exception {
+    final long simpleSchemaId = getKiji().getSchemaTable().getOrCreateSchemaId(mSimpleSchema);
+    assertEquals(BaseTool.SUCCESS, runTool(new SchemaTableTool(),
+        getKiji().getURI().toString(),
+        "--list"));
+    assertTrue(mToolOutputStr.contains(
+        String.format("%d: %s%n", simpleSchemaId, mSimpleSchema.toString())));
+  }
+
   @Test
   public void testGetSchemaByHash() throws Exception {
     final BytesKey hash = mTable.getSchemaHash(mSimpleSchema);
@@ -114,6 +140,25 @@ public class TestSchemaTableTool extends KijiToolTest {
     ));
     assertEquals(id, Long.parseLong(mToolOutputLines[0]));
     assertEquals(hash, new BytesKey(ByteArrayFormatter.parseHex(mToolOutputLines[1], ':')));
+  }
+
+  @Test
+  public void testWrongOperationCount() throws Exception {
+    final BytesKey hash = mTable.getSchemaHash(mSimpleSchema);
+    final long id = mTable.getOrCreateSchemaId(mSimpleSchema);
+    try {
+      runTool(new SchemaTableTool(),
+          getKiji().getURI().toString(),
+          "--get-schema-by-hash=" + hash,
+          "--get-schema-by-id=" + id,
+          "--lookup=" + mFile.toString(),
+          "--output=" + mFile.toString(),
+          "--interactive=false"
+      );
+      fail();
+    } catch (IllegalArgumentException iae) {
+      assertTrue(iae.getMessage().contains("Specify exactly one operation."));
+    }
   }
 
   @Test
