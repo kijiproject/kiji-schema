@@ -23,21 +23,12 @@ import java.util.List;
 
 import org.apache.avro.Schema;
 
-/** Java interface to the Avro DSL parser. */
+/**
+ * Java interface to the Avro DSL parser.
+ *
+ * This class is implemented by {@link JavaAvroDSL}.
+ */
 public interface AvroDSLInterface {
-
-  /** Factory for Avro DSL parsers */
-  public static final class Factory {
-    /**
-     * Creates a new instance of the Java interface to the Avro DSL parser.
-     *
-     * @return a new instance of the Java interface to the Avro DSL parser.
-     */
-    public static AvroDSLInterface create() {
-      return new JavaAvroDSL();
-    }
-  }
-
   /**
    * Parse a text IDL declaration for a single Avro type.
    *
