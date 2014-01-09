@@ -219,10 +219,10 @@ public final class KijiDataRequestBuilder {
     public ColumnsDef withMaxVersions(int maxVersions) {
       checkNoCols();
       Preconditions.checkState(mMaxVersions == null,
-          "Cannot set max versions to %d, max versions already set to %d.",
+          "Cannot set max versions to %s, max versions already set to %s.",
           maxVersions, mMaxVersions);
       Preconditions.checkArgument(maxVersions > 0,
-          "Maximum number of versions must be strictly positive, but got: %d",
+          "Maximum number of versions must be strictly positive, but got: %s",
           maxVersions);
 
       mMaxVersions = maxVersions;
