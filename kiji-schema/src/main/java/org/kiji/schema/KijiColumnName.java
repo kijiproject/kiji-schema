@@ -87,7 +87,9 @@ public final class KijiColumnName implements Comparable<KijiColumnName> {
   private void validateNames() {
     // Validate family name.
     if (!KijiNameValidator.isValidLayoutName(mFamily)) {
-      throw new KijiInvalidNameException(String.format("Invalid family name: %s", mFamily));
+      throw new KijiInvalidNameException(String.format(
+          "Invalid family name: %s Name must match pattern: %s",
+          mFamily, KijiNameValidator.VALID_LAYOUT_NAME_PATTERN));
     }
   }
 
