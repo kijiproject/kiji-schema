@@ -180,7 +180,9 @@ public class TestKijiDataRequest {
       KijiDataRequest.builder().newColumnsDef().addFamily("family:qualifier");
       fail("An exception should have been thrown.");
     } catch (KijiInvalidNameException kine) {
-      assertEquals("Invalid family name: family:qualifier", kine.getMessage());
+      assertEquals(
+          "Invalid family name: family:qualifier Name must match pattern: [a-zA-Z_][a-zA-Z0-9_]*",
+          kine.getMessage());
     }
   }
 

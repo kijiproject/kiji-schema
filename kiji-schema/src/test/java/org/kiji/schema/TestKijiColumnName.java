@@ -105,7 +105,8 @@ public class TestKijiColumnName {
       new KijiColumnName("1:qualifier");
       fail("An exception should have been thrown.");
     } catch (KijiInvalidNameException kine) {
-      assertEquals("Invalid family name: 1", kine.getMessage());
+      assertEquals("Invalid family name: 1 Name must match pattern: [a-zA-Z_][a-zA-Z0-9_]*",
+          kine.getMessage());
     }
   }
 

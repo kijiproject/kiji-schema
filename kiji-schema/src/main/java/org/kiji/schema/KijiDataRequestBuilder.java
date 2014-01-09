@@ -261,9 +261,9 @@ public final class KijiDataRequestBuilder {
     public ColumnsDef withPageSize(int pageSize) {
       checkNoCols();
       Preconditions.checkState(mPageSize == null,
-          "Cannot set page size to %d, page size already set to %d.", pageSize, mPageSize);
+          "Cannot set page size to %s, page size already set to %s.", pageSize, mPageSize);
       Preconditions.checkArgument(pageSize >= 0,
-          "Page size must be 0 (disabled) or positive, but got: %d", mPageSize);
+          "Page size must be 0 (disabled) or positive, but got: %s", mPageSize);
 
       mPageSize = pageSize;
       return this;

@@ -179,7 +179,7 @@ public class TestKijiDataRequestBuilder {
       builder.newColumnsDef().withMaxVersions(-5).addFamily("info");
       fail("An exception should have been thrown.");
     } catch (IllegalArgumentException iae) {
-      assertEquals("Maximum number of versions must be strictly positive, but got: %d [-5]",
+      assertEquals("Maximum number of versions must be strictly positive, but got: -5",
           iae.getMessage());
     }
   }
@@ -191,7 +191,7 @@ public class TestKijiDataRequestBuilder {
       builder.newColumnsDef().withPageSize(-5).addFamily("info");
       fail("An exception should have been thrown.");
     } catch (IllegalArgumentException iae) {
-      assertEquals("Page size must be 0 (disabled) or positive, but got: %d [null]",
+      assertEquals("Page size must be 0 (disabled) or positive, but got: null",
           iae.getMessage());
     }
   }
@@ -203,7 +203,7 @@ public class TestKijiDataRequestBuilder {
       builder.newColumnsDef().withMaxVersions(0).addFamily("info");
       fail("An exception should have been thrown.");
     } catch (IllegalArgumentException iae) {
-      assertEquals("Maximum number of versions must be strictly positive, but got: %d [0]",
+      assertEquals("Maximum number of versions must be strictly positive, but got: 0",
           iae.getMessage());
     }
   }
@@ -227,7 +227,7 @@ public class TestKijiDataRequestBuilder {
       builder.newColumnsDef().withMaxVersions(2).withMaxVersions(3).addFamily("info");
       fail("An exception should have been thrown.");
     } catch (IllegalStateException ise) {
-      assertEquals("Cannot set max versions to %d, max versions already set to %d. [3, 2]",
+      assertEquals("Cannot set max versions to 3, max versions already set to 2.",
           ise.getMessage());
     }
   }
@@ -239,7 +239,7 @@ public class TestKijiDataRequestBuilder {
       builder.newColumnsDef().withPageSize(2).withPageSize(3).addFamily("info");
       fail("An exception should have been thrown.");
     } catch (IllegalStateException ise) {
-      assertEquals("Cannot set page size to %d, page size already set to %d. [3, 2]",
+      assertEquals("Cannot set page size to 3, page size already set to 2.",
           ise.getMessage());
     }
   }
