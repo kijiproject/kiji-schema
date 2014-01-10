@@ -284,6 +284,17 @@ public final class KijiURI {
     }
 
     /**
+     * Configures the KijiURI with Zookeeper Quorum.
+     *
+     * @param zookeeperQuorum The zookeeper quorum.
+     * @return This builder instance so you may chain configuration method calls.
+     */
+    public KijiURIBuilder withZookeeperQuorum(Iterable<String> zookeeperQuorum) {
+      mZookeeperQuorum = ImmutableList.copyOf(zookeeperQuorum);
+      return this;
+    }
+
+    /**
      * Configures the KijiURI with the Zookeeper client port.
      *
      * @param zookeeperClientPort The port.
