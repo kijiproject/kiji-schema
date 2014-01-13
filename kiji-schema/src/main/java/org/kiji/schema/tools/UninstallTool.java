@@ -80,9 +80,13 @@ public final class UninstallTool extends BaseTool {
     getPrintStream().println("Deleting kiji instance: " + mKijiURI.toString());
     if (isInteractive())  {
       final Kiji kiji = Kiji.Factory.open(mKijiURI, getConf());
-      getPrintStream().println("WARNING: This instance contains the table(s):");
-      for (String name : kiji.getTableNames()) {
-        getPrintStream().println(name);
+      try {
+        getPrintStream().println("WARNING: This instance contains the table(s):");
+        for (String name : kiji.getTableNames()) {
+          getPrintStream().println(name);
+        }
+      } finally {
+        kiji.release();
       }
 
       getPrintStream().println();
