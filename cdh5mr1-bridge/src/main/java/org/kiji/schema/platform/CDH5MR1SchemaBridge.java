@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -32,40 +32,51 @@ import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
+import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
-import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.io.hfile.HFile;
-import org.apache.hadoop.hbase.regionserver.StoreFile;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.hadoop.hbase.regionserver.BloomType;
+import org.apache.hadoop.hdfs.HdfsConfiguration;
+import org.apache.hadoop.mapred.JobConf;
 
 import org.kiji.annotations.ApiAudience;
 
 /**
- * Hadoop 1.x and HBase 0.94.x-backed implementation of the SchemaPlatformBridge API.
+ * CDH5-backed implementation of the SchemaPlatformBridge API.
  */
 @ApiAudience.Private
-public final class Hadoop1xHBase94SchemaBridge extends SchemaPlatformBridge {
-  private static final Logger LOG = LoggerFactory.getLogger(Hadoop1xHBase94SchemaBridge.class);
-
+public final class CDH5MR1SchemaBridge extends SchemaPlatformBridge {
   /** {@inheritDoc} */
   @Override
   public void initializeHadoopResources() {
-    // Do nothing: Configuration resources include hdfs/mapred-site/default.xml by default.
+    // Force initialization of HdfsConfiguration,
+    // to register hdfs-site.xml and hdfs-default.xml resources:
+    HdfsConfiguration.init();
+
+    // Force initialization of JobConf,
+    // to register mapred-site.xml and mapred-default.xml resources:
+    try {
+      // JobConf does not provide a static initialization method,
+      // use Class.forName() to trigger static initialization:
+      Class.forName(JobConf.class.getName());
+    } catch (ClassNotFoundException cnfe) {
+      throw new RuntimeException(
+          "Error initializing class JobConf to register mapred resources.", cnfe);
+    }
   }
 
   /** {@inheritDoc} */
   @Override
   public void setAutoFlush(HTableInterface hTable, boolean autoFlush) {
-    // setAutoFlush is added to HTableInterface in HBase 0.94.2
-    hTable.setAutoFlush(autoFlush);
+    // We can do this directly in CDH5.
+    hTable.setAutoFlushTo(autoFlush);
   }
 
   /** {@inheritDoc} */
   @Override
   public void setWriteBufferSize(HTableInterface hTable, long bufSize)
       throws IOException {
-    // setWriteBufferSize is added to HTableInterface in HBase 0.94.2
+    // We can do this directly in CDH5.
     hTable.setWriteBufferSize(bufSize);
   }
 
@@ -79,7 +90,7 @@ public final class Hadoop1xHBase94SchemaBridge extends SchemaPlatformBridge {
          .withPath(fs, path)
          .withBlockSize(blockSizeBytes)
          .withCompression(Compression.getCompressionAlgorithmByName(compressionType))
-         .withComparator(KeyValue.KEY_COMPARATOR)
+         .withComparator(KeyValue.COMPARATOR)
          .create();
   }
 
@@ -188,7 +199,7 @@ public final class Hadoop1xHBase94SchemaBridge extends SchemaPlatformBridge {
     /** {@inheritDoc} */
     @Override
     public HColumnDescriptorBuilderInterface setBloomType(String bloomType) {
-      mHColumnDescriptor.setBloomFilterType(StoreFile.BloomType.valueOf(bloomType));
+      mHColumnDescriptor.setBloomFilterType(BloomType.valueOf(bloomType));
       return this;
     }
 

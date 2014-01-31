@@ -74,7 +74,7 @@ class HFileTool extends BaseTool {
   var htableFlag: String = null
 
   @Flag(name="hfile-compression",
-      usage="HFile compression algorithm: one of 'none', 'gz', 'lzo', 'snappy'.")
+      usage="HFile compression algorithm: one of 'none', 'gz', 'lz4', 'lzo', 'snappy'.")
   var hfileCompressionFlag: String = "NONE"
 
   @Flag(name="hfile-block-size",
@@ -121,14 +121,14 @@ class HFileTool extends BaseTool {
   def writeToHFile(
       table: HTableInterface,
       path: Path,
-      compression: Compression.Algorithm = Compression.Algorithm.NONE,
+      compression: String = "none",
       blockSize: Int = 64 * 1024 * 1024
   ): Unit = {
     val conf = HBaseConfiguration.create()
     val cacheConf = new CacheConfig(conf)
     val fs = FileSystem.get(conf)
     val writer: HFile.Writer = SchemaPlatformBridge.get().createHFileWriter(
-        conf, fs, path, blockSize, compression, KeyValue.KEY_COMPARATOR)
+        conf, fs, path, blockSize, compression)
 
     try {
       val scanner = table.getScanner(new Scan().setMaxVersions())
@@ -193,7 +193,7 @@ class HFileTool extends BaseTool {
   /**
    * Program entry point.
    *
-   * @param args is the array of command-line arguments.
+   * @param unparsed is the array of command-line arguments.
    */
   override def run(unparsed: JList[String]): Int = {
     // Requires either --do=(import|export) or a single unnamed argument (exclusive OR):
@@ -211,8 +211,7 @@ class HFileTool extends BaseTool {
     require(pathFlag != null, "Specify the file to read from/write to with --path=...")
     val filePath = new Path(pathFlag)
 
-    val hfileCompression =
-        Compression.Algorithm.valueOf(hfileCompressionFlag.toUpperCase(Locale.ROOT))
+    val hfileCompression = hfileCompressionFlag.toUpperCase(Locale.ROOT)
 
     def runAction(htable: HTableInterface, path: Path) {
       action match {

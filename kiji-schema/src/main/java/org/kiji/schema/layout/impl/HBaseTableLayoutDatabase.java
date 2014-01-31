@@ -40,8 +40,6 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.io.hfile.Compression;
-import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -381,11 +379,11 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   public static HColumnDescriptor getHColumnDescriptor(String family) {
     return SchemaPlatformBridge.get().createHColumnDescriptorBuilder(Bytes.toBytes(family))
         .setMaxVersions(HConstants.ALL_VERSIONS)
-        .setCompressionType(Compression.Algorithm.NONE)
+        .setCompressionType("none")
         .setInMemory(false)
         .setBlockCacheEnabled(true)
         .setTimeToLive(HConstants.FOREVER)
-        .setBloomType(BloomType.NONE)
+        .setBloomType("NONE")
         .build();
   }
 

@@ -273,6 +273,12 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
+      <artifactId>kiji-schema-cdh5mr1-bridge</artifactId>
+      <version>${project.version}</version>
+      <scope>runtime</scope>
+    </dependency>
+    <dependency>
+      <groupId>${project.groupId}</groupId>
       <artifactId>kiji-schema-hadoop1-hbase92-bridge</artifactId>
       <version>${project.version}</version>
       <scope>runtime</scope>

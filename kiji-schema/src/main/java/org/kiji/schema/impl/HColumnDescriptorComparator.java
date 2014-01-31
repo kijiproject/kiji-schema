@@ -25,6 +25,7 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /**
  * Comparator for HColumnDescriptors.  They are sorted by name, then
@@ -55,10 +56,10 @@ public class HColumnDescriptorComparator implements Comparator<HColumnDescriptor
     if (blockSizeResult != 0) {
       return blockSizeResult;
     }
-    int bloomTypeResult = o1.getBloomFilterType().compareTo(o2.getBloomFilterType());
+    int bloomTypeResult = SchemaPlatformBridge.get().compareBloom(o1, o2);
     if (bloomTypeResult != 0) {
       return bloomTypeResult;
     }
-    return o1.getCompressionType().toString().compareTo(o2.getCompressionType().toString());
+    return SchemaPlatformBridge.get().compareCompression(o1, o2);
   }
 }

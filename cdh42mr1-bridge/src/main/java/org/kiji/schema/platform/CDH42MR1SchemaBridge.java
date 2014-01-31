@@ -25,8 +25,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.KeyValue.KeyComparator;
+import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.filter.BinaryComparator;
+import org.apache.hadoop.hbase.filter.CompareFilter;
+import org.apache.hadoop.hbase.filter.FamilyFilter;
+import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.io.hfile.HFile;
@@ -78,14 +83,14 @@ public final class CDH42MR1SchemaBridge extends SchemaPlatformBridge {
   /** {@inheritDoc} */
   @Override
   public HFile.Writer createHFileWriter(Configuration conf,
-      FileSystem fs, Path path, int blockSizeBytes, Compression.Algorithm compressionType,
-      KeyComparator comparator) throws IOException {
+      FileSystem fs, Path path, int blockSizeBytes, String compressionType)
+      throws IOException {
 
      return HFile.getWriterFactory(conf, new CacheConfig(conf))
          .withPath(fs, path)
          .withBlockSize(blockSizeBytes)
-         .withCompression(compressionType)
-         .withComparator(comparator)
+         .withCompression(Compression.getCompressionAlgorithmByName(compressionType))
+         .withComparator(KeyValue.KEY_COMPARATOR)
          .create();
   }
 
@@ -99,6 +104,36 @@ public final class CDH42MR1SchemaBridge extends SchemaPlatformBridge {
   @Override
   public HColumnDescriptorBuilderInterface createHColumnDescriptorBuilder(byte[] family) {
     return new HColumnDescriptorBuilder(family);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public FamilyFilter createFamilyFilter(CompareFilter.CompareOp op, byte[] family) {
+    return new FamilyFilter(op, new BinaryComparator(family));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public QualifierFilter createQualifierFilter(CompareFilter.CompareOp op, byte[] qualifier) {
+    return new QualifierFilter(op, new BinaryComparator(qualifier));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Delete createDelete(byte[] rowKey, long timestamp) {
+    return new Delete(rowKey, timestamp, null);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int compareBloom(HColumnDescriptor col1, HColumnDescriptor col2) {
+    return col1.getBloomFilterType().compareTo(col2.getBloomFilterType());
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public int compareCompression(HColumnDescriptor col1, HColumnDescriptor col2) {
+    return col1.getCompressionType().toString().compareTo(col2.getCompressionType().toString());
   }
 
   /**
@@ -134,8 +169,9 @@ public final class CDH42MR1SchemaBridge extends SchemaPlatformBridge {
     /** {@inheritDoc} */
     @Override
     public HColumnDescriptorBuilderInterface setCompressionType(
-        Compression.Algorithm compressionAlgorithm) {
-      mHColumnDescriptor.setCompressionType(compressionAlgorithm);
+        String compressionAlgorithm) {
+      mHColumnDescriptor.setCompressionType(
+          Compression.getCompressionAlgorithmByName(compressionAlgorithm));
       return this;
     }
 
@@ -162,8 +198,8 @@ public final class CDH42MR1SchemaBridge extends SchemaPlatformBridge {
 
     /** {@inheritDoc} */
     @Override
-    public HColumnDescriptorBuilderInterface setBloomType(StoreFile.BloomType bloomType) {
-      mHColumnDescriptor.setBloomFilterType(bloomType);
+    public HColumnDescriptorBuilderInterface setBloomType(String bloomType) {
+      mHColumnDescriptor.setBloomFilterType(StoreFile.BloomType.valueOf(bloomType));
       return this;
     }
 

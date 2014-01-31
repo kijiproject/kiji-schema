@@ -2,6 +2,11 @@
 
                               KijiSchema Release Notes
 
+Version 1.3.8
+  * SCHEMA-648. Adds support for CDH5 and HBase 96 and updates platform bridge
+      API to be compatible. Due to the remove of client-exposed row locks,
+      deleteMapFamily will no longer hold a lock while deleting qualifiers.
+
 Version 1.3.7
   * SCHEMA-663. KijiTablePool now properly sets the retain count when spawning
       tables to reach the minimum size.

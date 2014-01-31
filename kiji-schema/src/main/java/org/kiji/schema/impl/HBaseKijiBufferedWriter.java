@@ -285,7 +285,8 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   /** {@inheritDoc} */
   @Override
   public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {
-    final Delete delete = new Delete(entityId.getHBaseRowKey(), upToTimestamp, null);
+    final Delete delete = SchemaPlatformBridge.get()
+        .createDelete(entityId.getHBaseRowKey(), upToTimestamp);
     updateBuffer(delete);
   }
 
@@ -400,7 +401,8 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
       if (result.isEmpty()) {
         LOG.debug("No qualifiers to delete in map family: " + familyName);
       } else {
-        final Delete delete = new Delete(hbaseRow, HConstants.LATEST_TIMESTAMP, rowLock);
+        final Delete delete = SchemaPlatformBridge.get()
+            .createDelete(hbaseRow, HConstants.LATEST_TIMESTAMP);
         for (byte[] hbaseQualifier
                  : result.getFamilyMap(hbaseColumnName.getFamily()).keySet()) {
           LOG.debug("Deleting HBase column " + hbaseColumnName.getFamilyAsString()

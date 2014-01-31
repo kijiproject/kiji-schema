@@ -25,11 +25,12 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.KeyValue.KeyComparator;
+import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.io.hfile.Compression;
+import org.apache.hadoop.hbase.filter.CompareFilter;
+import org.apache.hadoop.hbase.filter.FamilyFilter;
+import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.apache.hadoop.hbase.io.hfile.HFile;
-import org.apache.hadoop.hbase.regionserver.StoreFile;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Lookups;
@@ -83,16 +84,15 @@ public abstract class SchemaPlatformBridge {
    * @param fs the Filesystem to write to.
    * @param path to the file to open for write access.
    * @param blockSizeBytes the block size to write within the HFile.
-   * @param compressionType to use in the HFile
-   * @param comparator the Key comparator to use.
+   * @param compressionType to use in the HFile.
+   *     Should be one of "lzo", "gzip", "none", "snappy", or "lz4".
    * @return a newly-opened HFile writer object.
    * @throws IOException if there's an error opening the file.
    */
   public abstract HFile.Writer createHFileWriter(
       Configuration conf,
       FileSystem fs, Path path, int blockSizeBytes,
-      Compression.Algorithm compressionType,
-      KeyComparator comparator)
+      String compressionType)
       throws IOException;
 
   /**
@@ -111,6 +111,58 @@ public abstract class SchemaPlatformBridge {
   public abstract HColumnDescriptorBuilderInterface createHColumnDescriptorBuilder(byte[] family);
 
   /**
+   * Gets a FamilyFilter for this version of HBase. Exists in the bridge because of
+   * incompatible changes to BinaryComparator.
+   *
+   * @param op The comparator operator to use.
+   * @param family The HBase family as bytes.
+   * @return A family filter.
+   */
+  public abstract FamilyFilter createFamilyFilter(CompareFilter.CompareOp op, byte[] family);
+
+  /**
+   * Gets a QualifierFilter for this version of HBase. Exists in the bridge because of
+   * incompatible changes to BinaryComparator.
+   *
+   * @param op The comparator operator to use.
+   * @param qualifier The HBase qualifier as bytes.
+   * @return A qualifier filter
+   */
+  public abstract QualifierFilter createQualifierFilter(
+      CompareFilter.CompareOp op,
+      byte[] qualifier);
+
+  /**
+   * Creates a Delete operation for an entire row up to a particular timestamp. Necessary due to
+   * the deprecation of row lock.
+   *
+   * @param rowKey The rowkey.
+   * @param timestamp The maximum timestamp to delete up to.
+   * @return A Delete operation.
+   */
+  public abstract Delete createDelete(byte[] rowKey, long timestamp);
+
+  /**
+   * Compares two column descriptors bloom type. Necessary due to different enum classpaths
+   * between versions.
+   *
+   * @param col1 The first column descriptor.
+   * @param col2 The second column descriptor.
+   * @return 0 if the bloom settings are the same. Non-zero otherwise.
+   */
+  public abstract int compareBloom(HColumnDescriptor col1, HColumnDescriptor col2);
+
+  /**
+   * Compares two column descriptors compression settings. This is necessary due to
+   * repackaging of compression related classes.
+   *
+   * @param col1 The first column descriptor.
+   * @param col2 The second column descriptor.
+   * @return 0 if the compression settings are the same. Non-zero otherwise.
+   */
+  public abstract int compareCompression(HColumnDescriptor col1, HColumnDescriptor col2);
+
+  /**
    * An interface for HColumnDescriptors, implemented by the bridges.
    */
   public interface HColumnDescriptorBuilderInterface {
@@ -126,10 +178,11 @@ public abstract class SchemaPlatformBridge {
      * Sets the compression type on the HColumnDescriptor.
      *
      * @param compressionAlgorithm to set the compression type to.
+     *      Should be one of 'none', 'gz', 'lz4', 'lzo', 'snappy'.
      * @return This builder with the compressionType set.
      */
     HColumnDescriptorBuilderInterface setCompressionType(
-        Compression.Algorithm compressionAlgorithm);
+        String compressionAlgorithm);
 
     /**
      * Sets the inMemory flag on the HColumnDescriptor.
@@ -159,9 +212,10 @@ public abstract class SchemaPlatformBridge {
      * Sets the bloom type used in the HColumnDescriptor.
      *
      * @param bloomType to set in the HColumnDescriptor.
+     *     Must be one of "NONE", "ROW", or "ROWCOL".
      * @return This builder with the bloomType set.
      */
-    HColumnDescriptorBuilderInterface setBloomType(StoreFile.BloomType bloomType);
+    HColumnDescriptorBuilderInterface setBloomType(String bloomType);
 
     /**
      * Returns the HColumnDescriptor.

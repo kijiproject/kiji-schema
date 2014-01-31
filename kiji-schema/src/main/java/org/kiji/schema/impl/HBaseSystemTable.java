@@ -43,8 +43,6 @@ import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.io.hfile.Compression;
-import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -342,11 +340,11 @@ public class HBaseSystemTable implements KijiSystemTable {
     HColumnDescriptor columnDescriptor = SchemaPlatformBridge.get()
         .createHColumnDescriptorBuilder(Bytes.toBytes(VALUE_COLUMN_FAMILY))
         .setMaxVersions(1)
-        .setCompressionType(Compression.Algorithm.NONE)
+        .setCompressionType("none")
         .setInMemory(false)
         .setBlockCacheEnabled(true)
         .setTimeToLive(HConstants.FOREVER)
-        .setBloomType(BloomType.NONE)
+        .setBloomType("NONE")
         .build();
     tableDescriptor.addFamily(columnDescriptor);
     admin.createTable(tableDescriptor);

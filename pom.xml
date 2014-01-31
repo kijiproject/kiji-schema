@@ -59,6 +59,7 @@
     <module>platform-api</module>
     <module>cdh41mr1-bridge</module>
     <module>cdh42mr1-bridge</module>
+    <module>cdh5mr1-bridge</module>
     <module>hadoop1-hbase92-bridge</module>
     <module>hadoop1-hbase94-bridge</module>
 

@@ -58,8 +58,6 @@ import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.io.hfile.Compression;
-import org.apache.hadoop.hbase.regionserver.StoreFile.BloomType;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -635,11 +633,11 @@ public class HBaseSchemaTable implements KijiSchemaTable {
     final HColumnDescriptor hashColumnDescriptor = SchemaPlatformBridge.get()
         .createHColumnDescriptorBuilder(SCHEMA_COLUMN_FAMILY_BYTES)
         .setMaxVersions(maxVersions)
-        .setCompressionType(Compression.Algorithm.NONE)
+        .setCompressionType("none")
         .setInMemory(false)
         .setBlockCacheEnabled(true)
         .setTimeToLive(HConstants.FOREVER)
-        .setBloomType(BloomType.NONE)
+        .setBloomType("NONE")
         .build();
     hashTableDescriptor.addFamily(hashColumnDescriptor);
     admin.createTable(hashTableDescriptor);
@@ -649,11 +647,11 @@ public class HBaseSchemaTable implements KijiSchemaTable {
     final HColumnDescriptor idColumnDescriptor = SchemaPlatformBridge.get()
         .createHColumnDescriptorBuilder(SCHEMA_COLUMN_FAMILY_BYTES)
         .setMaxVersions(maxVersions)
-        .setCompressionType(Compression.Algorithm.NONE)
+        .setCompressionType("none")
         .setInMemory(false)
         .setBlockCacheEnabled(true)
         .setTimeToLive(HConstants.FOREVER)
-        .setBloomType(BloomType.NONE)
+        .setBloomType("NONE")
         .build();
     idTableDescriptor.addFamily(idColumnDescriptor);
     admin.createTable(idTableDescriptor);
