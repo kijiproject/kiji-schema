@@ -351,4 +351,29 @@ class TestAvroValueParser
     Assert.assertEquals("info", families.get(0).get("name"))
   }
 
+  def testSchemaWithComments(): Unit = {
+    val schema = schemaParser.parse("""
+        |record ns.A {
+        |  int zip_code
+        |  int age = -1
+        |  union { null, long } field = null
+        |}
+    """.stripMargin)
+
+    val value: GenericData.Record = AvroValueParser.parse("""
+        |record ns.A {  // This is a comments
+        |  zip_code = /* comment */ 1
+        |  /**
+        |   * This
+        |   * is a
+        |   * multi-line
+        |   * comment
+        |   */
+        |  age = 20
+        |}
+        """.stripMargin,
+        schema=schema)
+    Assert.assertEquals(1, value.get("zip_code"))
+    Assert.assertEquals(20, value.get("age"))
+  }
 }

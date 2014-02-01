@@ -42,6 +42,14 @@ trait AvroValueParser
 
   val Log: Logger
 
+  /** C-style comments are ignored and skipped. */
+  protected override val whiteSpace = {
+    """(\s|//.*|(?m)/\*(\*(?!/)|[^*])*\*/)+""".r
+  }
+
+  /** Ignore comments and white-spaces. */
+  override def skipWhitespace = true
+
   /** Parses an optional namespace. */
   private def namespace: Parser[Option[List[String]]] = {
     ("."?) ~ ((ident <~ ".")*) ^^ { parsed =>
