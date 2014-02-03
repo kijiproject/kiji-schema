@@ -246,6 +246,10 @@ class TestAvroSchemaParser
         |  int zip_code; // This is a single line comment
         |  int /* delimited comment */ age = -1;
         |  union { null /* , long */ } field = null
+        |  /**
+        |   * multi-line
+        |   * comment
+        |   */
         |}
     """.stripMargin)
   }

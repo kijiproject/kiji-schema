@@ -361,11 +361,9 @@ class TestAvroValueParser
     """.stripMargin)
 
     val value: GenericData.Record = AvroValueParser.parse("""
-        |record ns.A {  // This is a comments
+        |ns.A {  // This is a comments
         |  zip_code = /* comment */ 1
         |  /**
-        |   * This
-        |   * is a
         |   * multi-line
         |   * comment
         |   */
