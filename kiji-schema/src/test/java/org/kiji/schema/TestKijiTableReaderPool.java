@@ -149,4 +149,24 @@ public class TestKijiTableReaderPool {
       kiji.release();
     }
   }
+
+  @Test
+  public void testRetainsTable() throws Exception {
+    final KijiTable table = mKiji.openTable("user");
+    final KijiTableReaderPool pool = KijiTableReaderPool.Builder.create()
+        .withReaderFactory(table.getReaderFactory())
+        .build();
+    table.release();
+    try {
+      final KijiTableReader reader = pool.borrowObject();
+      try {
+        assertEquals(
+            FOO_NAME, reader.get(mEID, INFO_NAME).getMostRecentValue("info", "name").toString());
+      } finally {
+        reader.close();
+      }
+    } finally {
+      pool.close();
+    }
+  }
 }

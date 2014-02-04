@@ -44,6 +44,11 @@ import org.kiji.schema.layout.ColumnReaderSpec;
  *   Closing a KijiTableReader from this pool will return it to the pool and make it available to
  *   other users.
  * </p>
+ *
+ * <p>
+ *   KijiTableReaderPool instances retain the KijiTable associated with the KijiReaderFactory which
+ *   provides readers for the pool. Closing the pool will release the table.
+ * </p>
  */
 @ApiAudience.Public
 @ApiStability.Experimental
@@ -72,6 +77,10 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
       BLOCK, FAIL, GROW
     }
 
+    /**
+     * When build succeeds, the pool will retain the KijiTable associated with this
+     * KijiReaderFactory. Closing the pool will release that table.
+     */
     private KijiReaderFactory mReaderFactory = null;
     private Map<KijiColumnName, CellSpec> mCellSpecOverrides = null;
     private Map<KijiColumnName, ColumnReaderSpec> mColumnReaderSpecOverrides = null;
@@ -87,7 +96,7 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
 
     /**
      * Set the KijiReaderFactory which will provide readers for this pool. Obtainable via
-     * {@link org.kiji.schema.KijiTable#getReaderFactory()}. This field is required to build a
+     * {@link org.kiji.schema.KijiTable#getReaderFactory()}. This method is required to build a
      * KijiTableReaderPool.
      *
      * @param readerFactory KijiReaderFactory which will be used to provide readers for this pool.
@@ -446,9 +455,10 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
      * Build a new KijiTableReaderPool from the configured options.
      *
      * @return a new KijiTableReaderPool.
+     * @throws IOException in case of an error getting the reader factory.
      */
-    public KijiTableReaderPool build() {
-      Preconditions.checkNotNull(mReaderFactory, "Reader factory may not be null.");
+    public KijiTableReaderPool build() throws IOException {
+      Preconditions.checkNotNull(mReaderFactory, "KijiReaderFactory may not be null.");
 
       final GenericObjectPool.Config config = new Config();
       config.minIdle = (null != mMinIdle) ? mMinIdle : GenericObjectPool.DEFAULT_MIN_IDLE;
@@ -488,6 +498,9 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
       config.testOnReturn = GenericObjectPool.DEFAULT_TEST_ON_RETURN;
       config.testWhileIdle = GenericObjectPool.DEFAULT_TEST_WHILE_IDLE;
 
+      // Nothing that may fail may come after retain().
+      mReaderFactory.getTable().retain();
+
       if (null == mCellSpecOverrides) {
         if (null == mColumnReaderSpecOverrides) {
           mColumnReaderSpecOverrides = KijiTableReaderBuilder.DEFAULT_READER_SPEC_OVERRIDES;
@@ -510,6 +523,9 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
     }
   }
 
+  /** Factory which provides readers for this pool. */
+  private final PooledKijiTableReaderFactory mFactory;
+
   /**
    * Initialize a new KijiTableReaderPool with the given reader factory and configuration.
    *
@@ -522,6 +538,7 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
   ) {
     super(factory, config);
     factory.setPool(this);
+    mFactory = factory;
   }
 
   /**
@@ -562,6 +579,13 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
     final PooledKijiTableReaderFactory factory = new PooledKijiTableReaderFactory(
         readerFactory, overrides, alternatives, onDecoderCacheMiss);
     return new KijiTableReaderPool(factory, config);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void close() throws Exception {
+    super.close();
+    mFactory.mFactoryDelegate.getTable().release();
   }
 
   /**
