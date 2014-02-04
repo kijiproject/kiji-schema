@@ -44,13 +44,14 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HBaseKiji;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.Versions;
+import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.layout.impl.ZooKeeperMonitor;
 import org.kiji.schema.util.Lock;
-import org.kiji.schema.util.ZooKeeperLockFactory;
 
 /**
  * The default implementation of KijiSecurityManager.
@@ -126,9 +127,8 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
         AccessControllerProtocol.class,
         HConstants.EMPTY_START_ROW);
 
-    final ZooKeeperLockFactory zKLockFactory =
-        new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(instanceUri));
-    mLock = zKLockFactory.create(
+    final ZooKeeperClient zkClient = HBaseFactory.Provider.get().getZooKeeperClient(mInstanceUri);
+    mLock = zkClient.getLockFactory().create(
         ZooKeeperMonitor.getInstancePermissionsLock(instanceUri).getAbsolutePath());
   }
 

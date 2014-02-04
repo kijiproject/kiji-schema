@@ -54,9 +54,6 @@ public final class TestingHBaseFactory implements HBaseFactory {
   /** Lock object to protect MINI_ZOOKEEPER_CLUSTER and MINIZK_CLIENT. */
   private static final Object MINIZK_CLUSTER_LOCK = new Object();
 
-  /** ZooKeeper session timeout, in milliseconds. */
-  private static final int ZKCLIENT_SESSION_TIMEOUT = 60 * 1000;  // 1 second
-
   /**
    * Singleton MiniZooKeeperCluster for testing.
    *
@@ -220,8 +217,7 @@ public final class TestingHBaseFactory implements HBaseFactory {
     final String zkAddress = "localhost:" + zkCluster.getClientPort() + "/" + fakeId;
 
     Log.info("Creating test ZooKeeperClient for address {}", zkAddress);
-    final ZooKeeperClient zkClient = new ZooKeeperClient(zkAddress, ZKCLIENT_SESSION_TIMEOUT);
-    zkClient.open();
+    final ZooKeeperClient zkClient = ZooKeeperClient.getZooKeeperClient(zkAddress);
     return zkClient;
   }
 
@@ -249,8 +245,7 @@ public final class TestingHBaseFactory implements HBaseFactory {
 
         final String zkAddress ="localhost:" + mMiniZkCluster.getClientPort();
         LOG.info("Creating testing utility ZooKeeperClient for {}", zkAddress);
-        mMiniZkClient = new ZooKeeperClient(zkAddress, ZKCLIENT_SESSION_TIMEOUT);
-        mMiniZkClient.open();
+        mMiniZkClient = ZooKeeperClient.getZooKeeperClient(zkAddress);
       }
       return mMiniZkCluster;
     }

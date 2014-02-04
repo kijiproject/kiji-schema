@@ -33,7 +33,6 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.util.LockFactory;
-import org.kiji.schema.util.ZooKeeperLockFactory;
 
 /** Factory for HBase instances based on URIs. */
 @ApiAudience.Private
@@ -61,7 +60,7 @@ public final class DefaultHBaseFactory implements HBaseFactory {
   /** {@inheritDoc} */
   @Override
   public LockFactory getLockFactory(KijiURI uri, Configuration conf) throws IOException {
-    return new ZooKeeperLockFactory(ZooKeeperLockFactory.zkConnStr(uri));
+    return getZooKeeperClient(uri).getLockFactory();
   }
 
   /** {@inheritDoc} */
@@ -78,10 +77,7 @@ public final class DefaultHBaseFactory implements HBaseFactory {
     for (String host : uri.getZookeeperQuorumOrdered()) {
       zkHosts.add(String.format("%s:%s", host, uri.getZookeeperClientPort()));
     }
-    final String zkAddress = Joiner.on(",").join(zkHosts);
-    final int sessionTimeoutMS = 60 * 1000;
-    final ZooKeeperClient zkc = new ZooKeeperClient(zkAddress, sessionTimeoutMS);
-    zkc.open();
-    return zkc;
+    final String address = Joiner.on(",").join(zkHosts);
+    return ZooKeeperClient.getZooKeeperClient(address);
   }
 }

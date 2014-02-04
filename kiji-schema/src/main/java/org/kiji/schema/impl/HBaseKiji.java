@@ -232,7 +232,6 @@ public final class HBaseKiji implements Kiji {
       throw kie;
     }
 
-    // TODO(SCHEMA-491) Share ZooKeeperClient instances when possible.
     if (mSystemVersion.compareTo(Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION) >= 0) {
       // system-2.0 clients must connect to ZooKeeper:
       //  - to register themselves as table users;

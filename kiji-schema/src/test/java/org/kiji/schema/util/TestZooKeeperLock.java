@@ -36,9 +36,8 @@ public class TestZooKeeperLock extends ZooKeeperTest {
   @Test
   public void testZooKeeperLock() throws Exception {
     final File lockDir = new File("/lock");
-    final ZooKeeperClient zkClient = new ZooKeeperClient(getZKAddress(), 60000);
+    final ZooKeeperClient zkClient = ZooKeeperClient.getZooKeeperClient(getZKAddress());
     try {
-      zkClient.open();
       final AtomicInteger counter = new AtomicInteger(0);
 
       final ZooKeeperLock lock1 = new ZooKeeperLock(zkClient, lockDir);

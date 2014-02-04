@@ -45,10 +45,8 @@ public class TestTableLayoutMonitor extends ZooKeeperTest {
   /** Tests the layout update notification mechanism. */
   @Test
   public void testLayoutUpdateNotification() throws Exception {
-    final ZooKeeperClient zkClient = new ZooKeeperClient(getZKAddress(), 60 * 1000);
+    final ZooKeeperClient zkClient = ZooKeeperClient.getZooKeeperClient(getZKAddress());
     try {
-      zkClient.open();
-
       final ZooKeeperMonitor monitor = new ZooKeeperMonitor(zkClient);
       try {
 
@@ -93,10 +91,8 @@ public class TestTableLayoutMonitor extends ZooKeeperTest {
   /** Tests the tracking of table users. */
   @Test
   public void testUsersTracker() throws Exception {
-    final ZooKeeperClient zkClient = new ZooKeeperClient(getZKAddress(), 60 * 1000);
+    final ZooKeeperClient zkClient = ZooKeeperClient.getZooKeeperClient(getZKAddress());
     try {
-      zkClient.open();
-
       final ZooKeeperMonitor monitor = new ZooKeeperMonitor(zkClient);
       try {
         final KijiURI tableURI =
