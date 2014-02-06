@@ -27,6 +27,7 @@ import com.google.common.base.Joiner;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +40,7 @@ import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
+import org.kiji.schema.layout.impl.ZooKeeperMonitor;
 import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ResourceUtils;
@@ -185,6 +187,16 @@ public final class KijiInstaller {
 
       } finally {
         ResourceUtils.closeOrLog(hbaseAdmin);
+      }
+
+      // Delete ZNodes from ZooKeeper
+      try {
+        hbaseFactory
+            .getZooKeeperClient(uri)
+            .deleteNodeRecursively(ZooKeeperMonitor.getInstanceDir(uri));
+      } catch (KeeperException e) {
+        LOG.warn("Unable to delete instance ZNode in ZooKeeper.", e);
+        throw new IOException(e);
       }
     } finally {
       kiji.release();

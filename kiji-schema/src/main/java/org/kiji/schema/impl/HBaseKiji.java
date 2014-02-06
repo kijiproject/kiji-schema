@@ -703,6 +703,16 @@ public final class HBaseKiji implements Kiji {
     // If the table persists immediately after deletion attempt, then give up.
     if (getHBaseAdmin().tableExists(hbaseTable)) {
       LOG.warn("HBase table " + hbaseTable + " survives deletion attempt. Giving up...");
+      return;
+    }
+
+    // Delete ZNodes from ZooKeeper
+    try {
+      KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableName).build();
+      mZKClient.deleteNodeRecursively(ZooKeeperMonitor.getTableDir(tableURI));
+    } catch (KeeperException e) {
+      LOG.warn("Unable to delete table ZNode in ZooKeeper.", e);
+      throw new IOException(e);
     }
   }
 

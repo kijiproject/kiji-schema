@@ -3,6 +3,8 @@
                               KijiSchema Release Notes
 
 Version 1.3.7
+  * SCHEMA-651. cleanup deleted instances from zookeeper in
+      /kiji-schema/instances.
   * SCHEMA-491. Share/reuse Zookeeper connections instances when possible.
   * SCHEMA-650. The KijiTableReaderPool now retains the KijiTable associated with
       its KijiReaderFactory. Closing the pool will release the table.

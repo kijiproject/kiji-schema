@@ -618,6 +618,26 @@ public final class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient
   }
 
   /**
+   * Removes a ZooKeeper node and all of its children, if necessary.
+   *
+   * @param path of the node to remove.
+   * @throws KeeperException on I/O error.
+   */
+  public void deleteNodeRecursively(File path) throws KeeperException {
+    Stat stat = exists(path);  // Race condition if someone else updates the znode in the meantime
+
+    if (stat == null) {
+      return;
+    }
+
+    List<String> children = getChildren(path, null, null);
+    for (String child : children) {
+      deleteNodeRecursively(new File(path, child));
+    }
+    delete(path, stat.getVersion());
+  }
+
+  /**
    * Returns a string representation of this object.
    * @return A string representation of this object.
    */
