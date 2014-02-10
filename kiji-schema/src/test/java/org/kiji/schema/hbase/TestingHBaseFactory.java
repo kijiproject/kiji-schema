@@ -28,7 +28,6 @@ import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.zookeeper.KeeperException;
-import org.mortbay.log.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,17 +75,6 @@ public final class TestingHBaseFactory implements HBaseFactory {
 
   /** Map from fake HBase ID to fake (local) lock factories. */
   private final Map<String, LockFactory> mLock = Maps.newHashMap();
-
-  /**
-   * Map from fake HBase ID to ZooKeeperClient.
-   *
-   * <p>
-   *   ZooKeeperClient instances in this map are never released:
-   *   unless client code releases ZooKeeperClient instance more than once,
-   *   the retain counter is always &ge; 1.
-   * </p>
-   */
-  private final Map<String, ZooKeeperClient> mZKClients = Maps.newHashMap();
 
   /**
    * Public constructor. This should not be directly invoked by users; you should
@@ -189,16 +177,15 @@ public final class TestingHBaseFactory implements HBaseFactory {
   }
 
   /**
-   * Creates a new ZooKeeperClient with a chroot set to the fakeId for a KijiClientTest.
+   * Returns the ZooKeeper mini cluster address with a chroot set to the provided fakeId.
    *
-   * <p> The client will connect to the testing MiniZooKeeperCluster. </p>
+   * <p> The address will be to the testing MiniZooKeeperCluster. </p>
    *
    * @param fakeId the id of the test instance.
-   * @return a new ZooKeeperClient for the test instance.
-   * @throws IOException on I/O error.
+   * @return the ZooKeeper address for the test instance.
+   * @throws IOException on I/O error when creating the mini cluster.
    */
-  private static ZooKeeperClient createZooKeeperClientForFakeId(String fakeId)
-      throws IOException {
+  private static String createZooKeeperAddressForFakeId(String fakeId) throws IOException {
 
     // Initializes the Mini ZooKeeperCluster, if necessary:
     final MiniZooKeeperCluster zkCluster = getMiniZKCluster();
@@ -214,11 +201,7 @@ public final class TestingHBaseFactory implements HBaseFactory {
     }
 
     // Test ZooKeeperClients use a chroot to isolate testing environments.
-    final String zkAddress = "localhost:" + zkCluster.getClientPort() + "/" + fakeId;
-
-    Log.info("Creating test ZooKeeperClient for address {}", zkAddress);
-    final ZooKeeperClient zkClient = ZooKeeperClient.getZooKeeperClient(zkAddress);
-    return zkClient;
+    return "localhost:" + zkCluster.getClientPort() + "/" + fakeId;
   }
 
   /**
@@ -251,40 +234,25 @@ public final class TestingHBaseFactory implements HBaseFactory {
     }
   }
 
-  /**
-   * Returns the ZooKeeperClient to use for the instance with the specified fake ID.
-   *
-   * @param fakeId ID of the fake testing instance to get a ZooKeeperClient for.
-   * @return the ZooKeeperClient for the instance with the specified fake ID.
-   * @throws IOException on I/O error.
-   */
-  private ZooKeeperClient getTestZooKeeperClient(String fakeId) throws IOException {
-    synchronized (mZKClients) {
-      ZooKeeperClient zkClient = mZKClients.get(fakeId);
-      if (null == zkClient) {
-        zkClient = createZooKeeperClientForFakeId(fakeId);
-        mZKClients.put(fakeId, zkClient);
-      }
-      return zkClient.retain();
-    }
-  }
-
-  /**
-   * {@inheritDoc}
-   *
-   * <p>
-   *   TestingHBaseFactory manages a pool of connections to a singleton MiniZooKeeperCluster for
-   *   unit testing purposes.  These connections are lazily created and reused where possible.
-   * </p>
-   */
+  /** {@inheritDoc} */
   @Override
   public ZooKeeperClient getZooKeeperClient(KijiURI uri) throws IOException {
+    return ZooKeeperClient.getZooKeeperClient(getZooKeeperEnsemble(uri));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getZooKeeperEnsemble(KijiURI uri) {
     final String fakeId = getFakeHBaseID(uri);
     if (fakeId != null) {
-      return getTestZooKeeperClient(fakeId);
+      try {
+        return createZooKeeperAddressForFakeId(fakeId);
+      } catch (IOException e) {
+        throw new KijiIOException(e.getCause());
+      }
     }
 
     // Not a test instance, delegate to default factory:
-    return DELEGATE.getZooKeeperClient(uri);
+    return DELEGATE.getZooKeeperEnsemble(uri);
   }
 }

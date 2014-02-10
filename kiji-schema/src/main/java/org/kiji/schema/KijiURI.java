@@ -37,6 +37,7 @@ import org.apache.hadoop.hbase.HConstants;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.util.KijiNameValidator;
 
 /**
@@ -542,7 +543,22 @@ public final class KijiURI {
   }
 
   /**
+   * Returns the address of each member of the ZooKeeper ensemble associated with this KijiURI
+   * in comma-separated host:port  (standard ZooKeeper) format. This method will always return the
+   * correct addresses of the ZooKeeper ensemble which hosts the metadata for this KijiURI's
+   * instance.
+   *
+   * @return the addresses of the ZooKeeper ensemble members of the Kiji cluster.
+   */
+  public String getZooKeeperEnsemble() {
+    return HBaseFactory.Provider.get().getZooKeeperEnsemble(this);
+  }
+
+  /**
    * Returns the set of Zookeeper quorum hosts (names or IPs).
+   *
+   * <p> This method is not always guaranteed to return valid ZooKeeper hostnames, instead use
+   *    {@link org.kiji.schema.KijiURI#getZooKeeperEnsemble()}. </p>
    *
    * <p> Host names or IP addresses are de-duplicated and sorted. </p>
    *
@@ -555,6 +571,9 @@ public final class KijiURI {
 
   /**
    * Returns the original user-specified list of Zookeeper quorum hosts.
+   *
+   * <p> This method is not always guaranteed to return valid ZooKeeper hostnames, instead use
+   *    {@link org.kiji.schema.KijiURI#getZooKeeperEnsemble()}. </p>
    *
    * <p> Host names are exactly as specified by the user. </p>
    *

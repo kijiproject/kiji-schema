@@ -107,4 +107,14 @@ public interface HBaseFactory extends PriorityProvider {
    * @throws IOException in case of an error connecting to ZooKeeper.
    */
   ZooKeeperClient getZooKeeperClient(KijiURI uri) throws IOException;
+
+  /**
+   * Returns the ZooKeeper quorum address of the provided KijiURI in comma-separated host:port
+   * (standard ZooKeeper) format. This method is considered experimental and should not be called by
+   * clients of Kiji Schema; instead use {@link org.kiji.schema.KijiURI#getZooKeeperEnsemble()}.
+   *
+   * @param uri of the KijiCluster for which to return the ZooKeeper quorum address.
+   * @return the ZooKeeper quorum address of the Kiji cluster.
+   */
+  String getZooKeeperEnsemble(KijiURI uri);
 }

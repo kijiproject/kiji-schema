@@ -42,6 +42,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.util.Lock;
@@ -106,12 +108,17 @@ import org.kiji.schema.util.ZooKeeperLock;
  *   </li>
  * </ul>
  */
-@ApiAudience.Private
+@ApiAudience.Framework
+@ApiStability.Evolving
+@Inheritance.Sealed
 public final class ZooKeeperMonitor implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperMonitor.class);
 
   /** Root path of the ZooKeeper directory node where to write Kiji nodes. */
   private static final File ROOT_ZOOKEEPER_PATH = new File("/kiji-schema");
+
+  /** Path of the ZooKeeper directory where instance Kiji nodes are written. */
+  public static final File INSTANCES_ZOOKEEPER_PATH = new File(ROOT_ZOOKEEPER_PATH, "instances");
 
   /** UTF-8 encoding name. */
   private static final String UTF8 = "utf-8";
@@ -139,7 +146,7 @@ public final class ZooKeeperMonitor implements Closeable {
    * @return the ZooKeeper node path for a Kiji instance.
    */
   public static File getInstanceDir(KijiURI kijiURI) {
-    return new File(String.format("%s/instances/%s", ROOT_ZOOKEEPER_PATH, kijiURI.getInstance()));
+    return new File(INSTANCES_ZOOKEEPER_PATH, kijiURI.getInstance());
   }
 
   /**

@@ -73,11 +73,16 @@ public final class DefaultHBaseFactory implements HBaseFactory {
   /** {@inheritDoc} */
   @Override
   public ZooKeeperClient getZooKeeperClient(final KijiURI uri) {
+    return ZooKeeperClient.getZooKeeperClient(getZooKeeperEnsemble(uri));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String getZooKeeperEnsemble(final KijiURI uri) {
     final List<String> zkHosts = Lists.newArrayList();
     for (String host : uri.getZookeeperQuorumOrdered()) {
       zkHosts.add(String.format("%s:%s", host, uri.getZookeeperClientPort()));
     }
-    final String address = Joiner.on(",").join(zkHosts);
-    return ZooKeeperClient.getZooKeeperClient(address);
+    return Joiner.on(",").join(zkHosts);
   }
 }

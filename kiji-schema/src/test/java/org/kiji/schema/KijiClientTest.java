@@ -149,27 +149,52 @@ public class KijiClientTest {
   }
 
   /**
-   * Opens a new unique test Kiji instance, creating it if necessary.
+   * Creates and opens a new unique test Kiji instance in a new fake HBase cluster.  All generated
+   * Kiji instances are automatically cleaned up by KijiClientTest.
    *
-   * Each call to this method returns a fresh new Kiji instance.
-   * All generated Kiji instances are automatically cleaned up by KijiClientTest.
-   *
-   * @return a fresh new Kiji instance.
+   * @return a fresh new Kiji instance in a new fake HBase cluster.
    * @throws Exception on error.
    */
   public Kiji createTestKiji() throws Exception {
+    return createTestKiji(createTestHBaseURI());
+  }
+
+  /**
+   * Creates and opens a new unique test Kiji instance in the specified cluster.  All generated
+   * Kiji instances are automatically cleaned up by KijiClientTest.
+   *
+   * @param clusterURI of cluster create new instance in.
+   * @return a fresh new Kiji instance in the specified cluster.
+   * @throws Exception on error.
+   */
+  public Kiji createTestKiji(KijiURI clusterURI) throws Exception {
     Preconditions.checkNotNull(mConf);
     final String instanceName = String.format("%s_%s_%d",
         getClass().getSimpleName(),
         mTestName.getMethodName(),
         mKijiInstanceCounter.getAndIncrement());
-    final KijiURI hbaseURI = createTestHBaseURI();
-    final KijiURI uri = KijiURI.newBuilder(hbaseURI).withInstanceName(instanceName).build();
+    final KijiURI uri = KijiURI.newBuilder(clusterURI).withInstanceName(instanceName).build();
     KijiInstaller.get().install(uri, mConf);
     final Kiji kiji = Kiji.Factory.open(uri, mConf);
 
     mKijis.add(kiji);
     return kiji;
+  }
+
+  /**
+   * Deletes a test Kiji instance. The <code>Kiji</code> reference provided to this method will no
+   * longer be valid after it returns (it will be closed).  Calling this method on Kiji instances
+   * created through KijiClientTest is not necessary, it is provided for testing situations in which
+   * a Kiji is explicitly closed.
+   *
+   * @param kiji instance to be closed and deleted.
+   * @throws Exception on error.
+   */
+  public void deleteTestKiji(Kiji kiji) throws Exception {
+    Preconditions.checkState(mKijis.contains(kiji));
+    kiji.release();
+    KijiInstaller.get().uninstall(kiji.getURI(), mConf);
+    mKijis.remove(kiji);
   }
 
   /**
