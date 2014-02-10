@@ -128,8 +128,12 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
         HConstants.EMPTY_START_ROW);
 
     final ZooKeeperClient zkClient = HBaseFactory.Provider.get().getZooKeeperClient(mInstanceUri);
-    mLock = zkClient.getLockFactory().create(
-        ZooKeeperMonitor.getInstancePermissionsLock(instanceUri).getAbsolutePath());
+    try {
+      mLock = zkClient.getLockFactory().create(
+          ZooKeeperMonitor.getInstancePermissionsLock(instanceUri).getAbsolutePath());
+    } finally {
+      zkClient.release();
+    }
   }
 
   /** {@inheritDoc} */

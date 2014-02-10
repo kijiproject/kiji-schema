@@ -40,6 +40,7 @@ import org.kiji.schema.impl.HBaseMetaTable;
 import org.kiji.schema.impl.HBaseSchemaTable;
 import org.kiji.schema.impl.HBaseSystemTable;
 import org.kiji.schema.impl.HTableInterfaceFactory;
+import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.layout.impl.ZooKeeperMonitor;
 import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.LockFactory;
@@ -190,13 +191,14 @@ public final class KijiInstaller {
       }
 
       // Delete ZNodes from ZooKeeper
+      final ZooKeeperClient zkClient =  hbaseFactory.getZooKeeperClient(uri);
       try {
-        hbaseFactory
-            .getZooKeeperClient(uri)
-            .deleteNodeRecursively(ZooKeeperMonitor.getInstanceDir(uri));
+        zkClient.deleteNodeRecursively(ZooKeeperMonitor.getInstanceDir(uri));
       } catch (KeeperException e) {
         LOG.warn("Unable to delete instance ZNode in ZooKeeper.", e);
         throw new IOException(e);
+      } finally {
+        zkClient.release();
       }
     } finally {
       kiji.release();
