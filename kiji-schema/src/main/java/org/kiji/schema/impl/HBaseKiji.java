@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.DebugResourceTracker;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiMetaTable;
@@ -174,9 +175,6 @@ public final class HBaseKiji implements Kiji {
       HTableInterfaceFactory tableFactory,
       LockFactory lockFactory)
       throws IOException {
-
-    mConstructorStack = CLEANUP_LOG.isDebugEnabled() ? Debug.getStackTrace() : null;
-
     // Deep copy the configuration.
     mConf = new Configuration(conf);
 
@@ -249,6 +247,9 @@ public final class HBaseKiji implements Kiji {
       mZKClient = null;
       mMonitor = null;
     }
+
+    mConstructorStack = (CLEANUP_LOG.isDebugEnabled()) ? Debug.getStackTrace() : null;
+    DebugResourceTracker.get().registerResource(this, mConstructorStack);
   }
 
   /**
@@ -758,6 +759,7 @@ public final class HBaseKiji implements Kiji {
     mMetaTable = null;
     mAdmin = null;
     mSecurityManager = null;
+    DebugResourceTracker.get().unregisterResource(this);
     LOG.debug("{} closed.", this);
   }
 

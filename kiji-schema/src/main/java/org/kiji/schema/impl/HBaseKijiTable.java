@@ -48,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.DebugResourceTracker;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
@@ -325,8 +326,6 @@ public final class HBaseKijiTable implements KijiTable {
       HTableInterfaceFactory htableFactory)
       throws IOException {
 
-    mConstructorStack = CLEANUP_LOG.isDebugEnabled() ? Debug.getStackTrace() : null;
-
     mKiji = kiji;
     mName = name;
     mHTableFactory = htableFactory;
@@ -375,6 +374,10 @@ public final class HBaseKijiTable implements KijiTable {
 
     // Table is now open and must be released properly:
     mRetainCount.set(1);
+
+    mConstructorStack = (CLEANUP_LOG.isDebugEnabled()) ? Debug.getStackTrace() : null;
+    DebugResourceTracker.get().registerResource(this, mConstructorStack);
+
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open KijiTable instance in state %s.", oldState);
@@ -680,6 +683,7 @@ public final class HBaseKijiTable implements KijiTable {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close KijiTable instance %s in state %s.", this, oldState);
+    LOG.debug("Closing HBaseKijiTable '{}'.", this);
 
     if (mLayoutTracker != null) {
       mLayoutTracker.close();
@@ -695,10 +699,10 @@ public final class HBaseKijiTable implements KijiTable {
       mLayoutMonitor.close();
     }
 
-    LOG.debug("Closing HBaseKijiTable '{}'.", mTableURI);
     mHTablePool.close();
-
     mKiji.release();
+    DebugResourceTracker.get().unregisterResource(this);
+
     LOG.debug("HBaseKijiTable '{}' closed.", mTableURI);
   }
 
