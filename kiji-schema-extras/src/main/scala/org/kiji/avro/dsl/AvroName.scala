@@ -30,30 +30,41 @@ package org.kiji.avro.dsl
  * Simple names may sometimes be used relative to the namespace defined in some context. To limit
  * confusion, top-level Avro names must begin with a period, as in: ".TopLevelSimpleName".
  *
- * @param name Simple name (eg. the 'X' in 'name.space.X').
- * @param ns Optional namespace, as a list of components
- *     (eg. the list ['name', 'space'] in 'name.space.X').
+ * @param simpleName Simple name (eg. the 'X' in 'name.space.X').
+ * @param namespace Namespace.
  */
 class AvroName(
     /** Simple name of this Avro name. */
-    val name: String,
-    ns: Option[List[String]]
+    val simpleName: String,
+
+    /** Namespace, potentially empty (top-level name). */
+    val namespace: String
 ) {
+
   /**
    * Fully-qualified name representation.
    */
-  val fullName: String = {
-    ns match {
-      case None => "." + name
-      case Some(path) => path.mkString(".") + "." + name
-    }
-  }
+  val fullName: String = { namespace + "." + simpleName }
+}
 
-  /** Namespace this Avro name belongs to. Potentially null. */
-  val nameSpace: String = {
-    ns match {
-      case None => null
-      case Some(path) => path.mkString(".")
+/**
+ * Companion object for AvroName.
+ */
+object AvroName {
+  /**
+   * Parses an Avro name into an AvroName object.
+   *
+   * @param name Avro name to parse.
+   * @return the parsed AvroName object.
+   */
+  def fromFullName(name: String): AvroName = {
+    var splits = name.split('.')
+    if (splits.head.isEmpty) {
+      splits = splits.drop(1)
     }
+    val simpleName = splits.last
+    splits = splits.dropRight(1)
+    val namespace = splits.mkString(".")
+    return new AvroName(simpleName=simpleName, namespace=namespace)
   }
 }

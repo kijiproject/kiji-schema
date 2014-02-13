@@ -62,11 +62,11 @@ class AvroSchemaParser extends AvroSchemaParsers {
 
   /** Parser for exactly one Avro type, and not trailer allowed. */
   private def singleType: Parser[Schema] = {
-    phrase(avroType)
+    phrase(avroType(Context()))
   }
 
   /** Parses a sequence of Avro types. */
   private def typeSequence: Parser[Seq[Schema]] = {
-    phrase(avroTypeSequence)
+    phrase(avroTypeSequence(Context()))
   }
 }

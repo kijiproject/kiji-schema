@@ -42,6 +42,10 @@ trait AvroValueParser
 
   val Log: Logger
 
+  case class Context(
+      val defaultNamespace: Option[String] = None
+  )
+
   /** C-style comments are ignored and skipped. */
   protected override val whiteSpace = {
     """(\s|//.*|(?m)/\*(\*(?!/)|[^*])*\*/)+""".r
@@ -50,27 +54,25 @@ trait AvroValueParser
   /** Ignore comments and white-spaces. */
   override def skipWhitespace = true
 
-  /** Parses an optional namespace. */
-  private def namespace: Parser[Option[List[String]]] = {
-    ("."?) ~ ((ident <~ ".")*) ^^ { parsed =>
-      val nsComponents = parsed._2
-      if (nsComponents.isEmpty) {
-        if (parsed._1.isEmpty) {
-          None  // relative
+  /**
+   * Parses an Avro name:
+   *  - ".name.space.SimpleName" : absolute fully-qualified name
+   *  - "name.space.SimpleName" : absolute fully-qualified name
+   *  - "SimpleName" : relative name (relative to the current namespace)
+   *  - ".SimpleName" : absolute name in the root namespace
+   */
+  def avroName(context: Context): Parser[AvroName] = {
+    """[.]?([A-Za-z0-9_]+[.])*([A-Za-z0-9_]+)""".r ^^ {
+      nameStr: String => {
+        if (nameStr.contains(".")) {
+          // absolute name:
+          AvroName.fromFullName(nameStr)
         } else {
-          Some(List())
+          // Non-qualified name in a scope which defined a default name-space:
+          new AvroName(simpleName = nameStr, namespace = context.defaultNamespace.getOrElse(""))
         }
-      } else {
-        Some(nsComponents)
       }
     }
-  }
-
-  /**
-   * Parses an Avro name ".name.space.SimpleName".
-   */
-  private def avroName: Parser[AvroName] = {
-    (namespace ~ ident) ^^ { parsed => new AvroName(name = parsed._2, ns = parsed._1) }
   }
 
   /**
@@ -78,17 +80,15 @@ trait AvroValueParser
    *
    * @param schema Schema whose name is to be matched.
    */
-  private def avroNameMatching(schema: Schema): Parser[AvroName] = Parser[AvroName] {
+  private def avroNameMatching(schema: Schema, context: Context) = Parser[AvroName] {
     input: Input => {
-      avroName(input) match {
+      avroName(context)(input) match {
         case success: Success[AvroName] => {
           if (success.get.fullName == schema.getFullName) {
             success
           } else {
-            Error(
-                "Avro name '%s' does not match expected name '%s'"
-                    .format(success.get.fullName, schema.getFullName),
-                input)
+            Error("Avro name '%s' does not match expected name '%s'"
+                .format(success.get.fullName, schema.getFullName), input)
           }
         }
         case error => error
@@ -96,27 +96,40 @@ trait AvroValueParser
     }
   }
 
-  /** Parser for an Avro record. */
-  private def avroRecord(schema: Schema): Parser[GenericData.Record] = {
-    (avroNameMatching(schema) <~ "{") into {
+  /**
+   * Parser for an Avro record.
+   *
+   * Within the record definition, the default namespace is the namespace of the record.
+   */
+  private def avroRecord(schema: Schema, context: Context): Parser[GenericData.Record] = {
+    (avroNameMatching(schema, context) <~ "{") into {
       name: AvroName => {
         val recordBuilder = new GenericRecordBuilder(schema)
-        (recordField(recordBuilder, schema)*) <~ "}" ^^ { parsed => recordBuilder.build() }
+        val nestedContext = Context(Some(schema.getNamespace))
+        (recordField(recordBuilder, schema, nestedContext)*) <~ "}" ^^ {
+          parsed => recordBuilder.build()
+        }
       }
     }
   }
 
   /** Parser for a single record field. Populates a pre-existing record. */
-  private def recordField(record: GenericRecordBuilder, schema: Schema): Parser[Unit] = {
+  private def recordField(
+      record: GenericRecordBuilder,
+      schema: Schema,
+      context: Context
+  ): Parser[Unit] = {
     (ident <~ "=") into { fieldName: String =>
       val field = schema.getField(fieldName)
-      (firstAvroValue(field.schema()) <~ opt(";"|",")) ^^ { value => record.set(fieldName, value) }
+      (firstAvroValue(field.schema(), context) <~ opt(";"|",")) ^^ {
+        value => record.set(fieldName, value)
+      }
     }
   }
 
   /** Parser for an Avro enum value. */
-  private def avroEnum(schema: Schema): Parser[GenericData.EnumSymbol] = {
-    (avroNameMatching(schema) ~ ("(" ~> ident <~ ")")) ^^ {
+  private def avroEnum(schema: Schema, context: Context): Parser[GenericData.EnumSymbol] = {
+    (avroNameMatching(schema, context) ~ ("(" ~> ident <~ ")")) ^^ {
       parsed => {
         val avroName: AvroName = parsed._1
         val symbol: String = parsed._2
@@ -127,8 +140,8 @@ trait AvroValueParser
   }
 
   /** Parser for an Avro fixed declaration. */
-  private def avroFixed(schema: Schema): Parser[GenericData.Fixed] = {
-    (avroNameMatching(schema) ~ ("(" ~> avroBytes <~ ")")) ^^ {
+  private def avroFixed(schema: Schema, context: Context): Parser[GenericData.Fixed] = {
+    (avroNameMatching(schema, context) ~ ("(" ~> avroBytes <~ ")")) ^^ {
       parsed => {
         val avroName: AvroName = parsed._1
         val bytes: Array[Byte] = parsed._2
@@ -143,7 +156,7 @@ trait AvroValueParser
   }
 
   private def avroBoolean: Parser[Boolean] = {
-      ("false" ^^ { _ => false }) | ("true" ^^ { _ => true })
+    ("false" ^^ { _ => false }) | ("true" ^^ { _ => true })
   }
 
   private def avroInt: Parser[Int] = {
@@ -167,15 +180,15 @@ trait AvroValueParser
   }
 
   /** Parses an Avro array of elements into a Java list. */
-  private def avroArray(schema: Schema): Parser[JList[_]] = {
-    ("[" ~> ((firstAvroValue(schema) <~ opt(";"|","))*) <~ "]") ^^ {
+  private def avroArray(schema: Schema, context: Context): Parser[JList[_]] = {
+    ("[" ~> ((firstAvroValue(schema, context) <~ opt(";"|","))*) <~ "]") ^^ {
       elements: List[Any] => elements.asJava
     }
   }
 
   /** Parses an Avro map of items into a Java hash map. */
-  private def avroMap(schema: Schema): Parser[JMap[String, _]] = {
-    ("{" ~> (mapItem(schema)*) <~ "}") ^^ {
+  private def avroMap(schema: Schema, context: Context): Parser[JMap[String, _]] = {
+    ("{" ~> (mapItem(schema, context)*) <~ "}") ^^ {
       elements: List[(String, Any)] => {
         val map = new HashMap[String, Any]()
         for ((key, value) <- elements) {
@@ -186,8 +199,8 @@ trait AvroValueParser
     }
   }
 
-  private def mapItem(schema: Schema): Parser[(String, Any)] = {
-    ((avroString <~ ":") ~ (firstAvroValue(schema) <~ opt(";"|","))) ^^ {
+  private def mapItem(schema: Schema, context: Context): Parser[(String, Any)] = {
+    ((avroString <~ ":") ~ (firstAvroValue(schema, context) <~ opt(";"|","))) ^^ {
       parsed => {
         val key: String = parsed._1
         val value: Any = parsed._2
@@ -214,11 +227,11 @@ trait AvroValueParser
   /**
    * Parser for a value whose type belongs to an Avro union.
    */
-  private def avroUnion(schema: Schema): Parser[Any] = Parser[Any] {
+  private def avroUnion(schema: Schema, context: Context): Parser[Any] = Parser[Any] {
     in: Input => {
       def parseUnion(in: Input): ParseResult[Any] = {
         for (branch: Schema <- schema.getTypes.asScala) {
-          firstAvroValue(branch).apply(in) match {
+          firstAvroValue(branch, context).apply(in) match {
             case success: Success[Any] => {
               return success
             }
@@ -232,12 +245,12 @@ trait AvroValueParser
   }
 
   /** Parses exactly one Avro value, allowing no trailer. */
-  def avroValue(schema: Schema): Parser[Any] = {
-    phrase(firstAvroValue(schema))
+  def avroValue(schema: Schema, context: Context): Parser[Any] = {
+    phrase(firstAvroValue(schema, context))
   }
 
   /** Parses the first Avro value from the input. */
-  def firstAvroValue(schema: Schema): Parser[Any] = {
+  def firstAvroValue(schema: Schema, context: Context): Parser[Any] = {
     return schema.getType match {
       case Schema.Type.NULL => avroNull
       case Schema.Type.BOOLEAN => avroBoolean
@@ -247,12 +260,12 @@ trait AvroValueParser
       case Schema.Type.DOUBLE => avroDouble
       case Schema.Type.BYTES => avroBytes
       case Schema.Type.STRING => avroString
-      case Schema.Type.ARRAY => avroArray(schema.getElementType)
-      case Schema.Type.MAP => avroMap(schema.getValueType)
-      case Schema.Type.FIXED => avroFixed(schema)
-      case Schema.Type.ENUM => avroEnum(schema)
-      case Schema.Type.RECORD => avroRecord(schema)
-      case Schema.Type.UNION => avroUnion(schema)
+      case Schema.Type.ARRAY => avroArray(schema.getElementType, context)
+      case Schema.Type.MAP => avroMap(schema.getValueType, context)
+      case Schema.Type.FIXED => avroFixed(schema, context)
+      case Schema.Type.ENUM => avroEnum(schema, context)
+      case Schema.Type.RECORD => avroRecord(schema, context)
+      case Schema.Type.UNION => avroUnion(schema, context)
       case _ => sys.error("Unhandled schema: " + schema)
     }
   }
@@ -274,8 +287,9 @@ object AvroValueParser extends AvroValueParser {
    * @return the Avro value parsed from the text representation.
    */
   def parse[T](text: String, schema: Schema): T = {
+    val context = Context()
     val input: Input = new CharSequenceReader(text)
-    val result: ParseResult[Any] = avroValue(schema).apply(input)
+    val result: ParseResult[Any] = avroValue(schema, context).apply(input)
     result match {
       case error: Error => {
         sys.error("Parse error in '%s': %s".format(text, error.msg))

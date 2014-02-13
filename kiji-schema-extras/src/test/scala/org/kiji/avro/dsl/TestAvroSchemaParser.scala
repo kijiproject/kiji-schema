@@ -19,12 +19,11 @@
 package org.kiji.avro.dsl
 
 import scala.collection.JavaConverters.asScalaBufferConverter
-
+import scala.util.parsing.input.CharSequenceReader
 import org.apache.avro.Schema
 import org.codehaus.jackson.node.JsonNodeFactory
 import org.junit.Assert
 import org.slf4j.LoggerFactory
-
 import junit.framework.TestCase
 
 /**
@@ -35,6 +34,71 @@ class TestAvroSchemaParser
 
   private final val Log = LoggerFactory.getLogger(classOf[TestAvroSchemaParser])
   private val parser = new AvroSchemaParser()
+
+  def testAvroName(): Unit = {
+    def parseAvroName(text: String, context: parser.Context): AvroName = {
+      parser.avroName(context)(new CharSequenceReader(text)) match {
+        case success: parser.Success[AvroName] => success.get
+        case error => sys.error("Error parsing Avro name '%s' : %s".format(text, error))
+      }
+    }
+
+    // Test Avro name parser when context has no default namespace:
+    {
+      val avroName = parseAvroName(text = "SimpleName", context = parser.Context())
+      Assert.assertEquals("SimpleName", avroName.simpleName)
+      Assert.assertEquals("", avroName.namespace)
+      Assert.assertEquals(".SimpleName", avroName.fullName)
+    }
+    {
+      val avroName = parseAvroName(text = ".SimpleName", context = parser.Context())
+      Assert.assertEquals("SimpleName", avroName.simpleName)
+      Assert.assertEquals("", avroName.namespace)
+      Assert.assertEquals(".SimpleName", avroName.fullName)
+    }
+    {
+      val avroName = parseAvroName(text = "name.space.SimpleName", context = parser.Context())
+      Assert.assertEquals("SimpleName", avroName.simpleName)
+      Assert.assertEquals("name.space", avroName.namespace)
+      Assert.assertEquals("name.space.SimpleName", avroName.fullName)
+    }
+    {
+      val avroName = parseAvroName(text = ".name.space.SimpleName", context = parser.Context())
+      Assert.assertEquals("SimpleName", avroName.simpleName)
+      Assert.assertEquals("name.space", avroName.namespace)
+      Assert.assertEquals("name.space.SimpleName", avroName.fullName)
+    }
+
+    // Test Avro name parser when context has a default namespace:
+    {
+      val avroName = parseAvroName(text = "SimpleName",
+          context = parser.Context(defaultNamespace = Some("name.space")))
+      Assert.assertEquals("SimpleName", avroName.simpleName)
+      Assert.assertEquals("name.space", avroName.namespace)
+      Assert.assertEquals("name.space.SimpleName", avroName.fullName)
+    }
+    {
+      val avroName = parseAvroName(text = ".SimpleName",
+          context = parser.Context(defaultNamespace = Some("name.space")))
+      Assert.assertEquals("SimpleName", avroName.simpleName)
+      Assert.assertEquals("", avroName.namespace)
+      Assert.assertEquals(".SimpleName", avroName.fullName)
+    }
+    {
+      val avroName = parseAvroName(text = "name.space.SimpleName",
+          context = parser.Context(defaultNamespace = Some("name.space")))
+      Assert.assertEquals("SimpleName", avroName.simpleName)
+      Assert.assertEquals("name.space", avroName.namespace)
+      Assert.assertEquals("name.space.SimpleName", avroName.fullName)
+    }
+    {
+      val avroName = parseAvroName(text = ".name.space.SimpleName",
+          context = parser.Context(defaultNamespace = Some("name.space")))
+      Assert.assertEquals("SimpleName", avroName.simpleName)
+      Assert.assertEquals("name.space", avroName.namespace)
+      Assert.assertEquals("name.space.SimpleName", avroName.fullName)
+    }
+  }
 
   def testPrimitives(): Unit = {
     Assert.assertEquals(Schema.create(Schema.Type.NULL), parser.parse("null"))

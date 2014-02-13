@@ -69,41 +69,17 @@ trait AvroSchemaParsers
     return namedTypes(name)
   }
 
-  /** Parses an optional namespace. */
-  private def namespace: Parser[Option[List[String]]] = {
-    ("."?) ~ ((ident <~ ".")*) ^^ { parsed =>
-      val leadingPeriod = parsed._1
-      val nsComponents = parsed._2
-      if (nsComponents.isEmpty) {
-        if (leadingPeriod.isEmpty) {
-          None  // relative
-        } else {
-          Some(List())
-        }
-      } else {
-        Some(nsComponents)
-      }
-    }
-  }
-
-  /**
-   * Parses an Avro name ".name.space.SimpleName".
-   */
-  private def avroName: Parser[AvroName] = {
-    (namespace ~ ident) ^^ { parsed => new AvroName(name = parsed._2, ns = parsed._1) }
-  }
-
   /**
    * Parser for the record declaration prefix.
    * Pre-register the empty record shell, to allow recursive records.
    */
-  private def recordDecl: Parser[Schema] = {
-    ("record" ~> avroName) ^^ { avroName: AvroName =>
+  private def recordDecl(context: Context): Parser[Schema] = {
+    ("record" ~> avroName(context)) ^^ { avroName: AvroName =>
       namedTypes.get(avroName.fullName) match {
         case Some(record) => record
         case None => {
-          val name = avroName.name
-          val namespace = avroName.nameSpace
+          val name = avroName.simpleName
+          val namespace = avroName.namespace
           val doc = null
           val isError = false
           val record = Schema.createRecord(name, doc, namespace, isError)
@@ -114,16 +90,19 @@ trait AvroSchemaParsers
     }
   }
 
-  /** Parser for an Avro record declaration. */
-  private def record: Parser[Schema] = {
-    (recordDecl ~ ("{" ~> (recordField*) <~ "}")) ^^ {
-      parsed => {
-        val record = parsed._1
-        val fields: List[Schema.Field] = parsed._2
-        record.setFields(fields.asJava)
-        record
-      }
-    }
+  /**
+   * Parser for an Avro record declaration.
+   *
+   * Within a record definition, the default namespace is the namespace of the record.
+   */
+  private def record(context: Context) = Parser[Schema] {
+    (recordDecl(context) <~ "{") into { recordSchema: Schema => {
+      val nestedContext = Context(defaultNamespace = Some(recordSchema.getNamespace))
+      (rep(recordField(nestedContext)) <~ "}") ^^ { fields: List[Schema.Field] => {
+        recordSchema.setFields(fields.asJava)
+        recordSchema
+      }}
+    }}
   }
 
   private def avroValueToJsonNode(value: Any, schema: Schema): JsonNode = {
@@ -143,8 +122,8 @@ trait AvroSchemaParsers
     jsonNode
   }
 
-  private def avroValueAsJsonNode(schema: Schema): Parser[JsonNode] = {
-    firstAvroValue(schema) ^^ {
+  private def avroValueAsJsonNode(schema: Schema, context: Context): Parser[JsonNode] = {
+    firstAvroValue(schema, context) ^^ {
       value: Any => {
         value match {
           case null => JsonNodeFactory.instance.nullNode
@@ -155,13 +134,13 @@ trait AvroSchemaParsers
   }
 
   /** Parser for a single record field. */
-  private def recordField: Parser[Schema.Field] = {
-    (avroType ~ ident) into {
+  private def recordField(context: Context): Parser[Schema.Field] = {
+    (avroType(context) ~ ident) into {
       parsedTypeName => {
         val schema: Schema = parsedTypeName._1
         val fieldName: String = parsedTypeName._2
         val doc: String = null
-        (opt("=" ~> (avroValueAsJsonNode(schema) | jacksonJsonValue)) <~ opt(","|";")) ^^ {
+        (opt("=" ~> (avroValueAsJsonNode(schema, context) | jacksonJsonValue)) <~ opt(","|";")) ^^ {
           default: Option[JsonNode] => new Schema.Field(fieldName, schema, doc, default.orNull)
         }
       }
@@ -169,8 +148,8 @@ trait AvroSchemaParsers
   }
 
   /** Parser for an Avro enum declaration. */
-  private def enum: Parser[Schema] = {
-    "enum" ~> avroName ~ ("{" ~> enumSymbols <~ "}") ^^ {
+  private def enum(context: Context): Parser[Schema] = {
+    "enum" ~> avroName(context) ~ ("{" ~> enumSymbols <~ "}") ^^ {
       parsed => {
         val avroName = parsed._1
         if (namedTypes.contains(avroName.fullName)) {
@@ -178,8 +157,8 @@ trait AvroSchemaParsers
         }
 
         val enumSymbols = parsed._2
-        val name = avroName.name
-        val namespace = avroName.nameSpace
+        val name = avroName.simpleName
+        val namespace = avroName.namespace
         val doc = null
         val schema = Schema.createEnum(name, doc, namespace, enumSymbols.asJava)
         namedTypes.put(avroName.fullName, schema)
@@ -194,16 +173,16 @@ trait AvroSchemaParsers
   }
 
   /** Parser for an Avro fixed declaration. */
-  private def fixed: Parser[Schema] = {
-    "fixed" ~> avroName ~ ("(" ~> wholeNumber <~ ")") ^^ {
+  private def fixed(context: Context): Parser[Schema] = {
+    "fixed" ~> avroName(context: Context) ~ ("(" ~> wholeNumber <~ ")") ^^ {
       parsed => {
         val avroName = parsed._1
         if (namedTypes.contains(avroName.fullName)) {
           sys.error("Duplicate Avro name: '%s'".format(avroName.fullName))
         }
 
-        val name = avroName.name
-        val namespace = avroName.nameSpace
+        val name = avroName.simpleName
+        val namespace = avroName.namespace
         val size = parsed._2.toInt
         val doc = null
         val schema = Schema.createFixed(name, doc, namespace, size)
@@ -214,16 +193,16 @@ trait AvroSchemaParsers
   }
 
   /** Parser for a union schema. */
-  private def union: Parser[Schema] = {
-    ("union" ~> "{" ~> avroTypeSequence <~ "}") ^^ {
+  private def union(context: Context): Parser[Schema] = {
+    ("union" ~> "{" ~> avroTypeSequence(context) <~ "}") ^^ {
       unionBranches => Schema.createUnion(unionBranches.asJava)
     }
   }
 
   /** Parser for an Avro schema referenced by name. */
-  private def namedSchemaRef: Parser[Schema] = {
+  private def namedSchemaRef(context: Context): Parser[Schema] = {
     Parser[Schema] { in =>
-      avroName(in) match {
+      avroName(context)(in) match {
         case success: Success[AvroName] => {
           val avroName = success.get
           namedTypes.get(avroName.fullName) match {
@@ -237,7 +216,7 @@ trait AvroSchemaParsers
   }
 
   /** Parses one Avro type from the input. */
-  def avroType: Parser[Schema] = (
+  def avroType(context: Context): Parser[Schema] = (
       "null" ^^ { _ => Schema.create(Schema.Type.NULL) }
     | "boolean" ^^ { _ => Schema.create(Schema.Type.BOOLEAN) }
     | "int" ^^ { _ => Schema.create(Schema.Type.INT) }
@@ -248,25 +227,26 @@ trait AvroSchemaParsers
     | "bytes" ^^ { _ => Schema.create(Schema.Type.BYTES) }
 
     // Composite unnamed schemas
-    | "array" ~> "<" ~> avroType <~ ">" ^^ { arrayItem => Schema.createArray(arrayItem) }
-    | "map" ~> "<" ~> avroType <~ ">" ^^ { mapItem => Schema.createMap(mapItem) }
+    | "array" ~> "<" ~> avroType(context) <~ ">" ^^ { arrayItem => Schema.createArray(arrayItem) }
+    | "map" ~> "<" ~> avroType(context) <~ ">" ^^ { mapItem => Schema.createMap(mapItem) }
 
     // Named schemas
-    | enum
-    | fixed
-    | record
-    | union
-    | namedSchemaRef
+    | enum(context)
+    | fixed(context)
+    | record(context)
+    | union(context)
+    | namedSchemaRef(context)
 
     // Allow pre-declaring a record (eg. for mutually recursive records):
-    | recordDecl ~> avroType
+    | recordDecl(context) ~> avroType(context)
   )
 
   /**
    * Parses a sequence of Avro types, optionally separated by ',' or ';'.
    * Used for type unions or sequences.
    */
-  def avroTypeSequence: Parser[List[Schema]] = {
-    (avroType <~ opt(","|";"))*
+  def avroTypeSequence(context: Context): Parser[List[Schema]] = {
+    (avroType(context) <~ opt(","|";"))*
   }
+
 }

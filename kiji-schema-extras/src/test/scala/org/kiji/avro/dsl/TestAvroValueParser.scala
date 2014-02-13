@@ -47,7 +47,7 @@ class TestAvroValueParser
   private val schemaParser = new AvroSchemaParser()
 
   def testPrimitives(): Unit = {
-    Assert.assertEquals(null, AvroValueParser.parse("null", schemaParser.parse("null")))
+    Assert.assertNull(AvroValueParser.parse("null", schemaParser.parse("null")))
     Assert.assertEquals(true, AvroValueParser.parse("true", Schema.create(Type.BOOLEAN)))
     Assert.assertEquals(false, AvroValueParser.parse("false", Schema.create(Type.BOOLEAN)))
     Assert.assertEquals(new JInteger(1), AvroValueParser.parse("1", Schema.create(Type.INT)))
@@ -200,47 +200,53 @@ class TestAvroValueParser
       |enum org.kiji.schema.avro.CompressionType { NONE, GZ, LZO, SNAPPY }
       |enum org.kiji.schema.avro.SchemaType { INLINE, CLASS, COUNTER, AVRO, RAW_BYTES, PROTOBUF }
       |enum org.kiji.schema.avro.SchemaStorage { HASH, UID, FINAL }
+      |
       |record org.kiji.schema.avro.AvroSchema {
       |  union { null, long } uid = null;
       |  union { null, string } json = null;
       |}
+      |
       |enum org.kiji.schema.avro.AvroValidationPolicy { STRICT, DEVELOPER, SCHEMA_1_0, NONE }
+      |
       |record org.kiji.schema.avro.CellSchema {
-      |  org.kiji.schema.avro.SchemaStorage storage = org.kiji.schema.avro.SchemaStorage(HASH);
-      |  org.kiji.schema.avro.SchemaType type;
+      |  SchemaStorage storage = SchemaStorage(HASH);
+      |  SchemaType type;
       |  union { null, string } value = null;
-      |  org.kiji.schema.avro.AvroValidationPolicy avro_validation_policy =
-      |      org.kiji.schema.avro.AvroValidationPolicy(SCHEMA_1_0);
+      |  AvroValidationPolicy avro_validation_policy = AvroValidationPolicy(SCHEMA_1_0);
       |  union { null, string } specific_reader_schema_class = null;
-      |  union { null, org.kiji.schema.avro.AvroSchema } default_reader = null;
-      |  union { null, array<org.kiji.schema.avro.AvroSchema> } readers = null;
-      |  union { null, array<org.kiji.schema.avro.AvroSchema> } written = null;
-      |  union { null, array<org.kiji.schema.avro.AvroSchema> } writers = null;
+      |  union { null, AvroSchema } default_reader = null;
+      |  union { null, array<AvroSchema> } readers = null;
+      |  union { null, array<AvroSchema> } written = null;
+      |  union { null, array<AvroSchema> } writers = null;
       |  union { null, string } protobuf_full_name = null;
       |  union { null, string } protobuf_class_name = null;
       |}
+      |
       |record org.kiji.schema.avro.ColumnDesc {
       |  int id = 0;
       |  string name;
       |  array<string> aliases = [];
       |  boolean enabled = true;
       |  string description = "";
-      |  org.kiji.schema.avro.CellSchema column_schema;
+      |  CellSchema column_schema;
       |  boolean delete = false;
       |  union { null, string } renamed_from = null;
       |}
+      |
       |record org.kiji.schema.avro.FamilyDesc {
       |  int id = 0;
       |  string name;
       |  array<string> aliases = [];
       |  boolean enabled = true;
       |  string description = "";
-      |  union { null, org.kiji.schema.avro.CellSchema } map_schema = null;
-      |  array<org.kiji.schema.avro.ColumnDesc> columns = [];
+      |  union { null, CellSchema } map_schema = null;
+      |  array<ColumnDesc> columns = [];
       |  boolean delete = false;
       |  union { null, string } renamed_from = null;
       |}
+      |
       |enum org.kiji.schema.avro.BloomType { NONE, ROW, ROWCOL }
+      |
       |record org.kiji.schema.avro.LocalityGroupDesc {
       |  int id = 0;
       |  string name;
@@ -251,51 +257,54 @@ class TestAvroValueParser
       |  int max_versions;
       |  int ttl_seconds;
       |  union { null, int } block_size = null;
-      |  union { null, org.kiji.schema.avro.BloomType } bloom_type = null;
-      |  org.kiji.schema.avro.CompressionType compression_type;
-      |  array<org.kiji.schema.avro.FamilyDesc> families = [];
+      |  union { null, BloomType } bloom_type = null;
+      |  CompressionType compression_type;
+      |  array<FamilyDesc> families = [];
       |  boolean delete = false;
       |  union { null, string } renamed_from = null;
       |}
+      |
       |enum org.kiji.schema.avro.HashType { MD5 }
       |enum org.kiji.schema.avro.RowKeyEncoding { RAW, HASH, HASH_PREFIX, FORMATTED }
+      |
       |record org.kiji.schema.avro.HashSpec {
-      |  org.kiji.schema.avro.HashType hash_type = org.kiji.schema.avro.HashType(MD5);
+      |  HashType hash_type = HashType(MD5);
       |  int hash_size = 16;
       |  boolean suppress_key_materialization = false;
       |}
+      |
       |record org.kiji.schema.avro.RowKeyFormat {
-      |  org.kiji.schema.avro.RowKeyEncoding encoding;
-      |  union { null, org.kiji.schema.avro.HashType } hash_type = null;
+      |  RowKeyEncoding encoding;
+      |  union { null, HashType } hash_type = null;
       |  int hash_size = 0;
       |}
+      |
       |enum org.kiji.schema.avro.ComponentType { STRING, INTEGER, LONG }
+      |
       |record org.kiji.schema.avro.RowKeyComponent {
       |  string name;
-      |  org.kiji.schema.avro.ComponentType type;
+      |  ComponentType type;
       |}
+      |
       |record org.kiji.schema.avro.RowKeyFormat2 {
-      |  org.kiji.schema.avro.RowKeyEncoding encoding;
-      |   union { org.kiji.schema.avro.HashSpec, null } salt =
-      |       org.kiji.schema.avro.HashSpec {
-      |           hash_type=org.kiji.schema.avro.HashType(MD5),
-      |           hash_size=2,
-      |           suppress_key_materialization=false
-      |       };
+      |  RowKeyEncoding encoding;
+      |  union { HashSpec, null } salt = HashSpec {
+      |      hash_type=HashType(MD5),
+      |      hash_size=2,
+      |      suppress_key_materialization=false
+      |  };
       |  int range_scan_start_index = 1;
       |  int nullable_start_index = 1;
-      |  array<org.kiji.schema.avro.RowKeyComponent> components = [];
+      |  array<RowKeyComponent> components = [];
       |}
+      |
       |record org.kiji.schema.avro.TableLayoutDesc {
       |  string name;
       |  union { null, long } max_filesize = null;
       |  union { null, long } memstore_flushsize = null;
       |  string description = "";
-      |  union {
-      |      org.kiji.schema.avro.RowKeyFormat,
-      |      org.kiji.schema.avro.RowKeyFormat2
-      |  } keys_format;
-      |  array<org.kiji.schema.avro.LocalityGroupDesc> locality_groups = [];
+      |  union { RowKeyFormat, RowKeyFormat2 } keys_format;
+      |  array<LocalityGroupDesc> locality_groups = [];
       |  string version;
       |  union { null, string } layout_id = null;
       |  union { null, string } reference_layout = null;
@@ -310,30 +319,37 @@ class TestAvroValueParser
         text="""
           |org.kiji.schema.avro.TableLayoutDesc {
           |  name = "table_name"
-          |  keys_format = org.kiji.schema.avro.RowKeyFormat2 {
-          |    encoding = org.kiji.schema.avro.RowKeyEncoding(FORMATTED)
-          |    components = [
-          |      org.kiji.schema.avro.RowKeyComponent {
-          |        name = "key"
-          |        type = org.kiji.schema.avro.ComponentType(STRING)
-          |      }
-          |    ]
-          |  },
+          |  keys_format = RowKeyFormat2 {
+          |    encoding = RowKeyEncoding(FORMATTED)
+          |    components = [RowKeyComponent { name = "key", type = ComponentType(STRING) }]
+          |  }
           |  locality_groups = [
-          |    org.kiji.schema.avro.LocalityGroupDesc {
-          |      name = "default_lg",
-          |      max_versions = 1000,
+          |    LocalityGroupDesc {
+          |      name = "default_lg"
+          |      max_versions = 1000
           |      ttl_seconds = 3600
-          |      in_memory = false,
-          |      compression_type = org.kiji.schema.avro.CompressionType(NONE)
+          |      in_memory = false
+          |      compression_type = CompressionType(NONE)
           |      families = [
-          |        org.kiji.schema.avro.FamilyDesc {
-          |          name = "info",
+          |        FamilyDesc {
+          |          name = "info"
+          |          columns = [
+          |            ColumnDesc {
+          |              name = "full_name"
+          |              description = "The user's full name"
+          |              column_schema = CellSchema {
+          |                type = SchemaType(AVRO)
+          |                avro_validation_policy = AvroValidationPolicy(STRICT)
+          |                readers = [AvroSchema{json='["int", "string"]'}]
+          |                writers = [AvroSchema{json='"int"'}, AvroSchema{json='"string"'}]
+          |              }
+          |            }
+          |          ]
           |        }
-          |      ],
-          |    },
-          |  ],
-          |  version = "",
+          |      ]
+          |    }
+          |  ]
+          |  version = "layout-1.4.0"
           |}
         """.stripMargin,
         schema=layoutSchema
@@ -348,7 +364,13 @@ class TestAvroValueParser
     Assert.assertEquals(3600, localityGroup.get("ttl_seconds"))
     val families = localityGroup.get("families").asInstanceOf[JList[GenericData.Record]]
     Assert.assertEquals(1, families.size)
-    Assert.assertEquals("info", families.get(0).get("name"))
+    val family = families.get(0)
+    Assert.assertEquals("info", family.get("name"))
+    val columns = family.get("columns").asInstanceOf[JList[GenericData.Record]]
+    Assert.assertEquals(1, columns.size)
+    val column = columns.get(0)
+    Assert.assertEquals("full_name", column.get("name"))
+    Assert.assertEquals("The user's full name", column.get("description"))
   }
 
   def testSchemaWithComments(): Unit = {
