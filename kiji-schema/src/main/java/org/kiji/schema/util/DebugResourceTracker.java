@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.kiji.schema;
+package org.kiji.schema.util;
 
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
@@ -30,13 +30,14 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.schema.InternalKijiError;
 
 /**
  * Tracks resources which should be cleaned up before JVM shutdown.
  *
  * <p>
  *   The behavior of this tracker can be controlled using the system property
- *   "org.kiji.schema.DebugResourceTracker.tracking_level" which may be set to any value of
+ *   "org.kiji.schema.util.DebugResourceTracker.tracking_level" which may be set to any value of
  *   enum {@link DebugResourceTracker.TrackingLevel}. Tracking levels include:
  *   <ul>
  *     <li>NONE - No tracking.</li>
@@ -69,11 +70,11 @@ import org.kiji.annotations.ApiStability;
 public final class DebugResourceTracker {
   /**
    * The configured tracking level of this tracker. This value is set by the system property
-   * "org.kiji.schema.DebugResourceTracker.tracking_level" and may be set to any value of the
+   * "org.kiji.schema.util.DebugResourceTracker.tracking_level" and may be set to any value of the
    * enum {@link DebugResourceTracker.TrackingLevel}.
    */
   public static final TrackingLevel TRACKING_LEVEL = TrackingLevel.valueOf(
-      System.getProperty("org.kiji.schema.DebugResourceTracker.tracking_level", "COUNTER"));
+      System.getProperty("org.kiji.schema.util.DebugResourceTracker.tracking_level", "COUNTER"));
   private static final Logger LOG = LoggerFactory.getLogger(DebugResourceTracker.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + DebugResourceTracker.class.getName());
