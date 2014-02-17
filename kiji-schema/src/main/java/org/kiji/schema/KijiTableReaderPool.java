@@ -18,6 +18,7 @@
  */
 package org.kiji.schema;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +53,9 @@ import org.kiji.schema.layout.ColumnReaderSpec;
  */
 @ApiAudience.Public
 @ApiStability.Experimental
-public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTableReader> {
+public final class KijiTableReaderPool
+    extends GenericObjectPool<PooledKijiTableReader>
+    implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTableReaderPool.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger(KijiTableReaderPool.class.getName() + ".Cleanup");
@@ -583,8 +586,14 @@ public final class KijiTableReaderPool extends GenericObjectPool<PooledKijiTable
 
   /** {@inheritDoc} */
   @Override
-  public void close() throws Exception {
-    super.close();
+  public void close() throws IOException {
+    try {
+      super.close();
+    } catch (IOException ioe) {
+      throw ioe;
+    } catch (Exception e) {
+      throw new KijiIOException(e);
+    }
     mFactory.mFactoryDelegate.getTable().release();
   }
 
