@@ -125,14 +125,14 @@ public final class DebugResourceTracker {
       case COUNTER: {
         mResources = null;
         mCounter = new AtomicInteger(0);
-        LOG.info("Registering hook to log number of unclosed resources at shutdown.");
+        LOG.debug("Registering hook to log number of unclosed resources at shutdown.");
         Runtime.getRuntime().addShutdownHook(new ShutdownHook());
         break;
       }
       case REFERENCES: {
         mResources = Collections.synchronizedMap(new WeakIdentityHashMap<Object, String>());
         mCounter = new AtomicInteger(0);
-        LOG.info("Registering hook to log details of unclosed resources at shutdown.");
+        LOG.debug("Registering hook to log details of unclosed resources at shutdown.");
         Runtime.getRuntime().addShutdownHook(new ShutdownHook());
         break;
       }
