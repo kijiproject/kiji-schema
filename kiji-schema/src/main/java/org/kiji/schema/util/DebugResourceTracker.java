@@ -69,12 +69,18 @@ import org.kiji.schema.InternalKijiError;
 @ApiStability.Experimental
 public final class DebugResourceTracker {
   /**
+   * The system property to set to configure the tracking level of this tracker.
+   */
+  public static final String TRACKING_LEVEL_PROPERTY =
+      "org.kiji.schema.util.DebugResourceTracker.tracking_level";
+
+  /**
    * The configured tracking level of this tracker. This value is set by the system property
-   * "org.kiji.schema.util.DebugResourceTracker.tracking_level" and may be set to any value of the
-   * enum {@link DebugResourceTracker.TrackingLevel}.
+   * specified by TRACKING_LEVEL_PROPERTY, and may be set to any value of the enum
+   * {@link DebugResourceTracker.TrackingLevel}.
    */
   public static final TrackingLevel TRACKING_LEVEL = TrackingLevel.valueOf(
-      System.getProperty("org.kiji.schema.util.DebugResourceTracker.tracking_level", "COUNTER"));
+      System.getProperty(TRACKING_LEVEL_PROPERTY, "COUNTER"));
   private static final Logger LOG = LoggerFactory.getLogger(DebugResourceTracker.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + DebugResourceTracker.class.getName());
@@ -166,10 +172,14 @@ public final class DebugResourceTracker {
   private void logCounter() {
     final int unclosed = mCounter.get();
     if (0 != unclosed) {
-      CLEANUP_LOG.error("Found {} unclosed resources. Run with system property \"org.kiji.schema."
-          + "impl.DebugResourceTracker.tracking_level=REFERENCES\" for more details.", unclosed);
-      LOG.error("Found {} unclosed resources. Run with system property \"org.kiji.schema."
-          + "impl.DebugResourceTracker.tracking_level=REFERENCES\" for more details.", unclosed);
+      CLEANUP_LOG.error(
+          "Found {} unclosed resources. Run with system property {} for more details.",
+          unclosed,
+          TRACKING_LEVEL_PROPERTY);
+      LOG.error(
+          "Found {} unclosed resources. Run with system property {} for more details.",
+          unclosed,
+          TRACKING_LEVEL_PROPERTY);
     } else {
       LOG.debug("JVM shutdown with no unclosed resources.");
     }
