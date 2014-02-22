@@ -169,6 +169,8 @@ public class TestKijiTablePool extends KijiClientTest {
     replay(mTableFactory);
 
     KijiTable first = pool.get("foo");
+    KijiTable second = pool.get("foo");
+    KijiTable third = pool.get("foo");
     assertEquals("Incorrect number of connections in the pool.", 3, pool.getPoolSize("foo"));
   }
 
@@ -250,7 +252,7 @@ public class TestKijiTablePool extends KijiClientTest {
       fooTable.retain();
       fail("Should throw an IllegalStateException.");
     } catch (IllegalStateException ise) {
-      assertTrue(ise.getMessage().endsWith("retain counter was 1."));
+      assertTrue(ise.getMessage().endsWith("retain counter was 2."));
     }
   }
 
@@ -274,7 +276,7 @@ public class TestKijiTablePool extends KijiClientTest {
       fooTable.release();
       fail("Should throw an IllegalStateException.");
     } catch (IllegalStateException ise) {
-      assertTrue(ise.getMessage().endsWith("retain counter is now -1."));
+      assertTrue(ise.getMessage().endsWith("retain counter is now 0."));
     }
   }
 

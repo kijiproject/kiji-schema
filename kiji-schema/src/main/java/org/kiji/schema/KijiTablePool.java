@@ -393,7 +393,7 @@ public final class KijiTablePool implements Closeable {
             + " are " + mPoolSize + " tables in the pool.");
         }
         LOG.debug("Cache miss for table {}", mTableName);
-        KijiTable tableConnection = new PooledKijiTable(mTableFactory.openTable(mTableName), this);
+        availableConnection = new PooledKijiTable(mTableFactory.openTable(mTableName), this);
         mPoolSize++;
         if (mPoolSize < mMinSize) {
           LOG.debug("Below the min pool size for table {}. Adding to the pool.", mTableName);
@@ -402,12 +402,12 @@ public final class KijiTablePool implements Closeable {
             mPoolSize++;
           }
         }
-        return tableConnection;
+      } else {
+        LOG.debug("Cache hit for table {}", mTableName);
       }
-      LOG.debug("Cache hit for table {}", mTableName);
       final int counter = availableConnection.mRetainCount.incrementAndGet();
       // TODO(SCHEMA-246): Instead of failing here, open a new connection and return it.
-      Preconditions.checkState(counter == 1,
+      Preconditions.checkState(counter == 2,
           "Cannot get retained KijiTable %s: retain counter was %s.",
           availableConnection.getURI(), counter);
       return availableConnection;
@@ -441,6 +441,10 @@ public final class KijiTablePool implements Closeable {
       while (iterator.hasNext() && mPoolSize > mMinSize) {
         PooledKijiTable connection = iterator.next();
         if (currentTime - connection.getLastAccessTime() > idleTimeout) {
+          final int counter = connection.mRetainCount.decrementAndGet();
+          Preconditions.checkState(counter == 0,
+              "Cannot clean up KijiTable %s: retain counter is %s.",
+              connection.getURI(), counter);
           LOG.info("Closing idle PooledKijiTable connection to {}.", connection.getURI());
           iterator.remove();
           connection.releaseUnderlyingKijiTable();
@@ -470,6 +474,10 @@ public final class KijiTablePool implements Closeable {
   /**
    * A connection in the pool.  This class wraps a KijiTable, and {@link #release()} can be
    * called to return this connection to the pool.
+   *
+   * The KijiTablePool is considered to be retaining all tables of its children.  So available
+   * tables have a retain count of 1 and tables that have been returned to a client have
+   * a retain count >= 2.
    */
   private static class PooledKijiTable implements KijiTable {
     private final KijiTable mTable;
@@ -512,7 +520,7 @@ public final class KijiTablePool implements Closeable {
     public KijiTable retain() {
       LOG.warn("Retaining KijiTable obtained from a KijiTablePool is not recommended.");
       final int counter = mRetainCount.incrementAndGet();
-      Preconditions.checkState(counter >= 2,
+      Preconditions.checkState(counter >= 3,
           "Cannot retain a closed KijiTable %s: retain counter was %s.", getURI(), counter);
       return this;
     }
@@ -521,10 +529,10 @@ public final class KijiTablePool implements Closeable {
     @Override
     public void release() throws IOException {
       final int counter = mRetainCount.decrementAndGet();
-      Preconditions.checkState(counter >= 0,
-          "Cannot release KijiTable %s that has been returned: retain counter is now %s.",
+      Preconditions.checkState(counter >= 1,
+          "Cannot release KijiTable %s that was already returned: retain counter is now %s.",
           getURI(), counter);
-      if (counter == 0) {
+      if (counter == 1) {
         mLastAccessTime = mPool.getClock().getTime();
         mPool.returnConnection(this);
       }
