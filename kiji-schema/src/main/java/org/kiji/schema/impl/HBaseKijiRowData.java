@@ -784,8 +784,8 @@ public final class HBaseKijiRowData implements KijiRowData {
         "Column %s has no data request.", column);
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         "iterator(String family) is only enabled"
-        + " on map type column families. The column family [%s], is a group type column family."
-        + " Please use the iterator(String family, String qualifier) method.",
+            + " on map type column families. The column family [%s], is a group type column family."
+            + " Please use the iterator(String family, String qualifier) method.",
         family);
     return new KijiCellIterator<T>(column, this, mEntityId);
   }
@@ -809,8 +809,8 @@ public final class HBaseKijiRowData implements KijiRowData {
         "Column %s has no data request.", column);
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         "asIterable(String family) is only enabled"
-        + " on map type column families. The column family [%s], is a group type column family."
-        + " Please use the asIterable(String family, String qualifier) method.",
+            + " on map type column families. The column family [%s], is a group type column family."
+            + " Please use the asIterable(String family, String qualifier) method.",
         family);
     return new CellIterable<T>(column, this, mEntityId);
   }
@@ -834,6 +834,21 @@ public final class HBaseKijiRowData implements KijiRowData {
         + "Please use the getPager(String family, String qualifier) method.",
         family);
     return new HBaseMapFamilyPager(mEntityId, mDataRequest, mTable, kijiFamily);
+  }
+
+  /**
+   * Get a KijiResult corresponding to the same data as this KjiRowData.
+   *
+   * @return a KijiResult corresponding to the same data as this KijiRowData.
+   */
+  public HBaseKijiResult asKijiResult() {
+    return new HBaseKijiResult(
+        mEntityId,
+        mDataRequest,
+        mResult,
+        new ColumnNameTranslator(mTableLayout),
+        mDecoderProvider,
+        mTable);
   }
 
   /** {@inheritDoc} */

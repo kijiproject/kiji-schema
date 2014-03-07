@@ -46,6 +46,7 @@ import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestValidator;
+import org.kiji.schema.KijiResult;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTableReader;
@@ -373,6 +374,37 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     // Parse the result.
     return new HBaseKijiRowData(
         mTable, dataRequest, entityId, result, capsule.getCellDecoderProvider());
+  }
+
+  /**
+   * Get a KijiResult for the given EntityId and data request.
+   *
+   * @param entityId EntityId of the row from which to get data.
+   * @param dataRequest Specification of the data to get from the given row.
+   * @return a new KijiResult for the given EntityId and data request.
+   * @throws IOException in case of an error getting the data.
+   */
+  public KijiResult getResult(
+      final EntityId entityId,
+      final KijiDataRequest dataRequest
+  ) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get row from KijiTableReader instance %s in state %s.", this, state);
+    final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
+    final KijiTableLayout tableLayout = capsule.getLayout();
+    validateRequestAgainstLayout(dataRequest, tableLayout);
+    final HBaseDataRequestAdapter hbaseDataRequestAdapter =
+        new HBaseDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
+    final Get get = hbaseDataRequestAdapter.toGet(entityId, tableLayout);
+    final Result result = get.hasFamilies() ? doHBaseGet(get) : new Result();
+    return new HBaseKijiResult(
+        entityId,
+        dataRequest,
+        result,
+        capsule.getColumnNameTranslator(),
+        capsule.getCellDecoderProvider(),
+        mTable);
   }
 
   /** {@inheritDoc} */
