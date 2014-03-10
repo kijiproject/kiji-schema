@@ -113,11 +113,15 @@ public class TestHBaseTableLayoutDatabase extends KijiClientTest {
     final String tableName = layoutDesc1.getName();
     final KijiTableLayout layout1 = mTableLayoutDatabase.updateTableLayout(tableName, layoutDesc1);
 
+    // This thread sleep prevents this value from overwriting the previous in case both writes occur
+    // within the same millisecond.
+    Thread.sleep(2);
     final TableLayoutDesc layoutDesc2 = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
     layoutDesc2.setVersion("layout-1.0.1");
     layoutDesc2.setReferenceLayout(layout1.getDesc().getLayoutId());
     final KijiTableLayout layout2 = mTableLayoutDatabase.updateTableLayout(tableName, layoutDesc2);
 
+    Thread.sleep(2);
     final TableLayoutDesc layoutDesc3 = KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE);
     layoutDesc3.setVersion("layout-1.1");
     layoutDesc3.setReferenceLayout(layout2.getDesc().getLayoutId());
