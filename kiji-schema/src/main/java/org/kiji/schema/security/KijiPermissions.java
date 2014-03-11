@@ -39,7 +39,7 @@ import org.kiji.annotations.ApiStability;
  * rows.
  */
 @ApiAudience.Framework
-@ApiStability.Unstable
+@ApiStability.Experimental
 public final class KijiPermissions {
   /** Actions in Kiji that have an HBase Action counterpart. */
   private static final EnumSet<Action> HBASE_ACTIONS = EnumSet.of(
