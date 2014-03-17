@@ -268,8 +268,9 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     assert 1 == counterEntries.size();
 
     final Map.Entry<Long, byte[]> counterEntry = counterEntries.firstEntry();
-    final DecodedCell<Long> counter =
-        new DecodedCell<Long>(null, Bytes.toLong(counterEntry.getValue()));
+    final DecodedCell<Long> counter = new DecodedCell<Long>(
+        DecodedCell.NO_SCHEMA,
+        Bytes.toLong(counterEntry.getValue()));
     return new KijiCell<Long>(family, qualifier, counterEntry.getKey(), counter);
   }
 

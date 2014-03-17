@@ -37,24 +37,53 @@ import org.kiji.annotations.ApiStability;
 @ApiAudience.Framework
 @ApiStability.Evolving
 public final class DecodedCell<T> {
-  /** Schema used to write the cell data, or null for a counter. */
+  /**
+   * Constant representing a Decoded cell without a Schema. This can be used for reader or writer
+   * Schemas.
+   */
+  public static final Schema NO_SCHEMA = null;
+
+  /** Schema used to read the cell data, or null for a non-Avro values. */
+  private final Schema mReaderSchema;
+
+  /** Schema used to write the cell data, or null for a non-Avro values. */
   private Schema mWriterSchema;
 
   /** Decoded cell content. */
-  private T mData;
+  private final T mData;
 
   /**
    * Initializes a DecodedCell instance.
    *
-   * @param writerSchema Avro schema used to the encode the cell, or null for counters.
+   * @param writerSchema Avro schema used to encode the cell, or null for non-Avro values.
+   * @param readerSchema Avro schema used to decode the cell, or null for non-Avro values.
    * @param data Cell content.
    */
-  public DecodedCell(Schema writerSchema, T data) {
+  public DecodedCell(Schema writerSchema, Schema readerSchema, T data) {
     mWriterSchema = writerSchema;
+    mReaderSchema = readerSchema;
     mData = data;
   }
 
-  /** @return the Avro schema used to encode the cell content, or null for counters. */
+  /**
+   * Initializes a DecodedCell instance.
+   *
+   * @param writerAndReaderSchema Avro schema used to encode and decode the cell, or null for
+   *     non-Avro values.
+   * @param data Cell content.
+   */
+  public DecodedCell(Schema writerAndReaderSchema, T data) {
+    mWriterSchema = writerAndReaderSchema;
+    mReaderSchema = writerAndReaderSchema;
+    mData = data;
+  }
+
+  /** @return the Avro schema used to decode the cell content, or null for non-Avro values. */
+  public Schema getReaderSchema() {
+    return mReaderSchema;
+  }
+
+  /** @return the Avro schema used to encode the cell content, or null for non-Avro values. */
   public Schema getWriterSchema() {
     return mWriterSchema;
   }
@@ -78,6 +107,9 @@ public final class DecodedCell<T> {
     }
     final DecodedCell<?> other = (DecodedCell<?>) obj;
     if (!Objects.equal(this.getWriterSchema(), other.getWriterSchema())) {
+      return false;
+    }
+    if (!Objects.equal(this.getReaderSchema(), other.getReaderSchema())) {
       return false;
     }
 

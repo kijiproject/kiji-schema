@@ -331,7 +331,7 @@ public abstract class AvroCellDecoder<T> implements KijiCellDecoder<T> {
     final ByteBuffer binaryData =
         ByteBuffer.wrap(bytes, byteStream.getOffset(), bytes.length - byteStream.getOffset());
     final T data = decodeAvro(binaryData, writerSchema, readerSchema, reuse);
-    return new DecodedCell<T>(writerSchema, data);
+    return new DecodedCell<T>(writerSchema, readerSchema, data);
   }
 
   /**

@@ -63,7 +63,7 @@ public class RawBytesCellDecoder<T> implements KijiCellDecoder<T> {
   /** {@inheritDoc} */
   @Override
   public DecodedCell<T> decodeCell(byte[] encodedBytes) throws IOException {
-    return new DecodedCell(null, encodedBytes);
+    return new DecodedCell(DecodedCell.NO_SCHEMA, encodedBytes);
   }
 
   /** {@inheritDoc} */

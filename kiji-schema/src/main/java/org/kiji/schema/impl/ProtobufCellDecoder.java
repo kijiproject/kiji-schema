@@ -106,7 +106,9 @@ public class ProtobufCellDecoder<T> implements KijiCellDecoder<T> {
   @Override
   public DecodedCell<T> decodeCell(byte[] encodedBytes) throws IOException {
     try {
-      return new DecodedCell<T>(null, (T) mParseFromMethod.invoke(mProtoClass, encodedBytes));
+      return new DecodedCell<T>(
+          DecodedCell.NO_SCHEMA,
+          (T) mParseFromMethod.invoke(mProtoClass, encodedBytes));
     } catch (InvocationTargetException ite) {
       throw new IOException(ite);
     } catch (IllegalAccessException iae) {

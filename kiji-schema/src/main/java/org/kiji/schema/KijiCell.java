@@ -97,7 +97,12 @@ public final class KijiCell<T> {
     return mDecodedCell.getData();
   }
 
-  /** @return the Avro schema used to encode this cell, or null. */
+  /** @return the Avro Schema used to decode this cell, or null for non-Avro values. */
+  public Schema getReaderSchema() {
+    return mDecodedCell.getReaderSchema();
+  }
+
+  /** @return the Avro Schema used to encode this cell, or null for non-Avro values. */
   public Schema getWriterSchema() {
     return mDecodedCell.getWriterSchema();
   }

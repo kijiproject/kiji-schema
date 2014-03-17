@@ -2,7 +2,10 @@
 
                               KijiSchema Release Notes
 
-Version 1.3.8
+Version 1.4.0
+  * SCHEMA-672. DecodedCell and KijiCell now support getting the reader Schema
+      with which the cell was decoded (if any). Decoded cell adds a constructor
+      which accepts a writer schema, reader schema, and value.
   * SCHEMA-648. Adds support for CDH5 and HBase 96 and updates platform bridge
       API to be compatible. Due to the remove of client-exposed row locks,
       deleteMapFamily will no longer hold a lock while deleting qualifiers.

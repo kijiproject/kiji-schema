@@ -45,7 +45,7 @@ public final class CounterCellDecoder implements KijiCellDecoder<Long> {
   /** {@inheritDoc} */
   @Override
   public DecodedCell<Long> decodeCell(byte[] bytes) throws IOException {
-    return new DecodedCell<Long>(null, Bytes.toLong(bytes));
+    return new DecodedCell<Long>(DecodedCell.NO_SCHEMA, Bytes.toLong(bytes));
   }
 
   /** {@inheritDoc} */
