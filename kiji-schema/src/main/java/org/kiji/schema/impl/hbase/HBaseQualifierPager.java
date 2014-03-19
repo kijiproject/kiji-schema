@@ -45,7 +45,7 @@ import org.kiji.schema.filter.KijiColumnRangeFilter;
 import org.kiji.schema.filter.StripValueColumnFilter;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.KijiPaginationFilter;
-import org.kiji.schema.impl.hbase.HBaseKijiTable.LayoutCapsule;
+import org.kiji.schema.layout.impl.LayoutCapsule;
 import org.kiji.schema.util.Debug;
 
 /**

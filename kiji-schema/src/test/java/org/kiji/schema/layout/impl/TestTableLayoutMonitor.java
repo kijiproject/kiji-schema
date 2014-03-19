@@ -20,6 +20,7 @@
 package org.kiji.schema.layout.impl;
 
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.Multimap;
@@ -51,8 +52,9 @@ public class TestTableLayoutMonitor extends ZooKeeperTest {
       try {
 
         final KijiURI tableURI =
-            KijiURI.newBuilder(String.format("kiji://%s/kiji_instance/table_name", getZKAddress()))
-            .build();
+            KijiURI
+                .newBuilder(String.format("kiji://%s/kiji_instance/table_name", getZKAddress()))
+                .build();
 
         monitor.notifyNewTableLayout(tableURI, Bytes.toBytes("layout.v1"), -1);
 
@@ -73,11 +75,11 @@ public class TestTableLayoutMonitor extends ZooKeeperTest {
             });
 
         layoutTracker.open();
-        final String layout1 = queue.take();
+        final String layout1 = queue.poll(1, TimeUnit.SECONDS);
         Assert.assertEquals("layout.v1", layout1);
 
         monitor.notifyNewTableLayout(tableURI, Bytes.toBytes("layout.v2"), -1);
-        final String layout2 = queue.take();
+        final String layout2 = queue.poll(1, TimeUnit.SECONDS);
         Assert.assertEquals("layout.v2", layout2);
 
       } finally {
@@ -96,8 +98,9 @@ public class TestTableLayoutMonitor extends ZooKeeperTest {
       final ZooKeeperMonitor monitor = new ZooKeeperMonitor(zkClient);
       try {
         final KijiURI tableURI =
-            KijiURI.newBuilder(String.format("kiji://%s/kiji_instance/table_name", getZKAddress()))
-            .build();
+            KijiURI
+                .newBuilder(String.format("kiji://%s/kiji_instance/table_name", getZKAddress()))
+                .build();
 
         final BlockingQueue<Multimap<String, String>> queue = Queues.newSynchronousQueue();
 
@@ -115,43 +118,41 @@ public class TestTableLayoutMonitor extends ZooKeeperTest {
               }
             });
         tracker.open();
+        final ZooKeeperMonitor.TableUserRegistration userRegistration1 =
+            monitor.newTableUserRegistration("user-id-1", tableURI);
+        final ZooKeeperMonitor.TableUserRegistration userRegistration2 =
+            monitor.newTableUserRegistration("user-id-2", tableURI);
         try {
-          final Multimap<String, String> umap1 = queue.take();
-          Assert.assertTrue(umap1.isEmpty());
+          Assert.assertTrue(queue.poll(1, TimeUnit.SECONDS).isEmpty());
 
-          monitor.registerTableUser(tableURI, "user-id-1", "layout-id-1");
-          final Multimap<String, String> umap2 = queue.take();
-          Assert.assertEquals(ImmutableSetMultimap.of("user-id-1", "layout-id-1"), umap2);
-
-          monitor.registerTableUser(tableURI, "user-id-1", "layout-id-2");
-          final Multimap<String, String> umap3 = queue.take();
+          userRegistration1.updateRegisteredLayout("layout-id-1");
           Assert.assertEquals(
-              ImmutableSetMultimap.of(
-                  "user-id-1", "layout-id-1",
-                  "user-id-1", "layout-id-2"),
-              umap3);
+              ImmutableSetMultimap.of("user-id-1", "layout-id-1"),
+              queue.poll(1, TimeUnit.SECONDS));
 
-          monitor.registerTableUser(tableURI, "user-id-2", "layout-id-1");
-          final Multimap<String, String> umap4 = queue.take();
+          userRegistration1.updateRegisteredLayout("layout-id-2");
           Assert.assertEquals(
-              ImmutableSetMultimap.of(
-                  "user-id-1", "layout-id-1",
-                  "user-id-1", "layout-id-2",
-                  "user-id-2", "layout-id-1"),
-              umap4);
+              ImmutableSetMultimap.<String, String>of(), // unregistration event
+              queue.poll(1, TimeUnit.SECONDS));
+          Assert.assertEquals(
+              ImmutableSetMultimap.of("user-id-1", "layout-id-2"), // re-registration event
+              queue.poll(1, TimeUnit.SECONDS));
 
-          monitor.unregisterTableUser(tableURI, "user-id-1", "layout-id-1");
-          final Multimap<String, String> umap5 = queue.take();
+          userRegistration2.updateRegisteredLayout("layout-id-1");
           Assert.assertEquals(
               ImmutableSetMultimap.of(
                   "user-id-1", "layout-id-2",
                   "user-id-2", "layout-id-1"),
-              umap5);
+              queue.poll(1, TimeUnit.SECONDS));
+
+          userRegistration1.close();
+          Assert.assertEquals(
+              ImmutableSetMultimap.of("user-id-2", "layout-id-1"),
+              queue.poll(1, TimeUnit.SECONDS));
 
         } finally {
-          LOG.info("Closing tracker");
           tracker.close();
-          LOG.info("Tracker closed");
+          userRegistration2.close();
         }
       } finally {
         monitor.close();
@@ -160,5 +161,4 @@ public class TestTableLayoutMonitor extends ZooKeeperTest {
       zkClient.release();
     }
   }
-
 }

@@ -39,10 +39,10 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.LayoutConsumer;
-import org.kiji.schema.impl.hbase.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.impl.hbase.HBaseKijiTableWriter.WriterLayoutCapsule;
 import org.kiji.schema.layout.LayoutUpdatedException;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
+import org.kiji.schema.layout.impl.LayoutCapsule;
 
 /**
  * HBase implementation of AtomicKijiPutter.
@@ -108,12 +108,10 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
 
   /**
    * <p>
-   *   Set to true when the table calls
-   *   {@link InnerLayoutUpdater#update(HBaseKijiTable.LayoutCapsule)} to
-   *   indicate a table layout update.  Set to false when a user calls
-   *   {@link #begin(org.kiji.schema.EntityId)}.  If this becomes true while a transaction is in
-   *   progress all methods which would advance the transaction will instead call
-   *   {@link #rollback()} and throw a {@link LayoutUpdatedException}.
+   *   Set to true when the table calls {@link InnerLayoutUpdater#update} to indicate a table layout
+   *   update.  Set to false when a user calls {@link #begin(org.kiji.schema.EntityId)}.  If this
+   *   becomes true while a transaction is in progress all methods which would advance the
+   *   transaction will instead call {@link #rollback()} and throw a {@link LayoutUpdatedException}.
    * </p>
    * <p>
    *   Access to this variable must be protected by synchronizing on mLock.

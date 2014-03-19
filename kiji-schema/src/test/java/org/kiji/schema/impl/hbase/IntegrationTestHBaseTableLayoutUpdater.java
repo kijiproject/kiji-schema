@@ -75,9 +75,8 @@ public class IntegrationTestHBaseTableLayoutUpdater extends AbstractKijiIntegrat
       try {
         kiji.createTable(layout1);
 
-        final KijiTable table = kiji.openTable("table_name");  // currently not registered as a user
+        final KijiTable table = kiji.openTable("table_name");
         try {
-          monitor.registerTableUser(table.getURI(), "user-id-1", "1");
           final List<String> layoutIDs = Lists.newArrayList();
 
           final LayoutTracker tracker = monitor.newTableLayoutTracker(table.getURI(),
@@ -123,12 +122,7 @@ public class IntegrationTestHBaseTableLayoutUpdater extends AbstractKijiIntegrat
               Assert.assertEquals("2", layoutIDs.get(1));
             }
             tracker.close();
-
-            monitor.registerTableUser(table.getURI(), "user-id-1", "2");
-            monitor.unregisterTableUser(table.getURI(), "user-id-1", "1");
-
             thread.join();
-
           } finally {
             updater.close();
           }

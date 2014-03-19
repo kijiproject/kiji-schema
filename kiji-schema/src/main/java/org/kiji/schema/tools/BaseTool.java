@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import com.google.common.base.Preconditions;
-
 import org.apache.hadoop.conf.Configured;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

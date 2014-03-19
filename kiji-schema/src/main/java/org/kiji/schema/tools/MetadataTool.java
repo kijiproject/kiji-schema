@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.List;
 
 import com.google.common.base.Preconditions;
-
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.specific.SpecificDatumReader;

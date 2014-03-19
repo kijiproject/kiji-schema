@@ -22,7 +22,6 @@ package org.kiji.schema.filter;
 import java.io.IOException;
 
 import org.apache.hadoop.hbase.filter.Filter;
-
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.JsonNodeFactory;

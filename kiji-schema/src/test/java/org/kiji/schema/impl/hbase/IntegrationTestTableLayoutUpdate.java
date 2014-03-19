@@ -20,147 +20,98 @@
 package org.kiji.schema.impl.hbase;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.ImmutableSetMultimap;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.Queues;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.RuntimeInterruptedException;
 import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.impl.Versions;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.layout.impl.TestZooKeeperMonitor;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.layout.impl.ZooKeeperMonitor;
 import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersTracker;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersUpdateHandler;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
-import org.kiji.schema.util.ProtocolVersion;
 
 public class IntegrationTestTableLayoutUpdate extends AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(IntegrationTestTableLayoutUpdate.class);
 
-  private static void setDataVersion(final KijiURI uri, final ProtocolVersion version)
-      throws IOException {
-    final Kiji kiji = Kiji.Factory.open(uri);
-    try {
-      kiji.getSystemTable().setDataVersion(version);
-    } finally {
-      kiji.release();
-    }
-  }
-
   @Test
   public void testUpdateLayout() throws Exception {
+
     final KijiURI uri = getKijiURI();
-    final String tableName = "foo";
+    final String tableName = "IntegrationTestTableLayoutUpdate";
     final KijiURI tableURI = KijiURI.newBuilder(uri).withTableName(tableName).build();
     final String layoutId1 = "1";
     final String layoutId2 = "2";
-    {
-      final Kiji kiji = Kiji.Factory.open(uri);
-      try {
-        final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST);
-        layoutDesc.setLayoutId(layoutId1);
-        kiji.createTable(layoutDesc);
-      } finally {
-        kiji.release();
-      }
-    }
+    final HBaseKiji kiji = (HBaseKiji) Kiji.Factory.open(uri);
 
-    // Switch the Kiji instance to system-2.0:
-    setDataVersion(uri, Versions.MIN_SYS_VER_FOR_LAYOUT_VALIDATION);
-
-    final HBaseKiji kiji = (HBaseKiji) Kiji.Factory.open(uri, getConf());
     try {
-      final ZooKeeperClient zkClient = kiji.getZKClient();
-      final ZooKeeperMonitor layoutMonitor = new ZooKeeperMonitor(zkClient);
-      try {
-        layoutMonitor.notifyNewTableLayout(tableURI, Bytes.toBytes(layoutId1), -1);
-        final BlockingQueue<Multimap<String, String>> queue = Queues.newSynchronousQueue();
+      final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST);
+      layoutDesc.setLayoutId(layoutId1);
+      layoutDesc.setName(tableName);
+      kiji.createTable(layoutDesc);
 
-        final UsersTracker tracker = layoutMonitor.newTableUsersTracker(tableURI,
-            new UsersUpdateHandler() {
-              /** {@inheritDoc} */
-              @Override
-              public void update(Multimap<String, String> users) {
-                LOG.info("User map update: {}", users);
-                try {
-                  queue.put(users);
-                } catch (InterruptedException ie) {
-                  throw new RuntimeInterruptedException(ie);
-                }
-              }
-            });
+      final ZooKeeperClient zkClient = kiji.getZKClient().retain();
+      final ZooKeeperMonitor zkMonitor = new ZooKeeperMonitor(zkClient);
+      try {
+        final BlockingQueue<Multimap<String, String>> queue = Queues.newArrayBlockingQueue(10);
+
+        final UsersTracker tracker = zkMonitor.newTableUsersTracker(tableURI,
+            new TestZooKeeperMonitor.QueueingUsersUpdateHandler(queue));
+
         tracker.open();
         try {
-
           // Initial user map should be empty:
-          assertTrue(queue.take().isEmpty());
+          assertEquals(ImmutableSetMultimap.<String, String>of(), queue.poll(2, TimeUnit.SECONDS));
 
-          final KijiTable table = kiji.openTable(tableName);
+          KijiTable kijiTable = kiji.openTable(tableName);
           try {
-            {
-              // We opened one table, user map must contain exactly one entry:
-              final Multimap<String, String> umap = queue.take();
-              assertEquals(1, umap.size());
-              assertEquals(layoutId1, umap.values().iterator().next());
-            }
-
-            // Open a reader to exercise the logic:
-            final KijiTableReader reader = table.openTableReader();
-            try {
+            // We opened a table, user map must contain exactly one entry:
+            assertEquals(ImmutableSet.of(layoutId1),
+                ImmutableSet.copyOf(queue.poll(2, TimeUnit.SECONDS).values()));
 
               // Push a layout update (a no-op, but with a new layout ID):
               final TableLayoutDesc newLayoutDesc =
                   KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST);
               newLayoutDesc.setReferenceLayout(layoutId1);
               newLayoutDesc.setLayoutId(layoutId2);
-              kiji.getMetaTable().updateTableLayout(tableName, newLayoutDesc);
-              layoutMonitor.notifyNewTableLayout(tableURI, Bytes.toBytes(layoutId2), -1);
+              newLayoutDesc.setName(tableName);
+
+              kiji.modifyTableLayout(newLayoutDesc);
 
               // The new user map should eventually reflect the new layout ID.
-              // There may be, but not always, a transition set where both layout IDs are visible.
-              while (true) {
-                final Multimap<String, String> umap = queue.take();
-                if (umap.size() == 2) {
-                  continue;
-                } else {
-                  assertEquals(1, umap.size());
-                  assertEquals(layoutId2, umap.values().iterator().next());
-                  break;
-                }
-              }
-
-            } finally {
-              reader.close();
-            }
+              // We opened one table, user map must contain exactly one entry:
+              assertEquals(ImmutableSet.of(layoutId2),
+                  ImmutableSet.copyOf(queue.poll(2, TimeUnit.SECONDS).values()));
 
           } finally {
-            table.release();
+            kijiTable.release();
+            kijiTable = null;
           }
 
-          // Table is now closed, the user map should become empty:
-          assertTrue(queue.take().isEmpty());
+          System.gc();
 
+          // Table is now closed, the user map should become empty:
+          assertEquals(ImmutableSetMultimap.<String, String>of(), queue.poll(2, TimeUnit.SECONDS));
         } finally {
           tracker.close();
         }
-
       } finally {
-        layoutMonitor.close();
-      }
-    } finally {
+        zkMonitor.close();
+        zkClient.release();
+        }
+      } finally {
       kiji.release();
     }
   }

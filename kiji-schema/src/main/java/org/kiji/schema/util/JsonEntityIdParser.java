@@ -22,7 +22,6 @@ package org.kiji.schema.util;
 import java.io.IOException;
 
 import com.google.common.base.Preconditions;
-
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.hadoop.hbase.util.Bytes;

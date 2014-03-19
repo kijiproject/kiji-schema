@@ -48,6 +48,7 @@ import org.kiji.schema.KijiRowKeySplitter;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiTable;
+import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
@@ -60,6 +61,7 @@ import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.layout.impl.HTableSchemaTranslator;
+import org.kiji.schema.layout.impl.InstanceMonitor;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.layout.impl.ZooKeeperMonitor;
 import org.kiji.schema.security.KijiSecurityException;
@@ -102,9 +104,6 @@ public final class HBaseKiji implements Kiji {
   /** Factory for HTable instances. */
   private final HTableInterfaceFactory mHTableFactory;
 
-  /** Factory for locks. */
-  private final LockFactory mLockFactory;
-
   /** URI for this HBaseKiji instance. */
   private final KijiURI mURI;
 
@@ -144,9 +143,8 @@ public final class HBaseKiji implements Kiji {
   /** Monitor to register Kiji instance users. */
   private final ZooKeeperMonitor mMonitor;
 
-  /** Unique identifier for this Kiji instance as a live Kiji client. */
-  private final String mKijiClientId =
-      String.format("%s;HBaseKiji@%s", JvmId.get(), INSTANCE_COUNTER.getAndIncrement());
+  /** Provides table layout updates and user registrations. */
+  private final InstanceMonitor mInstanceMonitor;
 
   /**
    * Cached copy of the system version, oblivious to system table mutation while the connection to
@@ -159,19 +157,19 @@ public final class HBaseKiji implements Kiji {
   /** HBase admin interface. Lazily initialized through {@link #getHBaseAdmin()}. */
   private HBaseAdmin mAdmin = null;
 
-  /** The schema table for this kiji instance, or null if it has not been opened yet. */
-  private HBaseSchemaTable mSchemaTable;
+  /** The schema table for this kiji instance. */
+  private final HBaseSchemaTable mSchemaTable;
 
   /** The system table for this kiji instance. The system table is always open. */
   private final HBaseSystemTable mSystemTable;
 
-  /** The meta table for this kiji instance, or null if it has not been opened yet. */
-  private HBaseMetaTable mMetaTable;
+  /** The meta table for this kiji instance. */
+  private final HBaseMetaTable mMetaTable;
 
   /**
    * The security manager for this instance, lazily initialized through {@link #getSecurityManager}.
    */
-  private KijiSecurityManager mSecurityManager;
+  private KijiSecurityManager mSecurityManager = null;
 
   /**
    * Creates a new <code>HBaseKiji</code> instance.
@@ -196,7 +194,7 @@ public final class HBaseKiji implements Kiji {
 
     // Validate arguments.
     mHTableFactory = Preconditions.checkNotNull(tableFactory);
-    mLockFactory = Preconditions.checkNotNull(lockFactory);
+    Preconditions.checkNotNull(lockFactory);
     mURI = Preconditions.checkNotNull(kijiURI);
 
     // Configure the ZooKeeper quorum:
@@ -216,11 +214,6 @@ public final class HBaseKiji implements Kiji {
           mURI, VersionInfo.getSoftwareVersion(), VersionInfo.getClientDataVersion());
     }
 
-    // Load these lazily.
-    mSchemaTable = null;
-    mMetaTable = null;
-    mSecurityManager = null;
-
     try {
       mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
     } catch (KijiNotInstalledException kie) {
@@ -228,6 +221,8 @@ public final class HBaseKiji implements Kiji {
       close();
       throw kie;
     }
+    mSchemaTable = new HBaseSchemaTable(mURI, mConf, mHTableFactory, lockFactory);
+    mMetaTable = new HBaseMetaTable(mURI, mConf, mSchemaTable, mHTableFactory);
 
     LOG.debug("Kiji instance '{}' is now opened.", mURI);
 
@@ -255,7 +250,6 @@ public final class HBaseKiji implements Kiji {
       mZKClient = HBaseFactory.Provider.get().getZooKeeperClient(mURI);
       try {
         mMonitor = new ZooKeeperMonitor(mZKClient);
-        mMonitor.registerInstanceUser(mURI, mKijiClientId, mSystemVersion.toString());
       } catch (KeeperException ke) {
         // Unrecoverable KeeperException:
         throw new IOException(ke);
@@ -265,6 +259,18 @@ public final class HBaseKiji implements Kiji {
       mZKClient = null;
       mMonitor = null;
     }
+
+    /* Unique identifier for this Kiji instance as a live Kiji client. */
+    String kijiClientId =
+        String.format("%s;HBaseKiji@%s", JvmId.get(), INSTANCE_COUNTER.getAndIncrement());
+    mInstanceMonitor = new InstanceMonitor(
+        kijiClientId,
+        mSystemVersion,
+        mURI,
+        mSchemaTable,
+        mMetaTable,
+        mMonitor);
+    mInstanceMonitor.start();
 
     mRetainCount.set(1);
     final State oldState = mState.getAndSet(State.OPEN);
@@ -329,13 +335,10 @@ public final class HBaseKiji implements Kiji {
 
   /** {@inheritDoc} */
   @Override
-  public synchronized KijiSchemaTable getSchemaTable() throws IOException {
+  public KijiSchemaTable getSchemaTable() throws IOException {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get schema table for Kiji instance %s in state %s.", this, state);
-    if (null == mSchemaTable) {
-      mSchemaTable = new HBaseSchemaTable(mURI, mConf, mHTableFactory, mLockFactory);
-    }
     return mSchemaTable;
   }
 
@@ -350,13 +353,10 @@ public final class HBaseKiji implements Kiji {
 
   /** {@inheritDoc} */
   @Override
-  public synchronized KijiMetaTable getMetaTable() throws IOException {
+  public KijiMetaTable getMetaTable() throws IOException {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get meta table for Kiji instance %s in state %s.", this, state);
-    if (null == mMetaTable) {
-      mMetaTable = new HBaseMetaTable(mURI, mConf, getSchemaTable(), mHTableFactory);
-    }
     return mMetaTable;
   }
 
@@ -408,7 +408,18 @@ public final class HBaseKiji implements Kiji {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot open table in Kiji instance %s in state %s.", this, state);
-    return new HBaseKijiTable(this, tableName, mConf, mHTableFactory);
+
+    if (!getTableNames().contains(tableName)) {
+      throw new KijiTableNotFoundException(
+          KijiURI.newBuilder(mURI).withTableName(tableName).build());
+    }
+
+    return new HBaseKijiTable(
+        this,
+        tableName,
+        mConf,
+        mHTableFactory,
+        mInstanceMonitor.getTableLayoutMonitor(tableName));
   }
 
   /** {@inheritDoc} */
@@ -607,7 +618,7 @@ public final class HBaseKiji implements Kiji {
         newLayout = metaTable.updateTableLayout(tableName, update);
       }
     }
-    Preconditions.checkState(newLayout != null);
+    Preconditions.checkNotNull(newLayout);
 
     if (dryRun) {
       printStream.println("This table layout is valid.");
@@ -762,28 +773,21 @@ public final class HBaseKiji implements Kiji {
         "Cannot close Kiji instance %s in state %s.", this, oldState);
 
     LOG.debug("Closing {}.", this);
-    if (mMonitor != null) {
-      try {
-        mMonitor.unregisterInstanceUser(mURI, mKijiClientId, mSystemVersion.toString());
-      } catch (KeeperException ke) {
-        // Unrecoverable ZooKeeper error:
-        throw new IOException(ke);
-      }
-      mMonitor.close();
-    }
-    if (mZKClient != null) {
-      mZKClient.release();
-    }
 
+    ResourceUtils.closeOrLog(mInstanceMonitor);
     ResourceUtils.closeOrLog(mMetaTable);
     ResourceUtils.closeOrLog(mSystemTable);
     ResourceUtils.closeOrLog(mSchemaTable);
-    ResourceUtils.closeOrLog(mSecurityManager);
-    ResourceUtils.closeOrLog(mAdmin);
-    mSchemaTable = null;
-    mMetaTable = null;
-    mAdmin = null;
-    mSecurityManager = null;
+
+    synchronized (this) {
+      ResourceUtils.closeOrLog(mSecurityManager);
+      ResourceUtils.closeOrLog(mAdmin);
+      mAdmin = null;
+      mSecurityManager = null;
+    }
+    ResourceUtils.closeOrLog(mMonitor);
+    ResourceUtils.releaseOrLog(mZKClient);
+
     if (oldState != State.UNINITIALIZED) {
       DebugResourceTracker.get().unregisterResource(this);
     }

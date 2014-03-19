@@ -24,7 +24,6 @@ import java.io.InputStream;
 import java.util.Properties;
 
 import com.google.common.base.Objects;
-
 import org.apache.hadoop.hbase.TableNotFoundException;
 
 import org.kiji.annotations.ApiAudience;

@@ -21,7 +21,7 @@ package org.kiji.schema.impl;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.impl.hbase.HBaseKijiTable.LayoutCapsule;
+import org.kiji.schema.layout.impl.LayoutCapsule;
 
 /**
  * Interface for classes which hold table layout references which must be updated in response to a

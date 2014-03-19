@@ -21,7 +21,6 @@ package org.kiji.schema;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-
 import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hbase.util.Bytes;
 

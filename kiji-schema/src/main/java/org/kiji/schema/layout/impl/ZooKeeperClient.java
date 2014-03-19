@@ -598,17 +598,13 @@ public final class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient
     if (parent != null) {
       createNodeRecursively(parent);
     }
-    while (true) {
-      try {
-        LOG.debug("Creating ZooKeeper node: {}", path);
-        final File createdPath =
-            this.create(path, EMPTY_BYTES, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-        Preconditions.checkState(createdPath.equals(path));
-        return;
-      } catch (NodeExistsException exn) {
-        LOG.debug("ZooKeeper node already exists: {}", path);
-        return;
-      }
+    try {
+      LOG.debug("Creating ZooKeeper node: {}", path);
+      final File createdPath =
+          this.create(path, EMPTY_BYTES, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+      Preconditions.checkState(createdPath.equals(path));
+    } catch (NodeExistsException exn) {
+      LOG.debug("ZooKeeper node already exists: {}", path);
     }
   }
 
