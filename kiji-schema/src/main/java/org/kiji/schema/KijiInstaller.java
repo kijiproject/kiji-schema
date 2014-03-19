@@ -24,10 +24,10 @@ import java.util.Collections;
 import java.util.Map;
 
 import com.google.common.base.Joiner;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,11 +40,10 @@ import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.hbase.HBaseMetaTable;
 import org.kiji.schema.impl.hbase.HBaseSchemaTable;
 import org.kiji.schema.impl.hbase.HBaseSystemTable;
-import org.kiji.schema.layout.impl.ZooKeeperClient;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor;
 import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ResourceUtils;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /** Installs or uninstalls Kiji instances from an HBase cluster. */
 @ApiAudience.Public
@@ -195,14 +194,17 @@ public final class KijiInstaller {
       }
 
       // Delete ZNodes from ZooKeeper
-      final ZooKeeperClient zkClient =  hbaseFactory.getZooKeeperClient(uri);
+      final CuratorFramework zkClient =
+          ZooKeeperUtils.getZooKeeperClient(uri);
       try {
-        zkClient.deleteNodeRecursively(ZooKeeperMonitor.getInstanceDir(uri));
-      } catch (KeeperException e) {
-        LOG.warn("Unable to delete instance ZNode in ZooKeeper.", e);
-        throw new IOException(e);
+        zkClient
+            .delete()
+            .deletingChildrenIfNeeded()
+            .forPath(ZooKeeperUtils.getInstanceDir(uri).getPath());
+      } catch (Exception e) {
+        ZooKeeperUtils.wrapAndRethrow(e);
       } finally {
-        zkClient.release();
+        zkClient.close();
       }
     } finally {
       kiji.release();

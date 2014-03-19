@@ -66,19 +66,6 @@ public class TestZooKeeperClient extends ZooKeeperTest {
   }
 
   @Test
-  public void testZooKeeperClientsAreReleasedFromCacheWhenClosed() throws Exception {
-    final String zkAddr = getZKAddress();
-
-    final ZooKeeperClient client1 = ZooKeeperClient.getZooKeeperClient(zkAddr);
-    client1.release();
-    Assert.assertFalse(client1.isOpen());
-    final ZooKeeperClient client2 = ZooKeeperClient.getZooKeeperClient(zkAddr);
-    Assert.assertFalse(client1 == client2);
-    Assert.assertTrue(client2.isOpen());
-    client2.release();
-  }
-
-  @Test
   public void testZooKeeperClientGetZKClientBlocksWhileNotConnected() throws Exception {
     final ZooKeeperClient client = ZooKeeperClient.getZooKeeperClient(getZKAddress());
     stopZKCluster(); // Kill session

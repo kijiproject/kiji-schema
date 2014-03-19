@@ -105,7 +105,12 @@ public interface HBaseFactory extends PriorityProvider {
    * @param uri URI of the Kiji instance for which to create a ZooKeeperClient.
    * @return a new open ZooKeeperClient.
    * @throws IOException in case of an error connecting to ZooKeeper.
+   * @deprecated ZooKeeperClient has been deprecated.
+   *    Use {@link org.kiji.schema.zookeeper.ZooKeeperUtils#getZooKeeperClient(String)} instead with
+   *    the ZooKeeper ensemble from {@link #getZooKeeperEnsemble(org.kiji.schema.KijiURI)}.
+   *    Will be removed in KijiSchema 2.0.
    */
+  @Deprecated
   ZooKeeperClient getZooKeeperClient(KijiURI uri) throws IOException;
 
   /**

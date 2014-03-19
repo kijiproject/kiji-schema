@@ -30,6 +30,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.util.concurrent.UncheckedExecutionException;
+import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,6 +42,7 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.util.AutoReferenceCountedReaper;
 import org.kiji.schema.util.JvmId;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.zookeeper.InstanceUserRegistration;
 
 /**
  * A Kiji instance monitor. Registers a client as an instance user in ZooKeeper, and provides
@@ -63,11 +65,11 @@ public final class InstanceMonitor implements Closeable {
 
   private final KijiMetaTable mMetaTable;
 
-  private final ZooKeeperMonitor mZKMonitor;
+  private final CuratorFramework mZKClient;
 
   private final LoadingCache<String, TableLayoutMonitor> mTableLayoutMonitors;
 
-  private final ZooKeeperMonitor.InstanceUserRegistration mUserRegistration;
+  private final InstanceUserRegistration mUserRegistration;
 
   /** States of an instance monitor. */
   private static enum State {
@@ -90,7 +92,7 @@ public final class InstanceMonitor implements Closeable {
    * @param instanceURI uri of instance to monitor.
    * @param schemaTable of instance.
    * @param metaTable of instance.
-   * @param zkMonitor ZooKeeper connection to use for monitoring, or null if ZooKeeper is
+   * @param zkClient ZooKeeper connection to use for monitoring, or null if ZooKeeper is
    *        unavailable (SYSTEM_1_0).
    */
   public InstanceMonitor(
@@ -98,12 +100,12 @@ public final class InstanceMonitor implements Closeable {
       KijiURI instanceURI,
       KijiSchemaTable schemaTable,
       KijiMetaTable metaTable,
-      ZooKeeperMonitor zkMonitor) {
+      CuratorFramework zkClient) {
     mUserID = generateInstanceUserID();
     mInstanceURI = instanceURI;
     mSchemaTable = schemaTable;
     mMetaTable = metaTable;
-    mZKMonitor = zkMonitor;
+    mZKClient = zkClient;
 
     LOG.debug("Creating InstanceMonitor for instance {} with userID {}.", mInstanceURI, mUserID);
 
@@ -114,9 +116,13 @@ public final class InstanceMonitor implements Closeable {
         .weakValues()
         .build(new TableLayoutMonitorCacheLoader());
 
-    if (zkMonitor != null) {
-      mUserRegistration = zkMonitor.newInstanceUserRegistration(
-          mUserID, systemVersion.toCanonicalString(), instanceURI);
+    if (zkClient != null) {
+      mUserRegistration =
+          new InstanceUserRegistration(
+              zkClient,
+              instanceURI,
+              mUserID,
+              systemVersion.toCanonicalString());
     } else {
       mUserRegistration = null;
     }
@@ -206,7 +212,7 @@ public final class InstanceMonitor implements Closeable {
       LOG.debug("Creating TableLayoutMonitor for table {} with userID {}.", tableURI, mUserID);
 
       TableLayoutMonitor monitor =
-          new TableLayoutMonitor(tableURI, mSchemaTable, mMetaTable, mZKMonitor).start();
+          new TableLayoutMonitor(tableURI, mSchemaTable, mMetaTable, mZKClient).start();
 
       mReaper.registerAutoReferenceCounted(monitor);
 

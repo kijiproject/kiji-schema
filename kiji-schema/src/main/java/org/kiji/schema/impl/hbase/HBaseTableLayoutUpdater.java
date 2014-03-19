@@ -29,7 +29,7 @@ import com.google.common.base.Objects;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
-import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,14 +42,13 @@ import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.TableLayoutUpdateValidator;
-import org.kiji.schema.layout.impl.ZooKeeperClient;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutTracker;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutUpdateHandler;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersTracker;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersUpdateHandler;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.Time;
+import org.kiji.schema.zookeeper.TableLayoutTracker;
+import org.kiji.schema.zookeeper.TableLayoutUpdateHandler;
+import org.kiji.schema.zookeeper.TableUsersTracker;
+import org.kiji.schema.zookeeper.TableUsersUpdateHandler;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
  * Updates the layout of an HBase Kiji table.
@@ -66,8 +65,7 @@ public class HBaseTableLayoutUpdater {
 
   private final HBaseKiji mKiji;
   private final KijiURI mTableURI;
-  private final ZooKeeperMonitor mMonitor;
-  private final ZooKeeperClient mZKClient;
+  private final CuratorFramework mZKClient;
 
   private final UpdaterUsersUpdateHandler mUsersUpdateHandler = new UpdaterUsersUpdateHandler();
   private final UpdaterLayoutUpdateHandler mLayoutUpdateHandler = new UpdaterLayoutUpdateHandler();
@@ -81,7 +79,7 @@ public class HBaseTableLayoutUpdater {
   // -----------------------------------------------------------------------------------------------
 
   /** Handles update notifications of the users list of the table. */
-  private final class UpdaterUsersUpdateHandler implements UsersUpdateHandler {
+  private final class UpdaterUsersUpdateHandler implements TableUsersUpdateHandler {
     /** Monitor for table users notifications. */
     private final Object mLock = new Object();
 
@@ -136,12 +134,12 @@ public class HBaseTableLayoutUpdater {
         }
       }
     }
-  };
+  }
 
   // -----------------------------------------------------------------------------------------------
 
   /** Handles update notifications of the table layout. */
-  private final class UpdaterLayoutUpdateHandler implements LayoutUpdateHandler {
+  private final class UpdaterLayoutUpdateHandler implements TableLayoutUpdateHandler {
     /** Monitor for table layout notifications. */
     private final Object mLock = new Object();
 
@@ -150,9 +148,9 @@ public class HBaseTableLayoutUpdater {
 
     /** {@inheritDoc} */
     @Override
-    public void update(byte[] layout) {
+    public void update(String layout) {
       synchronized (mLock) {
-        mCurrentLayoutId = Bytes.toString(layout);
+        mCurrentLayoutId = layout;
         LOG.debug("Layout updater received layout update for table {}: {}.",
             mTableURI, mCurrentLayoutId);
         mLock.notifyAll();
@@ -217,8 +215,7 @@ public class HBaseTableLayoutUpdater {
     mKiji = kiji;
     mKiji.retain();
     mTableURI = tableURI;
-    mZKClient = mKiji.getZKClient().retain();
-    mMonitor = new ZooKeeperMonitor(mZKClient);
+    mZKClient = mKiji.getZKClient();
     mLayoutUpdate = layoutUpdate;
   }
 
@@ -245,15 +242,12 @@ public class HBaseTableLayoutUpdater {
     });
   }
 
-
   /**
    * Releases the resources maintained by this updater.
    *
    * @throws IOException on I/O error.
    */
   public void close() throws IOException {
-    mZKClient.release();
-    mMonitor.close();
     mKiji.release();
   }
 
@@ -266,7 +260,7 @@ public class HBaseTableLayoutUpdater {
   public void update() throws IOException, KeeperException {
     final KijiMetaTable metaTable = mKiji.getMetaTable();
 
-    final Lock lock = mMonitor.newTableLayoutUpdateLock(mTableURI);
+    final Lock lock = ZooKeeperUtils.newTableLayoutLock(mZKClient, mTableURI);
     lock.lock();
     try {
       final NavigableMap<Long, KijiTableLayout> layoutMap =
@@ -285,13 +279,12 @@ public class HBaseTableLayoutUpdater {
           currentLayout,
           KijiTableLayout.createUpdatedLayout(update , currentLayout));
 
-      final LayoutTracker layoutTracker =
-          mMonitor.newTableLayoutTracker(mTableURI, mLayoutUpdateHandler);
-      layoutTracker.open();
+      final TableLayoutTracker layoutTracker =
+          new TableLayoutTracker(mZKClient, mTableURI, mLayoutUpdateHandler).start();
       try {
-        final UsersTracker usersTracker =
-            mMonitor.newTableUsersTracker(mTableURI, mUsersUpdateHandler);
-        usersTracker.open();
+        final TableUsersTracker usersTracker =
+            new TableUsersTracker(mZKClient, mTableURI, mUsersUpdateHandler)
+                .start();
         try {
           final String currentLayoutId = mLayoutUpdateHandler.getCurrentLayoutId();
           LOG.info("Table {} has current layout ID {}.", mTableURI, currentLayoutId);
@@ -381,9 +374,7 @@ public class HBaseTableLayoutUpdater {
   private void writeZooKeeper(TableLayoutDesc update) throws IOException, KeeperException {
     LOG.info("Updating layout for table {} from layout ID {} to layout ID {} in ZooKeeper.",
         mTableURI, update.getReferenceLayout(), update.getLayoutId());
-
-    final byte[] layout = Bytes.toBytes(update.getLayoutId());
-    mMonitor.notifyNewTableLayout(mTableURI, layout, -1);
+    ZooKeeperUtils.setTableLayout(mZKClient, mTableURI, update.getLayoutId());
   }
 
   /**

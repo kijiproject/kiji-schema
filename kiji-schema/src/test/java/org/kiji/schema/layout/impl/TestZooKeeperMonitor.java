@@ -149,7 +149,7 @@ public class TestZooKeeperMonitor extends ZooKeeperTest {
 
   public static final class QueueingLayoutUpdateHandler implements LayoutUpdateHandler {
     private final BlockingQueue<byte[]> mLayoutQueue;
-    private QueueingLayoutUpdateHandler(BlockingQueue<byte[]> layoutQueue) {
+    public QueueingLayoutUpdateHandler(BlockingQueue<byte[]> layoutQueue) {
       this.mLayoutQueue = layoutQueue;
     }
     @Override

@@ -113,7 +113,10 @@
 
   <Match>
     <!-- An absolute path to a ZooKeeper node is fine. -->
-    <Class name="org.kiji.schema.layout.impl.ZooKeeperMonitor" />
+    <Or>
+      <Class name="org.kiji.schema.layout.impl.ZooKeeperMonitor" />
+      <Class name="org.kiji.schema.zookeeper.ZooKeeperUtils" />
+    </Or>
     <Bug pattern="DMI_HARDCODED_ABSOLUTE_FILENAME" />
   </Match>
 
@@ -124,12 +127,17 @@
   </Match>
 
   <Match>
-    <!-- FindBugs has a bug: http://sourceforge.net/p/findbugs/bugs/1139/ -->
+    <!-- FindBugs has a bug: http://sourceforge.net/p/findbugs/bugs/1139/
+
+         FindBugs is overly restrictive about nullable/notnull declarations on Guava's Function
+          class.
+     -->
     <Or>
       <Class name="org.kiji.schema.impl.AvroCellEncoder$1" />
       <Class name="org.kiji.schema.layout.AvroSchemaResolver" />
       <Class name="org.kiji.schema.layout.SchemaTableAvroResolver" />
       <Class name="org.kiji.schema.layout.AvroSchemaIdResolver" />
+      <Class name="org.kiji.schema.impl.hbase.HBaseKiji$1" />
     </Or>
     <Bug pattern="NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE" />
   </Match>

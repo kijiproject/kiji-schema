@@ -18,10 +18,10 @@
  */
 package org.kiji.schema.impl.hbase;
 
-import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
-import com.google.common.collect.Lists;
-import org.apache.hadoop.hbase.util.Bytes;
+import com.google.common.collect.Queues;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -32,12 +32,10 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.layout.impl.ZooKeeperClient;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutTracker;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutUpdateHandler;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.zookeeper.TableLayoutTracker;
+import org.kiji.schema.zookeeper.TestTableLayoutTracker.QueuingTableLayoutUpdateHandler;
 
 public class IntegrationTestHBaseTableLayoutUpdater extends AbstractKijiIntegrationTest {
   private static final Logger LOG =
@@ -70,67 +68,43 @@ public class IntegrationTestHBaseTableLayoutUpdater extends AbstractKijiIntegrat
 
     final Kiji kiji = Kiji.Factory.open(uri);
     try {
-      final ZooKeeperClient zkClient = ((HBaseKiji) kiji).getZKClient();  // owned by kiji
-      final ZooKeeperMonitor monitor = new ZooKeeperMonitor(zkClient);
+      kiji.createTable(layout1);
+
+      final KijiTable table = kiji.openTable("table_name");
       try {
-        kiji.createTable(layout1);
+        final BlockingQueue<String> layoutQueue = Queues.newSynchronousQueue();
 
-        final KijiTable table = kiji.openTable("table_name");
+        final TableLayoutTracker tracker =
+            new TableLayoutTracker(((HBaseKiji) kiji).getZKClient(), table.getURI(),
+                new QueuingTableLayoutUpdateHandler(layoutQueue))
+              .start();
+
+        Assert.assertEquals("1", layoutQueue.poll(5, TimeUnit.SECONDS));
+
+        final HBaseTableLayoutUpdater updater =
+            new HBaseTableLayoutUpdater((HBaseKiji) kiji, table.getURI(), layout2);
         try {
-          final List<String> layoutIDs = Lists.newArrayList();
-
-          final LayoutTracker tracker = monitor.newTableLayoutTracker(table.getURI(),
-              new LayoutUpdateHandler() {
-                /** {@inheritDoc} */
-                @Override
-                public void update(byte[] layout) {
-                  synchronized (layoutIDs) {
-                    layoutIDs.add(Bytes.toString(layout));
-                    layoutIDs.notifyAll();
-                  }
-                }
-              });
-          tracker.open();
-
-          synchronized (layoutIDs) {
-            while ((layoutIDs.size() < 1))  {
-              layoutIDs.wait();
-            }
-            Assert.assertEquals("1", layoutIDs.get(0));
-          }
-
-          final HBaseTableLayoutUpdater updater =
-              new HBaseTableLayoutUpdater((HBaseKiji) kiji, table.getURI(), layout2);
-          try {
-            final Thread thread = new Thread() {
-              /** {@inheritDoc} */
-              @Override
-              public void run() {
-                try {
-                  updater.update();
-                } catch (Exception exn) {
-                  throw new RuntimeException(exn);
-                }
+          final Thread thread = new Thread() {
+                              /** {@inheritDoc} */
+                              @Override
+                              public void run() {
+              try {
+                updater.update();
+              } catch (Exception exn) {
+                throw new RuntimeException(exn);
               }
-            };
-            thread.start();
-
-            synchronized (layoutIDs) {
-              while ((layoutIDs.size() < 2))  {
-                layoutIDs.wait();
-              }
-              Assert.assertEquals("2", layoutIDs.get(1));
-            }
-            tracker.close();
-            thread.join();
-          } finally {
-            updater.close();
           }
+        };
+          thread.start();
+
+          Assert.assertEquals("2", layoutQueue.poll(5, TimeUnit.SECONDS));
+
+          tracker.close();
         } finally {
-          table.release();
+          updater.close();
         }
       } finally {
-        monitor.close();
+        table.release();
       }
       kiji.deleteTable("table_name");
     } finally {

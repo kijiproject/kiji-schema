@@ -28,6 +28,7 @@ import java.util.Set;
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -44,14 +45,13 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.Versions;
 import org.kiji.schema.impl.hbase.HBaseKiji;
-import org.kiji.schema.layout.impl.ZooKeeperClient;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor;
 import org.kiji.schema.util.Lock;
+import org.kiji.schema.zookeeper.ZooKeeperLock;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
  * The default implementation of KijiSecurityManager.
@@ -80,6 +80,9 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
   /** The HBase ACL (Access Control List) table to use. */
   private final AccessControllerProtocol mAccessController;
+
+  /** ZooKeeper client connection responsible for creating instance locks. */
+  private final CuratorFramework mZKClient;
 
   /** The zookeeper lock for this instance. */
   private final Lock mLock;
@@ -127,13 +130,8 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
         AccessControllerProtocol.class,
         HConstants.EMPTY_START_ROW);
 
-    final ZooKeeperClient zkClient = HBaseFactory.Provider.get().getZooKeeperClient(mInstanceUri);
-    try {
-      mLock = zkClient.getLockFactory().create(
-          ZooKeeperMonitor.getInstancePermissionsLock(instanceUri).getAbsolutePath());
-    } finally {
-      zkClient.release();
-    }
+    mZKClient = ZooKeeperUtils.getZooKeeperClient(mInstanceUri);
+    mLock = new ZooKeeperLock(mZKClient, ZooKeeperUtils.getInstancePermissionsLock(instanceUri));
   }
 
   /** {@inheritDoc} */
@@ -584,5 +582,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   @Override
   public void close() throws IOException {
     mKiji.release();
+    mLock.close();
+    mZKClient.close();
   }
 }

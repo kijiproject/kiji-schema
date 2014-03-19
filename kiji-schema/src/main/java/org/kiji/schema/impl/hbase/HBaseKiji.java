@@ -25,8 +25,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
@@ -61,16 +63,16 @@ import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.ColumnId;
 import org.kiji.schema.layout.impl.HTableSchemaTranslator;
 import org.kiji.schema.layout.impl.InstanceMonitor;
-import org.kiji.schema.layout.impl.ZooKeeperClient;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor;
 import org.kiji.schema.security.KijiSecurityException;
 import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.DebugResourceTracker;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.util.ReferenceCountedCache;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
  * Kiji instance class that contains configuration and table information.
@@ -92,6 +94,17 @@ public final class HBaseKiji implements Kiji {
   private static final String ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE = String.format(
       "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
       CLEANUP_LOG.getName());
+
+  /** Global cache of ZooKeeper connections keyed on ensemble addresses. */
+  private static final ReferenceCountedCache<KijiURI, CuratorFramework> ZK_CLIENT_CACHE =
+      ReferenceCountedCache.create(new Function<KijiURI, CuratorFramework>() {
+        /** {@inheritDoc}. */
+        @Override
+        public CuratorFramework apply(KijiURI instanceURI) {
+          Preconditions.checkNotNull(instanceURI);
+          return ZooKeeperUtils.getZooKeeperClient(instanceURI);
+        }
+      });
 
   /** The hadoop configuration. */
   private final Configuration mConf;
@@ -133,10 +146,7 @@ public final class HBaseKiji implements Kiji {
   private final String mConstructorStack;
 
   /** ZooKeeper client for this Kiji instance. */
-  private final ZooKeeperClient mZKClient;
-
-  /** Monitor to register Kiji instance users. */
-  private final ZooKeeperMonitor mMonitor;
+  private final CuratorFramework mZKClient;
 
   /** Provides table layout updates and user registrations. */
   private final InstanceMonitor mInstanceMonitor;
@@ -242,17 +252,10 @@ public final class HBaseKiji implements Kiji {
       // system-2.0 clients must connect to ZooKeeper:
       //  - to register themselves as table users;
       //  - to receive table layout updates.
-      mZKClient = HBaseFactory.Provider.get().getZooKeeperClient(mURI);
-      try {
-        mMonitor = new ZooKeeperMonitor(mZKClient);
-      } catch (KeeperException ke) {
-        // Unrecoverable KeeperException:
-        throw new IOException(ke);
-      }
+      mZKClient = ZK_CLIENT_CACHE.get(mURI);
     } else {
       // system-1.x clients do not need a ZooKeeper connection.
       mZKClient = null;
-      mMonitor = null;
     }
 
     mInstanceMonitor = new InstanceMonitor(
@@ -260,7 +263,7 @@ public final class HBaseKiji implements Kiji {
         mURI,
         mSchemaTable,
         mMetaTable,
-        mMonitor);
+        mZKClient);
     mInstanceMonitor.start();
 
     mRetainCount.set(1);
@@ -737,10 +740,12 @@ public final class HBaseKiji implements Kiji {
     // Delete ZNodes from ZooKeeper
     try {
       KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableName).build();
-      mZKClient.deleteNodeRecursively(ZooKeeperMonitor.getTableDir(tableURI));
-    } catch (KeeperException e) {
-      LOG.warn("Unable to delete table ZNode in ZooKeeper.", e);
-      throw new IOException(e);
+      mZKClient
+          .delete()
+          .deletingChildrenIfNeeded()
+          .forPath(ZooKeeperUtils.getTableDir(tableURI).getPath());
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
     }
   }
 
@@ -776,8 +781,10 @@ public final class HBaseKiji implements Kiji {
       mAdmin = null;
       mSecurityManager = null;
     }
-    ResourceUtils.closeOrLog(mMonitor);
-    ResourceUtils.releaseOrLog(mZKClient);
+
+    if (mZKClient != null) {
+      ZK_CLIENT_CACHE.release(mURI);
+    }
 
     if (oldState != State.UNINITIALIZED) {
       DebugResourceTracker.get().unregisterResource(this);
@@ -865,7 +872,7 @@ public final class HBaseKiji implements Kiji {
    * @return the ZooKeeper client for this Kiji instance.
    *     Null if the data version &le; {@code system-2.0}.
    */
-  ZooKeeperClient getZKClient() {
+  CuratorFramework getZKClient() {
     return mZKClient;
   }
 
@@ -903,15 +910,12 @@ public final class HBaseKiji implements Kiji {
       // Invariant: ZooKeeper hold the most recent layout of the table.
       LOG.debug("Writing initial table layout in ZooKeeper for table {}.", tableURI);
       try {
-        final ZooKeeperMonitor monitor = new ZooKeeperMonitor(mZKClient);
-        try {
-          final byte[] layoutId = Bytes.toBytes(kijiTableLayout.getDesc().getLayoutId());
-          monitor.notifyNewTableLayout(tableURI, layoutId, -1);
-        } finally {
-          monitor.close();
-        }
-      } catch (KeeperException ke) {
-        throw new IOException(ke);
+        ZooKeeperUtils.setTableLayout(
+            mZKClient,
+            tableURI,
+            kijiTableLayout.getDesc().getLayoutId());
+      } catch (Exception e) {
+        ZooKeeperUtils.wrapAndRethrow(e);
       }
     }
 
@@ -929,6 +933,5 @@ public final class HBaseKiji implements Kiji {
       throw new KijiAlreadyExistsException(
           String.format("Kiji table '%s' already exists.", tableURI), tableURI);
     }
-
   }
 }

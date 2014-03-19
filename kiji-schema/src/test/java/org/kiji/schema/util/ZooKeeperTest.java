@@ -92,5 +92,4 @@ public abstract class ZooKeeperTest extends KijiClientTest {
   public String getZKAddress() {
     return mZKCluster.getConnectString();
   }
-
 }

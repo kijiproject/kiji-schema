@@ -109,10 +109,14 @@ import org.kiji.schema.util.ZooKeeperLock;
  *     table layout update.
  *   </li>
  * </ul>
+ *
+ * @deprecated use the ZooKeeper recipes in the {@link org.kiji.schema.zookeeper} package instead.
+ *    Will be removed in KijiSchema 2.0.
  */
 @ApiAudience.Framework
 @ApiStability.Evolving
 @Inheritance.Sealed
+@Deprecated
 public final class ZooKeeperMonitor implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperMonitor.class);
 
