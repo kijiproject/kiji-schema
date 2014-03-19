@@ -173,11 +173,11 @@ public final class DebugResourceTracker {
     final int unclosed = mCounter.get();
     if (0 != unclosed) {
       CLEANUP_LOG.error(
-          "Found {} unclosed resources. Run with system property {} for more details.",
+          "Found {} unclosed resources. Run with system property {}=REFERENCES for more details.",
           unclosed,
           TRACKING_LEVEL_PROPERTY);
       LOG.error(
-          "Found {} unclosed resources. Run with system property {} for more details.",
+          "Found {} unclosed resources. Run with system property {}=REFERENCES for more details.",
           unclosed,
           TRACKING_LEVEL_PROPERTY);
     } else {
