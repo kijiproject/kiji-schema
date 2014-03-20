@@ -91,9 +91,39 @@ JAVA_LIBRARY_PATH=${JAVA_LIBRARY_PATH:-""}
 
 java_opts=
 
-# Try CDH defaults.
-HBASE_HOME="${HBASE_HOME:-/usr/lib/hbase}"
-HADOOP_HOME="${HADOOP_HOME:-/usr/lib/hadoop}"
+# Try using the binary to locate the root dir of hadoop and hbase.
+bin="$(resolve_symlink `which hbase`)"
+if [ $bin ]; then
+  if [ -z $HBASE_HOME ]; then
+    HBASE_HOME="${HBASE_HOME:-"$(dirname $(dirname $bin))"}"
+    echo "HBASE_HOME not set. Trying: $HBASE_HOME"
+  fi
+fi
+bin="$(resolve_symlink `which hadoop`)"
+if [ $bin ]; then
+  if [ -z $HADOOP_HOME ]; then
+    HADOOP_HOME="${HADOOP_HOME:-"$(dirname $(dirname $bin))"}"
+    echo "HADOOP_HOME not set. Trying: $HADOOP_HOME"
+  fi
+fi
+# Try defaults.
+if [ -z $HBASE_HOME ]; then
+  HBASE_HOME="${HBASE_HOME:-/usr/lib/hbase}"
+   echo "HBASE_HOME not set. Trying: $HBASE_HOME"
+fi
+if [ -z $HADOOP_HOME ]; then
+  HADOOP_HOME="${HADOOP_HOME:-/usr/lib/hadoop}"
+  echo "HADOOP_HOME not set. Trying: $HADOOP_HOME"
+fi
+
+# Also try finding java root directory, because HBASE fails without it set.
+bin="$(resolve_symlink `which java`)"
+if [ -n $"bin" ]; then
+  if [ -z $JAVA_HOME ]; then
+    JAVA_HOME="${JAVA_HOME:-"$(dirname $(dirname $bin))"}"
+    echo "JAVA_HOME set. Trying: $JAVA_HOME"
+  fi
+fi
 
 # First make sure we have everything we need in the environment.
 if [ -z $KIJI_HOME -o ! -d "$KIJI_HOME" ]; then

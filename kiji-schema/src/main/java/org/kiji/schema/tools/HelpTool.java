@@ -154,7 +154,7 @@ public final class HelpTool extends Configured implements KijiTool {
     System.out.println("  flags for a tool, use --help.  For example:");
     System.out.println("");
     System.out.println("  $ kiji <tool> --help");
-   if (mVerbose) {
+    if (mVerbose) {
       printVerboseHelp();
     } else {
       System.out.println("");
