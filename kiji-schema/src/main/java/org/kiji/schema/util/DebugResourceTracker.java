@@ -18,13 +18,12 @@
  */
 package org.kiji.schema.util;
 
-import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.avro.util.WeakIdentityHashMap;
+import com.google.common.collect.MapMaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -136,7 +135,7 @@ public final class DebugResourceTracker {
         break;
       }
       case REFERENCES: {
-        mResources = Collections.synchronizedMap(new WeakIdentityHashMap<Object, String>());
+        mResources = new MapMaker().weakKeys().makeMap();
         mCounter = new AtomicInteger(0);
         LOG.debug("Registering hook to log details of unclosed resources at shutdown.");
         Runtime.getRuntime().addShutdownHook(new ShutdownHook());
@@ -209,7 +208,7 @@ public final class DebugResourceTracker {
             iterator.remove();
           }
         } catch (ConcurrentModificationException cme) {
-          // This exception indicates that a resource was garbage collected while we were iterating
+          // This exception indicates that a resource was garbage collected while we were iterating.
           // This is normal.
           continue;
         }
