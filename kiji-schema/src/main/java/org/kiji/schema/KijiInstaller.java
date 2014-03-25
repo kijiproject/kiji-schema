@@ -169,7 +169,11 @@ public final class KijiInstaller {
       // before uninstalling.
       if (kiji.isSecurityEnabled()) {
         KijiSecurityManager securityManager = kiji.getSecurityManager();
-        securityManager.checkCurrentGrantAccess();
+        try {
+          securityManager.checkCurrentGrantAccess();
+        } finally {
+          securityManager.close();
+        }
       }
 
       for (String tableName : kiji.getTableNames()) {

@@ -276,18 +276,22 @@ public class TestHBaseMapFamilyPager extends KijiClientTest {
               .build();
           final KijiRowData versionsRow = mReader.get(eid, versionsDataRequest);
           final KijiPager versionsPager = versionsRow.getPager("jobs", qualifier);
-          while (versionsPager.hasNext()) {
-            final KijiRowData versionsPage = versionsPager.next();
-            LOG.debug("New version page with {} versions",
-                versionsPage.getValues("jobs", qualifier).size());
-            for (Map.Entry<Long, String> entry
-                : versionsPage.<String>getValues("jobs", qualifier).entrySet()) {
-              versionsCounter += 1;
-              LOG.debug("Entry: {} -> {}", entry.getKey(), entry.getValue());
+          try {
+            while (versionsPager.hasNext()) {
+              final KijiRowData versionsPage = versionsPager.next();
+              LOG.debug("New version page with {} versions",
+                  versionsPage.getValues("jobs", qualifier).size());
+              for (Map.Entry<Long, String> entry
+                  : versionsPage.<String>getValues("jobs", qualifier).entrySet()) {
+                versionsCounter += 1;
+                LOG.debug("Entry: {} -> {}", entry.getKey(), entry.getValue());
+              }
             }
-          }
 
-          assertEquals(NTIMESTAMPS, versionsCounter);
+            assertEquals(NTIMESTAMPS, versionsCounter);
+          } finally {
+            versionsPager.close();
+          }
         }
       }
 

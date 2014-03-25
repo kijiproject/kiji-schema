@@ -131,8 +131,8 @@
         <version>1.2</version>
         <executions>
           <execution>
-            <id>enforce-file-size</id>
-            <phase>verify</phase>
+            <id>enforce-file-size-test</id>
+            <phase>test</phase>
             <goals>
               <goal>enforce</goal>
             </goals>
@@ -142,6 +142,25 @@
                   <maxsize>0</maxsize>
                   <files>
                    <file>target/cleanup.log</file>
+                  </files>
+                </requireFilesSize>
+              </rules>
+              <fail>true</fail>
+              <skip>${skipTests}</skip>
+            </configuration>
+          </execution>
+          <execution>
+            <id>enforce-file-size-verify</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireFilesSize>
+                  <maxsize>0</maxsize>
+                  <files>
+                    <file>target/cleanup.log</file>
                   </files>
                 </requireFilesSize>
               </rules>

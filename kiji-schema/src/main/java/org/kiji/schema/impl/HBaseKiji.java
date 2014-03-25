@@ -108,8 +108,19 @@ public final class HBaseKiji implements Kiji {
 
   /** States of a Kiji instance. */
   private static enum State {
+    /**
+     * Initialization begun but not completed.  Retain counter and DebugResourceTracker counters
+     * have not been incremented yet.
+     */
     UNINITIALIZED,
+    /**
+     * Finished initialization.  Both retain counters and DebugResourceTracker counters have been
+     * incremented.  Resources are successfully opened and this HBaseKiji's methods may be used.
+     */
     OPEN,
+    /**
+     * Closed.  Other methods are no longer supported.  Resources and connections have been closed.
+     */
     CLOSED
   }
 
@@ -208,12 +219,14 @@ public final class HBaseKiji implements Kiji {
     mMetaTable = null;
     mSecurityManager = null;
 
-    mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
+    try {
+      mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
+    } catch (KijiNotInstalledException kie) {
+      // Some clients handle this unchecked Exception so do the same here.
+      close();
+      throw kie;
+    }
 
-    mRetainCount.set(1);
-    final State oldState = mState.getAndSet(State.OPEN);
-    Preconditions.checkState(oldState == State.UNINITIALIZED,
-        "Cannot open Kiji instance in state %s.", oldState);
     LOG.debug("Kiji instance '{}' is now opened.", mURI);
 
     mSystemVersion = mSystemTable.getDataVersion();
@@ -222,7 +235,7 @@ public final class HBaseKiji implements Kiji {
     // Make sure the data version for the client matches the cluster.
     LOG.debug("Validating version for Kiji instance '{}'.", mURI);
     try {
-      VersionInfo.validateVersion(this);
+      VersionInfo.validateVersion(mSystemTable);
     } catch (IOException ioe) {
       // If an IOException occurred the object will not be constructed so need to clean it up.
       close();
@@ -250,6 +263,11 @@ public final class HBaseKiji implements Kiji {
       mZKClient = null;
       mMonitor = null;
     }
+
+    mRetainCount.set(1);
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open Kiji instance in state %s.", oldState);
 
     mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
         ? Debug.getStackTrace()
@@ -738,7 +756,7 @@ public final class HBaseKiji implements Kiji {
    */
   private void close() throws IOException {
     final State oldState = mState.getAndSet(State.CLOSED);
-    Preconditions.checkState(oldState == State.OPEN,
+    Preconditions.checkState(oldState == State.OPEN || oldState == State.UNINITIALIZED,
         "Cannot close Kiji instance %s in state %s.", this, oldState);
 
     LOG.debug("Closing {}.", this);
@@ -764,7 +782,9 @@ public final class HBaseKiji implements Kiji {
     mMetaTable = null;
     mAdmin = null;
     mSecurityManager = null;
-    DebugResourceTracker.get().unregisterResource(this);
+    if (oldState != State.UNINITIALIZED) {
+      DebugResourceTracker.get().unregisterResource(this);
+    }
     LOG.debug("{} closed.", this);
   }
 

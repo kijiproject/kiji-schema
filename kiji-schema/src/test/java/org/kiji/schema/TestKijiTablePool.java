@@ -21,6 +21,7 @@ package org.kiji.schema;
 
 import static org.easymock.EasyMock.createMock;
 import static org.easymock.EasyMock.expect;
+import static org.easymock.EasyMock.expectLastCall;
 import static org.easymock.EasyMock.replay;
 import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
@@ -58,7 +59,7 @@ public class TestKijiTablePool extends KijiClientTest {
     } catch (IOException ioe) {
       assertEquals("table not found", ioe.getMessage());
     } finally {
-      ResourceUtils.closeOrLog(pool);
+      pool.close();
     }
   }
 
@@ -66,40 +67,42 @@ public class TestKijiTablePool extends KijiClientTest {
   public void testGetCachedTable() throws IOException {
     KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
 
-    KijiTable foo1 = createMock(KijiTable.class);
-    expect(foo1.getName()).andReturn("foo").anyTimes();
-    expect(foo1.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
-    KijiTable foo2 = createMock(KijiTable.class);
-    expect(foo2.getName()).andReturn("foo").anyTimes();
-    expect(foo2.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
-    KijiTable bar1 = createMock(KijiTable.class);
-    expect(bar1.getName()).andReturn("bar").anyTimes();
-    expect(bar1.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/bar").build()).anyTimes();
-    expect(mTableFactory.openTable("foo")).andReturn(foo1);
-    expect(mTableFactory.openTable("foo")).andReturn(foo2);
-    expect(mTableFactory.openTable("bar")).andReturn(bar1);
+    try {
+      KijiTable foo1 = createMock(KijiTable.class);
+      expect(foo1.getName()).andReturn("foo").anyTimes();
+      expect(foo1.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+      KijiTable foo2 = createMock(KijiTable.class);
+      expect(foo2.getName()).andReturn("foo").anyTimes();
+      expect(foo2.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+      KijiTable bar1 = createMock(KijiTable.class);
+      expect(bar1.getName()).andReturn("bar").anyTimes();
+      expect(bar1.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/bar").build()).anyTimes();
+      expect(mTableFactory.openTable("foo")).andReturn(foo1);
+      expect(mTableFactory.openTable("foo")).andReturn(foo2);
+      expect(mTableFactory.openTable("bar")).andReturn(bar1);
 
-    ResourceUtils.releaseOrLog(foo1);
-    ResourceUtils.releaseOrLog(foo2);
-    ResourceUtils.releaseOrLog(bar1);
+      ResourceUtils.releaseOrLog(foo1);
+      ResourceUtils.releaseOrLog(foo2);
+      ResourceUtils.releaseOrLog(bar1);
 
-    replay(foo1);
-    replay(foo2);
-    replay(bar1);
-    replay(mTableFactory);
+      replay(foo1);
+      replay(foo2);
+      replay(bar1);
+      replay(mTableFactory);
 
-    KijiTable fooTable1 = pool.get("foo");
-    KijiTable fooTable2 = pool.get("foo");
-    KijiTable barTable1 = pool.get("bar");
+      KijiTable fooTable1 = pool.get("foo");
+      KijiTable fooTable2 = pool.get("foo");
+      KijiTable barTable1 = pool.get("bar");
 
-    fooTable1.release();
-    assertEquals(fooTable1, pool.get("foo"));
+      fooTable1.release();
+      assertEquals(fooTable1, pool.get("foo"));
 
-    fooTable1.release();
-    fooTable2.release();
-    barTable1.release();
-
-    ResourceUtils.closeOrLog(pool);
+      fooTable1.release();
+      fooTable2.release();
+      barTable1.release();
+    } finally {
+      pool.close();
+    }
 
     verify(mTableFactory);
   }
@@ -110,20 +113,28 @@ public class TestKijiTablePool extends KijiClientTest {
         .withMaxSize(1)
         .build();
 
-    KijiTable foo = createMock(KijiTable.class);
-    expect(foo.getName()).andReturn("foo").anyTimes();
-    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
-    expect(mTableFactory.openTable("foo")).andReturn(foo);
-
-    replay(foo);
-    replay(mTableFactory);
-
-    KijiTable actual = pool.get("foo");
-
-    // The following should fail because the pool is already at max capacity.
     try {
-      pool.get("foo");
-      fail("An exception should have been thrown.");
+      KijiTable foo = createMock(KijiTable.class);
+      expect(foo.getName()).andReturn("foo").anyTimes();
+      expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+      expect(mTableFactory.openTable("foo")).andReturn(foo);
+
+      // The table should be closed when the pool is closed.
+      foo.release();
+      expectLastCall().once();
+
+      replay(foo);
+      replay(mTableFactory);
+
+      KijiTable actual = pool.get("foo");
+
+      try {
+        // The following should fail because the pool is already at max capacity.
+        pool.get("foo");
+        fail("An exception should have been thrown.");
+      } finally {
+        actual.release();
+      }
     } catch (NoCapacityException nce) {
       assertEquals("Reached max pool size for table foo. There are 1 tables in the pool.",
           nce.getMessage());
@@ -138,20 +149,24 @@ public class TestKijiTablePool extends KijiClientTest {
         .withMaxSize(1)
         .build();
 
-    KijiTable foo = createMock(KijiTable.class);
-    expect(foo.getName()).andReturn("foo").anyTimes();
-    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
-    expect(mTableFactory.openTable("foo")).andReturn(foo);
+    try {
+      KijiTable foo = createMock(KijiTable.class);
+      expect(foo.getName()).andReturn("foo").anyTimes();
+      expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+      expect(mTableFactory.openTable("foo")).andReturn(foo);
 
-    replay(foo);
-    replay(mTableFactory);
+      replay(foo);
+      replay(mTableFactory);
 
-    KijiTable first = pool.get("foo");
-    assertNotNull(first);
-    first.release();
+      KijiTable first = pool.get("foo");
+      assertNotNull(first);
+      first.release();
 
-    KijiTable second = pool.get("foo");
-    assertTrue("Released table should be reused.", first == second);
+      KijiTable second = pool.get("foo");
+      assertTrue("Released table should be reused.", first == second);
+    } finally {
+      pool.close();
+    }
   }
 
   @Test
@@ -160,18 +175,22 @@ public class TestKijiTablePool extends KijiClientTest {
         .withMinSize(3)
         .build();
 
-    KijiTable foo = createMock(KijiTable.class);
-    expect(foo.getName()).andReturn("foo").anyTimes();
-    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
-    expect(mTableFactory.openTable("foo")).andReturn(foo).anyTimes();
+    try {
+      KijiTable foo = createMock(KijiTable.class);
+      expect(foo.getName()).andReturn("foo").anyTimes();
+      expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+      expect(mTableFactory.openTable("foo")).andReturn(foo).anyTimes();
 
-    replay(foo);
-    replay(mTableFactory);
+      replay(foo);
+      replay(mTableFactory);
 
-    KijiTable first = pool.get("foo");
-    KijiTable second = pool.get("foo");
-    KijiTable third = pool.get("foo");
-    assertEquals("Incorrect number of connections in the pool.", 3, pool.getPoolSize("foo"));
+      KijiTable first = pool.get("foo");
+      KijiTable second = pool.get("foo");
+      KijiTable third = pool.get("foo");
+      assertEquals("Incorrect number of connections in the pool.", 3, pool.getPoolSize("foo"));
+    } finally {
+      pool.close();
+    }
   }
 
   @Test
@@ -181,102 +200,128 @@ public class TestKijiTablePool extends KijiClientTest {
         .withIdlePollPeriod(1)
         .build();
 
-    KijiTable foo1 = createMock(KijiTable.class);
-    expect(foo1.getName()).andReturn("foo").anyTimes();
-    expect(foo1.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
-    expect(mTableFactory.openTable("foo")).andReturn(foo1);
-    ResourceUtils.releaseOrLog(foo1);
-    KijiTable foo2 = createMock(KijiTable.class);
-    expect(foo2.getName()).andReturn("foo").anyTimes();
-    expect(foo2.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
-    expect(mTableFactory.openTable("foo")).andReturn(foo2);
-    ResourceUtils.releaseOrLog(foo2);
+    try {
+      KijiTable foo1 = createMock(KijiTable.class);
+      expect(foo1.getName()).andReturn("foo").anyTimes();
+      expect(foo1.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+      expect(mTableFactory.openTable("foo")).andReturn(foo1);
+      ResourceUtils.releaseOrLog(foo1);
+      KijiTable foo2 = createMock(KijiTable.class);
+      expect(foo2.getName()).andReturn("foo").anyTimes();
+      expect(foo2.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+      expect(mTableFactory.openTable("foo")).andReturn(foo2);
+      ResourceUtils.releaseOrLog(foo2);
 
-    replay(foo1);
-    replay(foo2);
-    replay(mTableFactory);
+      replay(foo1);
+      replay(foo2);
+      replay(mTableFactory);
 
-    KijiTable first = pool.get("foo");
-    first.release();
-    long releaseTime = System.currentTimeMillis();
-    long acquireTime = releaseTime;
+      KijiTable first = pool.get("foo");
+      first.release();
+      long releaseTime = System.currentTimeMillis();
+      long acquireTime = releaseTime;
 
-    while (acquireTime - releaseTime < 20) {
-      // Keep sleeping until we ensure that at least 2 * idleTimeout has elapsed.
-      Thread.sleep(20);
-      acquireTime = System.currentTimeMillis();
+      while (acquireTime - releaseTime < 20) {
+        // Keep sleeping until we ensure that at least 2 * idleTimeout has elapsed.
+        Thread.sleep(20);
+        acquireTime = System.currentTimeMillis();
+      }
+
+      // Ensure that the pool has an opportunity to clean idle table connections
+      // even if the background thread doesn't get to it due to scheduler nondeterminism.
+      pool.cleanIdleConnections();
+      KijiTable second = pool.get("foo");
+
+      assertFalse("Released table should not be reused, since it was idle and closed.",
+          first == second);
+    } finally {
+      pool.close();
     }
-
-    // Ensure that the pool has an opportunity to clean idle table connections
-    // even if the background thread doesn't get to it due to scheduler nondeterminism.
-    pool.cleanIdleConnections();
-    KijiTable second = pool.get("foo");
-
-    assertFalse("Released table should not be reused, since it was idle and closed.",
-        first == second);
   }
 
   @Test
   public void testRetainOperation() throws IOException {
     KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
 
-    KijiTable foo = createMock(KijiTable.class);
-    expect(foo.getName()).andReturn("foo").anyTimes();
-    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
-    expect(mTableFactory.openTable("foo")).andReturn(foo);
+    try {
+      KijiTable foo = createMock(KijiTable.class);
+      expect(foo.getName()).andReturn("foo").anyTimes();
+      expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+      expect(mTableFactory.openTable("foo")).andReturn(foo);
+      // When the pool is closed, the Mock KijiTable should be released.
+      foo.release();
+      expectLastCall().once();
 
-    replay(foo);
-    replay(mTableFactory);
+      replay(foo);
+      replay(mTableFactory);
 
-    KijiTable fooTable = pool.get("foo");
-    fooTable.retain();
-    fooTable.release(); // Corresponds to the retain
-    fooTable.release(); // It puts the table back in the pool.
+      KijiTable fooTable = pool.get("foo");
+      fooTable.retain();
+      fooTable.release(); // Corresponds to the retain
+      fooTable.release(); // It puts the table back in the pool.
+    } finally {
+      pool.close();
+    }
   }
 
   @Test
   public void testRetainAfterRelease() throws IOException {
     KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
 
-    KijiTable foo = createMock(KijiTable.class);
-    expect(foo.getName()).andReturn("foo").anyTimes();
-    expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
-    expect(mTableFactory.openTable("foo")).andReturn(foo);
-
-    replay(foo);
-    replay(mTableFactory);
-
-    KijiTable fooTable = pool.get("foo");
-    fooTable.release();
     try {
-      fooTable.retain();
-      fail("Should throw an IllegalStateException.");
-    } catch (IllegalStateException ise) {
-      assertTrue(ise.getMessage().endsWith("retain counter was 2."));
+      KijiTable foo = createMock(KijiTable.class);
+      expect(foo.getName()).andReturn("foo").anyTimes();
+      expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
+      expect(mTableFactory.openTable("foo")).andReturn(foo);
+      // When the pool is closed, the mock KijiTable should be released.
+      foo.release();
+      expectLastCall().once();
+
+      replay(foo);
+      replay(mTableFactory);
+
+      KijiTable fooTable = pool.get("foo");
+      fooTable.release();
+      try {
+        fooTable.retain();
+        fail("Should throw an IllegalStateException.");
+      } catch (IllegalStateException ise) {
+        assertTrue(ise.getMessage().endsWith("retain counter was 2."));
+      }
+    } finally {
+      pool.close();
     }
   }
 
   @Test
   public void testTooManyReleases() throws IOException {
-    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
-
     KijiTable foo = createMock(KijiTable.class);
     expect(foo.getName()).andReturn("foo").anyTimes();
     expect(foo.getURI()).andReturn(KijiURI.newBuilder("kiji://.env/foo").build()).anyTimes();
     expect(mTableFactory.openTable("foo")).andReturn(foo);
 
+    // The mock KijiTable should be released when the pool is closed.
+    foo.release();
+    expectLastCall().once();
+
     replay(foo);
     replay(mTableFactory);
 
-    KijiTable fooTable = pool.get("foo");
-    fooTable.retain();
-    fooTable.release();
-    fooTable.release();
+    KijiTablePool pool = KijiTablePool.newBuilder(mTableFactory).build();
+
     try {
+      KijiTable fooTable = pool.get("foo");
+      fooTable.retain();
       fooTable.release();
-      fail("Should throw an IllegalStateException.");
-    } catch (IllegalStateException ise) {
-      assertTrue(ise.getMessage().endsWith("retain counter is now 0."));
+      fooTable.release();
+      try {
+        fooTable.release();
+        fail("Should throw an IllegalStateException.");
+      } catch (IllegalStateException ise) {
+        assertTrue(ise.getMessage().endsWith("retain counter is now 0."));
+      }
+    } finally {
+      pool.close();
     }
   }
 

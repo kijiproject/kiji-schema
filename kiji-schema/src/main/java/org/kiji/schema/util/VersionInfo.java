@@ -73,6 +73,51 @@ public final class VersionInfo {
   }
 
   /**
+   * Gets the version of the Kiji instance format installed on the HBase cluster.
+   *
+   * <p>The instance format describes the layout of the global metadata state of
+   * a Kiji instance.</p>
+   *
+   * @param systemTable An open KijiSystemTable.
+   * @return A parsed version of the storage format protocol version string.
+   * @throws IOException on I/O error.
+   */
+  private static ProtocolVersion getClusterDataVersion(KijiSystemTable systemTable) throws
+      IOException {
+    try {
+      final ProtocolVersion dataVersion = systemTable.getDataVersion();
+      return dataVersion;
+    } catch (TableNotFoundException e) {
+      final KijiURI kijiURI = systemTable.getKijiURI();
+      throw new KijiNotInstalledException(
+          String.format("Kiji instance %s is not installed.", kijiURI),
+          kijiURI);
+    }
+  }
+
+  /**
+   * Validates that the client instance format version is compatible with the instance
+   * format version installed on a Kiji instance.
+   * Returns true if they are compatible, false otherwise.
+   * "Compatible" versions have the same major version digit (e.g., <tt>system-1.1</tt>
+   * and <tt>system-1.0</tt> are compatible; <tt>system-2.5</tt> and <tt>system-1.0</tt> are not).
+   *
+   * <p>Older instances (installed with KijiSchema 1.0.0-rc3 and prior) will use an instance
+   * format version of <tt>kiji-1.0</tt>. This is treated as an alias for <tt>system-1.0</tt>.
+   * No other versions associated with the <tt>"kiji"</tt> protocol are supported.</p>
+   *
+   * @param systemTable An open KijiSystemTable.
+   * @throws IOException on I/O error reading the Kiji version from the system.
+   * @return true if the installed instance format
+   *     version is compatible with this client, false otherwise.
+   */
+  private static boolean isKijiVersionCompatible(KijiSystemTable systemTable) throws IOException {
+    final ProtocolVersion clientVersion = VersionInfo.getClientDataVersion();
+    final ProtocolVersion clusterVersion = VersionInfo.getClusterDataVersion(systemTable);
+    return areInstanceVersionsCompatible(clientVersion, clusterVersion);
+  }
+
+  /**
    * Gets the version of the Kiji client software.
    *
    * @return The version string.
@@ -117,16 +162,7 @@ public final class VersionInfo {
    * @throws IOException on I/O error.
    */
   public static ProtocolVersion getClusterDataVersion(Kiji kiji) throws IOException {
-    try {
-      final KijiSystemTable systemTable = kiji.getSystemTable();
-      final ProtocolVersion dataVersion = systemTable.getDataVersion();
-      return dataVersion;
-    } catch (TableNotFoundException e) {
-      final KijiURI kijiURI = kiji.getURI();
-      throw new KijiNotInstalledException(
-          String.format("Kiji instance %s is not installed.", kijiURI),
-          kijiURI);
-    }
+    return getClusterDataVersion(kiji.getSystemTable());
   }
 
   /**
@@ -143,11 +179,32 @@ public final class VersionInfo {
    *     is incompatible with the version supported by the client.
    */
   public static void validateVersion(Kiji kiji) throws IOException {
-    if (isKijiVersionCompatible(kiji)) {
+    validateVersion(kiji.getSystemTable());
+  }
+
+  /**
+   * Validates that the client instance format version is compatible with the instance
+   * format version installed on a Kiji instance.
+   * Throws IncompatibleKijiVersionException if not.
+   *
+   * This method may be useful if a Kiji is not fully constructed, but the KijiSystemTable exists,
+   * such as during construction of a Kiji.  This method should only be used by framework-level
+   * applications, since KijiSystemTable is a framework-level class.
+   *
+   * <p>For the definition of compatibility used in this method, see {@link
+   * #isKijiVersionCompatible}</p>
+   *
+   * @param systemTable An open KijiSystemTable.
+   * @throws IOException on I/O error reading the data version from the cluster,
+   *     or throws IncompatibleKijiVersionException if the installed instance format version
+   *     is incompatible with the version supported by the client.
+   */
+  public static void validateVersion(KijiSystemTable systemTable) throws IOException {
+    if (isKijiVersionCompatible(systemTable)) {
       return; // valid.
     } else {
       final ProtocolVersion clientVersion = VersionInfo.getClientDataVersion();
-      final ProtocolVersion clusterVersion = VersionInfo.getClusterDataVersion(kiji);
+      final ProtocolVersion clusterVersion = VersionInfo.getClusterDataVersion(systemTable);
       throw new IncompatibleKijiVersionException(String.format(
           "Data format of Kiji instance (%s) cannot operate with client (%s)",
           clusterVersion, clientVersion));

@@ -301,38 +301,37 @@ public final class DeleteTool extends BaseTool {
   /**
    * Deletes an entire Kiji instance.
    *
-   * @param instanceURI URI of the Kiji instance to delete.
+   * @param kiji The Kiji instance to delete.
    * @return tool exit code.
    * @throws Exception on error.
    */
-  private int deleteInstance(KijiURI instanceURI) throws Exception {
-    final Kiji kiji = Kiji.Factory.open(instanceURI, getConf());
+  private int deleteInstance(Kiji kiji) throws Exception {
     getPrintStream().println("WARNING: This instance contains the table(s):");
     for (String name : kiji.getTableNames()) {
       getPrintStream().println(name);
     }
 
     if (isInteractive() && !inputConfirmation(
-        String.format("Are you sure you want to delete Kiji instance '%s'?", instanceURI),
-        instanceURI.getInstance())) {
+        String.format("Are you sure you want to delete Kiji instance '%s'?", kiji.getURI()),
+        kiji.getURI().getInstance())) {
       getPrintStream().println("Delete aborted.");
       return FAILURE;
     }
-    KijiInstaller.get().uninstall(instanceURI, getConf());
-    getPrintStream().println(String.format("Kiji instance '%s' deleted.", instanceURI));
+    KijiInstaller.get().uninstall(kiji.getURI(), getConf());
+    getPrintStream().println(String.format("Kiji instance '%s' deleted.", kiji.getURI()));
     return SUCCESS;
   }
 
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
-    if (mTargetURI.getTable() == null) {
-      // No table specified: delete Kiji instance:
-      return deleteInstance(mTargetURI);
-    }
-
     final Kiji kiji = Kiji.Factory.open(mTargetURI, getConf());
     try {
+      if (mTargetURI.getTable() == null) {
+        // No table specified: delete Kiji instance:
+        return deleteInstance(kiji);
+      }
+
       final List<KijiColumnName> columns = mTargetURI.getColumns();  // never null
 
       if (null == mEntityIdFlag) {

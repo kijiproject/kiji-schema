@@ -75,6 +75,7 @@ import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutUpdateHandler;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.DebugResourceTracker;
 import org.kiji.schema.util.JvmId;
+import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 
 /**
@@ -106,8 +107,20 @@ public final class HBaseKijiTable implements KijiTable {
 
   /** States of a kiji table instance. */
   private static enum State {
+    /**
+     * Initialization begun but not completed.  Retain counter and DebugResourceTracker counters
+     * have not been incremented yet.
+     */
     UNINITIALIZED,
+    /**
+     * Finished initialization.  Both retain counters and DebugResourceTracker counters have been
+     * incremented.  Resources are successfully opened and this HBaseKijiTable's methods may be
+     * used.
+     */
     OPEN,
+    /**
+     * Closed.  Other methods are no longer supported.  Resources and connections have been closed.
+     */
     CLOSED
   }
 
@@ -328,8 +341,13 @@ public final class HBaseKijiTable implements KijiTable {
       Configuration conf,
       HTableInterfaceFactory htableFactory)
       throws IOException {
+    mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
+        ? Debug.getStackTrace()
+        : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
 
     mKiji = kiji;
+    mKiji.retain();
+
     mName = name;
     mHTableFactory = htableFactory;
     mConf = conf;
@@ -340,6 +358,7 @@ public final class HBaseKijiTable implements KijiTable {
         KijiManagedHBaseTableName.getKijiTableName(mTableURI.getInstance(), mName).toString();
 
     if (!mKiji.getTableNames().contains(mName)) {
+      closeResources();
       throw new KijiTableNotFoundException(mTableURI);
     }
 
@@ -358,11 +377,16 @@ public final class HBaseKijiTable implements KijiTable {
       // system-1.x clients retrieve the table layout from the meta-table:
 
       // throws KijiTableNotFoundException
-      final KijiTableLayout layout = mKiji.getMetaTable().getTableLayout(name)
-          .setSchemaTable(mKiji.getSchemaTable());
-      mLayoutMonitor = null;
-      mLayoutTracker = null;
-      mLayoutCapsule = new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
+      try {
+        final KijiTableLayout layout = mKiji.getMetaTable().getTableLayout(name)
+            .setSchemaTable(mKiji.getSchemaTable());
+        mLayoutMonitor = null;
+        mLayoutTracker = null;
+        mLayoutCapsule = new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
+      } catch (KijiTableNotFoundException ktnfe) {
+        closeResources();
+        throw ktnfe;
+      }
     }
 
     mWriterFactory = new HBaseKijiWriterFactory(this);
@@ -372,15 +396,9 @@ public final class HBaseKijiTable implements KijiTable {
 
     mHTablePool = new KijiHTablePool(mName, (HBaseKiji)getKiji(), mHTableFactory);
 
-    // Retain the Kiji instance only if open succeeds:
-    mKiji.retain();
-
     // Table is now open and must be released properly:
     mRetainCount.set(1);
 
-    mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
-        ? Debug.getStackTrace()
-        : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
     DebugResourceTracker.get().registerResource(this, mConstructorStack);
 
     final State oldState = mState.getAndSet(State.OPEN);
@@ -686,7 +704,7 @@ public final class HBaseKijiTable implements KijiTable {
    */
   private void closeResources() throws IOException {
     final State oldState = mState.getAndSet(State.CLOSED);
-    Preconditions.checkState(oldState == State.OPEN,
+    Preconditions.checkState(oldState == State.OPEN || oldState == State.UNINITIALIZED,
         "Cannot close KijiTable instance %s in state %s.", this, oldState);
     LOG.debug("Closing HBaseKijiTable '{}'.", this);
 
@@ -704,9 +722,11 @@ public final class HBaseKijiTable implements KijiTable {
       mLayoutMonitor.close();
     }
 
-    mHTablePool.close();
-    mKiji.release();
-    DebugResourceTracker.get().unregisterResource(this);
+    ResourceUtils.closeOrLog(mHTablePool);
+    ResourceUtils.releaseOrLog(mKiji);
+    if (oldState != State.UNINITIALIZED) {
+      DebugResourceTracker.get().unregisterResource(this);
+    }
 
     LOG.debug("HBaseKijiTable '{}' closed.", mTableURI);
   }
@@ -774,11 +794,14 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public String toString() {
+    String layoutId = (null == getLayoutCapsule())
+        ? "Uninitialized layout."
+        : getLayoutCapsule().getLayout().getDesc().getLayoutId();
     return Objects.toStringHelper(HBaseKijiTable.class)
         .add("id", System.identityHashCode(this))
         .add("uri", mTableURI)
         .add("retain_counter", mRetainCount.get())
-        .add("layout_id", getLayoutCapsule().getLayout().getDesc().getLayoutId())
+        .add("layout_id", layoutId)
         .add("state", mState.get())
         .toString();
   }

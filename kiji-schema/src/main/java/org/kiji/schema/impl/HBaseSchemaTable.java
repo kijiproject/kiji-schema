@@ -96,8 +96,6 @@ import org.kiji.schema.util.ResourceUtils;
 @ApiAudience.Private
 public class HBaseSchemaTable implements KijiSchemaTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseSchemaTable.class);
-  // private static final Logger CLEANUP_LOG =
-  //     LoggerFactory.getLogger(HBaseSchemaTable.class.getName() + ".Cleanup");
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseSchemaTable.class.getName());
 

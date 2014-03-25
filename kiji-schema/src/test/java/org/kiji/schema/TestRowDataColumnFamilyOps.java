@@ -39,8 +39,8 @@ import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
 
 /**
- * Ensure that column family requests are limited to map-type columns. This ensures ensures type
- * safety on getMethods for data from column families.
+ * Ensure that column family requests are limited to map-type columns. This ensures type safety
+ * on getMethods for data from column families.
  */
 public class TestRowDataColumnFamilyOps extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestRowDataColumnFamilyOps.class);
@@ -61,10 +61,17 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
                   .withQualifier("column2").withValue(1L, 1)
         .build();
      final KijiTable table = mKiji.openTable("table");
-     final KijiTableReader reader = table.openTableReader();
-     mRow1 = reader.get(table.getEntityId("row1"),
-              KijiDataRequest.create("family"));
-
+     try {
+       final KijiTableReader reader = table.openTableReader();
+       try {
+         mRow1 = reader.get(table.getEntityId("row1"),
+                  KijiDataRequest.create("family"));
+       } finally {
+         reader.close();
+       }
+     } finally {
+       table.release();
+     }
   }
 
   @After
@@ -185,20 +192,29 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
   @Test
   public void testGetPager() throws IOException {
     final KijiTable table = mKiji.openTable("table");
-    final KijiTableReader reader = table.openTableReader();
-    KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().withMaxVersions(5).withPageSize(2).addFamily("family");
-    final KijiDataRequest dataRequest = builder.build();
-    final KijiRowData row1 = reader.get(table.getEntityId("row1"),
-              dataRequest);
     try {
-      KijiPager pager = row1.getPager("family");
-      fail("Didn't throw an exception!");
-    } catch (IllegalStateException ex) {
-      assertEquals("getPager(String family) is only enabled on map type column families. "
-        + "The column family 'family' is a group type column family. "
-        + "Please use the getPager(String family, String qualifier) method.",
-        ex.getMessage());
+      final KijiTableReader reader = table.openTableReader();
+      try {
+        KijiDataRequestBuilder builder = KijiDataRequest.builder();
+        builder.newColumnsDef().withMaxVersions(5).withPageSize(2).addFamily("family");
+        final KijiDataRequest dataRequest = builder.build();
+        final KijiRowData row1 = reader.get(table.getEntityId("row1"),
+                  dataRequest);
+        try {
+          KijiPager pager = row1.getPager("family");
+          pager.close();
+          fail("Didn't throw an exception!");
+        } catch (IllegalStateException ex) {
+          assertEquals("getPager(String family) is only enabled on map type column families. "
+            + "The column family 'family' is a group type column family. "
+            + "Please use the getPager(String family, String qualifier) method.",
+            ex.getMessage());
+        }
+      } finally {
+        reader.close();
+      }
+    } finally {
+      table.release();
     }
   }
 }

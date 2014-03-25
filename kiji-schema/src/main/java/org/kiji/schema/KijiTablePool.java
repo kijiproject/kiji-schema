@@ -79,7 +79,7 @@ import org.kiji.schema.util.ResourceUtils;
 public final class KijiTablePool implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTablePool.class);
   private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger(KijiTablePool.class.getName() + ".Cleanup");
+      LoggerFactory.getLogger("cleanup." + KijiTablePool.class.getName());
 
   /** Default minimum pool size. */
   public static final int DEFAULT_MIN_POOL_SIZE = 0;

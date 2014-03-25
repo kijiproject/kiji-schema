@@ -216,6 +216,12 @@ public class HBaseSystemTable implements KijiSystemTable {
 
   /** {@inheritDoc} */
   @Override
+  public KijiURI getKijiURI() {
+    return mURI;
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public synchronized void close() throws IOException {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,

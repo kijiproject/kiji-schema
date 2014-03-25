@@ -177,16 +177,16 @@ public final class KijiHTablePool implements Closeable {
   class PooledHTableFactory extends BasePoolableObjectFactory<PooledHTable> {
     @Override
     public PooledHTable makeObject() throws Exception {
-      final HTableInterface htable = mHTableFactory.create(mKiji.getConf(), mHBaseTableName);
-      LOG.debug("Creating a new pooled HTable: " + htable.toString());
-      return new PooledHTable(htable);
+      final HTableInterface hTable = mHTableFactory.create(mKiji.getConf(), mHBaseTableName);
+      LOG.debug("Creating a new pooled HTable: " + hTable.toString());
+      return new PooledHTable(hTable);
     }
 
     @Override
     public void destroyObject(PooledHTable obj) throws Exception {
-      final HTableInterface htable = obj.getWrappedTable();
-      LOG.debug("Destroying a pooled HTable: " + htable.toString());
-      htable.close();
+      final HTableInterface hTable = obj.getWrappedTable();
+      LOG.debug("Destroying a pooled HTable: " + hTable.toString());
+      hTable.close();
     }
 
     @Override

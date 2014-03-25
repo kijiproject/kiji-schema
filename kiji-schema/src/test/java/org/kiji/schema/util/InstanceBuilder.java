@@ -164,7 +164,7 @@ public class InstanceBuilder {
    *
    * <p> Creates an in-memory HBase cluster, populates and installs the provided Kiji instances.
    *
-   * @return The kiji instances for the test environment.
+   * @return The kiji instance for the test environment.
    */
   public Kiji build() throws IOException {
     // Populate constants.
@@ -342,7 +342,6 @@ public class InstanceBuilder {
      *
      * @param table Name of the Kiji table that this row will belong to.
      * @param entityId Desired entityId of the row.
-     * @return A builder to continue building with.
      */
     protected RowBuilder(String table, EntityId entityId) {
       super(table);

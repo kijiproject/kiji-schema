@@ -126,4 +126,9 @@ public interface KijiSystemTable extends Closeable {
    * @throws IOException in case of an error.
    */
   void fromBackup(SystemTableBackup backup) throws IOException;
+
+  /**
+   * @return The URI of the Kiji instance that this KijiSystemTable serves.
+   */
+  KijiURI getKijiURI();
 }
