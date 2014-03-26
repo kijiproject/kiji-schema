@@ -87,6 +87,9 @@ public final class HBaseKiji implements Kiji {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKiji.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKiji.class.getName());
+  private static final String ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE = String.format(
+      "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
+      CLEANUP_LOG.getName());
 
   /** Global counter to generate unique HBaseKiji client IDs. */
   private static final AtomicLong INSTANCE_COUNTER = new AtomicLong(0);
@@ -248,7 +251,9 @@ public final class HBaseKiji implements Kiji {
       mMonitor = null;
     }
 
-    mConstructorStack = (CLEANUP_LOG.isDebugEnabled()) ? Debug.getStackTrace() : null;
+    mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
+        ? Debug.getStackTrace()
+        : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
     DebugResourceTracker.get().registerResource(this, mConstructorStack);
   }
 

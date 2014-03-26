@@ -89,6 +89,9 @@ public final class HBaseKijiTable implements KijiTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTable.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKijiTable.class.getName());
+  private static final String ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE = String.format(
+      "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
+      CLEANUP_LOG.getName());
 
   private static final AtomicLong TABLE_COUNTER = new AtomicLong(0);
 
@@ -375,7 +378,9 @@ public final class HBaseKijiTable implements KijiTable {
     // Table is now open and must be released properly:
     mRetainCount.set(1);
 
-    mConstructorStack = (CLEANUP_LOG.isDebugEnabled()) ? Debug.getStackTrace() : null;
+    mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
+        ? Debug.getStackTrace()
+        : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
     DebugResourceTracker.get().registerResource(this, mConstructorStack);
 
     final State oldState = mState.getAndSet(State.OPEN);

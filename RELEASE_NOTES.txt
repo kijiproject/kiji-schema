@@ -3,6 +3,7 @@
                               KijiSchema Release Notes
 
 Version 1.4.0
+  * SCHEMA-687. DebugResourceTracker no longer accepts null error messages.
   * SCHEMA-672. DecodedCell and KijiCell now support getting the reader Schema
       with which the cell was decoded (if any). Decoded cell adds a constructor
       which accepts a writer schema, reader schema, and value.

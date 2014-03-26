@@ -222,7 +222,7 @@ public final class DebugResourceTracker {
    * @param resource Object which should be cleaned up before JVM shutdown.
    * @param errorMessage error string which will be logged with the resource.toString() if the
    *     resource is not closed before shutdown. A good example of this error message is the stack
-   *     trace at the time the object was created.
+   *     trace at the time the object was created. May not be null.
    */
   public void registerResource(
       final Object resource,
