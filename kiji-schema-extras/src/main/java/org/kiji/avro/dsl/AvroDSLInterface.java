@@ -58,6 +58,7 @@ public interface AvroDSLInterface {
    *
    * @param text Text DSL representation of an Avro value.
    * @param schema Avro schema of the value to parse.
+   * @param <T> is the value type to return.
    * @return the Avro value parsed from the text representation.
    */
   <T> T parseValue(String text, Schema schema);
@@ -67,6 +68,7 @@ public interface AvroDSLInterface {
    *
    * @param value Avro value to serialize.
    * @param schema Avro schema of the value to serialize.
+   * @param <T> is the value type to return.
    * @return the DSL string representation of the Avro value.
    */
   <T> String valueToString(T value, Schema schema);

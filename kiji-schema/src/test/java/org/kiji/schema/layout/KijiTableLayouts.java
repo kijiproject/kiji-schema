@@ -153,6 +153,10 @@ public final class KijiTableLayouts {
   public static final String HASH_PREFIXED_RKF =
       "org/kiji/schema/layout/hashprefixedkey.json";
 
+  /** Table named 'table' which uses hash prefixed formatted row keys with multiple components. */
+  public static final String HASH_PREFIXED_FORMATTED_MULTI_COMPONENT =
+      "org/kiji/schema/layout/hashed-formattedkey-multicomponent.json";
+
   /** Table named 'table' which contains two columns containing different types. */
   public static final String TWO_COLUMN_DIFFERENT_TYPES =
       "org/kiji/schema/layout/two-column-different-types.json";
