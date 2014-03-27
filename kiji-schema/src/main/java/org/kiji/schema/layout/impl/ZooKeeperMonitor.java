@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -437,6 +438,7 @@ public final class ZooKeeperMonitor implements Closeable {
     private final LayoutWatcher mWatcher = new LayoutWatcher();
     private final Stat mLayoutStat = new Stat();
     private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
+    private volatile byte[] mLatestLayout = null;
 
     /** Automatically re-registers for new layout updates. */
     private class LayoutWatcher implements Watcher {
@@ -495,11 +497,17 @@ public final class ZooKeeperMonitor implements Closeable {
       try {
         final byte[] layoutUpdate =
             ZooKeeperMonitor.this.mZKClient.getData(mTableLayoutFile, mWatcher, mLayoutStat);
-        LOG.info("Received layout update for table {}: {}.",
-            mTableURI, Bytes.toStringBinary(layoutUpdate));
 
-        // This assumes handlers do not let exceptions pop up:
-        mHandler.update(layoutUpdate);
+        if (!Arrays.equals(mLatestLayout, layoutUpdate)) {
+          // Layout update may not be changed in the case where this was triggered by a ZooKeeper
+          // connection state change.
+          LOG.info("Received layout update for table {}: {}.",
+              mTableURI, Bytes.toStringBinary(layoutUpdate));
+          mLatestLayout = layoutUpdate;
+
+          // This assumes handlers do not let exceptions pop up:
+          mHandler.update(layoutUpdate);
+        }
 
       } catch (KeeperException ke) {
         LOG.error("Unrecoverable ZooKeeper error: {}", ke.getMessage());

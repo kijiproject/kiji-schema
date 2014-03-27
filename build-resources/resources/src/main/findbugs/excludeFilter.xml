@@ -118,6 +118,12 @@
   </Match>
 
   <Match>
+    <!-- Individual array elements are not mutated. -->
+    <Class name="org.kiji.schema.layout.impl.ZooKeeperMonitor$LayoutTracker" />
+    <Bug pattern="VO_VOLATILE_REFERENCE_TO_ARRAY" />
+  </Match>
+
+  <Match>
     <!-- FindBugs has a bug: http://sourceforge.net/p/findbugs/bugs/1139/ -->
     <Or>
       <Class name="org.kiji.schema.impl.AvroCellEncoder$1" />

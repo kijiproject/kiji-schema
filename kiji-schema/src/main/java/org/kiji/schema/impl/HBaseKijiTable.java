@@ -20,9 +20,9 @@
 package org.kiji.schema.impl;
 
 import java.io.IOException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -31,6 +31,8 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -181,10 +183,10 @@ public final class HBaseKijiTable implements KijiTable {
   private volatile LayoutCapsule mLayoutCapsule = null;
 
   /**
-   * Monitor used to delay construction of this KijiTable until the LayoutCapsule is initialized
-   * from ZooKeeper.  This lock should not be used to synchronize any other operations.
+   * Latch used to delay construction of this KijiTable until the LayoutCapsule is initialized
+   * from ZooKeeper.
    */
-  private final Object mLayoutCapsuleInitializationLock = new Object();
+  private final CountDownLatch mLayoutCapsuleInitializationLatch = new CountDownLatch(1);
 
   /**
    * Set of outstanding layout consumers associated with this table.  Updating the layout of this
@@ -192,7 +194,8 @@ public final class HBaseKijiTable implements KijiTable {
    * {@link LayoutConsumer#update(org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule)} on all
    * registered consumers.
    */
-  private final Set<LayoutConsumer> mLayoutConsumers = new HashSet<LayoutConsumer>();
+  private final Set<LayoutConsumer> mLayoutConsumers =
+      Sets.newSetFromMap(Maps.<LayoutConsumer, Boolean>newConcurrentMap());
 
   /**
    * Container class encapsulating the KijiTableLayout and related objects which must all reflect
@@ -277,19 +280,20 @@ public final class HBaseKijiTable implements KijiTable {
           "New layout ID %s does not match most recent layout ID %s from meta-table.",
           newLayoutId, newLayout.getDesc().getLayoutId());
 
+      // Update layout capsule
       mLayoutCapsule =
           new LayoutCapsule(newLayout,
               KijiColumnNameTranslator.from(newLayout), HBaseKijiTable.this);
 
-      // Propagates the new layout to all consumers:
-      synchronized (mLayoutConsumers) {
-        for (LayoutConsumer consumer : mLayoutConsumers) {
-          try {
-            consumer.update(mLayoutCapsule);
-          } catch (IOException ioe) {
-            // TODO(SCHEMA-505): Handle exceptions decently
-            throw new KijiIOException(ioe);
-          }
+      // Update all layout consumers.  Safe iteration through a concurrent set requires making a
+      // copy of the set. Any consumers which register after the layout is updated in the previous
+      // line will necessarily get the new layout, so they need not be updated.
+      for (LayoutConsumer consumer : ImmutableSet.copyOf(mLayoutConsumers)) {
+        try {
+          consumer.update(mLayoutCapsule);
+        } catch (IOException ioe) {
+          // TODO(SCHEMA-505): Handle exceptions decently
+          throw new KijiIOException(ioe);
         }
       }
 
@@ -306,9 +310,7 @@ public final class HBaseKijiTable implements KijiTable {
       }
 
       // Now, there is a layout defined for the table, KijiTable constructor may complete:
-      synchronized (mLayoutCapsuleInitializationLock) {
-        mLayoutCapsuleInitializationLock.notifyAll();
-      }
+      mLayoutCapsuleInitializationLatch.countDown();
     }
 
     /**
@@ -428,14 +430,10 @@ public final class HBaseKijiTable implements KijiTable {
    * Waits until the table layout is initialized.
    */
   private void waitForLayoutInitialized() {
-    synchronized (mLayoutCapsuleInitializationLock) {
-      while (mLayoutCapsule == null) {
-        try {
-          mLayoutCapsuleInitializationLock.wait();
-        } catch (InterruptedException ie) {
-          throw new RuntimeInterruptedException(ie);
-        }
-      }
+    try {
+      mLayoutCapsuleInitializationLatch.await();
+    } catch (InterruptedException e) {
+      throw new RuntimeInterruptedException(e);
     }
   }
 
@@ -491,9 +489,7 @@ public final class HBaseKijiTable implements KijiTable {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot register a new layout consumer to a KijiTable in state %s.", state);
-    synchronized (mLayoutConsumers) {
-      mLayoutConsumers.add(consumer);
-    }
+    mLayoutConsumers.add(consumer);
     consumer.update(mLayoutCapsule);
   }
 
@@ -507,9 +503,7 @@ public final class HBaseKijiTable implements KijiTable {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot unregister a layout consumer from a KijiTable in state %s.", state);
-    synchronized (mLayoutConsumers) {
-      mLayoutConsumers.remove(consumer);
-    }
+    mLayoutConsumers.remove(consumer);
   }
 
   /**
@@ -527,9 +521,7 @@ public final class HBaseKijiTable implements KijiTable {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get a list of layout consumers from a KijiTable in state %s.", state);
-    synchronized (mLayoutConsumers) {
-      return ImmutableSet.copyOf(mLayoutConsumers);
-    }
+    return ImmutableSet.copyOf(mLayoutConsumers);
   }
 
   /**
@@ -547,10 +539,8 @@ public final class HBaseKijiTable implements KijiTable {
     layout.setSchemaTable(mKiji.getSchemaTable());
     final LayoutCapsule capsule =
         new LayoutCapsule(layout, KijiColumnNameTranslator.from(layout), this);
-    synchronized (mLayoutConsumers) {
-      for (LayoutConsumer consumer : mLayoutConsumers) {
-        consumer.update(capsule);
-      }
+    for (LayoutConsumer consumer : ImmutableSet.copyOf(mLayoutConsumers)) {
+      consumer.update(capsule);
     }
   }
 

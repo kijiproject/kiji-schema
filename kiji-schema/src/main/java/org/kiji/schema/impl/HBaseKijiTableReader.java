@@ -163,6 +163,10 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     /** {@inheritDoc} */
     @Override
     public void update(LayoutCapsule capsule) throws IOException {
+      if (mState.get() == State.CLOSED) {
+        LOG.debug("KijiTableReader instance is closed; ignoring layout update.");
+        return;
+      }
       final CellDecoderProvider provider;
       if (null != mCellSpecOverrides) {
         provider = new CellDecoderProvider(

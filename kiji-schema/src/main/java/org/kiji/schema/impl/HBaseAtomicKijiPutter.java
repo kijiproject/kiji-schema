@@ -124,9 +124,10 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     /** {@inheritDoc} */
     @Override
     public void update(final LayoutCapsule capsule) throws IOException {
-      final State state = mState.get();
-      Preconditions.checkState(state != State.CLOSED,
-          "Cannot update an AtomicKijiPutter instance in state %s.", state);
+      if (mState.get() == State.CLOSED) {
+        LOG.debug("AtomicKijiPutter instance is closed; ignoring layout update.");
+        return;
+      }
       synchronized (mLock) {
         mLayoutOutOfDate = true;
         // Update the state of the writer.
