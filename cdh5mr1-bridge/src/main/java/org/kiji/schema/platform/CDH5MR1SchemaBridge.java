@@ -69,7 +69,8 @@ public final class CDH5MR1SchemaBridge extends SchemaPlatformBridge {
   @Override
   public void setAutoFlush(HTableInterface hTable, boolean autoFlush) {
     // We can do this directly in CDH5.
-    hTable.setAutoFlushTo(autoFlush);
+    // TODO(SCHEMA-683): Replace this with a non-deprecated call.
+    hTable.setAutoFlush(autoFlush);
   }
 
   /** {@inheritDoc} */
@@ -210,4 +211,3 @@ public final class CDH5MR1SchemaBridge extends SchemaPlatformBridge {
     }
   }
 }
-
