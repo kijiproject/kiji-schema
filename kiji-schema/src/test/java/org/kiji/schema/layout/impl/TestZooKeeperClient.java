@@ -36,9 +36,8 @@ public class TestZooKeeperClient extends ZooKeeperTest {
   /** Minimal unit-test for ZooKeeperClient. */
   @Test
   public void testZooKeeperClient() throws Exception {
-    final String zkAddr = String.format("localhost:%d", getZKCluster().getClientPort());
+    final ZooKeeperClient client = ZooKeeperClient.getZooKeeperClient(getZKAddress());
 
-    final ZooKeeperClient client = ZooKeeperClient.getZooKeeperClient(zkAddr);
     try {
       client.getZKClient(1.0);
       LOG.debug("Got a live ZooKeeper client.");
@@ -73,10 +72,8 @@ public class TestZooKeeperClient extends ZooKeeperTest {
 
   @Test
   public void testZooKeeperClientsAreCached() throws Exception {
-    final String zkAddr = String.format("localhost:%d", getZKCluster().getClientPort());
-
-    final ZooKeeperClient client1 = ZooKeeperClient.getZooKeeperClient(zkAddr);
-    final ZooKeeperClient client2 = ZooKeeperClient.getZooKeeperClient(zkAddr);
+    final ZooKeeperClient client1 = ZooKeeperClient.getZooKeeperClient(getZKAddress());
+    final ZooKeeperClient client2 = ZooKeeperClient.getZooKeeperClient(getZKAddress());
 
     Assert.assertTrue(client1 == client2);
     client1.release();
@@ -94,5 +91,14 @@ public class TestZooKeeperClient extends ZooKeeperTest {
     Assert.assertFalse(client1 == client2);
     Assert.assertTrue(client2.isOpen());
     client2.release();
+  }
+
+  @Test
+  public void testZooKeeperClientGetZKClientBlocksWhileNotConnected() throws Exception {
+    final ZooKeeperClient client = ZooKeeperClient.getZooKeeperClient(getZKAddress());
+    stopZKCluster(); // Kill session
+    Assert.assertNull(client.getZKClient(0.5));
+    startZKCluster();
+    Assert.assertNotNull(client.getZKClient(5.0)); // Don't try forever
   }
 }

@@ -143,10 +143,13 @@ public final class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient
         // Nothing to do here.
         break;
       }
-      case Disconnected:
+      case Disconnected: {
+        LOG.warn("ZooKeeper client disconnected.");
+        break;
+      }
       case Expired: {
         synchronized (mMonitor) {
-          LOG.debug("ZooKeeper client session {} died.", mZKClient.getSessionId());
+          LOG.warn("ZooKeeper client session {} expired.", mZKClient.getSessionId());
           if (mState == State.OPEN) {
             createZKClient();
           } else {
@@ -280,13 +283,13 @@ public final class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient
   public ZooKeeper getZKClient(double timeout) {
 
     // Absolute deadline, in seconds since the Epoch:
-    final double absoluteDeadline = (timeout > 0) ? (Time.now() + timeout) : 0.0;
+    final double absoluteDeadline = (timeout > 0.0) ? (Time.now() + timeout) : 0.0;
 
     synchronized (mMonitor) {
-      while (true) {
+      while (absoluteDeadline == 0.0 || absoluteDeadline > Time.now()) {
         Preconditions.checkState(mState == State.OPEN,
             "Cannot get ZKClient %s in state %s.", this, mState);
-        if ((mZKClient != null) && mZKClient.getState().isAlive()) {
+        if ((mZKClient != null) && mZKClient.getState().isConnected()) {
           return mZKClient;
         } else {
           try {
@@ -302,6 +305,7 @@ public final class ZooKeeperClient implements ReferenceCountable<ZooKeeperClient
         }
       }
     }
+    return null;
   }
 
   /**
