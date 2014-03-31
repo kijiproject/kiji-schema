@@ -79,7 +79,7 @@
       <Class name="~org[.]kiji[.]schema[.]impl[.]HashedEntityId" />
       <Class name="~org[.]kiji[.]schema[.]impl[.]HashPrefixedEntityId" />
       <!-- null indicates a missing cell and is different from a cell with no bytes -->
-      <Class name="~org[.]kiji[.]schema[.]impl[.]HBaseKijiRowData" />
+      <Class name="~org[.]kiji[.]schema[.]impl[.]hbase[.]HBaseKijiRowData" />
       <Class name="~org[.]kiji[.]schema[.]filter[.]KijiColumnRangeFilter" />
     </Or>
     <Bug pattern="PZLA_PREFER_ZERO_LENGTH_ARRAYS" />
@@ -87,7 +87,7 @@
 
   <Match>
     <!-- This is used to create an immutable array -->
-    <Class name="org.kiji.schema.impl.HBaseKiji" />
+    <Class name="org.kiji.schema.impl.hbase.HBaseKiji" />
     <Bug pattern="ITA_INEFFICIENT_TO_ARRAY" />
   </Match>
   <Match>

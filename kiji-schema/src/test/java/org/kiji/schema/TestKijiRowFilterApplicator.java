@@ -43,7 +43,7 @@ import org.kiji.schema.filter.KijiRowFilterApplicator;
 import org.kiji.schema.filter.KijiRowFilterDeserializer;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
-import org.kiji.schema.impl.HBaseDataRequestAdapter;
+import org.kiji.schema.impl.hbase.HBaseDataRequestAdapter;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;

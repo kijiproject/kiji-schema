@@ -41,7 +41,7 @@ import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.hbase.HBaseFactory;
-import org.kiji.schema.impl.HBaseMetaTable;
+import org.kiji.schema.impl.hbase.HBaseMetaTable;
 import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
 import org.kiji.schema.util.InstanceBuilder;
 

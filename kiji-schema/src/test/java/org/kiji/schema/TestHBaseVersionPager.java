@@ -41,7 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
-import org.kiji.schema.impl.HBaseVersionPager;
+import org.kiji.schema.impl.hbase.HBaseVersionPager;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 

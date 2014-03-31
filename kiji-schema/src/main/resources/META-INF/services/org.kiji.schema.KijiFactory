@@ -1,1 +1,1 @@
-org.kiji.schema.impl.HBaseKijiFactory
+org.kiji.schema.impl.hbase.HBaseKijiFactory

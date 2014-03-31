@@ -34,7 +34,7 @@ import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiInstaller;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.HBaseFactory;
-import org.kiji.schema.impl.HBaseSystemTable;
+import org.kiji.schema.impl.hbase.HBaseSystemTable;
 
 /**
  * A command-line tool for installing kiji instances on hbase clusters.

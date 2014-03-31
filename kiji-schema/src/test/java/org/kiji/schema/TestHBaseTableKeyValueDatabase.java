@@ -42,7 +42,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.hbase.HBaseFactory;
-import org.kiji.schema.impl.HBaseTableKeyValueDatabase;
+import org.kiji.schema.impl.hbase.HBaseTableKeyValueDatabase;
 
 /**
  * This class tests that HBaseTableLayoutDatabase is correctly writing and reading from HBase

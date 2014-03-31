@@ -55,6 +55,8 @@ import org.kiji.schema.avro.AvroSchema;
 import org.kiji.schema.avro.AvroValidationPolicy;
 import org.kiji.schema.avro.SchemaStorage;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.impl.hbase.HBaseKiji;
+import org.kiji.schema.impl.hbase.HBaseTableLayoutUpdater;
 import org.kiji.schema.layout.AvroSchemaResolver;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.InvalidLayoutException;

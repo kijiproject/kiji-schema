@@ -35,8 +35,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
-import org.kiji.schema.impl.HBaseKijiTable;
-import org.kiji.schema.impl.HBaseQualifierIterator;
+import org.kiji.schema.impl.hbase.HBaseKijiTable;
+import org.kiji.schema.impl.hbase.HBaseQualifierIterator;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 public class TestHBaseQualifierIterator extends KijiClientTest {

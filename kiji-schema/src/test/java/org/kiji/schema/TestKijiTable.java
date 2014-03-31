@@ -29,7 +29,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.impl.HBaseKijiTable;
+import org.kiji.schema.impl.hbase.HBaseKijiTable;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 public class TestKijiTable extends KijiClientTest {

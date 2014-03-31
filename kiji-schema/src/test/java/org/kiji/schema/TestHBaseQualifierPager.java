@@ -39,8 +39,8 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.filter.KijiColumnRangeFilter;
-import org.kiji.schema.impl.HBaseKijiTable;
-import org.kiji.schema.impl.HBaseQualifierPager;
+import org.kiji.schema.impl.hbase.HBaseKijiTable;
+import org.kiji.schema.impl.hbase.HBaseQualifierPager;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 public class TestHBaseQualifierPager extends KijiClientTest {

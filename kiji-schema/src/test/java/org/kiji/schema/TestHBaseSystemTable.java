@@ -28,7 +28,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.junit.Test;
 
-import org.kiji.schema.impl.HBaseSystemTable;
+import org.kiji.schema.impl.hbase.HBaseSystemTable;
 import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.testing.fakehtable.FakeHTable;
 

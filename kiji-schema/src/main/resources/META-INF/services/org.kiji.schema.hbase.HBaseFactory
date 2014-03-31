@@ -1,1 +1,1 @@
-org.kiji.schema.impl.DefaultHBaseFactory
+org.kiji.schema.impl.hbase.DefaultHBaseFactory
