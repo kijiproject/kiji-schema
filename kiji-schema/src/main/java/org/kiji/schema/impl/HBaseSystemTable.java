@@ -234,7 +234,8 @@ public class HBaseSystemTable implements KijiSystemTable {
   protected void finalize() throws Throwable {
     final State state = mState.get();
     if (state != State.CLOSED) {
-      CLEANUP_LOG.warn("Finalizing unclosed KijiSystemTable instance %s in state %s.", this, state);
+      CLEANUP_LOG.warn("Finalizing unclosed Kiji HBaseSystemTable instance {} in state {}.",
+          this, state);
       CLEANUP_LOG.debug("Stack when HBaseSystemTable was constructed:\n" + mConstructorStack);
       close();
     }
