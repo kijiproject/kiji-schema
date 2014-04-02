@@ -26,6 +26,8 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter;
 
+import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiColumnName;
 
 /**
@@ -34,7 +36,9 @@ import org.kiji.schema.KijiColumnName;
  * <p> This filter restricts the number of cells returned for the column it applies to to 1. </p>
  * <p> Wraps the HBase {@link org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter}. </p>
  */
-public class KijiFirstKeyOnlyColumnFilter extends KijiColumnFilter {
+@ApiAudience.Public
+@ApiStability.Experimental
+public final class KijiFirstKeyOnlyColumnFilter extends KijiColumnFilter {
 
   private static final long serialVersionUID = 1L;
 

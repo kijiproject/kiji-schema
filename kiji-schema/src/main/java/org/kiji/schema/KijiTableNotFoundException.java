@@ -28,7 +28,7 @@ import org.kiji.annotations.ApiStability;
  * Thrown when an attempt to access a table fails because it does not exist.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class KijiTableNotFoundException extends IOException {
   /** URI of the missing table. */
   private final KijiURI mTableURI;

@@ -26,7 +26,7 @@ import org.kiji.annotations.ApiStability;
 
 /** Thrown when attempting to open a non existing/not installed Kiji instance. */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class KijiNotInstalledException extends RuntimeException {
   /** The instance name of the missing Kiji instance. */
   private final String mInstanceName;

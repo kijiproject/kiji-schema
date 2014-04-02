@@ -33,7 +33,7 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
  * memstore flushsize with the same column families.
  */
 @ApiAudience.Private
-public class HTableDescriptorComparator implements Comparator<HTableDescriptor> {
+public final class HTableDescriptorComparator implements Comparator<HTableDescriptor> {
   @Override
   public int compare(HTableDescriptor o1, HTableDescriptor o2) {
     int nameResult = o1.getNameAsString().compareTo(o2.getNameAsString());

@@ -33,7 +33,7 @@ import org.kiji.annotations.ApiStability;
  * method in your {@link org.kiji.schema.KijiDataRequestBuilder}.</p>
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class KijiColumnPagingNotEnabledException extends IOException {
   /**
    * Creates a new <code>KijiColumnPagingNotEnabledException</code> with the specified

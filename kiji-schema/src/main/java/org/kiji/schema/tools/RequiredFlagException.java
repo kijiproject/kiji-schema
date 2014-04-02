@@ -26,7 +26,7 @@ import org.kiji.annotations.ApiStability;
  * Thrown to indicate that a flag is required but not supplied.
  */
 @ApiAudience.Framework
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class RequiredFlagException extends Exception {
   /**
    * Creates a new <code>RequiredFlagException</code> for the specified flag name.

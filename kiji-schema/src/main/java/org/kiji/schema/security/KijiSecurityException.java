@@ -27,7 +27,7 @@ import org.kiji.annotations.ApiStability;
  * Errors encountered due to a user's lack of permission throw {@link KijiAccessException}.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class KijiSecurityException extends RuntimeException {
   /**
    * Creates a new <code>KijiSecurityException</code> with the specified detail message.

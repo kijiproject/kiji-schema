@@ -31,6 +31,6 @@ import org.kiji.annotations.Inheritance;
  * @param <T> the type returned by .iterator().next()
  */
 @ApiAudience.Framework
-@ApiStability.Evolving
+@ApiStability.Stable
 @Inheritance.Sealed
 public interface CloseableIterable<T> extends Closeable, Iterable<T> {}

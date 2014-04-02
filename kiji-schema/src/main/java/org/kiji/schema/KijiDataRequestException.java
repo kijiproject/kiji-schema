@@ -26,7 +26,7 @@ import org.kiji.annotations.ApiStability;
  * Thrown when there is an error validating a KijiDataRequest against a Kiji table.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class KijiDataRequestException extends RuntimeException {
   /**
    * Creates a new <code>KijiDataRequestException</code> with the specified detail message.

@@ -24,6 +24,7 @@ import java.util.Map;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.layout.CellSpec;
 
 /**
@@ -32,7 +33,8 @@ import org.kiji.schema.layout.CellSpec;
  * <p> Use <code>KijiTable.getReaderFactory()</code> to get a reader.
  */
 @ApiAudience.Public
-@ApiStability.Experimental
+@ApiStability.Evolving
+@Inheritance.Sealed
 public interface KijiReaderFactory {
 
   /**

@@ -59,7 +59,7 @@ import org.kiji.annotations.ApiStability;
  * <p>ProtocolVersion instances are immutable.</p>
  */
 @ApiAudience.Framework
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class ProtocolVersion implements Comparable<ProtocolVersion> {
   /** The protocol name. May be null. */
   private final String mProtocol;

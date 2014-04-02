@@ -36,7 +36,7 @@ import org.kiji.schema.layout.ColumnReaderSpec.Encoding;
  * @param <T> The type of the decoded cell data. Should be byte[].
  */
 @ApiAudience.Private
-public class RawBytesCellDecoder<T> implements KijiCellDecoder<T> {
+public final class RawBytesCellDecoder<T> implements KijiCellDecoder<T> {
 
   /**
    * Initializes a new RawBytesCellDecoder.

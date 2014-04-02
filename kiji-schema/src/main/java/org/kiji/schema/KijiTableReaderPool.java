@@ -52,7 +52,7 @@ import org.kiji.schema.layout.ColumnReaderSpec;
  * </p>
  */
 @ApiAudience.Public
-@ApiStability.Experimental
+@ApiStability.Evolving
 public final class KijiTableReaderPool
     extends GenericObjectPool<PooledKijiTableReader>
     implements Closeable {

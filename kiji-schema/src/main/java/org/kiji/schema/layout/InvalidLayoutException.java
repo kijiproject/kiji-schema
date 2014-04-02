@@ -23,6 +23,7 @@ import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.annotations.Inheritance;
 
 /**
  * Thrown when an invalid Kiji layout is encountered.  Possible reasons why a layout may be
@@ -37,7 +38,8 @@ import org.kiji.annotations.ApiStability;
  * </ul>
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
+@Inheritance.Sealed
 public class InvalidLayoutException extends IOException {
   /**
    * Creates a new {@link InvalidLayoutException} with the specified reason.

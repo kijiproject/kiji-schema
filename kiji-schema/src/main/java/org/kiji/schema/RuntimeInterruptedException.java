@@ -31,7 +31,7 @@ import org.kiji.annotations.ApiStability;
  * </p>
  */
 @ApiAudience.Public
-@ApiStability.Experimental
+@ApiStability.Stable
 @SuppressWarnings("serial")
 public final class RuntimeInterruptedException extends RuntimeException {
 

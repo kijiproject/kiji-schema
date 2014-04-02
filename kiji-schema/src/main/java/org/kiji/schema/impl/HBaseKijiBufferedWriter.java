@@ -44,7 +44,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.annotations.Inheritance;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiBufferedWriter;
 import org.kiji.schema.KijiCellEncoder;
@@ -72,8 +71,7 @@ import org.kiji.schema.platform.SchemaPlatformBridge;
  * </p>
  */
 @ApiAudience.Private
-@Inheritance.Sealed
-public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
+public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiBufferedWriter.class);
 
   /** Underlying dedicated HTableInterface used by this writer. Owned by this writer. */

@@ -22,9 +22,13 @@ package org.kiji.schema.util;
 import java.util.Map;
 import java.util.WeakHashMap;
 
+import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 
 /** Factory for local (in-process) locks, for testing. */
-public class LocalLockFactory implements LockFactory {
+@ApiAudience.Framework
+@ApiStability.Experimental
+public final class LocalLockFactory implements LockFactory {
   private Map<String, Lock> mLocks = new WeakHashMap<String, Lock>();
 
   /** {@inheritDoc} */

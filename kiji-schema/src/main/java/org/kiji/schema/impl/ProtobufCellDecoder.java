@@ -40,7 +40,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  * @param <T> The type of the decoded cell data. Should be a Protocol Buffer generated class.
  */
 @ApiAudience.Private
-public class ProtobufCellDecoder<T> implements KijiCellDecoder<T> {
+public final class ProtobufCellDecoder<T> implements KijiCellDecoder<T> {
 
   /** Class of the protocol buffer to decode. */
   private final Class<? extends AbstractMessageLite> mProtoClass;

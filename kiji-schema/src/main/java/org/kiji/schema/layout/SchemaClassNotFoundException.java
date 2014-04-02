@@ -27,7 +27,7 @@ import org.kiji.annotations.ApiStability;
  * (probably because it is not on the class path).
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class SchemaClassNotFoundException extends InvalidLayoutException {
   /**
    * Creates a new <code>SchemaClassNotFoundException</code> with the specified detail message..

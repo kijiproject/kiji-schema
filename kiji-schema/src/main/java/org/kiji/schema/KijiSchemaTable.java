@@ -45,7 +45,7 @@ import org.kiji.schema.util.Hasher;
  * @see KijiSystemTable
  */
 @ApiAudience.Framework
-@ApiStability.Evolving
+@ApiStability.Stable
 @Inheritance.Sealed
 public interface KijiSchemaTable extends Flushable, Closeable {
   /**
@@ -198,7 +198,7 @@ public interface KijiSchemaTable extends Flushable, Closeable {
    * into JSON.
    */
   @ApiAudience.Private
-  static class SchemaHashCache {
+  static final class SchemaHashCache {
     /**
      * Underlying cache is a weak identity hash map:
      * <li> We must use object IDs since Schema.hashCode() and Schema.equals() implement a
@@ -216,7 +216,7 @@ public interface KijiSchemaTable extends Flushable, Closeable {
      * @param schema Avro schema to compute a hash of.
      * @return Hash code as an array of bytes (16 bytes).
      */
-    public static final byte[] hashSchema(Schema schema) {
+    public static byte[] hashSchema(Schema schema) {
       return Hasher.hash(schema.toString());
     }
 

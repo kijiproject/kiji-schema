@@ -60,7 +60,7 @@ import org.kiji.schema.layout.impl.CellDecoderProvider;
 /** HBase implementation of KijiResult. */
 @ApiAudience.Private
 @ApiStability.Experimental
-public class HBaseKijiResult implements KijiResult {
+public final class HBaseKijiResult implements KijiResult {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiResult.class);
   private static final Comparator<KeyValue> KV_COMPARATOR = new KVComparator();
   private static final Comparator<IndexRange> INDEX_RANGE_COMPARATOR = new IndexStartComparator();

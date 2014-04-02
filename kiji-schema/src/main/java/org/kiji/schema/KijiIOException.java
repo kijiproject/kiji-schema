@@ -32,7 +32,7 @@ import org.kiji.annotations.ApiStability;
  *     Iterator. In this case, an underlying IOException may be wrapped as a KijiIOException.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 @SuppressWarnings("serial")
 public final class KijiIOException extends RuntimeException {
 

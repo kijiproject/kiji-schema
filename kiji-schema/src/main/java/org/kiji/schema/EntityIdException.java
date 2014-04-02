@@ -27,7 +27,7 @@ import org.kiji.annotations.Inheritance;
  * Thrown when kiji encounters a row key component name that is not valid.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 @Inheritance.Sealed
 public class EntityIdException extends RuntimeException {
   /**

@@ -44,7 +44,7 @@ import org.kiji.schema.filter.KijiColumnFilter;
  * or other single-valued output.</p>
  */
 @ApiAudience.Private
-public class KijiPaginationFilter extends KijiColumnFilter {
+public final class KijiPaginationFilter extends KijiColumnFilter {
   private static final long serialVersionUID = 1L;
 
   /** The max number of qualifiers to return. */

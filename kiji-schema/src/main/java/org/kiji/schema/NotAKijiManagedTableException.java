@@ -26,7 +26,7 @@ import org.kiji.annotations.ApiStability;
  * Thrown when Kiji encounters an HBase table that is not managed by Kiji.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class NotAKijiManagedTableException extends Exception {
   /** The name of the HBase table. */
   private final String mHBaseTableName;

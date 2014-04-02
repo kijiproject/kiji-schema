@@ -30,6 +30,8 @@ import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.node.JsonNodeFactory;
 import org.codehaus.jackson.node.ObjectNode;
 
+import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiDataRequest;
 
 /**
@@ -38,7 +40,9 @@ import org.kiji.schema.KijiDataRequest;
  * <p> Wraps the HBase {@link org.apache.hadoop.hbase.filter.RandomRowFilter}. </p>
  * <p> A row is included if {@code random.nextFloat() < chance}. </p>
  */
-public class KijiRandomRowFilter extends KijiRowFilter {
+@ApiAudience.Public
+@ApiStability.Experimental
+public final class KijiRandomRowFilter extends KijiRowFilter {
 
   /** The name of the chance node. */
   private static final String CHANCE_NODE = "chance";

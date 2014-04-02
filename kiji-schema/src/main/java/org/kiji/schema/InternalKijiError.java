@@ -29,7 +29,7 @@ import org.kiji.annotations.ApiStability;
  * <a target="_top" href="https://jira.kiji.org/">Kiji Issue tracker</a>.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class InternalKijiError extends Error {
   /**
    * Creates a new <code>InternalKijiError</code> with the specified cause.

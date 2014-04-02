@@ -55,7 +55,7 @@ import org.kiji.schema.util.ResourceUtils;
  * instance from a MetadataBackup record, use the various public restore methods.</p>
  */
 @ApiAudience.Private
-public class MetadataRestorer {
+public final class MetadataRestorer {
   private static final Logger LOG = LoggerFactory.getLogger(MetadataRestorer.class);
 
   /**

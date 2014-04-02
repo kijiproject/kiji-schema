@@ -33,7 +33,7 @@ import org.kiji.annotations.Inheritance;
  * {@link KijiWriterFactory#openBufferedWriter()}.
  */
 @ApiAudience.Public
-@ApiStability.Experimental
+@ApiStability.Evolving
 @Inheritance.Sealed
 public interface KijiBufferedWriter extends KijiPutter, KijiDeleter {
   /**

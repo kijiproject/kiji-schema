@@ -55,7 +55,7 @@ import org.kiji.schema.util.ResourceUtils;
  * a column family of an HTable.
  */
 @ApiAudience.Private
-public class HBaseTableKeyValueDatabase
+public final class HBaseTableKeyValueDatabase
     implements KijiTableKeyValueDatabase<HBaseTableKeyValueDatabase> {
 
   public static final Logger LOG = LoggerFactory.getLogger(HBaseTableKeyValueDatabase.class);

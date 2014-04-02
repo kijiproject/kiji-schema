@@ -57,7 +57,7 @@ import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
  * store.
  */
 @ApiAudience.Private
-public class HBaseMetaTable implements KijiMetaTable {
+public final class HBaseMetaTable implements KijiMetaTable {
 
   private static final Logger LOG = LoggerFactory.getLogger(HBaseMetaTable.class);
   private static final Logger CLEANUP_LOG =

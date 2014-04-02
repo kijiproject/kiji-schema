@@ -26,7 +26,7 @@ import org.kiji.annotations.ApiStability;
  * Thrown when attempting to read data from a cell that doesn't exist.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class NoCellDataException extends Exception {
   /**
    * Creates a new <code>NoCellDataException</code> with the specified detail message.

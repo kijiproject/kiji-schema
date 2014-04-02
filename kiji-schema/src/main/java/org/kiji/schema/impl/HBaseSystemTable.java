@@ -70,7 +70,7 @@ import org.kiji.schema.util.ResourceUtils;
  * and the value V is stored in the "value:" column.<p>
  */
 @ApiAudience.Private
-public class HBaseSystemTable implements KijiSystemTable {
+public final class HBaseSystemTable implements KijiSystemTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseSystemTable.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseSystemTable.class.getName());

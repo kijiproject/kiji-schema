@@ -40,7 +40,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  * Light-weight object, so as many can be created as needed.
  */
 @ApiAudience.Framework
-@ApiStability.Evolving
+@ApiStability.Stable
 @Inheritance.Sealed
 public abstract class EntityIdFactory {
 

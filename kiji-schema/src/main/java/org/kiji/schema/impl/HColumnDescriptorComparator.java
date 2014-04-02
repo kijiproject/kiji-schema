@@ -33,7 +33,7 @@ import org.kiji.schema.platform.SchemaPlatformBridge;
  * and, finally, the compression type.
  */
 @ApiAudience.Private
-public class HColumnDescriptorComparator implements Comparator<HColumnDescriptor> {
+public final class HColumnDescriptorComparator implements Comparator<HColumnDescriptor> {
   @Override
   public int compare(HColumnDescriptor o1, HColumnDescriptor o2) {
     int nameResult = Bytes.compareTo(o1.getName(), o2.getName());

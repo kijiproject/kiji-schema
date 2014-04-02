@@ -26,7 +26,7 @@ import org.kiji.annotations.ApiStability;
  * Thrown when a user attempts an action he or she does not have access to.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class KijiAccessException extends RuntimeException {
   /**
    * Creates a new <code>KijiAccessException</code> with the specified detail message.

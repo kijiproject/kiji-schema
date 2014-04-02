@@ -35,7 +35,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  * @param <T> The type of the decoded data.
  */
 @ApiAudience.Private
-public class GenericCellDecoder<T> extends AvroCellDecoder<T> {
+public final class GenericCellDecoder<T> extends AvroCellDecoder<T> {
   /**
    * Initializes a cell decoder that creates generic Avro types.
    *

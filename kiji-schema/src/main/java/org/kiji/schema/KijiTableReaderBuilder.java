@@ -27,6 +27,7 @@ import com.google.common.collect.Multimap;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.layout.ColumnReaderSpec;
 
 /**
@@ -46,6 +47,7 @@ import org.kiji.schema.layout.ColumnReaderSpec;
  */
 @ApiAudience.Public
 @ApiStability.Experimental
+@Inheritance.Sealed
 public interface KijiTableReaderBuilder {
 
   /**

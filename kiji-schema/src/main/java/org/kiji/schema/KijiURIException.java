@@ -24,7 +24,7 @@ import org.kiji.annotations.ApiStability;
 
 /** Thrown when parsing a bogus Kiji URI. */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class KijiURIException extends RuntimeException {
   /**
    * Creates a new <code>KijiURIException</code>.

@@ -29,7 +29,7 @@ import org.kiji.annotations.ApiStability;
  * is incompatible with the Kiji client version.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class IncompatibleKijiVersionException extends IOException {
   /**
    * Creates a new <code>IncompatibleKijiVersionException</code> with the specified

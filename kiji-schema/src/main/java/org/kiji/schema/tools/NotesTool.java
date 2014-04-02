@@ -26,6 +26,8 @@ import java.util.Set;
 
 import com.google.gson.Gson;
 
+import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
 import org.kiji.common.flags.Flag;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
@@ -90,7 +92,9 @@ import org.kiji.schema.KijiURIException;
  *   </ul>
  * </p>
  */
-public class NotesTool extends BaseTool {
+@ApiAudience.Public
+@ApiStability.Experimental
+public final class NotesTool extends BaseTool {
 
   @Flag(name="target", usage="Specify the KijiURI of the target of your operation. Must include at "
       + "least a table and may include exactly one column.")

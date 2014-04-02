@@ -37,7 +37,7 @@ import org.kiji.schema.util.CloseableIterable;
  * <p> Uses paging under the hood to page through the qualifiers. </p>
  */
 @ApiAudience.Private
-public class HBaseQualifierIterator implements CloseableIterable<String>, Iterator<String> {
+public final class HBaseQualifierIterator implements CloseableIterable<String>, Iterator<String> {
   /** Underlying qualifier pager. */
   private final HBaseQualifierPager mPager;
 

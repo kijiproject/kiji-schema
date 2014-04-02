@@ -32,8 +32,8 @@ import org.kiji.annotations.ApiStability;
  * schemas.
  */
 @ApiAudience.Public
-@ApiStability.Evolving
-public class InvalidLayoutSchemaException extends InvalidLayoutException {
+@ApiStability.Stable
+public final class InvalidLayoutSchemaException extends InvalidLayoutException {
 
   private final List<String> mReasons;
 

@@ -38,7 +38,7 @@ import org.kiji.schema.util.ProtocolVersion;
  * @see KijiSchemaTable
  */
 @ApiAudience.Framework
-@ApiStability.Evolving
+@ApiStability.Stable
 @Inheritance.Sealed
 public interface KijiSystemTable extends Closeable {
   /**

@@ -25,8 +25,13 @@ import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
+
 /** In-process implementation of Lock, for testing purposes. */
-public class LocalLock implements Lock {
+@ApiAudience.Framework
+@ApiStability.Experimental
+public final class LocalLock implements Lock {
   private static final Logger LOG = LoggerFactory.getLogger(LocalLock.class);
 
   private boolean mLocked = false;

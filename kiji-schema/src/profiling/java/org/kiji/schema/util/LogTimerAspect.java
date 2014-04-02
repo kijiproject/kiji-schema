@@ -35,7 +35,7 @@ import org.kiji.annotations.ApiStability;
 @ApiAudience.Framework
 @ApiStability.Experimental
 @Aspect
-public class LogTimerAspect {
+public final class LogTimerAspect {
   /**
    * The ConcurrentHashMap containing information about a function call, the aggregate
    * time spent within this function and the number of times it was invoked.

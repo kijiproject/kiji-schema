@@ -24,7 +24,7 @@ import org.kiji.annotations.ApiStability;
 
 /** Runtime exception thrown when encoding a cell's content fails. */
 @ApiAudience.Public
-@ApiStability.Evolving
+@ApiStability.Stable
 public final class KijiEncodingException extends RuntimeException {
 
   /**

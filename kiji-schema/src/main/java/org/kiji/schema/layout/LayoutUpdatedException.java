@@ -20,11 +20,16 @@ package org.kiji.schema.layout;
 
 import java.io.IOException;
 
+import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.ApiStability;
+
 /**
  * Exception which indicates that an operation has failed due to a concurrent KijiTableLayout
  * update.
  */
-public class LayoutUpdatedException extends IOException {
+@ApiAudience.Public
+@ApiStability.Experimental
+public final class LayoutUpdatedException extends IOException {
 
   /**
    * Construct a new LayoutUpdatedException with the given message.

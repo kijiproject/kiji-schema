@@ -45,7 +45,7 @@ import org.kiji.schema.layout.KijiColumnNameTranslator;
  */
 @ApiAudience.Private
 @ApiStability.Experimental
-public class HBaseNonPagedVersionIterator<T> implements Iterator<KijiCell<T>> {
+public final class HBaseNonPagedVersionIterator<T> implements Iterator<KijiCell<T>> {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseNonPagedVersionIterator.class);
 
   private final Iterator<KeyValue> mResultIterator;

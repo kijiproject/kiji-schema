@@ -50,7 +50,7 @@ import org.kiji.schema.util.Debug;
  * The internal implementation of KijiRowScanner that reads from HTables.
  */
 @ApiAudience.Private
-public class HBaseKijiRowScanner implements KijiRowScanner {
+public final class HBaseKijiRowScanner implements KijiRowScanner {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiRowScanner.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + HBaseKijiRowScanner.class.getName());

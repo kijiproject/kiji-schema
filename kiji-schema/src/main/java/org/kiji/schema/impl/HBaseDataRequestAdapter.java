@@ -56,7 +56,7 @@ import org.kiji.schema.platform.SchemaPlatformBridge;
  * org.apache.hadoop.hbase.client.Get}s.
  */
 @ApiAudience.Private
-public class HBaseDataRequestAdapter {
+public final class HBaseDataRequestAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseDataRequestAdapter.class);
 
   /** The wrapped KijiDataRequest. */

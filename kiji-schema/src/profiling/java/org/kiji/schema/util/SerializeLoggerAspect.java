@@ -49,7 +49,7 @@ import org.kiji.annotations.ApiStability;
 @ApiAudience.Framework
 @ApiStability.Experimental
 @Aspect
-public class SerializeLoggerAspect {
+public final class SerializeLoggerAspect {
   private String mPid;
   private LogTimerAspect mLogTimerAspect;
   /**
