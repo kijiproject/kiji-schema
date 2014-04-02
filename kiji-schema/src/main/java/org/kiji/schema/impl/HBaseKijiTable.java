@@ -66,8 +66,8 @@ import org.kiji.schema.RuntimeInterruptedException;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
+import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.layout.impl.ZooKeeperMonitor;
 import org.kiji.schema.layout.impl.ZooKeeperMonitor.LayoutTracker;
@@ -205,19 +205,19 @@ public final class HBaseKijiTable implements KijiTable {
    */
   public static final class LayoutCapsule {
     private final KijiTableLayout mLayout;
-    private final ColumnNameTranslator mTranslator;
+    private final KijiColumnNameTranslator mTranslator;
     private final KijiTable mTable;
 
     /**
      * Default constructor.
      *
      * @param layout the layout of the table.
-     * @param translator the ColumnNameTranslator for the given layout.
+     * @param translator the KijiColumnNameTranslator for the given layout.
      * @param table the KijiTable to which this capsule is associated.
      */
     private LayoutCapsule(
         final KijiTableLayout layout,
-        final ColumnNameTranslator translator,
+        final KijiColumnNameTranslator translator,
         final KijiTable table) {
       mLayout = layout;
       mTranslator = translator;
@@ -233,10 +233,10 @@ public final class HBaseKijiTable implements KijiTable {
     }
 
     /**
-     * Get the ColumnNameTranslator for the associated layout.
-     * @return the ColumnNameTranslator for the associated layout.
+     * Get the KijiColumnNameTranslator for the associated layout.
+     * @return the KijiColumnNameTranslator for the associated layout.
      */
-    public ColumnNameTranslator getColumnNameTranslator() {
+    public KijiColumnNameTranslator getKijiColumnNameTranslator() {
       return mTranslator;
     }
 
@@ -278,7 +278,8 @@ public final class HBaseKijiTable implements KijiTable {
           newLayoutId, newLayout.getDesc().getLayoutId());
 
       mLayoutCapsule =
-          new LayoutCapsule(newLayout, new ColumnNameTranslator(newLayout), HBaseKijiTable.this);
+          new LayoutCapsule(newLayout,
+              KijiColumnNameTranslator.from(newLayout), HBaseKijiTable.this);
 
       // Propagates the new layout to all consumers:
       synchronized (mLayoutConsumers) {
@@ -382,7 +383,8 @@ public final class HBaseKijiTable implements KijiTable {
             .setSchemaTable(mKiji.getSchemaTable());
         mLayoutMonitor = null;
         mLayoutTracker = null;
-        mLayoutCapsule = new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
+        mLayoutCapsule = new LayoutCapsule(layout, KijiColumnNameTranslator.from(layout), this);
+
       } catch (KijiTableNotFoundException ktnfe) {
         closeResources();
         throw ktnfe;
@@ -543,7 +545,8 @@ public final class HBaseKijiTable implements KijiTable {
     Preconditions.checkState(state == State.OPEN,
         "Cannot update layout consumers for a KijiTable in state %s.", state);
     layout.setSchemaTable(mKiji.getSchemaTable());
-    final LayoutCapsule capsule = new LayoutCapsule(layout, new ColumnNameTranslator(layout), this);
+    final LayoutCapsule capsule =
+        new LayoutCapsule(layout, KijiColumnNameTranslator.from(layout), this);
     synchronized (mLayoutConsumers) {
       for (LayoutConsumer consumer : mLayoutConsumers) {
         consumer.update(capsule);
@@ -587,13 +590,13 @@ public final class HBaseKijiTable implements KijiTable {
    * operation, you should use {@link #getLayoutCapsule()} to ensure consistent state.
    * @return the column name translator for the current layout of this table.
    */
-  public ColumnNameTranslator getColumnNameTranslator() {
-    return mLayoutCapsule.getColumnNameTranslator();
+  public KijiColumnNameTranslator getColumnNameTranslator() {
+    return mLayoutCapsule.getKijiColumnNameTranslator();
   }
 
   /**
    * Get the LayoutCapsule containing a snapshot of the state of this table's layout and
-   * corresponding ColumnNameTranslator.  Do not cache this object or its contents.
+   * corresponding KijiColumnNameTranslator.  Do not cache this object or its contents.
    * @return a layout capsule representing the current state of this table's layout.
    */
   public LayoutCapsule getLayoutCapsule() {

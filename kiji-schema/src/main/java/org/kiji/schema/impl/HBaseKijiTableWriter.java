@@ -51,11 +51,11 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
+import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /**
@@ -103,7 +103,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   public static final class WriterLayoutCapsule {
     private final CellEncoderProvider mCellEncoderProvider;
     private final KijiTableLayout mLayout;
-    private final ColumnNameTranslator mTranslator;
+    private final KijiColumnNameTranslator mTranslator;
 
     /**
      * Default constructor.
@@ -115,7 +115,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     public WriterLayoutCapsule(
         final CellEncoderProvider cellEncoderProvider,
         final KijiTableLayout layout,
-        final ColumnNameTranslator translator) {
+        final KijiColumnNameTranslator translator) {
       mCellEncoderProvider = cellEncoderProvider;
       mLayout = layout;
       mTranslator = translator;
@@ -126,7 +126,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
      *
      * @return the column name translator from this container.
      */
-    public ColumnNameTranslator getColumnNameTranslator() {
+    public KijiColumnNameTranslator getColumnNameTranslator() {
       return mTranslator;
     }
 
@@ -183,7 +183,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
       mWriterLayoutCapsule = new WriterLayoutCapsule(
           provider,
           capsule.getLayout(),
-          capsule.getColumnNameTranslator());
+          capsule.getKijiColumnNameTranslator());
     }
   }
 

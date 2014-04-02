@@ -37,8 +37,8 @@ import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.HBaseDataRequestAdapter;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.InvalidLayoutException;
+import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 /**
  * Applies a KijiRowFilter to various row-savvy objects.
@@ -64,14 +64,14 @@ public final class KijiRowFilterApplicator {
    */
   @ApiAudience.Private
   private final class KijiRowFilterContext extends KijiRowFilter.Context {
-    private final ColumnNameTranslator mColumnNameTranslator;
+    private final KijiColumnNameTranslator mColumnNameTranslator;
 
     /**
      * Constructs a KijiRowFilterContext.
      *
      * @param columnNameTranslator Column name translator for the table to apply filter to.
      */
-    private KijiRowFilterContext(ColumnNameTranslator columnNameTranslator) {
+    private KijiRowFilterContext(KijiColumnNameTranslator columnNameTranslator) {
       mColumnNameTranslator = columnNameTranslator;
     }
 
@@ -140,10 +140,10 @@ public final class KijiRowFilterApplicator {
     // The filter might need to request data that isn't already requested by the scan, so add
     // it here if needed.
     try {
-      // TODO: SCHEMA-444 Avoid constructing a new ColumnNameTranslator below.
+      // TODO: SCHEMA-444 Avoid constructing a new KijiColumnNameTranslator below.
       new HBaseDataRequestAdapter(
           mRowFilter.getDataRequest(),
-          new ColumnNameTranslator(mTableLayout))
+          KijiColumnNameTranslator.from(mTableLayout))
           .applyToScan(scan, mTableLayout);
     } catch (InvalidLayoutException e) {
       throw new InternalKijiError(e);
@@ -151,7 +151,7 @@ public final class KijiRowFilterApplicator {
 
     // Set the filter.
     final KijiRowFilter.Context context =
-        new KijiRowFilterContext(new ColumnNameTranslator(mTableLayout));
+        new KijiRowFilterContext(KijiColumnNameTranslator.from(mTableLayout));
     scan.setFilter(mRowFilter.toHBaseFilter(context));
   }
 }

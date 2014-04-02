@@ -199,7 +199,7 @@ public final class HBaseVersionPager implements KijiPager {
 
     final LayoutCapsule capsule = mTable.getLayoutCapsule();
     final HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(
-        nextPageDataRequest, capsule.getColumnNameTranslator());
+        nextPageDataRequest, capsule.getKijiColumnNameTranslator());
     try {
       final Get hbaseGet = adapter.toGet(mEntityId, capsule.getLayout());
       LOG.debug("Sending HBase Get: {}", hbaseGet);

@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for Tadditional
  * information regarding copyright ownership.
@@ -25,7 +25,7 @@
     hash_type : "MD5",
     hash_size : 16
   },
-  column_name_translator : "SHORT",
+  column_name_translator : "HBASE_NATIVE",
   locality_groups : [ {
     name : "default",
     description : "Default data stored forever on disk.",

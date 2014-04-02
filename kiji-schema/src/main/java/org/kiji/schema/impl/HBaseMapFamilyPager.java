@@ -192,7 +192,7 @@ public final class HBaseMapFamilyPager implements KijiPager {
 
     final LayoutCapsule capsule = mTable.getLayoutCapsule();
     final HBaseDataRequestAdapter adapter =
-        new HBaseDataRequestAdapter(nextPageDataRequest, capsule.getColumnNameTranslator());
+        new HBaseDataRequestAdapter(nextPageDataRequest, capsule.getKijiColumnNameTranslator());
     try {
       final Get hbaseGet = adapter.toGet(mEntityId, capsule.getLayout());
       if (LOG.isDebugEnabled()) {

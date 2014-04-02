@@ -45,9 +45,9 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.hbase.HBaseScanOptions;
+import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /**
@@ -62,16 +62,17 @@ public class HBaseDataRequestAdapter {
   /** The wrapped KijiDataRequest. */
   private final KijiDataRequest mKijiDataRequest;
   /** The translator for generating HBase column names. */
-  private final ColumnNameTranslator mColumnNameTranslator;
+  private final KijiColumnNameTranslator mColumnNameTranslator;
 
   /**
    * Creates a new HBaseDataRequestAdapter for a given data request using a given
-   * ColumnNameTranslator.
+   * KijiColumnNameTranslator.
    *
    * @param kijiDataRequest the data request to adapt for HBase.
    * @param translator the name translator for getting HBase column names.
    */
-  public HBaseDataRequestAdapter(KijiDataRequest kijiDataRequest, ColumnNameTranslator translator) {
+  public HBaseDataRequestAdapter(KijiDataRequest kijiDataRequest,
+                                 KijiColumnNameTranslator translator) {
     mKijiDataRequest = kijiDataRequest;
     mColumnNameTranslator = translator;
   }
@@ -394,14 +395,14 @@ public class HBaseDataRequestAdapter {
    */
   private static final class NameTranslatingFilterContext extends KijiColumnFilter.Context {
     /** The translator to use. */
-    private final ColumnNameTranslator mTranslator;
+    private final KijiColumnNameTranslator mTranslator;
 
     /**
      * Initialize this context with the specified column name translator.
      *
      * @param translator the translator to use.
      */
-    private NameTranslatingFilterContext(ColumnNameTranslator translator) {
+    private NameTranslatingFilterContext(KijiColumnNameTranslator translator) {
       mTranslator = translator;
     }
 

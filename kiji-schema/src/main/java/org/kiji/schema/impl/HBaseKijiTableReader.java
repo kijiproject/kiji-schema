@@ -61,9 +61,9 @@ import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.ColumnReaderSpec;
 import org.kiji.schema.layout.InvalidLayoutException;
+import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 /**
  * Reads from a kiji table by sending the requests directly to the HBase tables.
@@ -112,7 +112,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
   private static final class ReaderLayoutCapsule {
     private final CellDecoderProvider mCellDecoderProvider;
     private final KijiTableLayout mLayout;
-    private final ColumnNameTranslator mTranslator;
+    private final KijiColumnNameTranslator mTranslator;
 
     /**
      * Default constructor.
@@ -120,12 +120,12 @@ public final class HBaseKijiTableReader implements KijiTableReader {
      * @param cellDecoderProvider the CellDecoderProvider to cache.  This provider should reflect
      *     all overrides appropriate to this reader.
      * @param layout the KijiTableLayout to cache.
-     * @param translator the ColumnNameTranslator to cache.
+     * @param translator the KijiColumnNameTranslator to cache.
      */
     private ReaderLayoutCapsule(
         final CellDecoderProvider cellDecoderProvider,
         final KijiTableLayout layout,
-        final ColumnNameTranslator translator) {
+        final KijiColumnNameTranslator translator) {
       mCellDecoderProvider = cellDecoderProvider;
       mLayout = layout;
       mTranslator = translator;
@@ -135,7 +135,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
      * Get the column name translator for the current layout.
      * @return the column name translator for the current layout.
      */
-    private ColumnNameTranslator getColumnNameTranslator() {
+    private KijiColumnNameTranslator getColumnNameTranslator() {
       return mTranslator;
     }
 
@@ -194,7 +194,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
       mReaderLayoutCapsule = new ReaderLayoutCapsule(
           provider,
           capsule.getLayout(),
-          capsule.getColumnNameTranslator());
+          capsule.getKijiColumnNameTranslator());
     }
   }
 

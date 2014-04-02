@@ -74,6 +74,25 @@ public final class KijiTableLayouts {
   public static final String FULL_FEATURED_INLINE_SCHEMA =
       "org/kiji/schema/layout/full-featured-layout-inline-schemas.json";
 
+  /**
+   * A fully-featured layout example with the identity column name translator.
+   */
+  public static final String FULL_FEATURED_IDENTITY =
+      "org/kiji/schema/layout/identity-translator-layout.json";
+
+  /**
+   * A fully-featured layout example with the native column name translator.
+   */
+  public static final String FULL_FEATURED_NATIVE =
+      "org/kiji/schema/layout/native-translator-layout.json";
+
+  /**
+   * A invalid layout example with the native column name translator where the locality groups
+   * don't match the column families.
+   */
+  public static final String INVALID_NATIVE =
+      "org/kiji/schema/layout/invalid-native-translator-layout.json";
+
   /** A simple layout for a user table. */
   public static final String USER_TABLE =
       "org/kiji/schema/layout/user-table.json";

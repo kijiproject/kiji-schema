@@ -163,7 +163,7 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
 
     final LayoutCapsule capsule = mTable.getLayoutCapsule();
     final HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(
-        nextPageDataRequest, capsule.getColumnNameTranslator());
+        nextPageDataRequest, capsule.getKijiColumnNameTranslator());
     try {
       final Get hbaseGet = adapter.toGet(mEntityId, capsule.getLayout());
       if (LOG.isDebugEnabled()) {
@@ -179,7 +179,7 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
         final HBaseColumnName hbaseColumn =
             new HBaseColumnName(kvs[i].getFamily(), kvs[i].getQualifier());
         final KijiColumnName kijiColumn =
-            capsule.getColumnNameTranslator().toKijiColumnName(hbaseColumn);
+            capsule.getKijiColumnNameTranslator().toKijiColumnName(hbaseColumn);
         qualifiers[i] = kijiColumn.getQualifier();
       }
 

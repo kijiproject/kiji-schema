@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -22,6 +22,7 @@ package org.kiji.schema.layout.impl;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.google.common.base.Objects;
 import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -31,6 +32,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
@@ -38,13 +40,14 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.C
 
 /**
  * Translates between HTable and Kiji table column names.
- *
+ * <p/>
  * <p>This class defines a mapping between names of HBase HTable families/qualifiers and
- * Kiji table family/qualifiers.</p>
+ * Kiji table family/qualifiers using a custom base-64 encoding based on the ids of each
+ * individual column.</p>
  */
 @ApiAudience.Private
-public final class ColumnNameTranslator {
-  private static final Logger LOG = LoggerFactory.getLogger(ColumnNameTranslator.class);
+public final class ShortColumnNameTranslator extends KijiColumnNameTranslator {
+  private static final Logger LOG = LoggerFactory.getLogger(ShortColumnNameTranslator.class);
 
   /** Used to separate the Kiji family from the Kiji qualifier in an HBase qualifier. */
   public static final String SEPARATOR = ":";
@@ -56,11 +59,11 @@ public final class ColumnNameTranslator {
   private final Map<ColumnId, LocalityGroupLayout> mLocalityGroups;
 
   /**
-   * Creates a new <code>ColumnNameTranslator</code> instance.
+   * Creates a new <code>ShortColumnNameTranslator</code> instance.
    *
    * @param tableLayout The layout of the table to translate column names for.
    */
-  public ColumnNameTranslator(KijiTableLayout tableLayout) {
+  public ShortColumnNameTranslator(KijiTableLayout tableLayout) {
     mTableLayout = tableLayout;
 
     // Index the locality groups by their ColumnIds.
@@ -72,17 +75,11 @@ public final class ColumnNameTranslator {
     }
   }
 
-  /**
-   * Translates an HBase column name to a Kiji column name.
-   *
-   * @param hbaseColumnName The HBase column name.
-   * @return The Kiji column name.
-   * @throws NoSuchColumnException If the column name cannot be found.
-   */
+  /** {@inheritDoc} */
+  @Override
   public KijiColumnName toKijiColumnName(HBaseColumnName hbaseColumnName)
       throws NoSuchColumnException {
-    LOG.debug(String.format("Translating HBase column name '%s' to Kiji column name...",
-        hbaseColumnName));
+    LOG.debug("Translating HBase column name '{}' to Kiji column name...", hbaseColumnName);
     final ColumnId lgId = ColumnId.fromByteArray(hbaseColumnName.getFamily());
     final LocalityGroupLayout localityGroup = mLocalityGroups.get(lgId);
     if (null == localityGroup) {
@@ -119,24 +116,19 @@ public final class ColumnNameTranslator {
       }
       final KijiColumnName result =
           new KijiColumnName(kijiFamily.getDesc().getName(), kijiColumn.getDesc().getName());
-      LOG.debug(String.format("Translated to Kiji group column '%s'.", result));
+      LOG.debug("Translated to Kiji group column '{}'.", result);
       return result;
     }
 
     // Map type family.
     assert kijiFamily.isMapType();
     final KijiColumnName result = new KijiColumnName(kijiFamily.getDesc().getName(), parts[1]);
-    LOG.debug(String.format("Translated to Kiji map column '%s'.", result));
+    LOG.debug("Translated to Kiji map column '{}'.", result);
     return result;
   }
 
-  /**
-   * Translates a Kiji column name into an HBase column name.
-   *
-   * @param kijiColumnName The Kiji column name.
-   * @return The HBase column name.
-   * @throws NoSuchColumnException If the column name cannot be found.
-   */
+  /** {@inheritDoc} */
+  @Override
   public HBaseColumnName toHBaseColumnName(KijiColumnName kijiColumnName)
       throws NoSuchColumnException {
     final String familyName = kijiColumnName.getFamily();
@@ -168,6 +160,12 @@ public final class ColumnNameTranslator {
       assert fLayout.isMapType();
       return new HBaseColumnName(toHBaseFamily(lgId), toHBaseQualifier(familyId, qualifier));
     }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public byte[] toHBaseFamilyName(LocalityGroupLayout localityGroupLayout) {
+    return localityGroupLayout.getId().toByteArray();
   }
 
   /**
@@ -236,8 +234,18 @@ public final class ColumnNameTranslator {
     return Bytes.toBytes(hbaseQualifier.toString());
   }
 
-  /** @return the table layout. */
+  /** {@inheritDoc} */
+  @Override
   public KijiTableLayout getTableLayout() {
     return mTableLayout;
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(this)
+        .add("table", mTableLayout.getName())
+        .add("columnNameTranslator", mTableLayout.getDesc().getColumnNameTranslator().toString())
+        .toString();
   }
 }

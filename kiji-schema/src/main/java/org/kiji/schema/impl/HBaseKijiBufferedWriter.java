@@ -162,7 +162,7 @@ public class HBaseKijiBufferedWriter implements KijiBufferedWriter {
         mWriterLayoutCapsule = new WriterLayoutCapsule(
             provider,
             capsule.getLayout(),
-            capsule.getColumnNameTranslator());
+            capsule.getKijiColumnNameTranslator());
       }
     }
   }

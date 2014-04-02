@@ -53,6 +53,7 @@ import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.avro.CellSchema;
 import org.kiji.schema.avro.ColumnDesc;
+import org.kiji.schema.avro.ColumnNameTranslator;
 import org.kiji.schema.avro.FamilyDesc;
 import org.kiji.schema.avro.LocalityGroupDesc;
 import org.kiji.schema.avro.RowKeyComponent;
@@ -243,10 +244,17 @@ import org.kiji.schema.util.ToJson;
  *
  * <h1>Column IDs</h1>
  *
+ * Kiji allows the column names to be represented on HBase in multiple modes via
+ * {@link org.kiji.schema.avro.ColumnNameTranslator ColumnNameTranslator} Avro enumeration.
+ * By default we use the shortened Kiji column name translation due to space efficiency.
+ * Depending on compatability requirements with other HBase tools it may be desirable to use the
+ * IDENTITY or HBASE_NATIVE column name translators.
+ *
+ * <h2>SHORT Kiji column name translation:</h2>
  * For storage efficiency purposes, Kiji family and column names are translated into short
- * HBase column names.
- * The translation happens in
- *   {@link org.kiji.schema.layout.impl.ColumnNameTranslator ColumnNameTranslator}
+ * HBase column names by default.
+ * This translation happens in
+ *   {@link org.kiji.schema.layout.impl.ShortColumnNameTranslator ShortColumnNameTranslator}
  * and relies on
  *   {@link org.kiji.schema.layout.impl.ColumnId ColumnId}.
  * Column IDs are assigned automatically by KijiTableLayout.
@@ -254,6 +262,33 @@ import org.kiji.schema.util.ToJson;
  *
  * <p>Column IDs cannot be changed (a column ID change is equivalent to deleting the existing column
  * and then re-creating it as a new empty column).
+ *
+ * <h2>IDENTITY Kiji column name translation:</h2>
+ * For compatibility with other HBase tools, Kiji family and column names can be written to HBase
+ * directly.
+ * This translation happens in
+ *   {@link org.kiji.schema.layout.impl.IdentityColumnNameTranslator}
+ * In this mode:
+ * <ul>
+ *   <li>Kiji locality groups are translated into HBase families.</li>
+ *   <li>Kiji column families and qualifiers are combined to form the HBase
+ *       qualifier("family:qualifier").</li>
+ * </ul>
+ *
+ * <h2>HBASE_NATIVE Kiji column name translation:</h2>
+ * For compatibility with existing HBase tables, the notion of a Kiji locality group can be
+ * ignored, mapping Kiji family and column names directly to their HBase equivalents.
+ * This translation happens in
+ *   {@link org.kiji.schema.layout.impl.HBaseNativeColumnNameTranslator}
+ * In this mode:
+ * <ul>
+ *   <li>Kiji locality groups and column families are translated into HBase families.</li>
+ *   <li>Additionally, Kiji locality groups must match the Kiji column families.  This has the
+ *   side effect of requiring a one to one mapping between the Kiji locality groups and column
+ *   families.</li>
+ *   <li>Kiji column qualifiers are combined to form the HBase qualifier.</li>
+ * </ul>
+ *
  */
 @ApiAudience.Public
 @ApiStability.Evolving
@@ -1090,6 +1125,15 @@ public final class KijiTableLayout {
 
       if (mDesc.getMemstoreFlushsize() != null && mDesc.getMemstoreFlushsize() <= 0) {
         throw new InvalidLayoutException("memstore_flushsize must be greater than 0");
+      }
+    }
+
+    // Ability to configure column name translation was introduced in version 1.5
+    if (Versions.CONFIGURE_COLUMN_NAME_TRANSLATION_VERSION.compareTo(mLayoutVersion) > 0) {
+      if (mDesc.getColumnNameTranslator() != ColumnNameTranslator.SHORT) {
+        throw new InvalidLayoutException(
+            "Support for specifiying non-short column name translators begins with layout version "
+            + Versions.CONFIGURE_COLUMN_NAME_TRANSLATION_VERSION);
       }
     }
 

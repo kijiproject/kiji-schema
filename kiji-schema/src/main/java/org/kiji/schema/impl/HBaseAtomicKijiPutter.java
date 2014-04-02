@@ -152,7 +152,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
         mWriterLayoutCapsule = new WriterLayoutCapsule(
             provider,
             capsule.getLayout(),
-            capsule.getColumnNameTranslator());
+            capsule.getKijiColumnNameTranslator());
       }
     }
   }

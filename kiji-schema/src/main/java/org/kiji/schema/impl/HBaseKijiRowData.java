@@ -55,9 +55,9 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.layout.ColumnReaderSpec;
+import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.TimestampComparator;
 
 /**
@@ -172,7 +172,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     /** The cell decoder for this column. */
     private final KijiCellDecoder<T> mDecoder;
     /** The column name translator for the given table. */
-    private final ColumnNameTranslator mColumnNameTranslator;
+    private final KijiColumnNameTranslator mColumnNameTranslator;
     /** The maximum number of versions requested. */
     private final int mMaxVersions;
     /** An array of KeyValues returned by HBase. */
@@ -198,7 +198,7 @@ public final class HBaseKijiRowData implements KijiRowData {
         throws IOException {
       mColumn = columnName;
       // Initialize column name translator.
-      mColumnNameTranslator = new ColumnNameTranslator(rowdata.mTableLayout);
+      mColumnNameTranslator = KijiColumnNameTranslator.from(rowdata.mTableLayout);
       // Get cell decoder.
       mDecoder = rowdata.getDecoder(mColumn);
       // Get info about the data request for this column.
@@ -446,7 +446,8 @@ public final class HBaseKijiRowData implements KijiRowData {
       return mFilteredMap;
     }
 
-    final ColumnNameTranslator columnNameTranslator = new ColumnNameTranslator(mTableLayout);
+    final KijiColumnNameTranslator columnNameTranslator =
+        KijiColumnNameTranslator.from(mTableLayout);
     // Loop over the families in the HTable.
     for (NavigableMap.Entry<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> familyEntry
              : map.entrySet()) {
@@ -846,7 +847,7 @@ public final class HBaseKijiRowData implements KijiRowData {
         mEntityId,
         mDataRequest,
         mResult,
-        new ColumnNameTranslator(mTableLayout),
+        KijiColumnNameTranslator.from(mTableLayout),
         mDecoderProvider,
         mTable);
   }

@@ -41,8 +41,8 @@ import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 
 /**
  * Wraps calls to HBase to provide iteration and decoding of paged data.
@@ -208,7 +208,7 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
   private final long mMinTimestamp;
   private final long mMaxTimestamp;
   private final KijiCellDecoder<T> mCellDecoder;
-  private final ColumnNameTranslator mColumnNameTranslator;
+  private final KijiColumnNameTranslator mColumnNameTranslator;
   private final KijiTableLayout mLayout;
   private final HBaseKijiTable mTable;
   private final HBaseQualifierIterator mQualifierIterator;
@@ -236,7 +236,7 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
       final KijiDataRequest dataRequest,
       final KijiColumnName column,
       final KijiCellDecoder<T> cellDecoder,
-      final ColumnNameTranslator columnNameTranslator,
+      final KijiColumnNameTranslator columnNameTranslator,
       final KijiTableLayout layout,
       final HBaseKijiTable table,
       final HBaseQualifierIterator qualifierIterator // Optional.

@@ -402,6 +402,37 @@ protocol KijiTableLayoutRecords {
   }
 
   /**
+   * Kiji column names go through a translation layer before they are written to HBase.  By default
+   * column names are shortened to avoid disk bloat.  These shortened names are meaningless without
+   * translation, so for compatibility with other HBase tools, this translation can be effectively
+   * disabled with an identity mapping.
+   */
+  enum ColumnNameTranslator {
+    /**
+     * Kiji column name shortening. (default)
+     *
+     * Relies on a custom base-64 encoding to map Kiji names to bytes based on the id.
+     */
+    SHORT,
+
+    /**
+     * Identity mapping for writing a Kiji table that other HBase clients can utilize.
+     *
+     * Kiji locality groups become HBase families.
+     * Kiji column families and qualfiers become HBase qualifiers.
+     */
+    IDENTITY,
+
+    /**
+     * Native HBase mapping for reading existing HBase tables within Kiji.
+     *
+     * Kiji locality groups and Kiji column families become HBase families and must be the same.
+     * Kiji column qualifiers become HBase qualifiers.
+     */
+    HBASE_NATIVE
+  }
+
+  /**
    * The HashSpec contains details about the type of hashing algorithm, hash
    * size, and whether or not the hbase key will include the actual component.
    */
@@ -553,6 +584,9 @@ protocol KijiTableLayoutRecords {
 
     /** Locality groups in the table. */
     array<LocalityGroupDesc> locality_groups = [];
+
+    /** Column name translator (introduced in layout-1.5). */
+    ColumnNameTranslator column_name_translator = "SHORT";
 
     /** Data layout version (eg. "layout-1.2"). */
     string version;

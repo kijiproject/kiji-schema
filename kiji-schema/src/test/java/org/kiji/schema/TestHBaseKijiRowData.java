@@ -57,8 +57,8 @@ import org.kiji.schema.impl.HBaseKijiRowData;
 import org.kiji.schema.impl.HBaseKijiTable;
 import org.kiji.schema.impl.HBaseKijiTable.LayoutCapsule;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.layout.impl.ColumnNameTranslator;
 import org.kiji.schema.util.InstanceBuilder;
 
 public class TestHBaseKijiRowData extends KijiClientTest {
@@ -156,7 +156,7 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     mTable = HBaseKijiTable.downcast(getKiji().openTable(TABLE_NAME));
 
     final LayoutCapsule capsule = mTable.getLayoutCapsule();
-    final ColumnNameTranslator translator = capsule.getColumnNameTranslator();
+    final KijiColumnNameTranslator translator = capsule.getKijiColumnNameTranslator();
     HBaseColumnName hcolumn = translator.toHBaseColumnName(new KijiColumnName("family", "empty"));
     mHBaseFamily = hcolumn.getFamily();
     mHBaseEmpty = hcolumn.getQualifier();

@@ -63,6 +63,9 @@ public final class Versions {
   // Table layout versions
   // -----------------------------------------------------------------------------------------------
 
+  public static final ProtocolVersion LAYOUT_1_5_0 =
+      ProtocolVersion.parse("layout-1.5.0");
+
   public static final ProtocolVersion LAYOUT_1_4_0 =
       ProtocolVersion.parse("layout-1.4.0");
 
@@ -89,7 +92,7 @@ public final class Versions {
   // Aliases and semantic names
 
   /** Maximum layout version recognized by this client. */
-  public static final ProtocolVersion MAX_LAYOUT_VERSION = LAYOUT_1_4_0;
+  public static final ProtocolVersion MAX_LAYOUT_VERSION = LAYOUT_1_5_0;
 
   /** First layout version where table layout validation may be enabled. */
   public static final ProtocolVersion LAYOUT_VALIDATION_VERSION = LAYOUT_1_3_0;
@@ -99,6 +102,11 @@ public final class Versions {
 
   /** Layout version that introduces protocol buffer cell encoding. */
   public static final ProtocolVersion PROTOBUF_CELL_ENCODING_VERSION = LAYOUT_1_4_0;
+
+  /**
+   * Layout version that allows for configuration of column name translation.
+   */
+  public static final ProtocolVersion CONFIGURE_COLUMN_NAME_TRANSLATION_VERSION = LAYOUT_1_5_0;
 
   /**
    * Version of the layout that introduces:
