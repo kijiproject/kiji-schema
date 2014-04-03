@@ -21,6 +21,7 @@ package org.kiji.schema.layout.impl;
 
 import java.io.File;
 
+import com.google.common.base.Preconditions;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -36,15 +37,18 @@ public class TestZooKeeperClient extends ZooKeeperTest {
   /** Minimal unit-test for ZooKeeperClient. */
   @Test
   public void testZooKeeperClient() throws Exception {
+    LOG.info("started testZooKeeperClient()");
     final ZooKeeperClient client = ZooKeeperClient.getZooKeeperClient(getZKAddress());
+    LOG.info("got ZK client in testZooKeeperClient()");
 
     try {
-      client.getZKClient(1.0);
-      LOG.debug("Got a live ZooKeeper client.");
+      Preconditions.checkNotNull(client.getZKClient(1.0));
+      LOG.info("Got a live ZooKeeper client.");
 
       // Kill mini ZooKeeper cluster and restart it in 0.5 seconds.
       // In the meantime, attempt to create a directory node.
       stopZKCluster();
+      LOG.info("stopZKCluster() returned");
 
       final Thread thread = new Thread() {
         /** {@inheritDoc} */
@@ -53,6 +57,7 @@ public class TestZooKeeperClient extends ZooKeeperTest {
           Time.sleep(0.5);
           try {
             startZKCluster();
+            LOG.info("startZKCluster() returned");
           } catch (Exception e) {
             throw new RuntimeException(e);
           }
@@ -61,7 +66,9 @@ public class TestZooKeeperClient extends ZooKeeperTest {
       thread.start();
 
       // This operation should block until ZooKeeper comes back online, then proceed:
+      LOG.info("waiting for ZK to restart");
       client.createNodeRecursively(new File("/a/b/c/d/e/f"));
+      LOG.info("ZK restarted");
 
       Assert.assertEquals(0, client.exists(new File("/a/b/c/d/e/f")).getVersion());
 
