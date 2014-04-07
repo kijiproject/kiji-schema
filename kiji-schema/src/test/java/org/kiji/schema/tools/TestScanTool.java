@@ -22,10 +22,13 @@ package org.kiji.schema.tools;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.commons.codec.binary.Hex;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.EntityId;
+import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiURI;
@@ -161,10 +164,15 @@ public class TestScanTool extends KijiToolTest {
           ));
       assertEquals(30, mToolOutputLines.length);
 
+        EntityIdFactory eif = EntityIdFactory.getFactory(layout);
+        EntityId startEid = eif.getEntityId("aaron@usermail.example.com"); //second row
+        EntityId limitEid = eif.getEntityId("gwu@usermail.example.com"); //second to last row
+        String startHbaseRowKey = Hex.encodeHexString(startEid.getHBaseRowKey());
+        String limitHbaseRowKey = Hex.encodeHexString(limitEid.getHBaseRowKey());
       assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(),
           table.getURI().toString() + "info:name",
-          "--start-row=hbase=hex:654ecd3ca7411bfb5a68fdd433b80c5b",  // after the second row.
-          "--limit-row=hbase=hex:e13743a7f1db7f4246badd6fd6ff54ff"  // before the last row.
+          "--start-row=hbase=hex:" + startHbaseRowKey,  // after the second row.
+          "--limit-row=hbase=hex:" + limitHbaseRowKey  // before the last row.
       ));
       assertEquals(9, mToolOutputLines.length);
 

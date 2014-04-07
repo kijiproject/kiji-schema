@@ -22,10 +22,13 @@ package org.kiji.schema.tools;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.commons.codec.binary.Hex;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.EntityId;
+import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiURI;
@@ -110,12 +113,14 @@ public class TestGetTool extends KijiToolTest {
     final KijiTable table = kiji.openTable(layout.getName());
     try {
       assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), table.getURI().toString(),
-          "--entity-id=jane.doe@gmail.com"));
+          "--entity-id=[\"jane.doe@gmail.com\"]"));
       assertEquals(5, mToolOutputLines.length);
+      EntityId eid = EntityIdFactory.getFactory(layout).getEntityId("jane.doe@gmail.com");
+      String hbaseRowKey = Hex.encodeHexString(eid.getHBaseRowKey());
       assertEquals(BaseTool.SUCCESS, runTool(new GetTool(),
           table.getURI() + "info:name",
-          "--entity-id=hbase=hex:9decb1b27454729c38e149964ee5a0d4"
-          )); // Garrett Wu
+              "--entity-id=hbase=hex:" + hbaseRowKey
+          ));
       assertEquals(3, mToolOutputLines.length);
       // TODO: Validate GetTool output
     } finally {

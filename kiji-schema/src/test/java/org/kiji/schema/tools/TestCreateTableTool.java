@@ -106,7 +106,8 @@ public class TestCreateTableTool extends KijiToolTest {
 
   @Test
   public void testCreateHashedTableWithSplitKeys() throws Exception {
-    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST);
+    final KijiTableLayout layout =
+        KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST_LEGACY);
     final File layoutFile = getTempLayoutFile(layout);
     final KijiURI tableURI =
         KijiURI.newBuilder(getKiji().getURI()).withTableName(layout.getName()).build();

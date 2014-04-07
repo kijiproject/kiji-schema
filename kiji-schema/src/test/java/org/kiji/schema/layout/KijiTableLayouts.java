@@ -29,6 +29,7 @@ import org.apache.commons.io.IOUtils;
 
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
+import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.util.FromJson;
 import org.kiji.schema.util.ResourceUtils;
@@ -152,9 +153,13 @@ public final class KijiTableLayouts {
   public static final String SQOOP_EXPORT_VARYING_TYPED_TEST =
       "org/kiji/schema/layout/sqoop-export-varying-typed-test.json";
 
-  /** Test layout named 'foo'. */
+  /** Test layout named 'foo' that uses RowKeyFormat2. */
   public static final String FOO_TEST =
       "org/kiji/schema/layout/foo-test.json";
+
+    /** Test layout named 'foo' that uses RowKeyFormat. */
+    public static final String FOO_TEST_LEGACY =
+            "org/kiji/schema/layout/foo-test-legacy.json";
 
   /** Table named 'table' with a final string column named 'family:column'. */
   public static final String FINAL_COLUMN =
@@ -190,7 +195,7 @@ public final class KijiTableLayouts {
 
   /** Test layout with hashing disabled. */
   public static TableLayoutDesc getFooUnhashedTestLayout() throws IOException {
-    final TableLayoutDesc desc = getLayout(FOO_TEST);
+    final TableLayoutDesc desc = getLayout(FOO_TEST_LEGACY);
     desc.setName("foo_nonhashed");
     ((RowKeyFormat)desc.getKeysFormat()).setEncoding(RowKeyEncoding.RAW);
     return desc;
@@ -199,8 +204,12 @@ public final class KijiTableLayouts {
   /** Test changing the row key hashing property. */
   public static TableLayoutDesc getFooChangeHashingTestLayout() throws IOException {
     final TableLayoutDesc desc = getLayout(FOO_TEST);
-    ((RowKeyFormat)desc.getKeysFormat()).setEncoding(RowKeyEncoding.RAW);
+    desc.setLayoutId("2");
+    RowKeyFormat2 record = (RowKeyFormat2)desc.getKeysFormat();
+    record.setEncoding(RowKeyEncoding.HASH);
+    desc.setKeysFormat(record);
     desc.setReferenceLayout("1");
+    desc.setName("foo");
     return desc;
   }
 

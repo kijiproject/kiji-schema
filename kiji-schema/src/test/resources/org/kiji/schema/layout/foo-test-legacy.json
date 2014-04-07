@@ -17,12 +17,12 @@
  * limitations under the License.
  */
 {
-  name : "foo",
-  description : "the foo table",
+  name : "foo_legacy",
+  description : "the foo table using legacy RowKeyFormat",
   keys_format : {
-    encoding: "FORMATTED",
-    salt: {hash_size: 2},
-    components: [{name: "row", type: "STRING"}]
+    encoding : "HASH",
+    hash_type : "MD5",
+    hash_size : 16
   },
   locality_groups : [ {
     name : "default",
@@ -107,5 +107,5 @@
       }
     } ]
   } ],
-  version : "layout-1.4.0"
+  version : "layout-1.0"
 }
