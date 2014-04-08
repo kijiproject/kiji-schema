@@ -20,7 +20,6 @@
 package org.kiji.schema.util;
 
 import java.io.File;
-import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.junit.After;
@@ -35,12 +34,6 @@ import org.kiji.schema.KijiClientTest;
  */
 public abstract class ZooKeeperTest extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperTest.class);
-
-  /**
-   * Global lock for serializing ZooKeeperTest implementations. This is necessary to correct for a
-   * bug in MiniZooKeeperCluster which prevent multiple clusters from being opened concurrently.
-   */
-  private static final ReentrantLock mLock = new ReentrantLock();
 
   private MiniZooKeeperCluster mZKCluster = null;
   private File mZKBaseDir = null;
@@ -69,9 +62,6 @@ public abstract class ZooKeeperTest extends KijiClientTest {
 
   @Before
   public final void setupZooKeeperTest() throws Exception {
-    LOG.info("taking lock: {}", getTestId());
-    mLock.lock();
-    LOG.info("took lock: {}", getTestId());
     mZKBaseDir = new File(getLocalTempDir(), "mini-zookeeper-cluster");
     mZKCluster = new MiniZooKeeperCluster();
     startZKCluster();
@@ -81,9 +71,6 @@ public abstract class ZooKeeperTest extends KijiClientTest {
   public final void teardownZooKeeperTest() throws Exception {
     stopZKCluster();
     mZKCluster = null;
-    LOG.info("releasing lock: {}", getTestId());
-    mLock.unlock();
-    LOG.info("lock released: {}", getTestId());
   }
 
   /**
