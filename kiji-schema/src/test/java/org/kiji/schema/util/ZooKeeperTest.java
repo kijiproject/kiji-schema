@@ -64,6 +64,8 @@ public abstract class ZooKeeperTest extends KijiClientTest {
   public final void setupZooKeeperTest() throws Exception {
     mZKBaseDir = new File(getLocalTempDir(), "mini-zookeeper-cluster");
     mZKCluster = new MiniZooKeeperCluster();
+    // TODO(SCHEMA-744): Investigate the weird behavior of MiniZooKeeperCluster.
+    mZKCluster.setDefaultClientPort(21818);
     startZKCluster();
   }
 
