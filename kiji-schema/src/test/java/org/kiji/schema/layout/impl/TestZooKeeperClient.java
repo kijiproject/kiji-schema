@@ -22,12 +22,12 @@ package org.kiji.schema.layout.impl;
 import java.io.File;
 
 import com.google.common.base.Preconditions;
+import org.apache.curator.test.KillSession;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.util.Time;
 import org.kiji.schema.util.ZooKeeperTest;
 
 /** Tests for ZooKeeperClient. */
@@ -42,25 +42,10 @@ public class TestZooKeeperClient extends ZooKeeperTest {
     try {
       Preconditions.checkNotNull(client.getZKClient(1.0));
 
-      // Kill mini ZooKeeper cluster and restart it in 0.5 seconds.
-      // In the meantime, attempt to create a directory node.
-      stopZKCluster();
+      // Kill the ZooKeeper session
+      KillSession.kill(client.getZKClient(1.0), getZKAddress());
 
-      final Thread thread = new Thread() {
-        /** {@inheritDoc} */
-        @Override
-        public void run() {
-          Time.sleep(0.5);
-          try {
-            startZKCluster();
-          } catch (Exception e) {
-            throw new RuntimeException(e);
-          }
-        }
-      };
-      thread.start();
-
-      // This operation should block until ZooKeeper comes back online, then proceed:
+      // This operation should block until a new ZooKeeper session is established, then proceed:
       client.createNodeRecursively(new File("/a/b/c/d/e/f"));
 
       Assert.assertEquals(0, client.exists(new File("/a/b/c/d/e/f")).getVersion());
@@ -82,7 +67,7 @@ public class TestZooKeeperClient extends ZooKeeperTest {
 
   @Test
   public void testZooKeeperClientsAreReleasedFromCacheWhenClosed() throws Exception {
-    final String zkAddr = String.format("localhost:%d", getZKCluster().getClientPort());
+    final String zkAddr = getZKAddress();
 
     final ZooKeeperClient client1 = ZooKeeperClient.getZooKeeperClient(zkAddr);
     client1.release();

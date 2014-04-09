@@ -23,10 +23,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import org.apache.curator.test.TestingCluster;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import org.kiji.delegation.Priority;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.RuntimeInterruptedException;
 import org.kiji.schema.impl.HBaseAdminFactory;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.hbase.DefaultHBaseFactory;
@@ -54,13 +52,13 @@ public final class TestingHBaseFactory implements HBaseFactory {
   private static final Object MINIZK_CLUSTER_LOCK = new Object();
 
   /**
-   * Singleton MiniZooKeeperCluster for testing.
+   * Singleton in-process ZooKeeper cluster for testing.
    *
    * Lazily instantiated when the first test requests a ZooKeeperClient for a .fake Kiji instance.
    *
    * Once started, the mini-cluster remains alive until the JVM shuts down.
    */
-  private static MiniZooKeeperCluster mMiniZkCluster;
+  private static TestingCluster mZKCluster;
 
   /**
    * ZooKeeperClient used to create chroot directories prior to instantiating test ZooKeeperClients.
@@ -185,10 +183,10 @@ public final class TestingHBaseFactory implements HBaseFactory {
    * @return the ZooKeeper address for the test instance.
    * @throws IOException on I/O error when creating the mini cluster.
    */
-  private static String createZooKeeperAddressForFakeId(String fakeId) throws IOException {
+  private static String createZooKeeperAddressForFakeId(String fakeId) throws Exception {
 
     // Initializes the Mini ZooKeeperCluster, if necessary:
-    final MiniZooKeeperCluster zkCluster = getMiniZKCluster();
+    final TestingCluster zkCluster = getMiniZKCluster();
 
     // Create the chroot node for this fake ID, if necessary:
     try {
@@ -201,7 +199,7 @@ public final class TestingHBaseFactory implements HBaseFactory {
     }
 
     // Test ZooKeeperClients use a chroot to isolate testing environments.
-    return "localhost:" + zkCluster.getClientPort() + "/" + fakeId;
+    return zkCluster.getConnectString() + "/" + fakeId;
   }
 
   /**
@@ -212,25 +210,17 @@ public final class TestingHBaseFactory implements HBaseFactory {
    * @throws IOException in case of an error creating the temporary directory or starting the mini
    *    zookeeper cluster.
    */
-  private static MiniZooKeeperCluster getMiniZKCluster() throws IOException {
+  private static TestingCluster getMiniZKCluster() throws Exception {
     synchronized (MINIZK_CLUSTER_LOCK) {
-      if (mMiniZkCluster == null) {
-        final MiniZooKeeperCluster miniZK = new MiniZooKeeperCluster(new Configuration());
-        final File tempDir = File.createTempFile("mini-zk-cluster", "dir");
-        Preconditions.checkState(tempDir.delete());
-        Preconditions.checkState(tempDir.mkdirs());
-        try {
-          miniZK.startup(tempDir);
-        } catch (InterruptedException ie) {
-          throw new RuntimeInterruptedException(ie);
-        }
-        mMiniZkCluster = miniZK;
+      if (mZKCluster == null) {
+        mZKCluster = new TestingCluster(1);
+        mZKCluster.start();
 
-        final String zkAddress ="localhost:" + mMiniZkCluster.getClientPort();
+        final String zkAddress = mZKCluster.getConnectString();
         LOG.info("Creating testing utility ZooKeeperClient for {}", zkAddress);
         mMiniZkClient = ZooKeeperClient.getZooKeeperClient(zkAddress);
       }
-      return mMiniZkCluster;
+      return mZKCluster;
     }
   }
 
@@ -247,7 +237,7 @@ public final class TestingHBaseFactory implements HBaseFactory {
     if (fakeId != null) {
       try {
         return createZooKeeperAddressForFakeId(fakeId);
-      } catch (IOException e) {
+      } catch (Exception e) {
         throw new KijiIOException(e.getCause());
       }
     }

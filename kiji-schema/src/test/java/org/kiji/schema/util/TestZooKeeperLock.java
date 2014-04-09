@@ -19,18 +19,20 @@
 
 package org.kiji.schema.util;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 import java.io.File;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.KijiIOException;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
 
 public class TestZooKeeperLock extends ZooKeeperTest {
+  private static final Logger LOG = LoggerFactory.getLogger(TestZooKeeperLock.class);
 
   /** Overly basic test for ZooKeeper locks. */
   @Test
@@ -38,8 +40,7 @@ public class TestZooKeeperLock extends ZooKeeperTest {
     final File lockDir = new File("/lock");
     final ZooKeeperClient zkClient = ZooKeeperClient.getZooKeeperClient(getZKAddress());
     try {
-      final AtomicInteger counter = new AtomicInteger(0);
-
+      final CyclicBarrier barrier = new CyclicBarrier(2);
       final ZooKeeperLock lock1 = new ZooKeeperLock(zkClient, lockDir);
       final ZooKeeperLock lock2 = new ZooKeeperLock(zkClient, lockDir);
       lock1.lock();
@@ -50,33 +51,27 @@ public class TestZooKeeperLock extends ZooKeeperTest {
         public void run() {
           try {
             assertFalse(lock2.lock(0.1));
-            counter.incrementAndGet();
+            barrier.await();
             lock2.lock();
-            counter.incrementAndGet();
             lock2.unlock();
-            counter.incrementAndGet();
 
             lock2.lock();
-            counter.incrementAndGet();
             lock2.unlock();
             lock2.close();
-            counter.incrementAndGet();
-          } catch (Exception exn) {
-            throw new KijiIOException(exn);
+            barrier.await();
+          } catch (Exception e) {
+            LOG.warn("Exception caught in locking thread: {}", e.getMessage());
           }
         }
       };
       thread.start();
 
-      while (counter.get() != 1) {
-        Time.sleep(0.1);  // I hate it, but I can't think anything simpler for now.
-      }
+      barrier.await(5, TimeUnit.SECONDS); // Eventually fail
+
       lock1.unlock();
       lock1.close();
 
-      thread.join();
-      assertEquals(5, counter.get());
-
+      barrier.await(5, TimeUnit.SECONDS); // Eventually fail
     } finally {
       zkClient.release();
     }

@@ -19,9 +19,8 @@
 
 package org.kiji.schema.util;
 
-import java.io.File;
-
-import org.apache.hadoop.hbase.zookeeper.MiniZooKeeperCluster;
+import org.apache.curator.test.TestingCluster;
+import org.apache.curator.test.TestingZooKeeperServer;
 import org.junit.After;
 import org.junit.Before;
 import org.slf4j.Logger;
@@ -35,18 +34,20 @@ import org.kiji.schema.KijiClientTest;
 public abstract class ZooKeeperTest extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperTest.class);
 
-  private MiniZooKeeperCluster mZKCluster = null;
-  private File mZKBaseDir = null;
+  private TestingCluster mZKCluster = null;
 
   /**
-   * Starts the mini ZooKeeper cluster.
+   * Starts the mini ZooKeeper cluster after it has been explicitly stopped via
+   * {@link #stopZKCluster()}.
    *
    * @throws Exception on error.
    */
   public void startZKCluster() throws Exception {
-    LOG.info("Starting ZooKeeper mini cluster.");
-    mZKCluster.startup(mZKBaseDir, 1);
-    LOG.info("ZooKeeper mini cluster started.");
+    LOG.info("Restarting ZooKeeper mini cluster.");
+    for (TestingZooKeeperServer server : mZKCluster.getServers()) {
+      server.restart();
+    }
+    LOG.info("ZooKeeper mini cluster restarted.");
   }
 
   /**
@@ -56,22 +57,21 @@ public abstract class ZooKeeperTest extends KijiClientTest {
    */
   public void stopZKCluster() throws Exception {
     LOG.info("Shutting down ZooKeeper mini cluster.");
-    mZKCluster.shutdown();
+    for (TestingZooKeeperServer server : mZKCluster.getServers()) {
+      server.stop();
+    }
     LOG.info("ZooKeeper mini cluster is down.");
   }
 
   @Before
   public final void setupZooKeeperTest() throws Exception {
-    mZKBaseDir = new File(getLocalTempDir(), "mini-zookeeper-cluster");
-    mZKCluster = new MiniZooKeeperCluster();
-    // TODO(SCHEMA-744): Investigate the weird behavior of MiniZooKeeperCluster.
-    mZKCluster.setDefaultClientPort(21818);
-    startZKCluster();
+    mZKCluster = new TestingCluster(1);
+    mZKCluster.start();
   }
 
   @After
   public final void teardownZooKeeperTest() throws Exception {
-    stopZKCluster();
+    mZKCluster.stop();
     mZKCluster = null;
   }
 
@@ -80,7 +80,7 @@ public abstract class ZooKeeperTest extends KijiClientTest {
    *
    * @return the mini ZooKeeper cluster.
    */
-  public MiniZooKeeperCluster getZKCluster() {
+  public TestingCluster getZKCluster() {
     return mZKCluster;
   }
 
@@ -90,7 +90,7 @@ public abstract class ZooKeeperTest extends KijiClientTest {
    * @return the address of the mini ZooKeeper cluster.
    */
   public String getZKAddress() {
-    return String.format("localhost:%d", mZKCluster.getClientPort());
+    return mZKCluster.getConnectString();
   }
 
 }

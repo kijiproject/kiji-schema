@@ -52,6 +52,7 @@
     -->
     <cdh4-hadoop.version>${hadoop.version}</cdh4-hadoop.version>
     <cdh4-hbase.version>${hbase.version}</cdh4-hbase.version>
+    <curator.version>2.4.1</curator.version>
   </properties>
 
   <modules>
