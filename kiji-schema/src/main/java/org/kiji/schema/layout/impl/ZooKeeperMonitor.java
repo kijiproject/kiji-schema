@@ -432,7 +432,7 @@ public final class ZooKeeperMonitor implements Closeable {
    * <p> The handler is always invoked in a separate thread. </p>
    */
   public final class LayoutTracker implements Closeable {
-    private final LayoutUpdateHandler mHandler;
+    private volatile LayoutUpdateHandler mHandler;
     private final KijiURI mTableURI;
     private final File mTableLayoutFile;
     private final LayoutWatcher mWatcher = new LayoutWatcher();
@@ -496,7 +496,7 @@ public final class ZooKeeperMonitor implements Closeable {
     private void registerWatcher() {
       try {
         final byte[] layoutUpdate =
-            ZooKeeperMonitor.this.mZKClient.getData(mTableLayoutFile, mWatcher, mLayoutStat);
+            mZKClient.getData(mTableLayoutFile, mWatcher, mLayoutStat);
 
         if (!Arrays.equals(mLatestLayout, layoutUpdate)) {
           // Layout update may not be changed in the case where this was triggered by a ZooKeeper
@@ -522,7 +522,13 @@ public final class ZooKeeperMonitor implements Closeable {
       Preconditions.checkState(oldState == State.OPEN,
           "Cannot close LayoutTracker instance in state %s.", oldState);
       // ZOOKEEPER-442: There is currently no way to cancel a watch.
-      //     All we can do here is to neutralize the handler by setting mClosed.
+      // The only way to neutralize this is by setting the state to CLOSED so that
+      // when the layout updater does fire, we can simply ignore it.
+
+      // Null out the mHandler so that ZK is not a GC Root for the mHandler
+      // (via the inner class LayoutWatcher) whose one implementation is an inner class
+      // in HBaseKijiTable.
+      mHandler = null;
     }
   }
 
