@@ -28,7 +28,7 @@
   <parent>
     <groupId>org.kiji.pom</groupId>
     <artifactId>root-pom</artifactId>
-    <version>1.1.5</version>
+    <version>1.1.6-SNAPSHOT</version>
   </parent>
 
   <name>KijiSchema top-level project</name>
@@ -52,7 +52,6 @@
     -->
     <cdh4-hadoop.version>${hadoop.version}</cdh4-hadoop.version>
     <cdh4-hbase.version>${hbase.version}</cdh4-hbase.version>
-    <curator.version>2.4.1</curator.version>
   </properties>
 
   <modules>
