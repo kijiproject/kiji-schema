@@ -79,12 +79,6 @@ public abstract class AbstractKijiIntegrationTest {
   public static final String ADD_CLASSPATH_TO_JOB_DCACHE_PROPERTY =
       "org.kiji.mapreduce.add.classpath.to.job.dcache";
 
-  public static final String CLEANUP_AFTER_TEST_PROPERTY =
-      "org.kiji.schema.test.cleanup.after.test";
-
-  public static final boolean CLEANUP_AFTER_TEST =
-      Boolean.parseBoolean(System.getProperty(CLEANUP_AFTER_TEST_PROPERTY, "false"));
-
   static {
     SchemaPlatformBridge.get().initializeHadoopResources();
     if (System.getProperty(ADD_CLASSPATH_TO_JOB_DCACHE_PROPERTY, null) == null) {
@@ -103,6 +97,18 @@ public abstract class AbstractKijiIntegrationTest {
    *   mvn clean verify -Dkiji.test.cluster.uri=kiji://localhost:2181
    */
   private static final String BASE_TEST_URI_PROPERTY = "kiji.test.cluster.uri";
+
+  public static final String TEST_CLUSTER_URI = System.getProperty(BASE_TEST_URI_PROPERTY);
+
+  public static final String CLEANUP_AFTER_TEST_PROPERTY =
+      "org.kiji.schema.test.cleanup.after.test";
+
+  /**
+   * Whether to remove temporary kiji instances after testing is over. This defaults to true
+   * if an external HBase instance is specified, or false otherwise.
+   */
+  public static final boolean CLEANUP_AFTER_TEST = Boolean.parseBoolean(System.getProperty(
+      CLEANUP_AFTER_TEST_PROPERTY, (TEST_CLUSTER_URI == null ? "false" : "true")));
 
   /* Semaphore for tracking how many tests are currently running. */
   private static final Semaphore RUNNING_TEST_SEMAPHORE = new Semaphore(0);
@@ -222,8 +228,8 @@ public abstract class AbstractKijiIntegrationTest {
           conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT);
       return KijiURI.newBuilder(String.format("kiji://%s:%d", quorum, clientPort)).build();
     }
-    if (System.getProperty(BASE_TEST_URI_PROPERTY) != null) {
-      return KijiURI.newBuilder(System.getProperty(BASE_TEST_URI_PROPERTY)).build();
+    if (TEST_CLUSTER_URI != null) {
+      return KijiURI.newBuilder(TEST_CLUSTER_URI).build();
     } else {
       return KijiURI.newBuilder(HBASE_MAVEN_PLUGIN_URI).build();
     }

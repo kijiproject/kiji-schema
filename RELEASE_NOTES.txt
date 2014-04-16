@@ -1,7 +1,9 @@
 
 
                               KijiSchema Release Notes
-Version 1.5.0
+Version 1.4.1
+  * SCHEMA-741. Integration tests now clean up dummy instances when using an
+      external HBase.
   * SCHEMA-678. If HADOOP_HOME, HBASE_HOME, or JAVA_HOME are not set the kiji
       script will attempt to resolve those environment variables by
       utilizing the corresponding binary.
