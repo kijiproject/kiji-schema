@@ -502,6 +502,51 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     }
   }
 
+  /**
+   * Get a KijiResultScanner for the given data request and scan options.
+   *
+   * @param request Data request defining the data to retrieve from each row.
+   * @param scannerOptions Options to control the operation of the scanner.
+   * @return A new KijiResultScanner.
+   * @throws IOException in case of an error creating the scanner.
+   */
+  public HBaseKijiResultScanner getKijiResultScanner(
+      final KijiDataRequest request,
+      final KijiScannerOptions scannerOptions
+  ) throws IOException {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get scanner from KijiTableReader instance %s in state %s.", this, state);
+
+    final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
+    final HBaseDataRequestAdapter adapter =
+        new HBaseDataRequestAdapter(request, capsule.getColumnNameTranslator());
+    final KijiTableLayout layout = capsule.getLayout();
+    validateRequestAgainstLayout(request, layout);
+    final Scan scan = adapter.toScan(layout, scannerOptions.getHBaseScanOptions());
+    if (null != scannerOptions.getStartRow()) {
+      scan.setStartRow(scannerOptions.getStartRow().getHBaseRowKey());
+    }
+    if (null != scannerOptions.getStopRow()) {
+      scan.setStopRow(scannerOptions.getStopRow().getHBaseRowKey());
+    }
+    scan.setCaching(scannerOptions.getRowCaching());
+
+    if (null != scannerOptions.getKijiRowFilter()) {
+      final KijiRowFilterApplicator applicator = KijiRowFilterApplicator.create(
+          scannerOptions.getKijiRowFilter(), layout, mTable.getKiji().getSchemaTable());
+      applicator.applyTo(scan);
+    }
+
+    return new HBaseKijiResultScanner(
+        request,
+        mTable,
+        scan,
+        capsule.getCellDecoderProvider(),
+        capsule.getColumnNameTranslator(),
+        scannerOptions.getReopenScannerOnTimeout());
+  }
+
   /** {@inheritDoc} */
   @Override
   public String toString() {
