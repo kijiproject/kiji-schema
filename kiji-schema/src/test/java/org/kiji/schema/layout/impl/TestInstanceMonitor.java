@@ -40,7 +40,6 @@ import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersTracker;
 
 public class TestInstanceMonitor extends KijiClientTest {
 
-  private final String mUserName = "user";
   private volatile KijiURI mTableURI;
   private volatile ZooKeeperClient mZKClient;
   private volatile ZooKeeperMonitor mZKMonitor;
@@ -56,7 +55,6 @@ public class TestInstanceMonitor extends KijiClientTest {
     mZKMonitor = new ZooKeeperMonitor(mZKClient);
 
     mInstanceMonitor = new InstanceMonitor(
-        mUserName,
         kiji.getSystemTable().getDataVersion(),
         kiji.getURI(),
         kiji.getSchemaTable(),
@@ -106,8 +104,9 @@ public class TestInstanceMonitor extends KijiClientTest {
 
       mInstanceMonitor.getTableLayoutMonitor(mTableURI.getTable());
 
-      Assert.assertEquals(ImmutableSetMultimap.of(mUserName, "1"),
-          usersQueue.poll(1, TimeUnit.SECONDS));
+      Multimap<String, String> registeredUsers = usersQueue.poll(1, TimeUnit.SECONDS);
+      Assert.assertEquals(1, registeredUsers.size());
+      Assert.assertTrue(registeredUsers.containsValue("1"));
 
       System.gc();
 

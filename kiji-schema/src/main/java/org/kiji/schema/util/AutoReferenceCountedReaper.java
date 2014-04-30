@@ -70,6 +70,7 @@ public final class AutoReferenceCountedReaper implements Closeable {
    * Create an AutoReferenceCountedReaper instance.
    */
   public AutoReferenceCountedReaper() {
+    LOG.debug("Creating a new AutoReferenceCountedReaper.");
     mExecutorService.execute(new Closer());
   }
 
@@ -101,6 +102,8 @@ public final class AutoReferenceCountedReaper implements Closeable {
   @Override
   public void close() {
     mIsOpen = false;
+    LOG.debug("Closing AutoReferenceCountedReaper with AutoReferenceCounted instances: {}.",
+        mReferences);
     mExecutorService.shutdownNow();
     for (CloseablePhantomRef reference : mReferences) {
       reference.close();
@@ -177,7 +180,7 @@ public final class AutoReferenceCountedReaper implements Closeable {
      */
     @Override
     public void close() {
-      LOG.debug("closing phantom ref.");
+      LOG.debug("Closing CloseablePhantomRef with Closeables: {}.", mCloseables);
       for (Closeable closeable : mCloseables) {
         try {
           closeable.close();

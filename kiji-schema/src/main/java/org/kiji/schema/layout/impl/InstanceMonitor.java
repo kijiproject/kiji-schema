@@ -22,6 +22,7 @@ package org.kiji.schema.layout.impl;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Preconditions;
@@ -38,6 +39,7 @@ import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.util.AutoReferenceCountedReaper;
+import org.kiji.schema.util.JvmId;
 import org.kiji.schema.util.ProtocolVersion;
 
 /**
@@ -48,6 +50,8 @@ import org.kiji.schema.util.ProtocolVersion;
 public final class InstanceMonitor implements Closeable {
 
   private static final Logger LOG = LoggerFactory.getLogger(InstanceMonitor.class);
+
+  private static final AtomicInteger INSTANCE_COUNTER = new AtomicInteger(0);
 
   private final AutoReferenceCountedReaper mReaper = new AutoReferenceCountedReaper();
 
@@ -82,7 +86,6 @@ public final class InstanceMonitor implements Closeable {
   /**
    * Create an instance monitor for a Kiji instance.
    *
-   * @param userID of instance user.
    * @param systemVersion of instance user.
    * @param instanceURI uri of instance to monitor.
    * @param schemaTable of instance.
@@ -91,18 +94,18 @@ public final class InstanceMonitor implements Closeable {
    *        unavailable (SYSTEM_1_0).
    */
   public InstanceMonitor(
-      String userID,
       ProtocolVersion systemVersion,
       KijiURI instanceURI,
       KijiSchemaTable schemaTable,
       KijiMetaTable metaTable,
       ZooKeeperMonitor zkMonitor) {
-
-    mUserID = userID;
+    mUserID = generateInstanceUserID();
     mInstanceURI = instanceURI;
     mSchemaTable = schemaTable;
     mMetaTable = metaTable;
     mZKMonitor = zkMonitor;
+
+    LOG.debug("Creating InstanceMonitor for instance {} with userID {}.", mInstanceURI, mUserID);
 
     mTableLayoutMonitors = CacheBuilder
         .newBuilder()
@@ -113,7 +116,7 @@ public final class InstanceMonitor implements Closeable {
 
     if (zkMonitor != null) {
       mUserRegistration = zkMonitor.newInstanceUserRegistration(
-          userID, systemVersion.toCanonicalString(), instanceURI);
+          mUserID, systemVersion.toCanonicalString(), instanceURI);
     } else {
       mUserRegistration = null;
     }
@@ -131,6 +134,8 @@ public final class InstanceMonitor implements Closeable {
    */
   public TableLayoutMonitor getTableLayoutMonitor(String tableName) throws IOException {
     Preconditions.checkState(mState.get() == State.OPEN, "InstanceMonitor is closed.");
+    LOG.debug("Retrieving TableLayoutMonitor for table {} with userID {}.",
+        KijiURI.newBuilder(mInstanceURI).withTableName(tableName).build(), mUserID);
     try {
       return mTableLayoutMonitors.get(tableName);
     } catch (ExecutionException e) {
@@ -169,13 +174,22 @@ public final class InstanceMonitor implements Closeable {
   @Override
   public void close() throws IOException {
     mState.set(State.CLOSED);
-    LOG.debug("Closing InstanceMonitor for instance {}.", mInstanceURI);
+    LOG.debug("Closing InstanceMonitor for instance {} with userID {}.", mInstanceURI, mUserID);
 
     if (mUserRegistration != null) {
       mUserRegistration.close();
     }
 
     mReaper.close();
+  }
+
+  /**
+   * Generates a uniquely identifying ID for an instance user.
+   *
+   * @return a uniquely identifying ID for an instance user.
+   */
+  private static String generateInstanceUserID() {
+    return String.format("%s;HBaseKiji@%s", JvmId.get(), INSTANCE_COUNTER.getAndIncrement());
   }
 
   /**
@@ -186,12 +200,13 @@ public final class InstanceMonitor implements Closeable {
     /** {@inheritDoc}. */
     @Override
     public TableLayoutMonitor load(String tableName) throws IOException {
+      Preconditions.checkState(mState.get() == State.OPEN, "InstanceMonitor is closed.");
       KijiURI tableURI = KijiURI.newBuilder(mInstanceURI).withTableName(tableName).build();
 
-      LOG.debug("Creating TableLayoutMonitor for table {}.", tableURI);
+      LOG.debug("Creating TableLayoutMonitor for table {} with userID {}.", tableURI, mUserID);
 
       TableLayoutMonitor monitor =
-          new TableLayoutMonitor(mUserID, tableURI, mSchemaTable, mMetaTable, mZKMonitor).start();
+          new TableLayoutMonitor(tableURI, mSchemaTable, mMetaTable, mZKMonitor).start();
 
       mReaper.registerAutoReferenceCounted(monitor);
 

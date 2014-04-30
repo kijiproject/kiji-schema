@@ -674,6 +674,7 @@ public final class ZooKeeperMonitor implements Closeable {
         if (mCurrentNode != null) {
           try {
             ZooKeeperMonitor.this.mZKClient.delete(mCurrentNode, -1);
+            LOG.debug("TableUserRegistration node {} removed.", mCurrentNode);
             mCurrentNode = null;
           } catch (KeeperException e) {
             throw new IOException(e);

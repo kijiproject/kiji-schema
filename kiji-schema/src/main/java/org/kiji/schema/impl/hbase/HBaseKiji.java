@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
@@ -68,7 +67,6 @@ import org.kiji.schema.security.KijiSecurityException;
 import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.DebugResourceTracker;
-import org.kiji.schema.util.JvmId;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.ResourceUtils;
@@ -94,9 +92,6 @@ public final class HBaseKiji implements Kiji {
   private static final String ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE = String.format(
       "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
       CLEANUP_LOG.getName());
-
-  /** Global counter to generate unique HBaseKiji client IDs. */
-  private static final AtomicLong INSTANCE_COUNTER = new AtomicLong(0);
 
   /** The hadoop configuration. */
   private final Configuration mConf;
@@ -260,11 +255,7 @@ public final class HBaseKiji implements Kiji {
       mMonitor = null;
     }
 
-    /* Unique identifier for this Kiji instance as a live Kiji client. */
-    String kijiClientId =
-        String.format("%s;HBaseKiji@%s", JvmId.get(), INSTANCE_COUNTER.getAndIncrement());
     mInstanceMonitor = new InstanceMonitor(
-        kijiClientId,
         mSystemVersion,
         mURI,
         mSchemaTable,

@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
@@ -45,6 +46,7 @@ import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.AutoReferenceCounted;
+import org.kiji.schema.util.JvmId;
 
 /**
  * TableLayoutMonitor provides three services for users of table layouts:
@@ -66,6 +68,8 @@ import org.kiji.schema.util.AutoReferenceCounted;
 public final class TableLayoutMonitor implements AutoReferenceCounted {
 
   private static final Logger LOG = LoggerFactory.getLogger(TableLayoutMonitor.class);
+
+  private static final AtomicLong TABLE_COUNTER = new AtomicLong(0);
 
   private final KijiURI mTableURI;
 
@@ -108,7 +112,6 @@ public final class TableLayoutMonitor implements AutoReferenceCounted {
   /**
    * Create a new table layout monitor for the provided user and table.
    *
-   * @param userID of user to register as a table user.
    * @param tableURI of table being registered.
    * @param schemaTable of Kiji table.
    * @param metaTable of Kiji table.
@@ -116,7 +119,6 @@ public final class TableLayoutMonitor implements AutoReferenceCounted {
    *        unavailable (SYSTEM_1_0).
    */
   public TableLayoutMonitor(
-      String userID,
       KijiURI tableURI,
       KijiSchemaTable schemaTable,
       KijiMetaTable metaTable,
@@ -129,7 +131,7 @@ public final class TableLayoutMonitor implements AutoReferenceCounted {
       mUserRegistration = null;
       mInitializationLatch = null;
     } else {
-      mUserRegistration = zkMonitor.newTableUserRegistration(userID, tableURI);
+      mUserRegistration = zkMonitor.newTableUserRegistration(generateTableUserID(), tableURI);
       mInitializationLatch = new CountDownLatch(1);
       mLayoutTracker = zkMonitor.newTableLayoutTracker(
           mTableURI,
@@ -268,6 +270,15 @@ public final class TableLayoutMonitor implements AutoReferenceCounted {
   }
 
   /**
+   * Generates a uniquely identifying ID for a table user.
+   *
+   * @return a uniquely identifying ID for a table user.
+   */
+  private static String generateTableUserID() {
+    return String.format("%s;HBaseKijiTable@%s", JvmId.get(), TABLE_COUNTER.getAndIncrement());
+  }
+
+  /**
    * Updates the layout of this table in response to a layout update pushed from ZooKeeper.
    */
   private static final class InnerLayoutUpdater implements ZooKeeperMonitor.LayoutUpdateHandler {
@@ -315,7 +326,6 @@ public final class TableLayoutMonitor implements AutoReferenceCounted {
       mMetaTable = metaTable;
       mSchemaTable = schemaTable;
     }
-
 
     /** {@inheritDoc} */
     @Override
