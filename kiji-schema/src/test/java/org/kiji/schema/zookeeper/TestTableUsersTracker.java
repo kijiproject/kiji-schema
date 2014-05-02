@@ -107,25 +107,70 @@ public class TestTableUsersTracker extends ZooKeeperTest {
     final String layoutID = "layout-id";
 
     BlockingQueue<Multimap<String, String>> usersQueue = Queues.newSynchronousQueue();
+    CuratorFramework registrationConnection = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
+
+    TableUsersTracker tracker = new TableUsersTracker(mZKClient, tableURI,
+        new QueueingTableUsersUpdateHandler(usersQueue));
+    try {
+      tracker.start();
+
+      // Initially no user
+      Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
+          usersQueue.poll(5, TimeUnit.SECONDS));
+
+      TableUserRegistration userRegistration =
+          new TableUserRegistration(registrationConnection, tableURI, userID);
+      try {
+        userRegistration.start(layoutID);
+
+        // User is registered
+        Assert.assertEquals(ImmutableSetMultimap.of(userID, layoutID),
+            usersQueue.poll(5, TimeUnit.SECONDS));
+
+        KillSession.kill(
+            registrationConnection.getZookeeperClient().getZooKeeper(), getZKAddress());
+
+        // User is de-registered during session loss
+        Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
+            usersQueue.poll(5, TimeUnit.SECONDS));
+
+        // The registration recovers and comes back
+        Assert.assertEquals(ImmutableSetMultimap.of(userID, layoutID),
+            usersQueue.poll(5, TimeUnit.SECONDS));
+      } finally {
+        userRegistration.close();
+      }
+    } finally {
+      tracker.close();
+    }
+  }
+
+  @Test
+  public void testUsersTrackerHandlesSessionExpiration() throws Exception {
+    final KijiURI tableURI = KijiURI.newBuilder().withInstanceName("i").withTableName("t").build();
+    final String userID = "user";
+    final String layoutID = "layout-id";
+
+    BlockingQueue<Multimap<String, String>> usersQueue = Queues.newSynchronousQueue();
+    CuratorFramework trackerConnection = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
 
     TableUserRegistration userRegistration =
-        new TableUserRegistration(mZKClient, tableURI, userID);
-
+        new TableUserRegistration(trackerConnection, tableURI, userID);
     try {
       userRegistration.start(layoutID);
-
-      KillSession.kill(mZKClient.getZookeeperClient().getZooKeeper(), getZKAddress());
 
       TableUsersTracker tracker = new TableUsersTracker(mZKClient, tableURI,
           new QueueingTableUsersUpdateHandler(usersQueue));
       try {
         tracker.start();
 
-        // Initially no user as registration is recovering
-        Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
+        // User is registered
+        Assert.assertEquals(ImmutableSetMultimap.of(userID, layoutID),
             usersQueue.poll(5, TimeUnit.SECONDS));
 
-        // The registration recovers and comes back
+        KillSession.kill(trackerConnection.getZookeeperClient().getZooKeeper(), getZKAddress());
+
+        // The tracker recovers and comes back
         Assert.assertEquals(ImmutableSetMultimap.of(userID, layoutID),
             usersQueue.poll(5, TimeUnit.SECONDS));
       } finally {
@@ -135,6 +180,7 @@ public class TestTableUsersTracker extends ZooKeeperTest {
       userRegistration.close();
     }
   }
+
 
   /** Test the TableUsersTracker correctly recognizes ZooKeeperMonitor based user registrations. */
   @Test
