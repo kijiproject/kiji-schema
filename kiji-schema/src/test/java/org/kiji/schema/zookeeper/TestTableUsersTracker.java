@@ -80,11 +80,8 @@ public class TestTableUsersTracker extends ZooKeeperTest {
         Assert.assertEquals(ImmutableSetMultimap.of(userID, layout1),
             usersQueue.poll(5, TimeUnit.SECONDS));
 
-        // Make sure its able to handles session expiration
-        KillSession.kill(mZKClient.getZookeeperClient().getZooKeeper(), getZKAddress());
-
         userRegistration.updateLayoutID(layout2);
-        // Temporary the table user registration goes away before being replaced
+        // The table user registration is removed temporarily before being replaced
         Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
             usersQueue.poll(5, TimeUnit.SECONDS));
         Assert.assertEquals(ImmutableSetMultimap.of(userID, layout2),
