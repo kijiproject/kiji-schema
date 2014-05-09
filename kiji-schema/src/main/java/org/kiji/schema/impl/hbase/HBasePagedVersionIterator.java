@@ -49,7 +49,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  *
  * <p>
  *   Can iterate over versions of a qualified column or map-type family. Returns cells sorted
- *   lexicographically by timestamp then reverse chronologically.
+ *   lexicographically by qualifier then reverse chronologically.
  * </p>
  *
  * @param <T> type of the values returned by this iterator.
@@ -114,8 +114,9 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
           LOG.debug("Fetching new page from HBase with Get: {}", get);
           final Result result = hTable.get(get);
           if (result.size() > mRemainingVersions) {
+            final int remainingVersions = mRemainingVersions;
             mRemainingVersions = 0;
-            return new Result(Arrays.copyOf(result.raw(), mRemainingVersions));
+            return new Result(Arrays.copyOf(result.raw(), remainingVersions));
           } else if (result.size() == 0) {
             mRemainingVersions = 0;
             return result;

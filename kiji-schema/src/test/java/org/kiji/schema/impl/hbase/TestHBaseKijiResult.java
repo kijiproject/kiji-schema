@@ -55,7 +55,7 @@ public class TestHBaseKijiResult extends KijiClientTest {
   ).build();
   private static final KijiDataRequest PAGED_REQUEST = KijiDataRequest.builder().addColumns(
       ColumnsDef.create()
-          .withPageSize(1)
+          .withPageSize(2)
           .withMaxVersions(10)
           .add("primitive", "string_column")
           .add("primitive", "double_column")
@@ -73,7 +73,7 @@ public class TestHBaseKijiResult extends KijiClientTest {
   ).build();
   private static final KijiDataRequest PAGED_COMPLETE_REQUEST = KijiDataRequest.builder()
       .addColumns(ColumnsDef.create()
-          .withPageSize(1)
+          .withPageSize(2)
           .withMaxVersions(10)
           .add("string_map", null)
           .add("primitive", "string_column")
@@ -90,12 +90,12 @@ public class TestHBaseKijiResult extends KijiClientTest {
       .build();
   private static final KijiDataRequest PAGED_MAX_VERSIONS_REQUEST = KijiDataRequest.builder()
       .addColumns(ColumnsDef.create()
-          .withPageSize(1)
+          .withPageSize(2)
           .withMaxVersions(3)
           .add("string_map", null)
           .add("primitive", "string_column"))
       .addColumns(ColumnsDef.create()
-          .withPageSize(1)
+          .withPageSize(2)
           .withMaxVersions(10)
           .add("primitive", "double_column"))
       .build();
