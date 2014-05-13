@@ -464,7 +464,7 @@ public final class HBaseKijiRowData implements KijiRowData {
           kijiColumnName = columnNameTranslator.toKijiColumnName(
               new HBaseColumnName(familyEntry.getKey(), columnEntry.getKey()));
         } catch (NoSuchColumnException e) {
-          LOG.info("Ignoring HBase column '{}:{}' because it doesn't contain Kiji data.",
+          LOG.warn("Ignoring HBase column '{}:{}' because it doesn't contain Kiji data.",
               Bytes.toStringBinary(hbaseColumnName.getFamily()),
               Bytes.toStringBinary(hbaseColumnName.getQualifier()));
           continue;

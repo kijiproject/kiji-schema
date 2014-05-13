@@ -116,7 +116,7 @@ public final class MetadataRestorer {
     List<TableLayoutBackupEntry> layouts = tableBackup.getTableLayoutsBackup().getLayouts();
     Preconditions.checkArgument(!layouts.isEmpty(),
         "Backup for table '%s' contains no layout.", tableName);
-    LOG.info("Creating table '{}'.", tableName);
+    LOG.debug("Creating table '{}'.", tableName);
 
     // The initial entry is the entry with the lowest timestamp.
     long lowestTimestamp = KConstants.END_OF_TIME;
@@ -131,10 +131,10 @@ public final class MetadataRestorer {
     try {
       kiji.createTable(initialEntry.getLayout());
     } catch (KijiAlreadyExistsException kaee) {
-      LOG.info("Table already exists in HBase. Continuing with restore operation.");
+      LOG.warn("Table already exists in HBase. Continuing with restore operation.");
     }
 
-    LOG.info("Restoring layout history for table '%s' (%d layouts).", tableName,
+    LOG.debug("Restoring layout history for table '%s' (%d layouts).", tableName,
         tableBackup.getTableLayoutsBackup().getLayouts().size());
     metaTable.restoreLayoutsFromBackup(tableName, tableBackup.getTableLayoutsBackup());
     metaTable.restoreKeyValuesFromBackup(tableName, tableBackup.getKeyValueBackup());
@@ -180,9 +180,9 @@ public final class MetadataRestorer {
   public void restoreSchemas(MetadataBackup backup, Kiji kiji) throws IOException {
     // Restore all Schema table entries in the file.
     final KijiSchemaTable schemaTable = kiji.getSchemaTable();
-    LOG.info("Restoring schema table entries...");
+    LOG.debug("Restoring schema table entries...");
     schemaTable.fromBackup(backup.getSchemaTable());
-    LOG.info("Restored " + backup.getSchemaTable().getEntries().size() + " entries.");
+    LOG.debug("Restored " + backup.getSchemaTable().getEntries().size() + " entries.");
   }
 
   /**
@@ -195,8 +195,8 @@ public final class MetadataRestorer {
   public void restoreSystemVars(MetadataBackup backup, Kiji kiji) throws IOException {
     // Restore all System table entries from the file.
     final KijiSystemTable systemTable = kiji.getSystemTable();
-    LOG.info("Restoring system table entries...");
+    LOG.debug("Restoring system table entries...");
     systemTable.fromBackup(backup.getSystemTable());
-    LOG.info(String.format("Restored %d entries.", backup.getSystemTable().getEntries().size()));
+    LOG.debug(String.format("Restored %d entries.", backup.getSystemTable().getEntries().size()));
   }
 }

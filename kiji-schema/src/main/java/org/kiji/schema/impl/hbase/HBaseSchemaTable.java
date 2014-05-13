@@ -554,8 +554,8 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
     // Replacing an hash-mapped entry may happen, if two different IDs were assigned to one schema.
     final SchemaEntry oldHashEntry = mSchemaHashMap.put(entry.getHash(), entry);
     if (oldHashEntry != null) {
-      LOG.info(String.format(
-          "Replacing hash-mapped schema entry:%n%s%nwith:%n%s", oldHashEntry, entry));
+      LOG.debug(String.format(
+          "Replacing hash-mapped schema entry:%n%s%n with:%n%s", oldHashEntry, entry));
     }
 
     // Replacing an ID-mapped entry should never happen:
@@ -831,10 +831,10 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
         if (existingEntryWithHash.getHash().equals(entry.getHash())
             && existingEntryWithHash.getSchema().equals(entry.getSchema())) {
           // Does not affect consistency:
-          LOG.info(String.format("Schema with hash %s has multiple IDs: %d, %d: %s",
+          LOG.warn(String.format("Schema with hash %s has multiple IDs: %d, %d: %s",
               entry.getHash(), entry.getId(), existingEntryWithHash.getId(), entry.getSchema()));
         } else {
-          LOG.info(String.format("Conflicting schema entries with hash %s: %s vs %s",
+          LOG.warn(String.format("Conflicting schema entries with hash %s: %s vs %s",
               entry.getHash(), entry, existingEntryWithHash));
           isConsistent = false;
         }
@@ -907,7 +907,7 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
    * @throws IOException on I/O error.
    */
   private Set<SchemaEntry> loadSchemaHashTable(HTableInterface hashTable) throws IOException {
-    LOG.info("Loading entries from schema hash table.");
+    LOG.debug("Loading entries from schema hash table.");
     final Set<SchemaEntry> entries = new HashSet<SchemaEntry>();
     int hashTableRowCounter = 0;
     final ResultScanner hashTableScanner = hashTable.getScanner(
@@ -951,7 +951,7 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
         }
       }
     }
-    LOG.info(String.format(
+    LOG.debug(String.format(
         "Schema hash table has %d rows and %d entries.", hashTableRowCounter, entries.size()));
     return entries;
   }
@@ -964,7 +964,7 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
    * @throws IOException on I/O error.
    */
   private Set<SchemaEntry> loadSchemaIdTable(HTableInterface idTable) throws IOException {
-    LOG.info("Loading entries from schema ID table.");
+    LOG.debug("Loading entries from schema ID table.");
     int idTableRowCounter = 0;
     final Set<SchemaEntry> entries = new HashSet<SchemaEntry>();
     final ResultScanner idTableScanner = idTable.getScanner(
@@ -1014,7 +1014,7 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
         }
       }
     }
-    LOG.info(String.format(
+    LOG.debug(String.format(
         "Schema ID table has %d rows and %d entries.", idTableRowCounter, entries.size()));
     return entries;
   }

@@ -314,7 +314,7 @@ public final class AvroCellEncoder implements KijiCellEncoder {
       }
       case DEVELOPER: {
         if (!mRegisteredWriters.contains(writerSchema)) {
-          LOG.info("Writer schema {} is currently not registered for column {}, registering now.",
+          LOG.warn("Writer schema {} is currently not registered for column {}, registering now.",
               writerSchema, mCellSpec.getColumnURI());
           if (mCellSpec.getColumnURI() == null) {
             throw new InternalKijiError("CellSpec has no column URI: " + mCellSpec);
