@@ -140,9 +140,10 @@ public final class SystemTableTool extends BaseTool {
               "Incorrect number of arguments for \"put <key> <value>\".");
           String key = nonFlagArgs.get(0);
           byte[] value = Bytes.toBytes(nonFlagArgs.get(1));
-          if (mayProceed("There is an existing value assigned to %s."
+          byte[] originalValue = mTable.getValue(key);
+          if (originalValue==null || mayProceed("There is an existing value assigned to %s."
               + " Do you want to overwrite \"%s\" with \"%s\".",
-              key, Bytes.toString(mTable.getValue(key)), nonFlagArgs.get(1))) {
+              key, Bytes.toString(originalValue), nonFlagArgs.get(1))) {
             mTable.putValue(key, value);
           }
           return SUCCESS;
