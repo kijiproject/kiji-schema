@@ -141,7 +141,7 @@ public final class SystemTableTool extends BaseTool {
           String key = nonFlagArgs.get(0);
           byte[] value = Bytes.toBytes(nonFlagArgs.get(1));
           byte[] originalValue = mTable.getValue(key);
-          if (originalValue==null || mayProceed("There is an existing value assigned to %s."
+          if (originalValue == null || mayProceed("There is an existing value assigned to %s."
               + " Do you want to overwrite \"%s\" with \"%s\".",
               key, Bytes.toString(originalValue), nonFlagArgs.get(1))) {
             mTable.putValue(key, value);
