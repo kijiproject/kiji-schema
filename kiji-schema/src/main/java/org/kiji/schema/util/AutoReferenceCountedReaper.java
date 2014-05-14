@@ -53,6 +53,7 @@ public final class AutoReferenceCountedReaper implements Closeable {
   private final ExecutorService mExecutorService =
       Executors.newSingleThreadExecutor(
           new ThreadFactoryBuilder()
+              .setDaemon(true)
               .setNameFormat("AutoReferenceCountedReaper-" + COUNTER.getAndIncrement())
               .build()
       );

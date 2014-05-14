@@ -47,6 +47,7 @@ public class TableLayoutTracker implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(TableLayoutTracker.class);
   private static final ThreadFactory THREAD_FACTORY =
       new ThreadFactoryBuilder()
+          .setDaemon(true)
           .setNameFormat(TableLayoutTracker.class.getCanonicalName() + "-%d")
           .setUncaughtExceptionHandler(new UncaughtExceptionHandler() {
             @Override

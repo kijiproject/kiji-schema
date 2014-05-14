@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -164,8 +165,12 @@ public final class TableLayoutMonitor implements AutoReferenceCounted {
     if (mTableLayoutTracker != null) {
       mTableLayoutTracker.start();
       try {
-        mInitializationLatch.await();
+        if (!mInitializationLatch.await(20, TimeUnit.SECONDS)) {
+          throw new IOException("Timed-out while waiting for TableLayoutMonitor initialization."
+              + " Check logs for details.");
+        }
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         throw new RuntimeInterruptedException(e);
       }
     } else {

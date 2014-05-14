@@ -144,8 +144,11 @@ public final class HBaseKijiTable implements KijiTable {
   /** Name of the HBase table backing this Kiji table. */
   private final String mHBaseTableName;
 
-  /** Monitor for the layout of this table. */
-  private final TableLayoutMonitor mLayoutMonitor;
+  /**
+   * Monitor for the layout of this table. Should be initialized in the constructor and nulled out
+   * in {@link #closeResources()}. No other method should modify this pointer.
+   **/
+  private volatile TableLayoutMonitor mLayoutMonitor;
 
   /**
    * Construct an opened Kiji table stored in HBase.
@@ -312,6 +315,9 @@ public final class HBaseKijiTable implements KijiTable {
    */
   @Override
   public KijiTableLayout getLayout() {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get the layout of a table in state %s.", state);
     return getLayoutCapsule().getLayout();
   }
 
@@ -322,6 +328,9 @@ public final class HBaseKijiTable implements KijiTable {
    * @return the column name translator for the current layout of this table.
    */
   public KijiColumnNameTranslator getColumnNameTranslator() {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get the column name translator of a table in state %s.", state);
     return getLayoutCapsule().getKijiColumnNameTranslator();
   }
 
@@ -331,6 +340,9 @@ public final class HBaseKijiTable implements KijiTable {
    * @return a layout capsule representing the current state of this table's layout.
    */
   public LayoutCapsule getLayoutCapsule() {
+    final State state = mState.get();
+    Preconditions.checkState(state == State.OPEN,
+        "Cannot get the layout capsule of a table in state %s.", state);
     return mLayoutMonitor.getLayoutCapsule();
   }
 
@@ -447,6 +459,10 @@ public final class HBaseKijiTable implements KijiTable {
     if (oldState != State.UNINITIALIZED) {
       DebugResourceTracker.get().unregisterResource(this);
     }
+
+    // Relinquish strong reference to the TableLayoutMonitor in case the user keeps their reference
+    // to this KijiTable.
+    mLayoutMonitor = null;
 
     LOG.debug("HBaseKijiTable '{}' closed.", mTableURI);
   }
