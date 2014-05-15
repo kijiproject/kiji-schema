@@ -105,6 +105,7 @@ public class TestSystemTableTool extends KijiToolTest {
         final SystemTableTool st = new SystemTableTool();
 
         assertEquals(BaseTool.SUCCESS, runToolWithInput(
+                // "no" is used if null check fails and there is a prompt, this will avoid a hang
                 st, "no", "--kiji=" + kiji.getURI(),
                 "--do=put", "testPutKey", "testPutValue", "--interactive=true"));
         assertEquals(
