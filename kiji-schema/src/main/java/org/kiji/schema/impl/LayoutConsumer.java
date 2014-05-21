@@ -18,6 +18,7 @@
  */
 package org.kiji.schema.impl;
 
+import java.io.Closeable;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
@@ -40,4 +41,11 @@ public interface LayoutConsumer {
    * @throws IOException in case of an error updating.
    */
   void update(LayoutCapsule capsule) throws IOException;
+
+  /**
+   * A registration resource that should be closed to signal a user no longer needs to receive
+   * layout updates. Should be returned upon registering a {@link LayoutConsumer}.
+   */
+  public interface Registration extends Closeable {
+  }
 }

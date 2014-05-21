@@ -20,9 +20,9 @@ package org.kiji.schema.layout.impl;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -30,9 +30,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.MapMaker;
 import org.apache.curator.framework.CuratorFramework;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,10 +42,12 @@ import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.RuntimeInterruptedException;
 import org.kiji.schema.impl.LayoutConsumer;
+import org.kiji.schema.impl.LayoutConsumer.Registration;
 import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.util.AutoReferenceCounted;
 import org.kiji.schema.util.JvmId;
+import org.kiji.schema.util.ReferenceCountedCache;
+import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.zookeeper.TableLayoutTracker;
 import org.kiji.schema.zookeeper.TableLayoutUpdateHandler;
 import org.kiji.schema.zookeeper.TableUserRegistration;
@@ -61,204 +61,41 @@ import org.kiji.schema.zookeeper.TableUserRegistration;
  *     changes.
  *  3) it registers as a table user in ZooKeeper, and keeps that registration up-to-date with the
  *     oldest version of table layout being used by registered LayoutConsumers.
- *
- * This class is thread-safe with the following caveat:
- *  * LayoutConsumer instances who register to receive callbacks *must* keep a strong reference to
- *    this TableLayoutMonitor for as long as the registration should remain active. This is either
- *    for the life of the layout consumer if it is never unregistered, or until
- *    {@link #unregisterLayoutConsumer(LayoutConsumer)} is called.
  */
 @ApiAudience.Private
-public final class TableLayoutMonitor implements AutoReferenceCounted {
-
-  private static final Logger LOG = LoggerFactory.getLogger(TableLayoutMonitor.class);
-
-  private static final AtomicLong TABLE_COUNTER = new AtomicLong(0);
-
-  private final KijiURI mTableURI;
-
-  private final KijiSchemaTable mSchemaTable;
-
-  private final KijiMetaTable mMetaTable;
-
-  private final TableLayoutTracker mTableLayoutTracker;
-
-  private final TableUserRegistration mUserRegistration;
-
-  private final CountDownLatch mInitializationLatch;
-
-  /** States of a table layout monitor. */
-  private static enum State {
-    /** The table layout monitor has been created, but not yet started. */
-    INITIALIZED,
-
-    /** This instance monitor is started, and is currently monitoring the table. */
-    STARTED
-  }
-
-  private final AtomicReference<State> mState = new AtomicReference<State>();
-
-  /**
-   * Capsule containing all objects which should be mutated in response to a table layout update.
-   * The capsule itself is immutable and should be replaced atomically with a new capsule.
-   * References only the LayoutCapsule for the most recent layout for this table.
-   */
-  private final AtomicReference<LayoutCapsule> mLayoutCapsule =
-      new AtomicReference<LayoutCapsule>();
-
-  /**
-   * Holds the set of LayoutConsumers who should be notified of layout updates.  Held in a weak
-   * hash set so that registering to watch a layout does not prevent garbage collection.
-   */
-  private final Set<LayoutConsumer> mConsumers =
-      Collections.newSetFromMap(new MapMaker().weakKeys().<LayoutConsumer, Boolean>makeMap());
-
-  /**
-   * Create a new table layout monitor for the provided user and table.
-   *
-   * @param tableURI of table being registered.
-   * @param schemaTable of Kiji table.
-   * @param metaTable of Kiji table.
-   * @param zkClient ZooKeeper connection to register monitor with, or null if ZooKeeper is
-   *        unavailable (SYSTEM_1_0).
-   */
-  public TableLayoutMonitor(
-      KijiURI tableURI,
-      KijiSchemaTable schemaTable,
-      KijiMetaTable metaTable,
-      CuratorFramework zkClient) {
-    mTableURI = tableURI;
-    mSchemaTable = schemaTable;
-    mMetaTable = metaTable;
-    if (zkClient == null) {
-      mTableLayoutTracker = null;
-      mUserRegistration = null;
-      mInitializationLatch = null;
-    } else {
-      mUserRegistration = new TableUserRegistration(zkClient, tableURI, generateTableUserID());
-      mInitializationLatch = new CountDownLatch(1);
-      mTableLayoutTracker = new TableLayoutTracker(
-          zkClient,
-          mTableURI,
-          new InnerLayoutUpdater(
-              mUserRegistration,
-              mInitializationLatch,
-              mLayoutCapsule,
-              mTableURI,
-              mConsumers,
-              mMetaTable,
-              mSchemaTable));
-    }
-    mState.compareAndSet(null, State.INITIALIZED);
-  }
-
-  /**
-   * Start this table layout monitor.  Must be called before any other method.
-   *
-   * @return this table layout monitor.
-   * @throws IOException on unrecoverable ZooKeeper or meta table error.
-   */
-  public TableLayoutMonitor start() throws IOException {
-    Preconditions.checkState(
-        mState.compareAndSet(State.INITIALIZED, State.STARTED),
-        "Cannot start TableLayoutMonitor in state %s.", mState.get());
-    if (mTableLayoutTracker != null) {
-      mTableLayoutTracker.start();
-      try {
-        if (!mInitializationLatch.await(20, TimeUnit.SECONDS)) {
-          throw new IOException("Timed-out while waiting for TableLayoutMonitor initialization."
-              + " Check logs for details.");
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeInterruptedException(e);
-      }
-    } else {
-      final KijiTableLayout layout =
-          mMetaTable.getTableLayout(mTableURI.getTable()).setSchemaTable(mSchemaTable);
-      mLayoutCapsule.set(new LayoutCapsule(layout, KijiColumnNameTranslator.from(layout)));
-    }
-    return this;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public Collection<Closeable> getCloseableResources() {
-    Preconditions.checkState(mState.get() == State.STARTED,
-        "TableLayoutMonitor has not been started.");
-    ImmutableList.Builder<Closeable> resources = ImmutableList.builder();
-    if (mUserRegistration != null) {
-      resources.add(mUserRegistration);
-    }
-    if (mTableLayoutTracker != null) {
-      resources.add(mTableLayoutTracker);
-    }
-    return resources.build();
-  }
-
+public interface TableLayoutMonitor extends Closeable {
   /**
    * Get the LayoutCapsule of a table.
    *
    * @return the table's layout capsule.
    */
-  public LayoutCapsule getLayoutCapsule() {
-    Preconditions.checkState(mState.get() == State.STARTED,
-        "TableLayoutMonitor has not been started.");
-    return mLayoutCapsule.get();
-  }
+  LayoutCapsule getLayoutCapsule();
 
   /**
-   * Register a LayoutConsumer to receive a callback when this table's layout is updated.  The
-   * caller *must* hold a strong reference to this TableLayoutMonitor instance until either:
-   *
-   *  1) the caller unregisters itself using {@link #unregisterLayoutConsumer(LayoutConsumer)}.
-   *  2) the caller is garbage collected.
-   *
-   * Registering as a layout consumer is not guaranteed to keep an object from being garbage
-   * collected.
+   * Register a LayoutConsumer to receive a callback when this table's layout is updated. This
+   * method returns a registration object which should be closed when layout updates are no longer
+   * needed.
    *
    * The consumer will immediately be notified of the current layout before returning.
    *
    * @param consumer to notify when the table's layout is updated.
+   * @return a registration object which should be closed when layout updates are no longer needed.
    * @throws java.io.IOException if the consumer's {@code #update} method throws IOException.
    */
-  public void registerLayoutConsumer(LayoutConsumer consumer) throws IOException {
-    Preconditions.checkState(mState.get() == State.STARTED,
-        "TableLayoutMonitor has not been started.");
-    mConsumers.add(consumer);
-    consumer.update(getLayoutCapsule());
-  }
+  LayoutConsumer.Registration registerLayoutConsumer(LayoutConsumer consumer)
+      throws IOException;
 
   /**
-   * Unregister a LayoutConsumer. This is not necessary in cases where a consumer wants to continue
-   * to receive updates until it is garbage collected.  See the class comment and the
-   * {@link #registerLayoutConsumer(LayoutConsumer)} comment for how to properly register as a
-   * consumer in this case.
-   *
-   * @param consumer to unregister.
-   */
-  public void unregisterLayoutConsumer(LayoutConsumer consumer) {
-    Preconditions.checkState(mState.get() == State.STARTED,
-        "TableLayoutMonitor has not been started.");
-    mConsumers.remove(consumer);
-  }
-
-  /**
-   * <p>
    * Get the set of registered layout consumers.  All layout consumers should be updated using
+   *
    * {@link LayoutConsumer#update} before this table reports that it has successfully update its
    * layout.
-   * </p>
-   * <p>
+   *
    * This method is for testing purposes only.  It should not be used externally.
-   * </p>
+   *
    * @return the set of registered layout consumers.
    */
-  public Set<LayoutConsumer> getLayoutConsumers() {
-    Preconditions.checkState(mState.get() == State.STARTED,
-        "TableLayoutMonitor has not been started.");
-    return ImmutableSet.copyOf(mConsumers);
-  }
+  Set<LayoutConsumer> getLayoutConsumers();
 
   /**
    * Update all registered LayoutConsumers with a new KijiTableLayout.
@@ -268,120 +105,358 @@ public final class TableLayoutMonitor implements AutoReferenceCounted {
    * @param layout the new KijiTableLayout with which to update consumers.
    * @throws IOException in case of an error updating LayoutConsumers.
    */
-  public void updateLayoutConsumers(KijiTableLayout layout) throws IOException {
-    Preconditions.checkState(mState.get() == State.STARTED,
-        "TableLayoutMonitor has not been started.");
-    layout.setSchemaTable(mSchemaTable);
-    final LayoutCapsule capsule = new LayoutCapsule(layout, KijiColumnNameTranslator.from(layout));
-    for (LayoutConsumer consumer : getLayoutConsumers()) {
-      consumer.update(capsule);
-    }
-  }
+  void updateLayoutConsumers(KijiTableLayout layout) throws IOException;
 
   /**
-   * Generates a uniquely identifying ID for a table user.
-   *
-   * @return a uniquely identifying ID for a table user.
+   * The default implementation for {@link TableLayoutMonitor}.  Closing this table layout monitor
+   * will cancel any ZooKeeper nodes and watches it has registered.
    */
-  private static String generateTableUserID() {
-    return String.format("%s;HBaseKijiTable@%s", JvmId.get(), TABLE_COUNTER.getAndIncrement());
-  }
+  public static final class DefaultTableLayoutMonitor implements TableLayoutMonitor {
 
-  /**
-   * Updates the layout of this table in response to a layout update pushed from ZooKeeper.
-   */
-  private static final class InnerLayoutUpdater implements TableLayoutUpdateHandler {
+    private static final Logger LOG = LoggerFactory.getLogger(TableLayoutMonitor.class);
+
+    private static final AtomicLong TABLE_COUNTER = new AtomicLong(0);
+
+    private final KijiURI mTableURI;
+
+    private final KijiSchemaTable mSchemaTable;
+
+    private final KijiMetaTable mMetaTable;
+
+    private final TableLayoutTracker mTableLayoutTracker;
 
     private final TableUserRegistration mUserRegistration;
 
     private final CountDownLatch mInitializationLatch;
 
-    private final AtomicReference<LayoutCapsule> mLayoutCapsule;
+    /** States of a table layout monitor. */
+    private static enum State {
+      /** The table layout monitor has been created, but not yet started. */
+      INITIALIZED,
 
-    private final KijiURI mTableURI;
+      /** This instance monitor is started, and is currently monitoring the table. */
+      STARTED,
 
-    private final Set<LayoutConsumer> mConsumers;
+      /** This instance monitor is closed. */
+      CLOSED,
+    }
 
-    private final KijiMetaTable mMetaTable;
-
-    private final KijiSchemaTable mSchemaTable;
+    private final AtomicReference<State> mState = new AtomicReference<State>();
 
     /**
-     * Create an InnerLayoutUpdater to update the layout of this table in response to a layout node
-     * change in ZooKeeper.
-     *
-     * @param userRegistration ZooKeeper table user registration.
-     * @param initializationLatch latch that will be counted down upon successful initialization.
-     * @param layoutCapsule layout capsule to store most recent layout in.
-     * @param tableURI URI of table whose layout is to be tracked.
-     * @param consumers Set of layout consumers to notify on table layout update.
-     * @param metaTable containing meta information.
-     * @param schemaTable containing schema information.
+     * Capsule containing all objects which should be mutated in response to a table layout update.
+     * The capsule itself is immutable and should be replaced atomically with a new capsule.
+     * References only the LayoutCapsule for the most recent layout for this table.
      */
-    private InnerLayoutUpdater(
-        TableUserRegistration userRegistration,
-        CountDownLatch initializationLatch,
-        AtomicReference<LayoutCapsule> layoutCapsule,
+    private final AtomicReference<LayoutCapsule> mLayoutCapsule =
+        new AtomicReference<LayoutCapsule>();
+
+    /** Holds the set of LayoutConsumers who should be notified of layout updates. */
+    private final Set<LayoutConsumer> mConsumers =
+        Collections.newSetFromMap(new ConcurrentHashMap<LayoutConsumer, Boolean>());
+
+    /**
+     * Create a new table layout monitor for the provided user and table.
+     *
+     * @param tableURI of table being registered.
+     * @param schemaTable of Kiji table.
+     * @param metaTable of Kiji table.
+     * @param zkClient ZooKeeper connection to register monitor with, or null if ZooKeeper is
+     *        unavailable (SYSTEM_1_0).
+     */
+    public DefaultTableLayoutMonitor(
         KijiURI tableURI,
-        Set<LayoutConsumer> consumers,
+        KijiSchemaTable schemaTable,
         KijiMetaTable metaTable,
-        KijiSchemaTable schemaTable
-    ) {
-      mUserRegistration = userRegistration;
-      mInitializationLatch = initializationLatch;
-      mLayoutCapsule = layoutCapsule;
+        CuratorFramework zkClient) {
       mTableURI = tableURI;
-      mConsumers = consumers;
-      mMetaTable = metaTable;
       mSchemaTable = schemaTable;
+      mMetaTable = metaTable;
+      if (zkClient == null) {
+        mTableLayoutTracker = null;
+        mUserRegistration = null;
+        mInitializationLatch = null;
+      } else {
+        mUserRegistration = new TableUserRegistration(zkClient, tableURI, generateTableUserID());
+        mInitializationLatch = new CountDownLatch(1);
+        mTableLayoutTracker = new TableLayoutTracker(
+            zkClient,
+            mTableURI,
+            new InnerLayoutUpdater(
+                mUserRegistration,
+                mInitializationLatch,
+                mLayoutCapsule,
+                mTableURI,
+                mConsumers,
+                mMetaTable,
+                mSchemaTable));
+      }
+      mState.compareAndSet(null, State.INITIALIZED);
+    }
+
+    /**
+     * Start this table layout monitor.  Must be called before any other method.
+     *
+     * @return this table layout monitor.
+     * @throws IOException on unrecoverable ZooKeeper or meta table error.
+     */
+    public TableLayoutMonitor start() throws IOException {
+      Preconditions.checkState(
+          mState.compareAndSet(State.INITIALIZED, State.STARTED),
+          "Cannot start TableLayoutMonitor in state %s.", mState.get());
+      if (mTableLayoutTracker != null) {
+        mTableLayoutTracker.start();
+        try {
+          if (!mInitializationLatch.await(20, TimeUnit.SECONDS)) {
+            throw new IOException("Timed-out while waiting for TableLayoutMonitor initialization."
+                + " Check logs for details.");
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeInterruptedException(e);
+        }
+      } else {
+        final KijiTableLayout layout =
+            mMetaTable.getTableLayout(mTableURI.getTable()).setSchemaTable(mSchemaTable);
+        mLayoutCapsule.set(new LayoutCapsule(layout, KijiColumnNameTranslator.from(layout)));
+      }
+      return this;
+    }
+
+    @Override
+    /** {@inheritDoc} */
+    public void close() throws IOException {
+      Preconditions.checkState(
+          mState.compareAndSet(State.STARTED, State.CLOSED),
+          "TableLayoutMonitor is not started.");
+      ResourceUtils.closeOrLog(mUserRegistration);
+      ResourceUtils.closeOrLog(mTableLayoutTracker);
+      mLayoutCapsule.set(null);
+      mConsumers.clear();
+    }
+
+    @Override
+    /** {@inheritDoc} */
+    public LayoutCapsule getLayoutCapsule() {
+      Preconditions.checkState(mState.get() == State.STARTED,
+          "TableLayoutMonitor has not been started.");
+      return mLayoutCapsule.get();
+    }
+
+    @Override
+    /** {@inheritDoc} */
+    public LayoutConsumer.Registration registerLayoutConsumer(LayoutConsumer consumer)
+        throws IOException {
+      Preconditions.checkState(mState.get() == State.STARTED,
+          "TableLayoutMonitor has not been started.");
+      mConsumers.add(consumer);
+      consumer.update(getLayoutCapsule());
+      return new LayoutConsumerRegistration(mConsumers, consumer);
+    }
+
+    @Override
+    /** {@inheritDoc} */
+    public Set<LayoutConsumer> getLayoutConsumers() {
+      Preconditions.checkState(mState.get() == State.STARTED,
+          "TableLayoutMonitor has not been started.");
+      return ImmutableSet.copyOf(mConsumers);
+    }
+
+    @Override
+    /** {@inheritDoc} */
+    public void updateLayoutConsumers(KijiTableLayout layout) throws IOException {
+      Preconditions.checkState(mState.get() == State.STARTED,
+          "TableLayoutMonitor has not been started.");
+      layout.setSchemaTable(mSchemaTable);
+      final LayoutCapsule capsule =
+          new LayoutCapsule(layout, KijiColumnNameTranslator.from(layout));
+      for (LayoutConsumer consumer : getLayoutConsumers()) {
+        consumer.update(capsule);
+      }
+    }
+
+    /**
+     * Generates a uniquely identifying ID for a table user.
+     *
+     * @return a uniquely identifying ID for a table user.
+     */
+    private static String generateTableUserID() {
+      return String.format("%s;HBaseKijiTable@%s", JvmId.get(), TABLE_COUNTER.getAndIncrement());
+    }
+
+    /** {@inheritDoc}. */
+    private static final class LayoutConsumerRegistration implements LayoutConsumer.Registration {
+      private final Set<LayoutConsumer> mConsumers;
+      private final LayoutConsumer mConsumer;
+
+      /**
+       * Create a Registration which will remove the consumer from the set of consumers upon close.
+       * @param consumers set of consumers.
+       * @param consumer to be removed from the set.
+       */
+      private LayoutConsumerRegistration(Set<LayoutConsumer> consumers, LayoutConsumer consumer) {
+        mConsumers = consumers;
+        mConsumer = consumer;
+      }
+
+      @Override
+      /** {@inheritDoc} */
+      public void close() throws IOException {
+        mConsumers.remove(mConsumer);
+      }
+    }
+
+    /**
+     * Updates the layout of this table in response to a layout update pushed from ZooKeeper.
+     */
+    private static final class InnerLayoutUpdater implements TableLayoutUpdateHandler {
+
+      private final TableUserRegistration mUserRegistration;
+
+      private final CountDownLatch mInitializationLatch;
+
+      private final AtomicReference<LayoutCapsule> mLayoutCapsule;
+
+      private final KijiURI mTableURI;
+
+      private final Set<LayoutConsumer> mConsumers;
+
+      private final KijiMetaTable mMetaTable;
+
+      private final KijiSchemaTable mSchemaTable;
+
+      /**
+       * Create an InnerLayoutUpdater to update the layout of this table in response to a layout
+       * node change in ZooKeeper.
+       *
+       * @param userRegistration ZooKeeper table user registration.
+       * @param initializationLatch latch that will be counted down upon successful initialization.
+       * @param layoutCapsule layout capsule to store most recent layout in.
+       * @param tableURI URI of table whose layout is to be tracked.
+       * @param consumers Set of layout consumers to notify on table layout update.
+       * @param metaTable containing meta information.
+       * @param schemaTable containing schema information.
+       */
+      private InnerLayoutUpdater(
+          TableUserRegistration userRegistration,
+          CountDownLatch initializationLatch,
+          AtomicReference<LayoutCapsule> layoutCapsule,
+          KijiURI tableURI,
+          Set<LayoutConsumer> consumers,
+          KijiMetaTable metaTable,
+          KijiSchemaTable schemaTable
+      ) {
+        mUserRegistration = userRegistration;
+        mInitializationLatch = initializationLatch;
+        mLayoutCapsule = layoutCapsule;
+        mTableURI = tableURI;
+        mConsumers = consumers;
+        mMetaTable = metaTable;
+        mSchemaTable = schemaTable;
+      }
+
+      /** {@inheritDoc} */
+      @Override
+      public void update(final String notifiedLayoutID) {
+        final String currentLayoutId =
+            (mLayoutCapsule.get() == null)
+                ? null
+                : mLayoutCapsule.get().getLayout().getDesc().getLayoutId();
+        if (currentLayoutId == null) {
+          LOG.debug("Setting initial layout for table {} to layout ID {}.",
+              mTableURI, notifiedLayoutID);
+        } else {
+          LOG.debug("Updating layout for table {} from layout ID {} to layout ID {}.",
+              mTableURI, currentLayoutId, notifiedLayoutID);
+        }
+
+        try {
+          final KijiTableLayout newLayout =
+              mMetaTable.getTableLayout(mTableURI.getTable()).setSchemaTable(mSchemaTable);
+
+          Preconditions.checkState(
+              Objects.equal(newLayout.getDesc().getLayoutId(), notifiedLayoutID),
+              "New layout ID %s does not match most recent layout ID %s from meta-table.",
+              notifiedLayoutID, newLayout.getDesc().getLayoutId());
+
+          mLayoutCapsule.set(
+              new LayoutCapsule(newLayout, KijiColumnNameTranslator.from(newLayout)));
+
+          // Propagates the new layout to all consumers. A copy of mConsumers is made in order to
+          // avoid concurrent modifications while iterating. The contract of Guava's ImmutableSet
+          // specifies that #copyOf is safe on concurrent collections.
+          for (LayoutConsumer consumer : ImmutableSet.copyOf(mConsumers)) {
+            consumer.update(mLayoutCapsule.get());
+          }
+
+          // Registers this KijiTable in ZooKeeper as a user of the new table layout,
+          // and unregisters as a user of the former table layout.
+          if (currentLayoutId == null) {
+            mUserRegistration.start(notifiedLayoutID);
+          } else {
+            mUserRegistration.updateLayoutID(notifiedLayoutID);
+          }
+
+          mInitializationLatch.countDown();
+        } catch (IOException e) {
+          throw new KijiIOException(e);
+        }
+      }
+    }
+  }
+
+  /**
+   * A TableLayoutMonitor which delegates to another table layout monitor for all operations, and
+   * releases the table layout monitor from a reference counted cache on close.
+   *
+   * Public for testing purposes only.
+   */
+  public static final class ReferencedTableLayoutMonitor implements TableLayoutMonitor {
+    private final TableLayoutMonitor mTableLayoutMonitor;
+    private final String mTableName;
+    private final ReferenceCountedCache<String, TableLayoutMonitor> mCache;
+
+    /**
+     * Get a referenced table layout monitor for a table from the cache.
+     * @param tableName table whose layout monitor should be returned.
+     * @param cache of table layout monitors.
+     */
+    public ReferencedTableLayoutMonitor(
+        String tableName,
+        ReferenceCountedCache<String, TableLayoutMonitor> cache) {
+      mTableName = tableName;
+      mCache = cache;
+      mTableLayoutMonitor = mCache.get(mTableName);
     }
 
     /** {@inheritDoc} */
     @Override
-    public void update(final String notifiedLayoutID) {
-      final String currentLayoutId =
-          (mLayoutCapsule.get() == null)
-              ? null
-              : mLayoutCapsule.get().getLayout().getDesc().getLayoutId();
-      if (currentLayoutId == null) {
-        LOG.debug("Setting initial layout for table {} to layout ID {}.",
-            mTableURI, notifiedLayoutID);
-      } else {
-        LOG.debug("Updating layout for table {} from layout ID {} to layout ID {}.",
-            mTableURI, currentLayoutId, notifiedLayoutID);
-      }
+    public LayoutCapsule getLayoutCapsule() {
+      return mTableLayoutMonitor.getLayoutCapsule();
+    }
 
-      try {
-        final KijiTableLayout newLayout =
-            mMetaTable.getTableLayout(mTableURI.getTable()).setSchemaTable(mSchemaTable);
+    /** {@inheritDoc} */
+    @Override
+    public Registration registerLayoutConsumer(LayoutConsumer consumer) throws IOException {
+      return mTableLayoutMonitor.registerLayoutConsumer(consumer);
+    }
 
-        Preconditions.checkState(
-            Objects.equal(newLayout.getDesc().getLayoutId(), notifiedLayoutID),
-            "New layout ID %s does not match most recent layout ID %s from meta-table.",
-            notifiedLayoutID, newLayout.getDesc().getLayoutId());
+    /** {@inheritDoc} */
+    @Override
+    public void close() throws IOException {
+      mCache.release(mTableName);
+    }
 
-        mLayoutCapsule.set(new LayoutCapsule(newLayout, KijiColumnNameTranslator.from(newLayout)));
+    /** {@inheritDoc} */
+    @Override
+    public Set<LayoutConsumer> getLayoutConsumers() {
+      return mTableLayoutMonitor.getLayoutConsumers();
+    }
 
-        // Propagates the new layout to all consumers.
-        // A copy of mConsumers is made in order to avoid concurrent modifications while iterating.
-        // The contract of Guava's ImmutableSet specifies that #copyOf is safe on concurrent
-        // collections
-        for (LayoutConsumer consumer : ImmutableSet.copyOf(mConsumers)) {
-          consumer.update(mLayoutCapsule.get());
-        }
-
-        // Registers this KijiTable in ZooKeeper as a user of the new table layout,
-        // and unregisters as a user of the former table layout.
-        if (currentLayoutId == null) {
-          mUserRegistration.start(notifiedLayoutID);
-        } else {
-          mUserRegistration.updateLayoutID(notifiedLayoutID);
-        }
-
-        mInitializationLatch.countDown();
-      } catch (IOException e) {
-        throw new KijiIOException(e);
-      }
+    /** {@inheritDoc} */
+    @Override
+    public void updateLayoutConsumers(KijiTableLayout layout) throws IOException {
+      mTableLayoutMonitor.updateLayoutConsumers(layout);
     }
   }
 }

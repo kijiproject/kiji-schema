@@ -61,6 +61,7 @@ import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.LayoutConsumer;
+import org.kiji.schema.impl.LayoutConsumer.Registration;
 import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.LayoutCapsule;
@@ -148,7 +149,7 @@ public final class HBaseKijiTable implements KijiTable {
    * Monitor for the layout of this table. Should be initialized in the constructor and nulled out
    * in {@link #closeResources()}. No other method should modify this pointer.
    **/
-  private volatile TableLayoutMonitor mLayoutMonitor;
+  private final TableLayoutMonitor mLayoutMonitor;
 
   /**
    * Construct an opened Kiji table stored in HBase.
@@ -158,9 +159,8 @@ public final class HBaseKijiTable implements KijiTable {
    * @param conf The Hadoop configuration object.
    * @param htableFactory A factory that creates HTable objects.
    * @param layoutMonitor a valid TableLayoutMonitor for this table.
-   *
    * @throws IOException On an HBase error.
-   *     <p> Throws KijiTableNotFoundException if the table does not exist. </p>
+   * @throws KijiTableNotFoundException if the table does not exist.
    */
   HBaseKijiTable(
       HBaseKiji kiji,
@@ -196,7 +196,7 @@ public final class HBaseKijiTable implements KijiTable {
     mLayoutMonitor = layoutMonitor;
     mEntityIdFactory = createEntityIdFactory(mLayoutMonitor.getLayoutCapsule());
 
-    mHTablePool = new KijiHTablePool(mName, (HBaseKiji)getKiji(), mHTableFactory);
+    mHTablePool = new KijiHTablePool(mName, mKiji, mHTableFactory);
 
     // Table is now open and must be released properly:
     mRetainCount.set(1);
@@ -251,29 +251,18 @@ public final class HBaseKijiTable implements KijiTable {
 
   /**
    * Register a layout consumer that must be updated before this table will report that it has
-   * completed a table layout update.  Sends the first update immediately before returning.
+   * completed a table layout update.  Sends the first update immediately before returning. The
+   * returned registration object must be closed when layout updates are no longer needed.
    *
    * @param consumer the LayoutConsumer to be registered.
+   * @return a registration object which must be closed when layout updates are no longer needed.
    * @throws IOException in case of an error updating the LayoutConsumer.
    */
-  public void registerLayoutConsumer(LayoutConsumer consumer) throws IOException {
+  public Registration registerLayoutConsumer(LayoutConsumer consumer) throws IOException {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot register a new layout consumer to a KijiTable in state %s.", state);
-    mLayoutMonitor.registerLayoutConsumer(consumer);
-  }
-
-  /**
-   * Unregister a layout consumer so that it will not be updated when this table performs a layout
-   * update.  Should only be called when a consumer is closed.
-   *
-   * @param consumer the LayoutConsumer to unregister.
-   */
-  public void unregisterLayoutConsumer(LayoutConsumer consumer) {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot unregister a layout consumer from a KijiTable in state %s.", state);
-    mLayoutMonitor.unregisterLayoutConsumer(consumer);
+    return mLayoutMonitor.registerLayoutConsumer(consumer);
   }
 
   /**
@@ -455,14 +444,11 @@ public final class HBaseKijiTable implements KijiTable {
     LOG.debug("Closing HBaseKijiTable '{}'.", this);
 
     ResourceUtils.closeOrLog(mHTablePool);
+    ResourceUtils.closeOrLog(mLayoutMonitor);
     ResourceUtils.releaseOrLog(mKiji);
     if (oldState != State.UNINITIALIZED) {
       DebugResourceTracker.get().unregisterResource(this);
     }
-
-    // Relinquish strong reference to the TableLayoutMonitor in case the user keeps their reference
-    // to this KijiTable.
-    mLayoutMonitor = null;
 
     LOG.debug("HBaseKijiTable '{}' closed.", mTableURI);
   }
@@ -514,9 +500,9 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    String layoutId = (null == getLayoutCapsule())
-        ? "Uninitialized layout."
-        : getLayoutCapsule().getLayout().getDesc().getLayoutId();
+    String layoutId = mState.get() == State.OPEN
+        ? mLayoutMonitor.getLayoutCapsule().getLayout().getDesc().getLayoutId()
+        : "unknown";
     return Objects.toStringHelper(HBaseKijiTable.class)
         .add("id", System.identityHashCode(this))
         .add("uri", mTableURI)

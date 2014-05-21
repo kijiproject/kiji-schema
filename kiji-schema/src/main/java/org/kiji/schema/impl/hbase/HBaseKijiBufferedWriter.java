@@ -81,8 +81,8 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   /** KijiTable this writer is attached to. */
   private final HBaseKijiTable mTable;
 
-  /** Object which processes layout update from the KijiTable to which this Writer writes. */
-  private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
+  /** Layout consumer registration resource. */
+  private final LayoutConsumer.Registration mLayoutConsumerRegistration;
 
   /** Monitor against which all internal state mutations must be synchronized. */
   private final Object mInternalLock = new Object();
@@ -181,7 +181,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     } catch (TableNotFoundException e) {
       throw new KijiTableNotFoundException(table.getURI());
     }
-    mTable.registerLayoutConsumer(mInnerLayoutUpdater);
+    mLayoutConsumerRegistration = mTable.registerLayoutConsumer(new InnerLayoutUpdater());
     Preconditions.checkState(mWriterLayoutCapsule != null,
         "HBaseKijiBufferedWriter for table: %s failed to initialize.", mTable.getURI());
 
@@ -497,7 +497,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
       Preconditions.checkState(mState == State.OPEN,
           "Cannot close BufferedWriter instance %s in state %s.", this, mState);
       mState = State.CLOSED;
-      mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
+      mLayoutConsumerRegistration.close();
       mHTable.close();
       mTable.release();
     }

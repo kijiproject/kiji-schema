@@ -45,7 +45,6 @@ import org.kiji.schema.layout.impl.TableLayoutMonitor;
 import org.kiji.schema.util.InstanceBuilder;
 
 public class TestLayoutConsumer extends KijiClientTest {
-
   private static final Logger LOG = LoggerFactory.getLogger(TestLayoutConsumer.class);
   private Kiji mKiji;
 

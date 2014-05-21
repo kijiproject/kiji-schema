@@ -31,8 +31,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor;
-
 
 /**
  * Registers a table user with ZooKeeper.
@@ -63,7 +61,7 @@ public final class TableUserRegistration implements Closeable {
     mUserID = userID;
     mTableURI = tableURI;
     mZKClient = zkClient;
-    String path = ZooKeeperMonitor.getTableUsersDir(mTableURI).getPath();
+    String path = ZooKeeperUtils.getTableUsersDir(mTableURI).getPath();
     LOG.debug("Creating table user registration for table {} in path {}.", mTableURI, path);
   }
 

@@ -75,23 +75,23 @@ public class TestInstanceMonitor extends KijiClientTest {
         monitor.getLayoutCapsule().getLayout().getDesc().getVersion());
   }
 
-  @Test
+  @Test(expected = IllegalStateException.class)
   public void testClosingInstanceMonitorWillCloseTableLayoutMonitor() throws Exception {
     TableLayoutMonitor monitor = mInstanceMonitor.getTableLayoutMonitor(mTableURI.getTable());
     mInstanceMonitor.close();
-    // TODO: SCHEMA-767. Figure out how to test the monitor is closed.
+    monitor.getLayoutCapsule();
   }
 
   @Test
-  public void testLosingReferenceToTableLayoutMonitorWillCloseIt() throws Exception {
-    int hash1 = mInstanceMonitor.getTableLayoutMonitor(mTableURI.getTable()).hashCode();
-    System.gc();
-    int hash2 = mInstanceMonitor.getTableLayoutMonitor(mTableURI.getTable()).hashCode();
-    Assert.assertTrue(hash1 != hash2);
+  public void testReleasingTableLayoutMonitorWillCloseIt() throws Exception {
+    TableLayoutMonitor monitor1 = mInstanceMonitor.getTableLayoutMonitor(mTableURI.getTable());
+    monitor1.close();
+    TableLayoutMonitor monitor2 = mInstanceMonitor.getTableLayoutMonitor(mTableURI.getTable());
+    Assert.assertTrue(monitor1 != monitor2);
   }
 
   @Test
-  public void testLosingReferenceToTableLayoutMonitorWillUpdateZooKeeper() throws Exception {
+  public void testReleasingTableLayoutMonitorWillUpdateZooKeeper() throws Exception {
     final BlockingQueue<Multimap<String, String>> usersQueue = Queues.newSynchronousQueue();
     TableUsersTracker tracker =
         new TableUsersTracker(mZKClient, mTableURI,
@@ -107,7 +107,7 @@ public class TestInstanceMonitor extends KijiClientTest {
       Assert.assertEquals(1, registeredUsers.size());
       Assert.assertTrue(registeredUsers.containsValue("1"));
 
-      System.gc();
+      mInstanceMonitor.close();
 
       Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
           usersQueue.poll(1, TimeUnit.SECONDS));

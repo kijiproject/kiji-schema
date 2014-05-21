@@ -98,8 +98,8 @@ public final class HBaseKijiTableReader implements KijiTableReader {
   /** Map of backup column read specifications. Null when mCellSpecOverrides is not null. */
   private final Collection<BoundColumnReaderSpec> mAlternatives;
 
-  /** Object which processes layout update from the KijiTable from which this Reader reads. */
-  private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
+  /** Layout consumer registration resource. */
+  private final LayoutConsumer.Registration mLayoutConsumerRegistration;
 
   /**
    * Encapsulation of all table layout related state necessary for the operation of this reader.
@@ -274,7 +274,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     mOverrides = null;
     mAlternatives = null;
 
-    mTable.registerLayoutConsumer(mInnerLayoutUpdater);
+    mLayoutConsumerRegistration = mTable.registerLayoutConsumer(new InnerLayoutUpdater());
     Preconditions.checkState(mReaderLayoutCapsule != null,
         "KijiTableReader for table: %s failed to initialize.", mTable.getURI());
 
@@ -339,7 +339,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     mAlternatives = boundAlternatives;
     mCellSpecOverrides = null;
 
-    mTable.registerLayoutConsumer(mInnerLayoutUpdater);
+    mLayoutConsumerRegistration = mTable.registerLayoutConsumer(new InnerLayoutUpdater());
     Preconditions.checkState(mReaderLayoutCapsule != null,
         "KijiTableReader for table: %s failed to initialize.", mTable.getURI());
 
@@ -629,7 +629,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close KijiTableReader instance %s in state %s.", this, oldState);
-    mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
+    mLayoutConsumerRegistration.close();
     mTable.release();
   }
 

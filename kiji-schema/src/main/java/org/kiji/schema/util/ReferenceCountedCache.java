@@ -34,8 +34,8 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 
 /**
- * A keyed cache which keeps track of how many outstanding users of the cached instance exist.
- * When the reference count falls to 0, the cached object (which must implement
+ * A keyed cache which keeps track of how many outstanding users of the cached value exist.
+ * When the reference count falls to 0, the cached value (which must implement
  * {@link java.io.Closeable}), is removed from the cache and closed.
  *
  * Clients of {@code ReferenceCountedCache} *must* have a corresponding {@link #release(K)} call

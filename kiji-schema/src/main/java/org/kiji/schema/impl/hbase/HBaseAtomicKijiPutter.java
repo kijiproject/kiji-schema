@@ -78,8 +78,8 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** Tracks the state of this atomic kiji putter. */
   private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
-  /** Object which processes layout update from the KijiTable to which this Writer writes. */
-  private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
+  /** Layout consumer registration resource. */
+  private final LayoutConsumer.Registration mLayoutConsumerRegistration;
 
   /** Lock for synchronizing layout update mutations. */
   private final Object mLock = new Object();
@@ -167,7 +167,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   public HBaseAtomicKijiPutter(HBaseKijiTable table) throws IOException {
     mTable = table;
     mHTable = mTable.openHTableConnection();
-    mTable.registerLayoutConsumer(mInnerLayoutUpdater);
+    mLayoutConsumerRegistration = mTable.registerLayoutConsumer(new InnerLayoutUpdater());
     Preconditions.checkState(mWriterLayoutCapsule != null,
         "AtomicKijiPutter for table: %s failed to initialize.", mTable.getURI());
 
@@ -343,7 +343,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
           + "in progress. Rolling back transaction.", mTable.getURI(), mEntityId);
       reset();
     }
-    mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
+    mLayoutConsumerRegistration.close();
     mHTable.close();
     mTable.release();
   }

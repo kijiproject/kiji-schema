@@ -86,8 +86,8 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   /** Tracks the state of this writer. */
   private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
-  /** Processes layout update from the KijiTable to which this writer writes. */
-  private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
+  /** Layout consumer registration resource. */
+  private final LayoutConsumer.Registration mLayoutConsumerRegistration;
 
   /** Dedicated HTable connection. */
   private final HTableInterface mHTable;
@@ -197,7 +197,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
    */
   public HBaseKijiTableWriter(HBaseKijiTable table) throws IOException {
     mTable = table;
-    mTable.registerLayoutConsumer(mInnerLayoutUpdater);
+    mLayoutConsumerRegistration = mTable.registerLayoutConsumer(new InnerLayoutUpdater());
     Preconditions.checkState(mWriterLayoutCapsule != null,
         "KijiTableWriter for table: %s failed to initialize.", mTable.getURI());
 
@@ -497,7 +497,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close KijiTableWriter instance %s in state %s.", this, oldState);
-    mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
+    mLayoutConsumerRegistration.close();
     mHTable.close();
     mTable.release();
   }
