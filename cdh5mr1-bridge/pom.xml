@@ -33,8 +33,8 @@
   <description>Bridge API provider for CDH5 with MR1</description>
 
   <properties>
-    <hadoop.version>2.2.0-mr1-cdh5.0.0-beta-2</hadoop.version>
-    <hbase.version>0.96.1.1-cdh5.0.0-beta-2</hbase.version>
+    <hadoop.version>2.3.0-mr1-cdh5.0.1</hadoop.version>
+    <hbase.version>0.96.1.1-cdh5.0.1</hbase.version>
   </properties>
 
   <build>
