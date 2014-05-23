@@ -65,7 +65,7 @@ public final class CDH42MR1SchemaBridgeFactory extends SchemaPlatformBridgeFacto
       // best platform bridge available.
       return Priority.HIGH;
     } else if (hadoopVer.matches("2\\..*-cdh4\\..*")
-        && hbaseVer.matches("0\\.94\\..-cdh4\\..*")) {
+        && hbaseVer.matches("0\\.94\\..*-cdh4\\..*")) {
       // Hadoop 2.x-cdh4.* and HBase 0.94.X-cdh4.* match correctly; use this bridge
       // if no more-precise CDH4.x-specific bridge is available.
       return Priority.NORMAL;
