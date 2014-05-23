@@ -61,7 +61,8 @@ public class TestLayoutTool extends KijiToolTest {
 
   @Test
   public void testChangeRowKeyHashing() throws Exception {
-    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST);
+    final KijiTableLayout layout =
+            KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST_LEGACY);
     getKiji().createTable(layout.getDesc());
 
     final File newLayoutFile = getTempLayoutFile(KijiTableLayouts.getFooChangeHashingTestLayout());

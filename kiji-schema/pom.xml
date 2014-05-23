@@ -147,6 +147,7 @@
               </rules>
               <fail>true</fail>
               <skip>${skipTests}</skip>
+              <skip>${skipUnitTests}</skip>
             </configuration>
           </execution>
           <execution>

@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -26,7 +26,7 @@
   "fields": [
     { "type": "string", "name": "text", "doc": "The content of the tweet" },
     { "type": "long", "name": "id", "doc": "the id of the tweet"},
-    { "type": "long", "name": "from_user_id", "doc": "the id of the user who created the tweet"}  
+    { "type": "long", "name": "from_user_id", "doc": "the id of the user who created the tweet"}
   ]
 }
 ]

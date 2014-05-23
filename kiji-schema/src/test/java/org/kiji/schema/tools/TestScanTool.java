@@ -27,11 +27,15 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.avro.RowKeyEncoding;
+import org.kiji.schema.avro.RowKeyFormat2;
+import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
@@ -121,7 +125,11 @@ public class TestScanTool extends KijiToolTest {
   @Test
   public void testKijiScanStartAndLimitRow() throws Exception {
     final Kiji kiji = getKiji();
-    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.FOO_TEST);
+
+    TableLayoutDesc desc = KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST);
+    ((RowKeyFormat2)desc.getKeysFormat()).setEncoding(RowKeyEncoding.RAW);
+
+    final KijiTableLayout layout =  KijiTableLayout.newLayout(desc);
     final long timestamp = 10L;
     new InstanceBuilder(kiji)
         .withTable(layout.getName(), layout)
@@ -165,14 +173,14 @@ public class TestScanTool extends KijiToolTest {
       assertEquals(30, mToolOutputLines.length);
 
         EntityIdFactory eif = EntityIdFactory.getFactory(layout);
-        EntityId startEid = eif.getEntityId("aaron@usermail.example.com"); //second row
-        EntityId limitEid = eif.getEntityId("gwu@usermail.example.com"); //second to last row
+        EntityId startEid = eif.getEntityId("christophe@usermail.example.com"); //second row
+        EntityId limitEid = eif.getEntityId("john.doe@gmail.com"); //second to last row
         String startHbaseRowKey = Hex.encodeHexString(startEid.getHBaseRowKey());
         String limitHbaseRowKey = Hex.encodeHexString(limitEid.getHBaseRowKey());
       assertEquals(BaseTool.SUCCESS, runTool(new ScanTool(),
           table.getURI().toString() + "info:name",
-          "--start-row=hbase=hex:" + startHbaseRowKey,  // after the second row.
-          "--limit-row=hbase=hex:" + limitHbaseRowKey  // before the last row.
+          "--start-row=hbase=hex:" + startHbaseRowKey,  // start at the second row.
+          "--limit-row=hbase=hex:" + limitHbaseRowKey   // end at the 2nd to last row (exclusive).
       ));
       assertEquals(9, mToolOutputLines.length);
 

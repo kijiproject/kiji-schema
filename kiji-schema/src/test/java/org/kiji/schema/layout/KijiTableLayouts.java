@@ -29,7 +29,6 @@ import org.apache.commons.io.IOUtils;
 
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat;
-import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.util.FromJson;
 import org.kiji.schema.util.ResourceUtils;
@@ -157,8 +156,8 @@ public final class KijiTableLayouts {
   public static final String FOO_TEST =
       "org/kiji/schema/layout/foo-test.json";
 
-    /** Test layout named 'foo' that uses RowKeyFormat. */
-    public static final String FOO_TEST_LEGACY =
+  /** Test layout named 'foo' that uses RowKeyFormat with hash MD5 size 16 key settings.*/
+  public static final String FOO_TEST_LEGACY =
             "org/kiji/schema/layout/foo-test-legacy.json";
 
   /** Table named 'table' with a final string column named 'family:column'. */
@@ -203,13 +202,9 @@ public final class KijiTableLayouts {
 
   /** Test changing the row key hashing property. */
   public static TableLayoutDesc getFooChangeHashingTestLayout() throws IOException {
-    final TableLayoutDesc desc = getLayout(FOO_TEST);
-    desc.setLayoutId("2");
-    RowKeyFormat2 record = (RowKeyFormat2)desc.getKeysFormat();
-    record.setEncoding(RowKeyEncoding.HASH);
-    desc.setKeysFormat(record);
+    final TableLayoutDesc desc = getLayout(FOO_TEST_LEGACY);
+    ((RowKeyFormat)desc.getKeysFormat()).setEncoding(RowKeyEncoding.RAW);
     desc.setReferenceLayout("1");
-    desc.setName("foo");
     return desc;
   }
 

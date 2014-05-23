@@ -115,7 +115,7 @@ public class TestGetTool extends KijiToolTest {
       assertEquals(BaseTool.SUCCESS, runTool(new GetTool(), table.getURI().toString(),
           "--entity-id=[\"jane.doe@gmail.com\"]"));
       assertEquals(5, mToolOutputLines.length);
-      EntityId eid = EntityIdFactory.getFactory(layout).getEntityId("jane.doe@gmail.com");
+      EntityId eid = EntityIdFactory.getFactory(layout).getEntityId("gwu@usermail.example.com");
       String hbaseRowKey = Hex.encodeHexString(eid.getHBaseRowKey());
       assertEquals(BaseTool.SUCCESS, runTool(new GetTool(),
           table.getURI() + "info:name",
