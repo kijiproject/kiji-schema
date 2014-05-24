@@ -83,7 +83,7 @@ public final class LsTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   public String getDescription() {
-    return "List kiji instances, tables and rows.";
+    return "List Kiji instances, tables and columns.";
   }
 
   /** {@inheritDoc} */
