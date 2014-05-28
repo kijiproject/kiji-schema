@@ -183,31 +183,28 @@ public final class KijiInstaller {
       // Delete the user tables:
       final HBaseAdmin hbaseAdmin = adminFactory.create(conf);
       try {
-
         // Delete the system tables:
         HBaseSystemTable.uninstall(hbaseAdmin, uri);
         HBaseMetaTable.uninstall(hbaseAdmin, uri);
         HBaseSchemaTable.uninstall(hbaseAdmin, uri);
-
       } finally {
-        ResourceUtils.closeOrLog(hbaseAdmin);
-      }
-
-      // Delete ZNodes from ZooKeeper
-      final CuratorFramework zkClient =
-          ZooKeeperUtils.getZooKeeperClient(uri);
-      try {
-        zkClient
-            .delete()
-            .deletingChildrenIfNeeded()
-            .forPath(ZooKeeperUtils.getInstanceDir(uri).getPath());
-      } catch (Exception e) {
-        ZooKeeperUtils.wrapAndRethrow(e);
-      } finally {
-        zkClient.close();
+        hbaseAdmin.close();
       }
     } finally {
       kiji.release();
+    }
+
+    // Delete instance ZNodes from ZooKeeper
+    final CuratorFramework zkClient = ZooKeeperUtils.getZooKeeperClient(uri);
+    try {
+      zkClient
+          .delete()
+          .deletingChildrenIfNeeded()
+          .forPath(ZooKeeperUtils.getInstanceDir(uri).getPath());
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
+    } finally {
+      zkClient.close();
     }
     LOG.info(String.format("Removed kiji instance '%s'.", uri.getInstance()));
   }
