@@ -1,0 +1,66 @@
+/**
+ * (c) Copyright 2013 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+{
+  name: "schema_reg_test",
+  keys_format: {
+    encoding: "FORMATTED",
+    salt: {hash_size: 2},
+    components: [{name: "row", type: "STRING"}]
+  },
+  locality_groups: [ {
+    name: "default",
+    in_memory: false,
+    max_versions: 20,
+    ttl_seconds: 2147483647,
+    compression_type: "GZ",
+    families: [{
+      name: "info",
+      aliases: ["profile"],
+      columns: [{
+        name: "fullname",
+        aliases: ["alias"],
+        column_schema: {type: "AVRO"}
+      }, {
+        name: "hitpoints",
+        aliases: ["health"],
+        column_schema: {type: "AVRO"}
+      }, {
+        name: "mana",
+        aliases: ["magic"],
+        column_schema: {type: "AVRO"}
+      }]
+    }, {
+      name: "quest_progress",
+      description: "Progress out of 100 in started quests.",
+      aliases: ["heroism"],
+      map_schema: {type: "AVRO"}
+    }, {
+      name: "friends",
+      description: "Friends and the timestamps when they became friends.",
+      aliases: ["fellows"],
+      map_schema: {type: "AVRO"}
+    }, {
+      name: "guilds",
+      description: "Clans and the timestampw when joined.",
+      aliases: ["clans"],
+      map_schema: {type: "INLINE", value: '"string"'}
+    }]
+  }],
+  version: "layout-1.1.0"
+}
