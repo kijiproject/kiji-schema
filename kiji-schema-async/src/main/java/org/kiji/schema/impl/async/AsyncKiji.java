@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -87,10 +87,10 @@ import org.kiji.schema.zookeeper.ZooKeeperUtils;
  * </p>
  */
 @ApiAudience.Private
-public final class HBaseKiji implements Kiji {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseKiji.class);
+public final class AsyncKiji implements Kiji {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncKiji.class);
   private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + HBaseKiji.class.getName());
+      LoggerFactory.getLogger("cleanup." + AsyncKiji.class.getName());
   private static final String ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE = String.format(
       "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
       CLEANUP_LOG.getName());
@@ -163,13 +163,13 @@ public final class HBaseKiji implements Kiji {
   private HBaseAdmin mAdmin = null;
 
   /** The schema table for this kiji instance. */
-  private final HBaseSchemaTable mSchemaTable;
+  private final KijiSchemaTable mSchemaTable;
 
   /** The system table for this kiji instance. The system table is always open. */
-  private final HBaseSystemTable mSystemTable;
+  private final KijiSystemTable mSystemTable;
 
   /** The meta table for this kiji instance. */
-  private final HBaseMetaTable mMetaTable;
+  private final KijiMetaTable mMetaTable;
 
   /**
    * The security manager for this instance, lazily initialized through {@link #getSecurityManager}.
@@ -188,12 +188,17 @@ public final class HBaseKiji implements Kiji {
    * @param lockFactory Factory for locks.
    * @throws IOException on I/O error.
    */
-  HBaseKiji(
+  AsyncKiji(
       KijiURI kijiURI,
       Configuration conf,
       HTableInterfaceFactory tableFactory,
       LockFactory lockFactory)
       throws IOException {
+
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     // Deep copy the configuration.
     mConf = new Configuration(conf);
 
@@ -220,14 +225,14 @@ public final class HBaseKiji implements Kiji {
     }
 
     try {
-      mSystemTable = new HBaseSystemTable(mURI, mConf, mHTableFactory);
+      mSystemTable = new AsyncSystemTable(mURI, mConf, mHTableFactory);
     } catch (KijiNotInstalledException kie) {
       // Some clients handle this unchecked Exception so do the same here.
       close();
       throw kie;
     }
-    mSchemaTable = new HBaseSchemaTable(mURI, mConf, mHTableFactory, lockFactory);
-    mMetaTable = new HBaseMetaTable(mURI, mConf, mSchemaTable, mHTableFactory);
+    mSchemaTable = new AsyncSchemaTable(mURI, mConf, mHTableFactory, lockFactory);
+    mMetaTable = new AsyncMetaTable(mURI, mConf, mSchemaTable, mHTableFactory);
 
     LOG.debug("Kiji instance '{}' is now opened.", mURI);
 
@@ -275,6 +280,7 @@ public final class HBaseKiji implements Kiji {
         ? Debug.getStackTrace()
         : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
     DebugResourceTracker.get().registerResource(this, mConstructorStack);
+    */
   }
 
   /**
@@ -399,6 +405,10 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public KijiTable openTable(String tableName) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot open table in Kiji instance %s in state %s.", this, state);
@@ -408,12 +418,13 @@ public final class HBaseKiji implements Kiji {
           KijiURI.newBuilder(mURI).withTableName(tableName).build());
     }
 
-    return new HBaseKijiTable(
+    return new AsyncKijiTable(
         this,
         tableName,
         mConf,
         mHTableFactory,
         mInstanceMonitor.getTableLayoutMonitor(tableName));
+    */
   }
 
   /** {@inheritDoc} */
@@ -563,6 +574,10 @@ public final class HBaseKiji implements Kiji {
       boolean dryRun,
       PrintStream printStream)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot modify table layout in Kiji instance %s in state %s.", this, state);
@@ -713,6 +728,7 @@ public final class HBaseKiji implements Kiji {
     }
 
     return newLayout;
+    */
   }
   // CSON: MethodLength
 
@@ -858,7 +874,7 @@ public final class HBaseKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    return Objects.toStringHelper(HBaseKiji.class)
+    return Objects.toStringHelper(AsyncKiji.class)
         .add("id", System.identityHashCode(this))
         .add("uri", mURI)
         .add("retain-count", mRetainCount)

@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.layout.impl;
+package org.kiji.schema.layout.impl.async;
 
 import java.io.IOException;
 import java.util.List;
@@ -33,13 +33,6 @@ import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,8 +80,8 @@ import org.kiji.schema.util.ResourceUtils;
  * HColumn that should be used to construct the HTable for the backing store.</p>
  */
 @ApiAudience.Private
-public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseTableLayoutDatabase.class);
+public final class AsyncTableLayoutDatabase implements KijiTableLayoutDatabase {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncTableLayoutDatabase.class);
 
   /**
    * HBase column qualifier used to store layout updates.
@@ -111,26 +104,28 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   public static final String QUALIFIER_LAYOUT_ID = "layout_id";
   private static final byte[] QUALIFIER_LAYOUT_ID_BYTES = Bytes.toBytes(QUALIFIER_LAYOUT_ID);
 
+  // TODO(gabe): Uncomment/fix once asynchbase has been implemented
+
   /** URI of the Kiji instance this layout database is for. */
-  private final KijiURI mKijiURI;
+  //private final KijiURI mKijiURI;
 
   /** The HTable to use to store the layouts. */
-  private final HTableInterface mTable;
+  //private final HTableInterface mTable;
 
   /** The column family in the HTable to use for storing layouts. */
-  private final String mFamily;
+  //private final String mFamily;
 
   /** HBase column family, as bytes. */
-  private final byte[] mFamilyBytes;
+  //private final byte[] mFamilyBytes;
 
   /** The schema table. */
-  private final KijiSchemaTable mSchemaTable;
+  //private final KijiSchemaTable mSchemaTable;
 
   /** Kiji cell encoder. */
-  private final KijiCellEncoder mCellEncoder;
+  //private final KijiCellEncoder mCellEncoder;
 
   /** Decoder for concrete layout cells. */
-  private final KijiCellDecoder<TableLayoutDesc> mCellDecoder;
+  //private final KijiCellDecoder<TableLayoutDesc> mCellDecoder;
 
   private static final CellSchema CELL_SCHEMA = CellSchema.newBuilder()
       .setStorage(SchemaStorage.HASH)
@@ -140,7 +135,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
 
 
   /**
-   * Creates a new <code>HBaseTableLayoutDatabase</code> instance.
+   * Creates a new <code>AsyncTableLayoutDatabase</code> instance.
    *
    * <p>This class does not take ownership of the HTable.  The caller should close it when
    * it is no longer needed.</p>
@@ -151,26 +146,33 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    * @param schemaTable The Kiji schema table.
    * @throws IOException on I/O error.
    */
-  public HBaseTableLayoutDatabase(
-      KijiURI kijiURI,
-      HTableInterface htable,
-      String family,
-      KijiSchemaTable schemaTable)
-      throws IOException {
-    mKijiURI = kijiURI;
-    mTable = Preconditions.checkNotNull(htable);
-    mFamily = Preconditions.checkNotNull(family);
-    mFamilyBytes = Bytes.toBytes(mFamily);
-    mSchemaTable = Preconditions.checkNotNull(schemaTable);
-    final CellSpec cellSpec = CellSpec.fromCellSchema(CELL_SCHEMA, mSchemaTable);
-    mCellEncoder = new AvroCellEncoder(cellSpec);
-    mCellDecoder = SpecificCellDecoderFactory.get().create(cellSpec);
-  }
+  // TODO(gabe): Replace this with asynchbase
 
-  /** {@inheritDoc} */
+  /*
+  public AsyncTableLayoutDatabase(
+    KijiURI kijiURI,
+    HTableInterface htable,
+    String family,
+    KijiSchemaTable schemaTable)
+    throws IOException {
+  mKijiURI = kijiURI;
+  mTable = Preconditions.checkNotNull(htable);
+  mFamily = Preconditions.checkNotNull(family);
+  mFamilyBytes = Bytes.toBytes(mFamily);
+  mSchemaTable = Preconditions.checkNotNull(schemaTable);
+  final CellSpec cellSpec = CellSpec.fromCellSchema(CELL_SCHEMA, mSchemaTable);
+  mCellEncoder = new AvroCellEncoder(cellSpec);
+  mCellDecoder = SpecificCellDecoderFactory.get().create(cellSpec);
+} */
+
+/** {@inheritDoc} */
   @Override
   public KijiTableLayout updateTableLayout(String tableName, TableLayoutDesc layoutUpdate)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
 
     // Normalize the new layout to use schema UIDs:
     TableLayoutBuilder layoutBuilder = new TableLayoutBuilder(mSchemaTable);
@@ -239,23 +241,33 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
     }
 
     return tableLayout;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiTableLayout getTableLayout(String table) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final List<KijiTableLayout> layouts = getTableLayoutVersions(table, 1);
     if (layouts.isEmpty()) {
       throw new KijiTableNotFoundException(
           KijiURI.newBuilder(mKijiURI).withTableName(table).build());
     }
     return layouts.get(0);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public List<KijiTableLayout> getTableLayoutVersions(String table, int numVersions)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkArgument(numVersions >= 1,  "numVersions must be positive");
 
     final Get get = new Get(Bytes.toBytes(table))
@@ -268,12 +280,17 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
       layouts.add(KijiTableLayout.newLayout(decodeTableLayoutDesc(column.getValue())));
     }
     return layouts;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public NavigableMap<Long, KijiTableLayout> getTimedTableLayoutVersions(
       String table, int numVersions) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkArgument(numVersions >= 1, "numVersions must be positive");
 
     // Gather the layout data from the Htable.
@@ -283,6 +300,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
     final Result result = mTable.get(get);
 
     /** Map from timestamp to table layout. */
+    /*
     final NavigableMap<Long, KijiTableLayout> timedLayouts = Maps.newTreeMap();
 
     // Pull out the full map: family -> qualifier -> timestamp -> TableLayoutDesc.
@@ -301,21 +319,31 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
       Preconditions.checkState(timedLayouts.put(timestamp, layout) == null);
     }
     return timedLayouts;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public void removeAllTableLayoutVersions(String table) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final Delete delete = new Delete(Bytes.toBytes(table))
         .deleteColumns(mFamilyBytes, QUALIFIER_UPDATE_BYTES)
         .deleteColumns(mFamilyBytes, QUALIFIER_LAYOUT_BYTES)
         .deleteColumns(mFamilyBytes, QUALIFIER_LAYOUT_ID_BYTES);
     mTable.delete(delete);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public void removeRecentTableLayoutVersions(String table, int numVersions) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkArgument(numVersions >= 1, "numVersions must be positive");
     final Delete delete = new Delete(Bytes.toBytes(table));
     for (int i = 0; i < numVersions; i++) {
@@ -325,11 +353,16 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
           .deleteColumn(mFamilyBytes, QUALIFIER_LAYOUT_ID_BYTES);
     }
     mTable.delete(delete);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public List<String> listTables() throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final Scan scan = new Scan()
         .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES)
         .setMaxVersions(1);
@@ -342,11 +375,16 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
     }
     ResourceUtils.closeOrLog(resultScanner);
     return tableNames;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public boolean tableExists(String tableName) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     boolean retval = false;
     final Scan scan = new Scan()
         .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES)
@@ -368,6 +406,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
       }
     }
     return retval;
+    */
   }
 
   /**
@@ -390,6 +429,10 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   /** {@inheritDoc} */
   @Override
   public TableLayoutsBackup layoutsToBackup(String table) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Get get = new Get(Bytes.toBytes(table));
     get.addColumn(mFamilyBytes, QUALIFIER_UPDATE_BYTES)
         .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES);
@@ -425,12 +468,17 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
        }
        TableLayoutsBackup backup = TableLayoutsBackup.newBuilder().setLayouts(history).build();
        return backup;
+     */
   }
 
   /** {@inheritDoc} */
   @Override
   public void restoreLayoutsFromBackup(String tableName, TableLayoutsBackup layoutBackup) throws
       IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     LOG.info(String.format("Restoring layout history for table '%s'.", tableName));
     for (TableLayoutBackupEntry lbe : layoutBackup.getLayouts()) {
       final byte[] layoutBytes = encodeTableLayoutDesc(lbe.getLayout());
@@ -444,6 +492,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
       mTable.put(put);
     }
     mTable.flushCommits();
+    */
   }
 
   /**
@@ -454,7 +503,12 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    * @throws IOException on I/O or decoding error.
    */
   private TableLayoutDesc decodeTableLayoutDesc(byte[] bytes) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mCellDecoder.decodeValue(bytes);
+    */
   }
 
   /**
@@ -465,15 +519,25 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
    * @throws IOException on I/O or encoding error.
    */
   private byte[] encodeTableLayoutDesc(TableLayoutDesc desc) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mCellEncoder.encode(desc);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    return Objects.toStringHelper(HBaseTableLayoutDatabase.class)
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
+    return Objects.toStringHelper(AsyncTableLayoutDatabase.class)
         .add("uri", mKijiURI)
         .add("family", mFamily)
         .toString();
+    */
   }
 }

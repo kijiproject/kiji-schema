@@ -32,7 +32,6 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.security.access.AccessControlLists;
 import org.apache.hadoop.hbase.security.access.AccessControllerProtocol;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
@@ -63,7 +62,7 @@ import org.kiji.schema.zookeeper.ZooKeeperUtils;
  * READ, WRITE, and/or GRANT access on a Kiji instance.</p>
  */
 @ApiAudience.Private
-final class KijiSecurityManagerImpl implements KijiSecurityManager {
+final class AsyncKijiSecurityManagerImpl implements KijiSecurityManager {
   private static final Logger LOG = LoggerFactory.getLogger(KijiSecurityManagerImpl.class);
 
   /** The Kiji instance this manages. */
@@ -104,10 +103,14 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
    * @throws KijiSecurityException if the Kiji security version is not compatible with
    *     KijiSecurityManager.
    */
-  KijiSecurityManagerImpl(
+  AsyncKijiSecurityManagerImpl(
       KijiURI instanceUri,
       Configuration conf,
       HTableInterfaceFactory tableFactory) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     mInstanceUri = instanceUri;
     mKiji = Kiji.Factory.get().open(mInstanceUri);
     mSystemTable = mKiji.getSystemTable();
@@ -132,6 +135,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
     mZKClient = ZooKeeperUtils.getZooKeeperClient(mInstanceUri);
     mLock = new ZooKeeperLock(mZKClient, ZooKeeperUtils.getInstancePermissionsLock(instanceUri));
+    */
   }
 
   /** {@inheritDoc} */

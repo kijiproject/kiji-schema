@@ -39,7 +39,7 @@ import org.kiji.schema.layout.impl.ShortColumnNameTranslator;
  */
 @ApiAudience.Framework
 @ApiStability.Experimental
-public abstract class KijiColumnNameTranslator {
+public abstract class AsyncColumnNameTranslator {
   private static final Logger LOG = LoggerFactory.getLogger(KijiColumnNameTranslator.class);
 
   /**

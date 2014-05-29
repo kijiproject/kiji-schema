@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.List;
@@ -31,6 +31,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
+import org.kiji.schema.impl.hbase.HBaseKiji;
+import org.kiji.schema.impl.hbase.HBaseTableLayoutUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,10 +62,10 @@ import org.kiji.schema.zookeeper.ZooKeeperUtils;
  *   time after the table layout lock has been acquired, to re-validate the layout update.
  * </p>
  */
-public class HBaseTableLayoutUpdater {
+public class AsyncTableLayoutUpdater {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseTableLayoutUpdater.class);
 
-  private final HBaseKiji mKiji;
+  private final AsyncKiji mKiji;
   private final KijiURI mTableURI;
   private final CuratorFramework mZKClient;
 
@@ -207,11 +209,12 @@ public class HBaseTableLayoutUpdater {
    * @throws IOException on I/O error.
    * @throws KeeperException on ZooKeeper error.
    */
-  public HBaseTableLayoutUpdater(
-      final HBaseKiji kiji,
+  public AsyncTableLayoutUpdater(
+      final AsyncKiji kiji,
       final KijiURI tableURI,
       final Function<KijiTableLayout, TableLayoutDesc> layoutUpdate)
       throws IOException, KeeperException {
+
     mKiji = kiji;
     mKiji.retain();
     mTableURI = tableURI;
@@ -228,8 +231,8 @@ public class HBaseTableLayoutUpdater {
    * @throws IOException on I/O error.
    * @throws KeeperException on ZooKeeper error.
    */
-  public HBaseTableLayoutUpdater(
-      final HBaseKiji kiji,
+  public AsyncTableLayoutUpdater(
+      final AsyncKiji kiji,
       final KijiURI tableURI,
       final TableLayoutDesc layoutUpdate)
       throws IOException, KeeperException {

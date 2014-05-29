@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Map;
@@ -33,7 +33,7 @@ import org.kiji.schema.layout.ColumnReaderSpec;
 
 /** HBase implementation of KijiTableReaderBuilder. */
 @ApiAudience.Private
-public final class HBaseKijiTableReaderBuilder implements KijiTableReaderBuilder {
+public final class AsyncKijiTableReaderBuilder implements KijiTableReaderBuilder {
 
   /**
    * Create a new HBaseKijiTableReaderBuilder for the given HBaseKijiTable.
@@ -41,13 +41,13 @@ public final class HBaseKijiTableReaderBuilder implements KijiTableReaderBuilder
    * @param table HBaseKijiTable for which to build a reader.
    * @return a new HBaseKijiTableReaderBuilder.
    */
-  public static HBaseKijiTableReaderBuilder create(
-      final HBaseKijiTable table
+  public static AsyncKijiTableReaderBuilder create(
+      final AsyncKijiTable table
   ) {
-    return new HBaseKijiTableReaderBuilder(table);
+    return new AsyncKijiTableReaderBuilder(table);
   }
 
-  private final HBaseKijiTable mTable;
+  private final AsyncKijiTable mTable;
   private OnDecoderCacheMiss mOnDecoderCacheMiss = null;
   private Map<KijiColumnName, ColumnReaderSpec> mOverrides = null;
   private Multimap<KijiColumnName, ColumnReaderSpec> mAlternatives = null;
@@ -57,8 +57,8 @@ public final class HBaseKijiTableReaderBuilder implements KijiTableReaderBuilder
    *
    * @param table HBaseKijiTable for which to build a reader.
    */
-  private HBaseKijiTableReaderBuilder(
-      final HBaseKijiTable table
+  private AsyncKijiTableReaderBuilder(
+      final AsyncKijiTable table
   ) {
     mTable = table;
   }
@@ -119,7 +119,7 @@ public final class HBaseKijiTableReaderBuilder implements KijiTableReaderBuilder
 
   /** {@inheritDoc} */
   @Override
-  public HBaseKijiTableReader buildAndOpen() throws IOException {
+  public AsyncKijiTableReader buildAndOpen() throws IOException {
     if (null == mOnDecoderCacheMiss) {
       mOnDecoderCacheMiss = DEFAULT_CACHE_MISS;
     }
@@ -130,7 +130,7 @@ public final class HBaseKijiTableReaderBuilder implements KijiTableReaderBuilder
       mAlternatives = DEFAULT_READER_SPEC_ALTERNATIVES;
     }
 
-    return HBaseKijiTableReader.createWithOptions(
+    return AsyncKijiTableReader.createWithOptions(
         mTable, mOnDecoderCacheMiss, mOverrides, mAlternatives);
   }
 }

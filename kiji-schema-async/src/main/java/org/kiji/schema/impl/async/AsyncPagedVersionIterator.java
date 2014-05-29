@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -25,9 +25,6 @@ import java.util.NoSuchElementException;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,8 +51,8 @@ import org.kiji.schema.layout.KijiTableLayout;
  *
  * @param <T> type of the values returned by this iterator.
  */
-public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
-  private static final Logger LOG = LoggerFactory.getLogger(HBasePagedVersionIterator.class);
+public class AsyncPagedVersionIterator<T> implements Iterator<KijiCell<T>> {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncPagedVersionIterator.class);
 
   /** Internally paged iterator across the values in a single qualified column. */
   private final class PagedColumnIterator implements Iterator<KijiCell<T>> {
@@ -65,7 +62,7 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
 
     private long mNextMaxTimestamp;
     private int mRemainingVersions;
-    private HBaseResultIterator mCurrentResultIterator;
+    private AsyncResultIterator mCurrentResultIterator;
     private KijiCell<T> mNextCell;
 
     /**
@@ -98,7 +95,12 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
      * @return the next page of KeyValues for this column.
      * @throws IOException in case of an error getting data from HBase.
      */
+    // TODO(gabe): Replace this with asynchbase
+
+    /*
     private Result getNextPage() throws IOException {
+
+      /*
       if (mNextMaxTimestamp < mMinTimestamp || mRemainingVersions == 0) {
         return new Result();
       } else {
@@ -106,8 +108,8 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
             .withTimeRange(mMinTimestamp, mNextMaxTimestamp)
             .addColumns(ColumnsDef.create().withMaxVersions(mPageSize).add(mInnerPagedColumn))
             .build();
-        final HBaseDataRequestAdapter adapter =
-            new HBaseDataRequestAdapter(request, mColumnNameTranslator);
+        final AsyncDataRequestAdapter adapter =
+            new AsyncDataRequestAdapter(request, mColumnNameTranslator);
         final Get get = adapter.toGet(mEntityId, mLayout);
         final HTableInterface hTable = mTable.openHTableConnection();
         try {
@@ -129,7 +131,7 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
           hTable.close();
         }
       }
-    }
+    } */
 
     /**
      * Get the next KeyValue from the column or null if no more KeyValues are requested or exist.
@@ -138,9 +140,13 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
      *     exist.
      */
     private KeyValue getNextKV() {
+      // TODO(gabe): Replace this with asynchbase
+      throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
       if (null == mCurrentResultIterator || !mCurrentResultIterator.hasNext()) {
         try {
-          mCurrentResultIterator = new HBaseResultIterator(getNextPage());
+          mCurrentResultIterator = new AsyncResultIterator(getNextPage());
         } catch (IOException ioe) {
           throw new KijiIOException(ioe);
         }
@@ -150,7 +156,9 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
       } else {
         return null;
       }
+      */
     }
+
     /**
      * Get the KijiCell represented by the next KeyValue or null if the next KeyValue is null.
      *
@@ -211,8 +219,8 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
   private final KijiCellDecoder<T> mCellDecoder;
   private final KijiColumnNameTranslator mColumnNameTranslator;
   private final KijiTableLayout mLayout;
-  private final HBaseKijiTable mTable;
-  private final HBaseQualifierIterator mQualifierIterator;
+  private final AsyncKijiTable mTable;
+  private final AsyncQualifierIterator mQualifierIterator;
 
   private PagedColumnIterator mColumnIterator;
   private KijiCell<T> mNextCell;
@@ -232,15 +240,15 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
    *     Must be null if 'column' is fully qualified; may not be null if 'column' is a family.
    */
   // CSOFF: ParameterNumberCheck
-  public HBasePagedVersionIterator(
+  public AsyncPagedVersionIterator(
       final EntityId entityId,
       final KijiDataRequest dataRequest,
       final KijiColumnName column,
       final KijiCellDecoder<T> cellDecoder,
       final KijiColumnNameTranslator columnNameTranslator,
       final KijiTableLayout layout,
-      final HBaseKijiTable table,
-      final HBaseQualifierIterator qualifierIterator // Optional.
+      final AsyncKijiTable table,
+      final AsyncQualifierIterator qualifierIterator // Optional.
   ) {
     // CSON: ParameterNumberCheck
     final KijiDataRequest.Column columnRequest = dataRequest.getRequestForColumn(column);

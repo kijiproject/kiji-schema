@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.List;
@@ -33,18 +33,20 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.impl.HBaseAdminFactory;
 import org.kiji.schema.impl.HTableInterfaceFactory;
+import org.kiji.schema.impl.hbase.DefaultHBaseAdminFactory;
+import org.kiji.schema.impl.hbase.DefaultHTableInterfaceFactory;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.util.LockFactory;
 
 /** Factory for HBase instances based on URIs. */
 @ApiAudience.Private
-public final class DefaultHBaseFactory implements HBaseFactory {
+public final class DefaultAsyncFactory implements HBaseFactory {
 
   /**
    * Public constructor for use by the service loader. Clients should use
    * HBaseFactory.Provider.get(), which maintains a singleton instance.
    */
-  public DefaultHBaseFactory() {
+  public DefaultAsyncFactory() {
   }
 
   /** {@inheritDoc} */

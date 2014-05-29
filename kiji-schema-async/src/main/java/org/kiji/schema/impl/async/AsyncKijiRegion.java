@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +34,7 @@ import org.kiji.schema.KijiRegion;
  * HBaseKijiRegion is the HBase-backed KijiRegion.
  */
 @ApiAudience.Private
-final class HBaseKijiRegion implements KijiRegion {
+final class AsyncKijiRegion implements KijiRegion {
   private final HRegionInfo mHRegionInfo;
   private final List<String> mRegionLocations;
 
@@ -44,7 +44,7 @@ final class HBaseKijiRegion implements KijiRegion {
    * @param hRegionInfo The underlying HRegionInfo.
    * @param locations The HRegionLocations that this region spans.
    */
-  HBaseKijiRegion(HRegionInfo hRegionInfo, List<HRegionLocation> locations) {
+  AsyncKijiRegion(HRegionInfo hRegionInfo, List<HRegionLocation> locations) {
     mHRegionInfo = hRegionInfo;
     Builder<String> locationsBuilder = ImmutableList.builder();
     for (HRegionLocation hLocation : locations) {
@@ -58,7 +58,7 @@ final class HBaseKijiRegion implements KijiRegion {
    *
    * @param hRegionInfo The underlying HRegionInfo.
    */
-  HBaseKijiRegion(HRegionInfo hRegionInfo) {
+  AsyncKijiRegion(HRegionInfo hRegionInfo) {
     this(hRegionInfo, new ArrayList<HRegionLocation>());
   }
 

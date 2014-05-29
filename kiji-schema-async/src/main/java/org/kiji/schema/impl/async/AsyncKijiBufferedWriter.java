@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,12 +28,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.RowLock;
 import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
@@ -72,8 +66,8 @@ import org.kiji.schema.platform.SchemaPlatformBridge;
  * </p>
  */
 @ApiAudience.Private
-public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiBufferedWriter.class);
+public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncKijiBufferedWriter.class);
 
   /** Underlying dedicated HTableInterface used by this writer. Owned by this writer. */
   // TODO(gabe): Replace this with asynchbase
@@ -93,7 +87,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
    * All state which should be modified atomically to reflect an update to the underlying table's
    * layout.
    */
-  private volatile HBaseKijiTableWriter.WriterLayoutCapsule mWriterLayoutCapsule = null;
+  private volatile AsyncKijiTableWriter.WriterLayoutCapsule mWriterLayoutCapsule = null;
 
   /** Local write buffers. */
   // TODO(gabe): Replace this with asynchbase
@@ -184,7 +178,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
    * @throws KijiTableNotFoundException in case of an invalid table parameter
    * @throws IOException in case of IO errors.
    */
-  public HBaseKijiBufferedWriter(HBaseKijiTable table) throws IOException {
+  public AsyncKijiBufferedWriter(AsyncKijiTable table) throws IOException {
 
     // TODO(gabe): Replace this with asynchbase
     throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
@@ -291,12 +285,11 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
    * @param d A delete to add to the buffer.
    * @throws IOException in case of an error on flush.
    */
-  private void updateBuffer(Delete d) throws IOException {
-
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+  // TODO(gabe): Replace this with asynchbase
 
     /*
+  private void updateBuffer(Delete d) throws IOException {
+
     synchronized (mInternalLock) {
       mDeleteBuffer.add(d);
       long heapSize = mDeleteSize;
@@ -306,8 +299,8 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
         flush();
       }
     }
-    */
-  }
+
+  } */
 
   /** {@inheritDoc} */
   @Override
@@ -339,7 +332,11 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   @Override
   public void deleteFamily(EntityId entityId, String family, long upToTimestamp)
       throws IOException {
-    final HBaseKijiTableWriter.WriterLayoutCapsule capsule = mWriterLayoutCapsule;
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
+    final AsyncKijiTableWriter.WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final FamilyLayout familyLayout = capsule.getLayout().getFamilyMap().get(family);
     if (null == familyLayout) {
       throw new NoSuchColumnException(String.format("Family '%s' not found.", family));
@@ -365,6 +362,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
     // Buffer the delete.
     updateBuffer(delete);
+    */
   }
 
   /**
@@ -520,6 +518,10 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   /** {@inheritDoc} */
   @Override
   public void setBufferSize(long bufferSize) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     synchronized (mInternalLock) {
       Preconditions.checkState(mState == State.OPEN,
           "Cannot set buffer size of BufferedWriter instance %s in state %s.", this, mState);
@@ -531,6 +533,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
       }
       SchemaPlatformBridge.get().setWriteBufferSize(mHTable, bufferSize);
     }
+    */
   }
 
   /** {@inheritDoc} */

@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Map;
@@ -34,7 +34,7 @@ import org.kiji.schema.hbase.HBaseFactory;
 
 /** Factory for constructing instances of HBaseKiji. */
 @ApiAudience.Private
-public final class HBaseKijiFactory implements KijiFactory {
+public final class AsyncKijiFactory implements KijiFactory {
   /** {@inheritDoc} */
   @Override
   public Kiji open(KijiURI uri) throws IOException {
@@ -46,7 +46,7 @@ public final class HBaseKijiFactory implements KijiFactory {
   public Kiji open(KijiURI uri, Configuration conf) throws IOException {
     final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
     final Configuration confCopy = new Configuration(conf);
-    return new HBaseKiji(
+    return new AsyncKiji(
         uri,
         confCopy,
         hbaseFactory.getHTableInterfaceFactory(uri),

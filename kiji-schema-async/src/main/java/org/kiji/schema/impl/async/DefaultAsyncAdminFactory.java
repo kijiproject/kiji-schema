@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 
@@ -29,9 +29,9 @@ import org.kiji.schema.impl.HBaseAdminFactory;
 
 /** Factory for HBaseAdmin that creates concrete HBaseAdmin instances. */
 @ApiAudience.Private
-public final class DefaultHBaseAdminFactory implements HBaseAdminFactory {
+public final class DefaultAsyncAdminFactory implements HBaseAdminFactory {
   /** Singleton. */
-  private static final HBaseAdminFactory DEFAULT = new DefaultHBaseAdminFactory();
+  private static final HBaseAdminFactory DEFAULT = new DefaultAsyncAdminFactory();
 
   /** @return an instance of the default factory. */
   public static HBaseAdminFactory get() {
@@ -39,7 +39,7 @@ public final class DefaultHBaseAdminFactory implements HBaseAdminFactory {
   }
 
   /** Disallow new instances, enforce singleton. */
-  private DefaultHBaseAdminFactory() {
+  private DefaultAsyncAdminFactory() {
   }
 
   /** {@inheritDoc} */

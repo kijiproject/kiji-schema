@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -45,8 +45,8 @@ import org.kiji.schema.layout.KijiColumnNameTranslator;
  */
 @ApiAudience.Private
 @ApiStability.Experimental
-public final class HBaseNonPagedVersionIterator<T> implements Iterator<KijiCell<T>> {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseNonPagedVersionIterator.class);
+public final class AsyncNonPagedVersionIterator<T> implements Iterator<KijiCell<T>> {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncNonPagedVersionIterator.class);
 
   private final Iterator<KeyValue> mResultIterator;
   private final KijiColumnNameTranslator mColumnNameTranslator;
@@ -67,7 +67,7 @@ public final class HBaseNonPagedVersionIterator<T> implements Iterator<KijiCell<
    * @param entityId EntityId of the row from which the cells were retrieved.
    * @param result HBaseResultIterator containing cells from the table.
    */
-  public HBaseNonPagedVersionIterator(
+  public AsyncNonPagedVersionIterator(
       final KijiColumnNameTranslator columnNameTranslator,
       final KijiCellDecoder<T> cellDecoder,
       final EntityId entityId,
@@ -149,7 +149,7 @@ public final class HBaseNonPagedVersionIterator<T> implements Iterator<KijiCell<
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    return Objects.toStringHelper(HBaseNonPagedVersionIterator.class)
+    return Objects.toStringHelper(AsyncNonPagedVersionIterator.class)
         .add("hbase-result-iterator", mResultIterator)
         .add("entity-id", mEntityId)
         .toString();

@@ -17,24 +17,12 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.layout;
-
-import org.kiji.annotations.ApiAudience;
-import org.kiji.annotations.ApiStability;
-
 /**
- * Thrown when a Kiji table layout has a schema class reference that cannot be loaded
- * (probably because it is not on the class path).
+ * AsyncHBase-specific implementation for Kiji table layout management.
+ *
+ * <p>
+ * Users generally shouldn't need to reference any of these classes directly, but rather use the
+ * classes presented by the {@link org.kiji.schema} package.
+ * </p>
  */
-@ApiAudience.Public
-@ApiStability.Stable
-public final class SchemaClassNotFoundException extends InvalidLayoutException {
-  /**
-   * Creates a new <code>SchemaClassNotFoundException</code> with the specified detail message..
-   *
-   * @param message The exception message.
-   */
-  public SchemaClassNotFoundException(String message) {
-    super(message);
-  }
-}
+package org.kiji.schema.layout.impl.async;

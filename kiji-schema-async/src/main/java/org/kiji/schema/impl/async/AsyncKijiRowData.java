@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -35,7 +35,6 @@ import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
-import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,29 +64,31 @@ import org.kiji.schema.util.TimestampComparator;
  * An implementation of KijiRowData that wraps an HBase Result object.
  */
 @ApiAudience.Private
-public final class HBaseKijiRowData implements KijiRowData {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiRowData.class);
+public final class AsyncKijiRowData implements KijiRowData {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncKijiRowData.class);
 
+  // TODO(gabe): Uncomment these once the rest of AsyncKijiRowData is working
   /** The entity id for the row. */
-  private final EntityId mEntityId;
+  //private final EntityId mEntityId;
 
   /** The request used to retrieve this Kiji row data. */
-  private final KijiDataRequest mDataRequest;
+  //private final KijiDataRequest mDataRequest;
 
   /** The HBase KijiTable we are reading from. */
-  private final HBaseKijiTable mTable;
+  //private final AsyncKijiTable mTable;
 
   /** The layout for the table this row data came from. */
-  private final KijiTableLayout mTableLayout;
+  //private final KijiTableLayout mTableLayout;
 
   /** The HBase result providing the data of this object. */
-  private Result mResult;
+  // TODO(gabe): Replace this with asynchbase
+  //private Result mResult;
 
   /** Provider for cell decoders. */
-  private final CellDecoderProvider mDecoderProvider;
+  //private final CellDecoderProvider mDecoderProvider;
 
   /** A map from kiji family to kiji qualifier to timestamp to raw encoded cell values. */
-  private NavigableMap<String, NavigableMap<String, NavigableMap<Long, byte[]>>> mFilteredMap;
+  //private NavigableMap<String, NavigableMap<String, NavigableMap<Long, byte[]>>> mFilteredMap;
 
   /**
    * Creates a provider for cell decoders.
@@ -98,7 +99,7 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @return a new CellDecoderProvider for the specified HBase KijiTable.
    * @throws IOException on I/O error.
    */
-  private static CellDecoderProvider createCellProvider(HBaseKijiTable table) throws IOException {
+  private static CellDecoderProvider createCellProvider(AsyncKijiTable table) throws IOException {
     final LayoutCapsule capsule = table.getLayoutCapsule();
     return new CellDecoderProvider(
         capsule.getLayout(),
@@ -125,30 +126,37 @@ public final class HBaseKijiRowData implements KijiRowData {
    *     Null means the row creates its own provider for cell decoders (not recommended).
    * @throws IOException on I/O error.
    */
-  public HBaseKijiRowData(
-      HBaseKijiTable table,
-      KijiDataRequest dataRequest,
-      EntityId entityId,
-      Result result,
-      CellDecoderProvider decoderProvider)
-      throws IOException {
-    mTable = table;
-    mTableLayout = table.getLayout();
-    mDataRequest = dataRequest;
-    mEntityId = entityId;
-    mResult = result;
-    mDecoderProvider = (decoderProvider != null) ? decoderProvider : createCellProvider(table);
-  }
+  // TODO(gabe): Replace this with asynchbase
 
-  /**
-   * Get the decoder for the given column from the {@link CellDecoderProvider}.
-   *
-   * @param column column for which to get a cell decoder.
-   * @param <T> the type of the value encoded in the cell.
-   * @return a cell decoder which can read the given column.
-   * @throws IOException in case of an error getting the cell decoder.
-   */
+  /*
+  public AsyncKijiRowData(
+    AsyncKijiTable table,
+    KijiDataRequest dataRequest,
+    EntityId entityId,
+    Result result,
+    CellDecoderProvider decoderProvider)
+    throws IOException {
+  mTable = table;
+  mTableLayout = table.getLayout();
+  mDataRequest = dataRequest;
+  mEntityId = entityId;
+  mResult = result;
+  mDecoderProvider = (decoderProvider != null) ? decoderProvider : createCellProvider(table);
+} */
+
+/**
+ * Get the decoder for the given column from the {@link CellDecoderProvider}.
+ *
+ * @param column column for which to get a cell decoder.
+ * @param <T> the type of the value encoded in the cell.
+ * @return a cell decoder which can read the given column.
+ * @throws IOException in case of an error getting the cell decoder.
+ */
   private <T> KijiCellDecoder<T> getDecoder(KijiColumnName column) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final KijiDataRequest.Column requestColumn = mDataRequest.getRequestForColumn(column);
     if (null != requestColumn) {
       final ColumnReaderSpec spec = requestColumn.getReaderSpec();
@@ -160,6 +168,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     // If the column is not in the request, or there is no spec override, get the decoder for the
     // column by name.
     return mDecoderProvider.getDecoder(column.getFamily(), column.getQualifier());
+    */
   }
 
   /**
@@ -195,8 +204,12 @@ public final class HBaseKijiRowData implements KijiRowData {
      * @param eId of the rowdata we are iterating over.
      * @throws IOException on I/O error
      */
-    protected KijiCellIterator(KijiColumnName columnName, HBaseKijiRowData rowdata, EntityId eId)
+    protected KijiCellIterator(KijiColumnName columnName, AsyncKijiRowData rowdata, EntityId eId)
         throws IOException {
+      // TODO(gabe): Replace this with asynchbase
+      throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+      /*
       mColumn = columnName;
       // Initialize column name translator.
       mColumnNameTranslator = KijiColumnNameTranslator.from(rowdata.mTableLayout);
@@ -212,6 +225,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       mCurrentIdx = findInsertionPoint(mKVs, new KeyValue(eId.getHBaseRowKey(), colName.getFamily(),
           colName.getQualifier()));
       mNextCell = getNextCell();
+      */
     }
 
     /** {@inheritDoc} */
@@ -358,7 +372,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     /** The column family. */
     private final KijiColumnName mColumnName;
     /** The rowdata we are iterating over. */
-    private final HBaseKijiRowData mRowData;
+    private final AsyncKijiRowData mRowData;
     /** The entity id for the row. */
     private final EntityId mEntityId;
     /**
@@ -368,7 +382,7 @@ public final class HBaseKijiRowData implements KijiRowData {
      * @param rowdata The HBaseKijiRowData instance containing the desired data.
      * @param eId of the rowdata we are iterating over.
      */
-    protected CellIterable(KijiColumnName colName, HBaseKijiRowData rowdata, EntityId eId) {
+    protected CellIterable(KijiColumnName colName, AsyncKijiRowData rowdata, EntityId eId) {
       mColumnName = colName;
       mRowData = rowdata;
       mEntityId = eId;
@@ -390,14 +404,22 @@ public final class HBaseKijiRowData implements KijiRowData {
    *
    * @return The HBase result.
    */
-  public Result getHBaseResult() {
-    return mResult;
-  }
+  // TODO(gabe): Replace this with asynchbase
 
-  /** {@inheritDoc} */
+  /*
+  public Result getHBaseResult() {
+  return mResult;
+} */
+
+/** {@inheritDoc} */
   @Override
   public EntityId getEntityId() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mEntityId;
+    */
   }
 
   /**
@@ -405,8 +427,13 @@ public final class HBaseKijiRowData implements KijiRowData {
    *
    * @return the table this row data belongs to.
    */
-  public HBaseKijiTable getTable() {
+  public AsyncKijiTable getTable() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mTable;
+    */
   }
 
   /**
@@ -415,7 +442,12 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @return the data request used to retrieve this row data.
    */
   public KijiDataRequest getDataRequest() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mDataRequest;
+    */
   }
 
   /**
@@ -424,7 +456,12 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @return The table layout.
    */
   public KijiTableLayout getTableLayout() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mTableLayout;
+    */
   }
 
   /**
@@ -434,6 +471,10 @@ public final class HBaseKijiRowData implements KijiRowData {
    */
   public synchronized NavigableMap<String, NavigableMap<String, NavigableMap<Long, byte[]>>>
       getMap() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     if (null != mFilteredMap) {
       return mFilteredMap;
     }
@@ -520,6 +561,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       }
     }
     return mFilteredMap;
+    */
   }
 
   /** {@inheritDoc} */
@@ -581,7 +623,12 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public Schema getReaderSchema(String family, String qualifier) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mTableLayout.getCellSpec(new KijiColumnName(family, qualifier)).getAvroSchema();
+    */
   }
 
   /**
@@ -657,6 +704,10 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> NavigableMap<String, T> getMostRecentValues(String family) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         "getMostRecentValues(String family) is only enabled"
         + " on map type column families. The column family [%s], is a group type column family."
@@ -668,6 +719,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       result.put(qualifier, value);
     }
     return result;
+    */
   }
 
   /** {@inheritDoc} */
@@ -685,6 +737,10 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> NavigableMap<String, NavigableMap<Long, T>> getValues(String family)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         "getValues(String family) is only enabled on map "
         + "type column families. The column family [%s], is a group type column family. Please use "
@@ -696,6 +752,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       result.put(qualifier, timeseries);
     }
     return result;
+    */
   }
 
   /** {@inheritDoc} */
@@ -715,6 +772,10 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> NavigableMap<String, KijiCell<T>> getMostRecentCells(String family)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         "getMostRecentCells(String family) is only enabled"
         + " on map type column families. The column family [%s], is a group type column family."
@@ -726,6 +787,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       result.put(qualifier, cell);
     }
     return result;
+    */
   }
 
   /** {@inheritDoc} */
@@ -752,6 +814,10 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> NavigableMap<String, NavigableMap<Long, KijiCell<T>>> getCells(String family)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         "getCells(String family) is only enabled"
         + " on map type column families. The column family [%s], is a group type column family."
@@ -763,23 +829,33 @@ public final class HBaseKijiRowData implements KijiRowData {
       result.put(qualifier, cells);
     }
     return result;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public <T> Iterator<KijiCell<T>> iterator(String family, String qualifier)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final KijiColumnName column = new KijiColumnName(family, qualifier);
     Preconditions.checkArgument(
         mDataRequest.getRequestForColumn(column) != null,
         "Column %s has no data request.", column);
     return new KijiCellIterator<T>(column, this, mEntityId);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public <T> Iterator<KijiCell<T>> iterator(String family)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final KijiColumnName column = new KijiColumnName(family, null);
     Preconditions.checkArgument(
         mDataRequest.getRequestForColumn(column) != null,
@@ -790,21 +866,31 @@ public final class HBaseKijiRowData implements KijiRowData {
             + " Please use the iterator(String family, String qualifier) method.",
         family);
     return new KijiCellIterator<T>(column, this, mEntityId);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public <T> Iterable<KijiCell<T>> asIterable(String family, String qualifier) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final KijiColumnName column = new KijiColumnName(family, qualifier);
     Preconditions.checkArgument(
         mDataRequest.getRequestForColumn(column) != null,
         "Column %s has no data request.", column);
     return new CellIterable<T>(column, this, mEntityId);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public <T> Iterable<KijiCell<T>> asIterable(String family) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final KijiColumnName column = new KijiColumnName(family, null);
     Preconditions.checkArgument(
         mDataRequest.getRequestForColumn(column) != null,
@@ -815,27 +901,38 @@ public final class HBaseKijiRowData implements KijiRowData {
             + " Please use the asIterable(String family, String qualifier) method.",
         family);
     return new CellIterable<T>(column, this, mEntityId);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiPager getPager(String family, String qualifier)
       throws KijiColumnPagingNotEnabledException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
-    return new HBaseVersionPager(
+    return new AsyncVersionPager(
         mEntityId, mDataRequest, mTable,  kijiColumnName, mDecoderProvider);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final KijiColumnName kijiFamily = new KijiColumnName(family, null);
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         "getPager(String family) is only enabled on map type column families. "
         + "The column family '%s' is a group type column family. "
         + "Please use the getPager(String family, String qualifier) method.",
         family);
-    return new HBaseMapFamilyPager(mEntityId, mDataRequest, mTable, kijiFamily);
+    return new AsyncMapFamilyPager(mEntityId, mDataRequest, mTable, kijiFamily);
+    */
   }
 
   /**
@@ -843,20 +940,29 @@ public final class HBaseKijiRowData implements KijiRowData {
    *
    * @return a KijiResult corresponding to the same data as this KijiRowData.
    */
-  public HBaseKijiResult asKijiResult() {
-    return new HBaseKijiResult(
+  public AsyncKijiResult asKijiResult() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
+    return new AsyncKijiResult(
         mEntityId,
         mDataRequest,
         mResult,
         KijiColumnNameTranslator.from(mTableLayout),
         mDecoderProvider,
         mTable);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    return Objects.toStringHelper(HBaseKijiRowData.class)
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
+    return Objects.toStringHelper(AsyncKijiRowData.class)
         .add("table", mTable.getURI())
         .add("entityId", getEntityId())
         .add("dataRequest", mDataRequest)
@@ -864,5 +970,6 @@ public final class HBaseKijiRowData implements KijiRowData {
         .add("result", mResult)
         .add("map", getMap())
         .toString();
+    */
   }
 }

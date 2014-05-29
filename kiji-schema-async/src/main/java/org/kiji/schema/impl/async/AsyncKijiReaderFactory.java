@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Map;
@@ -25,47 +25,69 @@ import java.util.Map;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiReaderFactory;
+import org.kiji.schema.impl.hbase.HBaseKijiTableReader;
+import org.kiji.schema.impl.hbase.HBaseKijiTableReaderBuilder;
 import org.kiji.schema.layout.CellSpec;
 
 /** Factory for Table Writers. */
 @ApiAudience.Private
-public final class HBaseKijiReaderFactory implements KijiReaderFactory {
+public final class AsyncKijiReaderFactory implements KijiReaderFactory {
 
   /** HBaseKijiTable for this writer factory. */
-  private final HBaseKijiTable mTable;
+  private final AsyncKijiTable mTable;
 
   /**
    * Initializes a factory for HBaseKijiTable readers.
    *
    * @param table HBaseKijiTable for which to construct readers.
    */
-  public HBaseKijiReaderFactory(HBaseKijiTable table) {
+  public AsyncKijiReaderFactory(AsyncKijiTable table) {
     mTable = table;
   }
 
   /** {@inheritDoc} */
   @Override
-  public HBaseKijiTable getTable() {
+  public AsyncKijiTable getTable() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mTable;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
-  public HBaseKijiTableReader openTableReader() throws IOException {
-    return HBaseKijiTableReader.create(mTable);
+  public AsyncKijiTableReader openTableReader() throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
+    return AsyncKijiTableReader.create(mTable);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
-  public HBaseKijiTableReader openTableReader(Map<KijiColumnName, CellSpec> overrides)
+  public AsyncKijiTableReader openTableReader(Map<KijiColumnName, CellSpec> overrides)
       throws IOException {
-    return HBaseKijiTableReader.createWithCellSpecOverrides(mTable, overrides);
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
+    return AsyncKijiTableReader.createWithCellSpecOverrides(mTable, overrides);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public HBaseKijiTableReaderBuilder readerBuilder() {
-    return HBaseKijiTableReaderBuilder.create(mTable);
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
+    return AsyncKijiTableReaderBuilder.create(mTable);
+    */
   }
 
 }

@@ -30,7 +30,7 @@ import org.kiji.annotations.ApiStability;
  */
 @ApiAudience.Public
 @ApiStability.Evolving
-public final class HBaseColumnName {
+public final class AsyncColumnName {
   /** The HBase column family. */
   private final byte[] mFamily;
 
@@ -49,7 +49,7 @@ public final class HBaseColumnName {
    * @param family HBase column family.
    * @param qualifier HBase column qualifier.
    */
-  public HBaseColumnName(byte[] family, byte[] qualifier) {
+  public AsyncColumnName(byte[] family, byte[] qualifier) {
     mFamily = family;
     mQualifier = qualifier;
   }
@@ -60,7 +60,7 @@ public final class HBaseColumnName {
    * @param family HBase family as a String.
    * @param qualifier HBase qualifier as a String.
    */
-  public HBaseColumnName(
+  public AsyncColumnName(
       final String family,
       final String qualifier
   ) {

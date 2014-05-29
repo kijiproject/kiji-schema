@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -35,7 +35,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.KVComparator;
-import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,8 +60,8 @@ import org.kiji.schema.layout.impl.CellDecoderProvider;
 /** HBase implementation of KijiResult. */
 @ApiAudience.Private
 @ApiStability.Experimental
-public final class HBaseKijiResult implements KijiResult {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiResult.class);
+public final class AsyncKijiResult implements KijiResult {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncKijiResult.class);
   private static final Comparator<KeyValue> KV_COMPARATOR = new KVComparator();
   private static final Comparator<IndexRange> INDEX_RANGE_COMPARATOR = new IndexStartComparator();
 
@@ -165,72 +164,81 @@ public final class HBaseKijiResult implements KijiResult {
    * @param toFind KeyValue to find in the given Result.
    * @return the index of the given KeyValue in the given Result.
    */
-  private static int kvIndex(
-      final Result result,
-      final KeyValue toFind
-  ) {
-    return kvIndex(result, toFind, new IndexRange(0, result.size()));
-  }
+  // TODO(gabe): Replace this with asynchbase
 
-  /**
-   * Get the index of the given KeyValue in the given Result.
-   *
-   * <p>
-   *   If the KeyValue is not present, returns the insertion point where the KeyValue would be.
-   * </p>
-   *
-   * @param result Result in which to find the given KeyValue.
-   * @param toFind KeyValue to find in the given Result.
-   * @param range Inclusive-exclusive index range in which to search.
-   * @return the index of the given KeyValue in the given Result.
-   */
-  private static int kvIndex(
-      final Result result,
-      final KeyValue toFind,
-      final IndexRange range
-  ) {
-    final int binarySearchResult = Arrays.binarySearch(
-        result.raw(), range.mStart, range.mEnd, toFind, KV_COMPARATOR);
-    if (binarySearchResult < 0) {
-      return -1 - binarySearchResult;  // see documentation for Arrays.binarySearch()
-    } else {
-      return binarySearchResult;
-    }
-  }
+  /*
+private static int kvIndex(
+    final Result result,
+    final KeyValue toFind
+) {
+  return kvIndex(result, toFind, new IndexRange(0, result.size()));
+} */
 
-  /**
-   * Get the KeyValue at the given index from the given Result.
-   *
-   * @param result Result from which to get the KeyValue at the given index.
-   * @param index Array index of the KeyValue to retrieve.
-   * @return the KeyValue at the given index from the given Result or null if the index is out of
-   *     bounds.
-   */
-  private static KeyValue kvAtIndex(
-      final Result result,
-      final int index
-  ) {
-    if ((index < 0) || (index >= result.size())) {
-      return null;
-    }
-    return result.raw()[index];
-  }
+/**
+ * Get the index of the given KeyValue in the given Result.
+ *
+ * <p>
+ *   If the KeyValue is not present, returns the insertion point where the KeyValue would be.
+ * </p>
+ *
+ * @param result Result in which to find the given KeyValue.
+ * @param toFind KeyValue to find in the given Result.
+ * @param range Inclusive-exclusive index range in which to search.
+ * @return the index of the given KeyValue in the given Result.
+ */
+// TODO(gabe): Replace this with asynchbase
 
-  /**
-   * Invert a sorted list of IndexRanges.
-   *
-   * <p>
-   *   Ranges are assume to be non-overlapping. Ranges are assumed to be inclusive of their start
-   *   index and exclusive of their end index. Ranges returned are also inclusive-exclusive. If the
-   *   end index of one range and the start index of the next are equal, no range will be included
-   *   in the inverted ranges for that interval.
-   * </p>
-   *
-   * @param toInvert List of IndexRanges to invert.
-   * @param minimum start index of the first range in the inverted ranges.
-   * @param maximum end index of the last range in the inverted ranges.
-   * @return a sorted list of ranges representing the inversion of the input list.
-   */
+  /*
+private static int kvIndex(
+    final Result result,
+    final KeyValue toFind,
+    final IndexRange range
+) {
+  final int binarySearchResult = Arrays.binarySearch(
+      result.raw(), range.mStart, range.mEnd, toFind, KV_COMPARATOR);
+  if (binarySearchResult < 0) {
+    return -1 - binarySearchResult;  // see documentation for Arrays.binarySearch()
+  } else {
+    return binarySearchResult;
+  }
+} */
+
+/**
+ * Get the KeyValue at the given index from the given Result.
+ *
+ * @param result Result from which to get the KeyValue at the given index.
+ * @param index Array index of the KeyValue to retrieve.
+ * @return the KeyValue at the given index from the given Result or null if the index is out of
+ *     bounds.
+ */
+// TODO(gabe): Replace this with asynchbase
+
+  /*
+private static KeyValue kvAtIndex(
+    final Result result,
+    final int index
+) {
+  if ((index < 0) || (index >= result.size())) {
+    return null;
+  }
+  return result.raw()[index];
+} */
+
+/**
+ * Invert a sorted list of IndexRanges.
+ *
+ * <p>
+ *   Ranges are assume to be non-overlapping. Ranges are assumed to be inclusive of their start
+ *   index and exclusive of their end index. Ranges returned are also inclusive-exclusive. If the
+ *   end index of one range and the start index of the next are equal, no range will be included
+ *   in the inverted ranges for that interval.
+ * </p>
+ *
+ * @param toInvert List of IndexRanges to invert.
+ * @param minimum start index of the first range in the inverted ranges.
+ * @param maximum end index of the last range in the inverted ranges.
+ * @return a sorted list of ranges representing the inversion of the input list.
+ */
   private static List<IndexRange> invertRanges(
       final List<IndexRange> toInvert,
       final int minimum,
@@ -263,13 +271,14 @@ public final class HBaseKijiResult implements KijiResult {
   // State, private (non-static) classes, and private methods
   // -----------------------------------------------------------------------------------------------
 
-  private final EntityId mEntityId;
-  private final KijiDataRequest mDataRequest;
-  private final Result mUnpagedResult;
-  private final KijiColumnNameTranslator mColumnNameTranslator;
-  private final CellDecoderProvider mCellDecoderProvider;
-  private final HBaseKijiTable mTable;
-  private final KeyValueToKijiCell<Object> mKeyValueToKijiCell;
+  // TODO(gabe): Replace with asynchbase
+  //private final EntityId mEntityId;
+  //private final KijiDataRequest mDataRequest;
+  //private final Result mUnpagedResult;
+  //private final KijiColumnNameTranslator mColumnNameTranslator;
+  //private final CellDecoderProvider mCellDecoderProvider;
+  //private final AsyncKijiTable mTable;
+  //private final KeyValueToKijiCell<Object> mKeyValueToKijiCell;
 
   /**
    * Initialize a new HBaseKijiResult.
@@ -284,28 +293,31 @@ public final class HBaseKijiResult implements KijiResult {
    * @param cellDecoderProvider Provider for cell decoders to use for decoding KeyValues.
    * @param table Kiji table from which to retrieve cells.
    */
-  public HBaseKijiResult(
-      final EntityId entityId,
-      final KijiDataRequest dataRequest,
-      final Result unPagedResult,
-      final KijiColumnNameTranslator columnNameTranslator,
-      final CellDecoderProvider cellDecoderProvider,
-      final HBaseKijiTable table
-  ) {
-    mEntityId = entityId;
-    mDataRequest = dataRequest;
-    mColumnNameTranslator = columnNameTranslator;
-    mCellDecoderProvider = cellDecoderProvider;
-    mTable = table;
-    mKeyValueToKijiCell = new KeyValueToKijiCell<Object>();
-    mUnpagedResult = filterToMatchRequest(unPagedResult);
-  }
+  // TODO(gabe): Replace this with asynchbase
 
-  /**
-   * Function to transform a KeyValue into a KijiCell.
-   *
-   * @param <T> type of the value in the KijiCell produced by this function.
-   */
+  /*
+public AsyncKijiResult(
+    final EntityId entityId,
+    final KijiDataRequest dataRequest,
+    final Result unPagedResult,
+    final KijiColumnNameTranslator columnNameTranslator,
+    final CellDecoderProvider cellDecoderProvider,
+    final AsyncKijiTable table
+) {
+  mEntityId = entityId;
+  mDataRequest = dataRequest;
+  mColumnNameTranslator = columnNameTranslator;
+  mCellDecoderProvider = cellDecoderProvider;
+  mTable = table;
+  mKeyValueToKijiCell = new KeyValueToKijiCell<Object>();
+  mUnpagedResult = filterToMatchRequest(unPagedResult);
+} */
+
+/**
+ * Function to transform a KeyValue into a KijiCell.
+ *
+ * @param <T> type of the value in the KijiCell produced by this function.
+ */
   private final class KeyValueToKijiCell<T> implements Function<KeyValue, KijiCell<T>> {
     /** {@inheritDoc} */
     @Override
@@ -326,8 +338,12 @@ public final class HBaseKijiResult implements KijiResult {
 
     /** Initialize a new FullRequestIterator. */
     private FullRequestIterator() {
+      // TODO(gabe): Replace this with asynchbase
+      throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+      /*
       mUnpagedIterator = Iterators.transform(
-          new HBaseResultIterator(mUnpagedResult), mKeyValueToKijiCell);
+          new AsyncResultIterator(mUnpagedResult), mKeyValueToKijiCell);
 
       final Set<KijiColumnName> pagedColumns = Sets.newHashSet();
       for (KijiDataRequest.Column columnRequest : mDataRequest.getColumns()) {
@@ -338,6 +354,7 @@ public final class HBaseKijiResult implements KijiResult {
       mPagedColumns = pagedColumns.iterator();
       mCurrentPagedIterator = mPagedColumns.hasNext() ? iterator(mPagedColumns.next()) : null;
       mNextCell = getNextCell();
+      */
     }
 
     /**
@@ -393,6 +410,10 @@ public final class HBaseKijiResult implements KijiResult {
   private <T> KijiCellDecoder<T> getDecoder(
       final KijiColumnName column
   ) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final ColumnReaderSpec readerSpec = mDataRequest.getRequestForColumn(column).getReaderSpec();
     try {
       if (null != readerSpec) {
@@ -403,6 +424,7 @@ public final class HBaseKijiResult implements KijiResult {
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
+    */
   }
 
   /**
@@ -411,6 +433,10 @@ public final class HBaseKijiResult implements KijiResult {
    * @return the largest max versions from the data request which defines this KijiResult.
    */
   private int largestMaxVersions() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     int largest = 1;
     for (KijiDataRequest.Column column : mDataRequest.getColumns()) {
       if (largest < column.getMaxVersions()) {
@@ -418,6 +444,7 @@ public final class HBaseKijiResult implements KijiResult {
       }
     }
     return largest;
+    */
   }
 
   /**
@@ -434,94 +461,97 @@ public final class HBaseKijiResult implements KijiResult {
    * @return a new Result containing only those KeyValues which were requested by the data request
    *     which defines this KijiResult.
    */
-  private Result filterToMatchRequest(
-      final Result result
-  ) {
-    final int largestMaxVersions = largestMaxVersions();
-    final Set<KijiColumnName> pagedColumns = Sets.newHashSet();
-    final Set<KijiColumnName> columnsWithExtraVersions = Sets.newHashSet();
-    for (KijiDataRequest.Column columnRequest : mDataRequest.getColumns()) {
-      if (columnRequest.isPagingEnabled()) {
-        pagedColumns.add(columnRequest.getColumnName());
-      } else if (largestMaxVersions > columnRequest.getMaxVersions()) {
-        columnsWithExtraVersions.add(columnRequest.getColumnName());
-      }
-    }
+  // TODO(gabe): Replace this with asynchbase
 
-    final List<IndexRange> rangesToRemove = Lists.newArrayList();
-
-    // Paged columns may contain one value which should be removed.
-    for (KijiColumnName column : pagedColumns) {
-      final int index = kvIndex(result, mostRecentKey(column));
-      final KeyValue kv = kvAtIndex(result, index);
-      if (null != kv) {
-        if (column.isFullyQualified() && Objects.equal(column, kcnFromKeyValue(kv))) {
-          rangesToRemove.add(new IndexRange(index, index + 1));
-        } else if (!column.isFullyQualified()
-            && Objects.equal(column.getFamily(), kcnFromKeyValue(kv).getFamily())) {
-          rangesToRemove.add(new IndexRange(index, index + 1));
-        }
-      }
-    }
-
-    // Extra versions of columns with fewer versions requested than the largest max versions should
-    // be removed.
-    for (KijiColumnName column : columnsWithExtraVersions) {
-      if (column.isFullyQualified()) {
-        final KeyValue mostRecentKey = mostRecentKey(column);
-        final int maxVersionsIndex = kvIndex(result, mostRecentKey) + columnMaxVersions(column);
-        final int nextQualifierIndex = kvIndex(result, nextQualifierKV(mostRecentKey));
-        if (nextQualifierIndex > maxVersionsIndex) {
-          rangesToRemove.add(new IndexRange(maxVersionsIndex, nextQualifierIndex));
-        } // Otherwise there are fewer values in this column than the requested max versions so we
-          // shouldn't remove any. TODO add a test to ensure this behavior is correct.
-      } else {
-        // Include the requested number of max versions for each qualifier in a family.
-        final int columnMaxVersions = columnMaxVersions(column);
-        final KeyValue mostRecentFamilyKey = mostRecentKey(column);
-        KeyValue mostRecentQualifierKey = kvAtIndex(result, kvIndex(result, mostRecentFamilyKey));
-        while (null != mostRecentQualifierKey && Objects.equal(
-            column.getFamily(), kcnFromKeyValue(mostRecentQualifierKey).getFamily())) {
-          final int maxVersionsIndex = kvIndex(result, mostRecentQualifierKey) + columnMaxVersions;
-          final int nextQualifierIndex = kvIndex(result, nextQualifierKV(mostRecentQualifierKey));
-          if (nextQualifierIndex > maxVersionsIndex) {
-            rangesToRemove.add(new IndexRange(maxVersionsIndex, nextQualifierIndex));
-          } // Otherwise there are fewer values in this column than the requested max versions so we
-            // shouldn't remove any. TODO add a test to ensure this behavior is correct
-          mostRecentQualifierKey = kvAtIndex(result, nextQualifierIndex);
-        }
-      }
-    }
-
-    if (rangesToRemove.size() == 0) {
-      return result;
-    } else {
-      Collections.sort(rangesToRemove, INDEX_RANGE_COMPARATOR);
-      LOG.debug("removing retrieved cells outside data request at indices: {}",
-          rangesToRemove.toString());
-      final List<IndexRange> rangesToKeep = invertRanges(rangesToRemove, 0, result.size());
-      LOG.debug("keeping cells matching request at indices: {}", rangesToKeep.toString());
-
-      final List<KeyValue> kvsToKeep = Lists.newArrayList();
-      for (IndexRange range : rangesToKeep) {
-        kvsToKeep.addAll(Arrays.asList(
-            Arrays.copyOfRange(result.raw(), range.mStart, range.mEnd)));
-      }
-      return new Result(kvsToKeep);
+  /*
+private Result filterToMatchRequest(
+    final Result result
+) {
+  final int largestMaxVersions = largestMaxVersions();
+  final Set<KijiColumnName> pagedColumns = Sets.newHashSet();
+  final Set<KijiColumnName> columnsWithExtraVersions = Sets.newHashSet();
+  for (KijiDataRequest.Column columnRequest : mDataRequest.getColumns()) {
+    if (columnRequest.isPagingEnabled()) {
+      pagedColumns.add(columnRequest.getColumnName());
+    } else if (largestMaxVersions > columnRequest.getMaxVersions()) {
+      columnsWithExtraVersions.add(columnRequest.getColumnName());
     }
   }
 
-  /**
-   * Get the KeyValue representing the most recent possible Key of a Kiji column.
-   *
-   * <p>
-   *   This KeyValue has no Value and should be used only for finding the location in the underlying
-   *   Result at which the value should be found.
-   * </p>
-   *
-   * @param column Kiji column for which the most recent possible Key.
-   * @return the KeyValue representing the most recent possible Key of a Kiji column.
-   */
+  final List<IndexRange> rangesToRemove = Lists.newArrayList();
+
+  // Paged columns may contain one value which should be removed.
+  for (KijiColumnName column : pagedColumns) {
+    final int index = kvIndex(result, mostRecentKey(column));
+    final KeyValue kv = kvAtIndex(result, index);
+    if (null != kv) {
+      if (column.isFullyQualified() && Objects.equal(column, kcnFromKeyValue(kv))) {
+        rangesToRemove.add(new IndexRange(index, index + 1));
+      } else if (!column.isFullyQualified()
+          && Objects.equal(column.getFamily(), kcnFromKeyValue(kv).getFamily())) {
+        rangesToRemove.add(new IndexRange(index, index + 1));
+      }
+    }
+  }
+
+  // Extra versions of columns with fewer versions requested than the largest max versions should
+  // be removed.
+  for (KijiColumnName column : columnsWithExtraVersions) {
+    if (column.isFullyQualified()) {
+      final KeyValue mostRecentKey = mostRecentKey(column);
+      final int maxVersionsIndex = kvIndex(result, mostRecentKey) + columnMaxVersions(column);
+      final int nextQualifierIndex = kvIndex(result, nextQualifierKV(mostRecentKey));
+      if (nextQualifierIndex > maxVersionsIndex) {
+        rangesToRemove.add(new IndexRange(maxVersionsIndex, nextQualifierIndex));
+      } // Otherwise there are fewer values in this column than the requested max versions so we
+        // shouldn't remove any. TODO add a test to ensure this behavior is correct.
+    } else {
+      // Include the requested number of max versions for each qualifier in a family.
+      final int columnMaxVersions = columnMaxVersions(column);
+      final KeyValue mostRecentFamilyKey = mostRecentKey(column);
+      KeyValue mostRecentQualifierKey = kvAtIndex(result, kvIndex(result, mostRecentFamilyKey));
+      while (null != mostRecentQualifierKey && Objects.equal(
+          column.getFamily(), kcnFromKeyValue(mostRecentQualifierKey).getFamily())) {
+        final int maxVersionsIndex = kvIndex(result, mostRecentQualifierKey) + columnMaxVersions;
+        final int nextQualifierIndex = kvIndex(result, nextQualifierKV(mostRecentQualifierKey));
+        if (nextQualifierIndex > maxVersionsIndex) {
+          rangesToRemove.add(new IndexRange(maxVersionsIndex, nextQualifierIndex));
+        } // Otherwise there are fewer values in this column than the requested max versions so we
+          // shouldn't remove any. TODO add a test to ensure this behavior is correct
+        mostRecentQualifierKey = kvAtIndex(result, nextQualifierIndex);
+      }
+    }
+  }
+
+  if (rangesToRemove.size() == 0) {
+    return result;
+  } else {
+    Collections.sort(rangesToRemove, INDEX_RANGE_COMPARATOR);
+    LOG.debug("removing retrieved cells outside data request at indices: {}",
+        rangesToRemove.toString());
+    final List<IndexRange> rangesToKeep = invertRanges(rangesToRemove, 0, result.size());
+    LOG.debug("keeping cells matching request at indices: {}", rangesToKeep.toString());
+
+    final List<KeyValue> kvsToKeep = Lists.newArrayList();
+    for (IndexRange range : rangesToKeep) {
+      kvsToKeep.addAll(Arrays.asList(
+          Arrays.copyOfRange(result.raw(), range.mStart, range.mEnd)));
+    }
+    return new Result(kvsToKeep);
+  }
+} */
+
+/**
+ * Get the KeyValue representing the most recent possible Key of a Kiji column.
+ *
+ * <p>
+ *   This KeyValue has no Value and should be used only for finding the location in the underlying
+ *   Result at which the value should be found.
+ * </p>
+ *
+ * @param column Kiji column for which the most recent possible Key.
+ * @return the KeyValue representing the most recent possible Key of a Kiji column.
+ */
   private KeyValue mostRecentKey(
       final KijiColumnName column
   ) {
@@ -544,6 +574,10 @@ public final class HBaseKijiResult implements KijiResult {
       final KijiColumnName column,
       final long timestamp
   ) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final HBaseColumnName hBaseColumnName;
     try {
       hBaseColumnName = mColumnNameTranslator.toHBaseColumnName(column);
@@ -555,6 +589,7 @@ public final class HBaseKijiResult implements KijiResult {
         hBaseColumnName.getQualifier(),
         timestamp,
         new byte[0]);
+    */
   }
 
   /**
@@ -573,7 +608,12 @@ public final class HBaseKijiResult implements KijiResult {
   private int kvIndex(
       final KeyValue toFind
   ) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return kvIndex(mUnpagedResult, toFind);
+    */
   }
 
   /**
@@ -586,10 +626,15 @@ public final class HBaseKijiResult implements KijiResult {
   private KeyValue kvAtIndex(
       final int index
   ) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     if (index < 0 || index >= mUnpagedResult.size()) {
       return null;
     }
     return mUnpagedResult.raw()[index];
+    */
   }
 
   /**
@@ -601,12 +646,17 @@ public final class HBaseKijiResult implements KijiResult {
   private KijiColumnName kcnFromKeyValue(
       final KeyValue kv
   ) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final HBaseColumnName hBaseColumnName = new HBaseColumnName(kv.getFamily(), kv.getQualifier());
     try {
       return mColumnNameTranslator.toKijiColumnName(hBaseColumnName);
     } catch (NoSuchColumnException nsce) {
       throw new KijiIOException(nsce);
     }
+    */
   }
 
   /**
@@ -643,8 +693,12 @@ public final class HBaseKijiResult implements KijiResult {
    */
   private int columnMaxVersions(
       final KijiColumnName column
-  ) {
+  ) {// TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mDataRequest.getRequestForColumn(column).getMaxVersions();
+    */
   }
 
   /**
@@ -671,13 +725,23 @@ public final class HBaseKijiResult implements KijiResult {
   /** {@inheritDoc} */
   @Override
   public EntityId getEntityId() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mEntityId;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiDataRequest getDataRequest() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mDataRequest;
+    */
   }
 
   /** {@inheritDoc} */
@@ -685,6 +749,10 @@ public final class HBaseKijiResult implements KijiResult {
   public <T> KijiCell<T> getMostRecentCell(
       final KijiColumnName column
   ) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkArgument(column.isFullyQualified(),
         "Can only get a cell from a fully qualified column. Found: %s", column);
     final KijiDataRequest.Column columnRequest = mDataRequest.getRequestForColumn(column);
@@ -694,6 +762,7 @@ public final class HBaseKijiResult implements KijiResult {
         "Cannot get the most recent version of a paged column. Found column: %s in request: %s",
         column, mDataRequest);
     return cellFromKeyValue(kvAtIndex(kvIndex(mostRecentKey(column))));
+    */
   }
 
   /** {@inheritDoc} */
@@ -702,6 +771,10 @@ public final class HBaseKijiResult implements KijiResult {
       final KijiColumnName column,
       final long timestamp
   ) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkArgument(column.isFullyQualified(),
         "Can only get a cell from a fully qualified column. Found: %s", column);
     final KijiDataRequest.Column columnRequest = mDataRequest.getRequestForColumn(column);
@@ -717,6 +790,7 @@ public final class HBaseKijiResult implements KijiResult {
     } else {
       return null;
     }
+    */
   }
 
   /** {@inheritDoc} */
@@ -724,12 +798,16 @@ public final class HBaseKijiResult implements KijiResult {
   public <T> Iterator<KijiCell<T>> iterator(
       final KijiColumnName column
   ) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final KijiDataRequest.Column columnRequest = mDataRequest.getRequestForColumn(column);
     Preconditions.checkNotNull(columnRequest, "No request for column: %s in request: %s",
         column, mDataRequest);
     final KijiCellDecoder<T> decoder = getDecoder(column);
     if (columnRequest.isPagingEnabled()) {
-      final HBaseQualifierIterator optionalQualifierIterator;
+      final AsyncQualifierIterator optionalQualifierIterator;
       try {
         optionalQualifierIterator = column.isFullyQualified()
             ? null
@@ -755,6 +833,7 @@ public final class HBaseKijiResult implements KijiResult {
           mEntityId,
           new HBaseResultIterator(mUnpagedResult, columnSlice.mStart, columnSlice.mEnd));
     }
+    */
   }
 
   /** {@inheritDoc} */

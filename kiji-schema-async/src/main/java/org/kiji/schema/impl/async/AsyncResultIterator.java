@@ -16,20 +16,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Result;
 
 /** Iterator over the KeyValues in a {@link org.apache.hadoop.hbase.client.Result}. */
-public class HBaseResultIterator implements Iterator<KeyValue> {
+public class AsyncResultIterator implements Iterator<KeyValue> {
 
-  private final Result mResult;
-  private final int mEndIndex;
+  // TODO(gabe): Replace with asynchbase
+  //private final Result mResult;
+  //private final int mEndIndex;
   private int mCursor = 0;
 
   /**
@@ -37,54 +37,70 @@ public class HBaseResultIterator implements Iterator<KeyValue> {
    *
    * @param result HBase Result to iterate across.
    */
-  public HBaseResultIterator(
-      final Result result
-  ) {
-    mResult = result;
-    mCursor = 0;
-    mEndIndex = result.size();
-  }
+  // TODO(gabe): Replace this with asynchbase
 
-  /**
-   * Initialize a new HBaseResultIterator.
-   *
-   * @param result HBase Result to iterate across.
-   * @param startIndex index in the Result at which to begin iteration. This index is inclusive.
-   * @param endIndex index in the Result at which to end iteration. This index is exclusive.
-   */
-  public HBaseResultIterator(
-      final Result result,
-      final int startIndex,
-      final int endIndex
-  ) {
-    Preconditions.checkArgument(startIndex >= 0 && startIndex <= result.size(),
-        "start index must be greater than or equal to 0 and less than or equal to the size of the "
-        + "result. Found start index: %s and result size: %s.", startIndex, result.size());
-    Preconditions.checkArgument(endIndex >= 0 && endIndex <= result.size(),
-        "end index  must be greater than or equal to 0 and less than or equal to the size of the "
-        + "result. Found end index: %s and result size: %s.", endIndex, result.size());
-    Preconditions.checkArgument(startIndex <= endIndex, "start index must be less than or equal to "
-        + "end index. Found start index: %s and end index %s.", startIndex, endIndex);
-    mResult = result;
-    mCursor = startIndex;
-    mEndIndex = endIndex;
-  }
+  /*
+public AsyncResultIterator(
+    final Result result
+) {
+  mResult = result;
+  mCursor = 0;
+  mEndIndex = result.size();
+} */
 
-  /** {@inheritDoc} */
+/**
+ * Initialize a new HBaseResultIterator.
+ *
+ * @param result HBase Result to iterate across.
+ * @param startIndex index in the Result at which to begin iteration. This index is inclusive.
+ * @param endIndex index in the Result at which to end iteration. This index is exclusive.
+ */
+// TODO(gabe): Replace this with asynchbase
+
+  /*
+public AsyncResultIterator(
+    final Result result,
+    final int startIndex,
+    final int endIndex
+) {
+  Preconditions.checkArgument(startIndex >= 0 && startIndex <= result.size(),
+      "start index must be greater than or equal to 0 and less than or equal to the size of the "
+      + "result. Found start index: %s and result size: %s.", startIndex, result.size());
+  Preconditions.checkArgument(endIndex >= 0 && endIndex <= result.size(),
+      "end index  must be greater than or equal to 0 and less than or equal to the size of the "
+      + "result. Found end index: %s and result size: %s.", endIndex, result.size());
+  Preconditions.checkArgument(startIndex <= endIndex, "start index must be less than or equal to "
+      + "end index. Found start index: %s and end index %s.", startIndex, endIndex);
+  mResult = result;
+  mCursor = startIndex;
+  mEndIndex = endIndex;
+} */
+
+/** {@inheritDoc} */
   @Override
   public boolean hasNext() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return mEndIndex > mCursor;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public KeyValue next() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
     final KeyValue nextKV = mResult.raw()[mCursor];
     mCursor++;
     return nextKV;
+    */
   }
 
   /** {@inheritDoc} */

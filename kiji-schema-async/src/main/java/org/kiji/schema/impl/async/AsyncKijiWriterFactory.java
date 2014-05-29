@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 
@@ -29,35 +29,35 @@ import org.kiji.schema.KijiWriterFactory;
 
 /** Factory for Table Writers. */
 @ApiAudience.Private
-public final class HBaseKijiWriterFactory implements KijiWriterFactory {
+public final class AsyncKijiWriterFactory implements KijiWriterFactory {
 
   /** HBaseKijiTable for this writer factory. */
-  private final HBaseKijiTable mTable;
+  private final AsyncKijiTable mTable;
 
   /**
    * Constructor for this writer factory.
    *
    * @param table The HBaseKijiTable to which this writer factory's writers write.
    */
-  public HBaseKijiWriterFactory(HBaseKijiTable table) {
+  public AsyncKijiWriterFactory(AsyncKijiTable table) {
     mTable = table;
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiTableWriter openTableWriter() throws IOException {
-    return new HBaseKijiTableWriter(mTable);
+    return new AsyncKijiTableWriter(mTable);
   }
 
   /** {@inheritDoc} */
   @Override
   public AtomicKijiPutter openAtomicPutter() throws IOException {
-    return new HBaseAtomicKijiPutter(mTable);
+    return new AsyncAtomicKijiPutter(mTable);
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiBufferedWriter openBufferedWriter() throws IOException {
-    return new HBaseKijiBufferedWriter(mTable);
+    return new AsyncKijiBufferedWriter(mTable);
   }
 }

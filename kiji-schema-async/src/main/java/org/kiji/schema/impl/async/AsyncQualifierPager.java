@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -26,9 +26,6 @@ import java.util.NoSuchElementException;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,14 +54,14 @@ import org.kiji.schema.util.Debug;
  * </p>
  */
 @ApiAudience.Private
-public final class HBaseQualifierPager implements Iterator<String[]>, Closeable {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseQualifierPager.class);
+public final class AsyncQualifierPager implements Iterator<String[]>, Closeable {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncQualifierPager.class);
 
   /** Entity ID of the row being paged through. */
   private final EntityId mEntityId;
 
   /** HBase KijiTable to read from. */
-  private final HBaseKijiTable mTable;
+  private final AsyncKijiTable mTable;
 
   /** Name of the map-type family being paged through. */
   private final KijiColumnName mFamily;
@@ -93,10 +90,10 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
    * @param family Iterate through the qualifiers from this map-type family.
    * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the specified family.
    */
-  public HBaseQualifierPager(
+  public AsyncQualifierPager(
       EntityId entityId,
       KijiDataRequest dataRequest,
-      HBaseKijiTable table,
+      AsyncKijiTable table,
       KijiColumnName family)
       throws KijiColumnPagingNotEnabledException {
 
@@ -138,6 +135,10 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
    * @return the next page of qualifiers.
    */
   public String[] next(int pageSize) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     if (!mHasNext) {
       throw new NoSuchElementException();
     }
@@ -163,7 +164,7 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
     LOG.debug("HBaseMapPager data request: {} and page size {}", nextPageDataRequest, pageSize);
 
     final LayoutCapsule capsule = mTable.getLayoutCapsule();
-    final HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(
+    final AsyncDataRequestAdapter adapter = new AsyncDataRequestAdapter(
         nextPageDataRequest, capsule.getKijiColumnNameTranslator());
     try {
       final Get hbaseGet = adapter.toGet(mEntityId, capsule.getLayout());
@@ -198,6 +199,7 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
+    */
   }
 
   /**
@@ -207,16 +209,19 @@ public final class HBaseQualifierPager implements Iterator<String[]>, Closeable 
    * @return the HBase Result.
    * @throws IOException on I/O error.
    */
-  private Result doHBaseGet(Get get) throws IOException {
-    final HTableInterface htable = mTable.openHTableConnection();
-    try {
-      return htable.get(get);
-    } finally {
-      htable.close();
-    }
-  }
+  // TODO(gabe): Replace this with asynchbase
 
-  /** {@inheritDoc} */
+  /*
+private Result doHBaseGet(Get get) throws IOException {
+  final HTableInterface htable = mTable.openHTableConnection();
+  try {
+    return htable.get(get);
+  } finally {
+    htable.close();
+  }
+} */
+
+/** {@inheritDoc} */
   @Override
   public void remove() {
     throw new UnsupportedOperationException("KijiPager.remove() is not supported.");

@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.List;
@@ -35,8 +35,6 @@ import org.apache.hadoop.hbase.HRegionInfo;
 import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HTable;
-import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,16 +76,16 @@ import org.kiji.schema.util.VersionInfo;
  * have access to should be added to org.kiji.schema.KijiTable.</p>
  */
 @ApiAudience.Private
-public final class HBaseKijiTable implements KijiTable {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTable.class);
+public final class AsyncKijiTable implements KijiTable {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncKijiTable.class);
   private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + HBaseKijiTable.class.getName());
+      LoggerFactory.getLogger("cleanup." + AsyncKijiTable.class.getName());
   private static final String ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE = String.format(
       "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
       CLEANUP_LOG.getName());
 
   /** The kiji instance this table belongs to. */
-  private final HBaseKiji mKiji;
+  private final AsyncKiji mKiji;
 
   /** The name of this table (the Kiji name, not the HBase name). */
   private final String mName;
@@ -139,9 +137,10 @@ public final class HBaseKijiTable implements KijiTable {
   private final KijiReaderFactory mReaderFactory;
 
   /** Pool of HTable connections. Safe for concurrent access. */
-  private final KijiHTablePool mHTablePool;
+  // TODO(gabe): Replace this with asynchbase
+  //private final KijiHTablePool mHTablePool;
 
-  /** Name of the HBase table backing this Kiji table. */
+/** Name of the HBase table backing this Kiji table. */
   private final String mHBaseTableName;
 
   /**
@@ -162,13 +161,18 @@ public final class HBaseKijiTable implements KijiTable {
    * @throws IOException On an HBase error.
    *     <p> Throws KijiTableNotFoundException if the table does not exist. </p>
    */
-  HBaseKijiTable(
-      HBaseKiji kiji,
+  AsyncKijiTable(
+      AsyncKiji kiji,
       String name,
       Configuration conf,
       HTableInterfaceFactory htableFactory,
       TableLayoutMonitor layoutMonitor)
       throws IOException {
+
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
         ? Debug.getStackTrace()
         : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
@@ -190,8 +194,8 @@ public final class HBaseKijiTable implements KijiTable {
       throw new KijiTableNotFoundException(mTableURI);
     }
 
-    mWriterFactory = new HBaseKijiWriterFactory(this);
-    mReaderFactory = new HBaseKijiReaderFactory(this);
+    mWriterFactory = new AsyncKijiWriterFactory(this);
+    mReaderFactory = new AsyncKijiReaderFactory(this);
 
     mLayoutMonitor = layoutMonitor;
     mEntityIdFactory = createEntityIdFactory(mLayoutMonitor.getLayoutCapsule());
@@ -206,6 +210,7 @@ public final class HBaseKijiTable implements KijiTable {
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open KijiTable instance in state %s.", oldState);
+    */
   }
 
   /**
@@ -270,10 +275,15 @@ public final class HBaseKijiTable implements KijiTable {
    * @param consumer the LayoutConsumer to unregister.
    */
   public void unregisterLayoutConsumer(LayoutConsumer consumer) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot unregister a layout consumer from a KijiTable in state %s.", state);
     mLayoutMonitor.unregisterLayoutConsumer(consumer);
+    */
   }
 
   /**
@@ -301,12 +311,16 @@ public final class HBaseKijiTable implements KijiTable {
    * @return A new HTable associated with this KijiTable.
    * @throws IOException in case of an error.
    */
+  // TODO(gabe): Replace this with asynchbase
+
+    /*
   public HTableInterface openHTableConnection() throws IOException {
+
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot open an HTable connection for a KijiTable in state %s.", state);
     return mHTablePool.getTable();
-  }
+  } */
 
   /**
    * {@inheritDoc}
@@ -349,19 +363,28 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public KijiTableReader openTableReader() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot open a table reader on a KijiTable in state %s.", state);
     try {
-      return HBaseKijiTableReader.create(this);
+      return AsyncKijiTableReader.create(this);
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiTableWriter openTableWriter() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot open a table writer on a KijiTable in state %s.", state);
@@ -370,6 +393,7 @@ public final class HBaseKijiTable implements KijiTable {
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
+    */
   }
 
   /** {@inheritDoc} */
@@ -401,6 +425,11 @@ public final class HBaseKijiTable implements KijiTable {
    */
   @Override
   public List<KijiRegion> getRegions() throws IOException {
+
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get the regions for a KijiTable in state %s.", state);
@@ -432,15 +461,21 @@ public final class HBaseKijiTable implements KijiTable {
     } finally {
       htable.close();
     }
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiTableAnnotator openTableAnnotator() throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get the TableAnnotator for a table in state: %s.", state);
     return new HBaseKijiTableAnnotator(this);
+    */
   }
 
   /**
@@ -449,6 +484,10 @@ public final class HBaseKijiTable implements KijiTable {
    * @throws IOException on I/O error.
    */
   private void closeResources() throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN || oldState == State.UNINITIALIZED,
         "Cannot close KijiTable instance %s in state %s.", this, oldState);
@@ -465,6 +504,7 @@ public final class HBaseKijiTable implements KijiTable {
     mLayoutMonitor = null;
 
     LOG.debug("HBaseKijiTable '{}' closed.", mTableURI);
+    */
   }
 
   /** {@inheritDoc} */
@@ -514,6 +554,10 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public String toString() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     String layoutId = (null == getLayoutCapsule())
         ? "Uninitialized layout."
         : getLayoutCapsule().getLayout().getDesc().getLayoutId();
@@ -524,6 +568,7 @@ public final class HBaseKijiTable implements KijiTable {
         .add("layout_id", layoutId)
         .add("state", mState.get())
         .toString();
+     */
   }
 
   /**
@@ -534,7 +579,11 @@ public final class HBaseKijiTable implements KijiTable {
    * @param kijiTable The Kiji table to downcast to an HBaseKijiTable.
    * @return The given Kiji table as an HBaseKijiTable.
    */
-  public static HBaseKijiTable downcast(KijiTable kijiTable) {
+  public static AsyncKijiTable downcast(KijiTable kijiTable) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     if (!(kijiTable instanceof HBaseKijiTable)) {
       // This should really never happen.  Something is seriously
       // wrong with Kiji code if we get here.
@@ -542,6 +591,7 @@ public final class HBaseKijiTable implements KijiTable {
           "Found a KijiTable object that was not an instance of HBaseKijiTable.");
     }
     return (HBaseKijiTable) kijiTable;
+    */
   }
 
   /**
@@ -565,6 +615,10 @@ public final class HBaseKijiTable implements KijiTable {
    * @throws IOException on I/O error.
    */
   public void bulkLoad(Path hfilePath) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final LoadIncrementalHFiles loader = createHFileLoader(mConf);
     try {
       // LoadIncrementalHFiles.doBulkLoad() requires an HTable instance, not an HTableInterface:
@@ -595,5 +649,6 @@ public final class HBaseKijiTable implements KijiTable {
     } catch (TableNotFoundException tnfe) {
       throw new InternalKijiError(tnfe);
     }
+    */
   }
 }

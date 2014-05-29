@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Map;
@@ -39,7 +39,7 @@ import org.kiji.schema.layout.KijiColumnNameTranslator;
 
 /** HBase implementation of {@link org.kiji.schema.KijiTableAnnotator}. */
 @ApiAudience.Private
-public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
+public final class AsyncKijiTableAnnotator implements KijiTableAnnotator {
 
   static final String METATABLE_KEY_PREFIX = "kiji.schema.table_annotator.";
 
@@ -137,15 +137,20 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
    * @throws NoSuchColumnException in case the column does not exist in the table.
    */
   static String getMetaTableKey(
-      final HBaseKijiTable table,
+      final AsyncKijiTable table,
       final KijiColumnName columnName,
       final String key
   ) throws NoSuchColumnException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final KijiColumnNameTranslator translator = table.getColumnNameTranslator();
     Preconditions.checkArgument(isValidAnnotationKey(key), "Annotation key: %s does not conform to "
         + "required pattern: %s", key, ALLOWED_ANNOTATION_KEY_PATTERN);
     return String.format("%s%s.%s",
         METATABLE_KEY_PREFIX, translator.toHBaseColumnName(columnName), key);
+    */
   }
 
   /**
@@ -173,9 +178,13 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
    * @throws NoSuchColumnException in case the column does not exist in the table.
    */
   static KijiColumnName columnFromMetaTableKey(
-      final HBaseKijiTable table,
+      final AsyncKijiTable table,
       final String metaTableKey
   ) throws NoSuchColumnException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final KijiColumnNameTranslator translator = table.getColumnNameTranslator();
     // Everything between the prefix and the annotation key.
     final String hbaseColumnString =
@@ -187,6 +196,7 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
 
     final HBaseColumnName hbaseColumn = new HBaseColumnName(hbaseFamily, hbaseQualifier);
     return translator.toKijiColumnName(hbaseColumn);
+    */
   }
 
   // -----------------------------------------------------------------------------------------------
@@ -198,7 +208,7 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
     OPEN, CLOSED
   }
 
-  private final HBaseKijiTable mTable;
+  private final AsyncKijiTable mTable;
   private final AtomicReference<State> mState;
 
   /**
@@ -206,10 +216,10 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
    *
    * @param table the table served by this ColumnAnnotator.
    */
-  public HBaseKijiTableAnnotator(
-      final HBaseKijiTable table
+  public AsyncKijiTableAnnotator(
+      final AsyncKijiTable table
   ) {
-    mTable = (HBaseKijiTable) table.retain();
+    mTable = (AsyncKijiTable) table.retain();
     mState = new AtomicReference<State>(State.OPEN);
   }
 

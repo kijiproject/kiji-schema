@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -37,9 +37,9 @@ import org.kiji.schema.util.CloseableIterable;
  * <p> Uses paging under the hood to page through the qualifiers. </p>
  */
 @ApiAudience.Private
-public final class HBaseQualifierIterator implements CloseableIterable<String>, Iterator<String> {
+public final class AsyncQualifierIterator implements CloseableIterable<String>, Iterator<String> {
   /** Underlying qualifier pager. */
-  private final HBaseQualifierPager mPager;
+  private final AsyncQualifierPager mPager;
 
   /** Iterates over the current page of qualifiers. Never null, but potentially empty. */
   private Iterator<String> mPageIterator;
@@ -53,13 +53,13 @@ public final class HBaseQualifierIterator implements CloseableIterable<String>, 
    * @param family Family column name.
    * @throws KijiColumnPagingNotEnabledException if paging is not configured for the family.
    */
-  public HBaseQualifierIterator(
+  public AsyncQualifierIterator(
       EntityId entityId,
       KijiDataRequest dataRequest,
-      HBaseKijiTable table,
+      AsyncKijiTable table,
       KijiColumnName family)
       throws KijiColumnPagingNotEnabledException {
-    mPager = new HBaseQualifierPager(entityId, dataRequest, table, family);
+    mPager = new AsyncQualifierPager(entityId, dataRequest, table, family);
 
     mPageIterator = Iterators.emptyIterator();
     while (!mPageIterator.hasNext() && mPager.hasNext()) {

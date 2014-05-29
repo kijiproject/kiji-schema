@@ -16,7 +16,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -24,11 +24,6 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Preconditions;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.client.ScannerTimeoutException;
 import org.apache.hadoop.hbase.regionserver.LeaseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,8 +36,8 @@ import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
 
 /** Scanner across rows of a KijiTable which returns a KijiResult per row. */
-public class HBaseKijiResultScanner implements KijiResultScanner {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiResultScanner.class);
+public class AsyncKijiResultScanner implements KijiResultScanner {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncKijiResultScanner.class);
 
   private static final int MAX_RETRIES_ON_TIMEOUT = 3;
 
@@ -63,19 +58,20 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
     return Arrays.copyOf(key, key.length + 1);
   }
 
+  // TODO(gabe): Replace with asynchbase
   private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
-  private final KijiDataRequest mRequest;
-  private final HBaseKijiTable mTable;
-  private final Scan mScan;
-  private final CellDecoderProvider mDecoderProvider;
-  private final KijiColumnNameTranslator mColumnNameTranslator;
-  private final EntityIdFactory mEidFactory;
-  private final HTableInterface mHTable;
-  private final boolean mReopenScannerOnTimeout;
+  //private final KijiDataRequest mRequest;
+  //private final AsyncKijiTable mTable;
+  //private final Scan mScan;
+  //private final CellDecoderProvider mDecoderProvider;
+  //private final KijiColumnNameTranslator mColumnNameTranslator;
+  //private final EntityIdFactory mEidFactory;
+  //private final HTableInterface mHTable;
+  //private final boolean mReopenScannerOnTimeout;
   /** Replaced if the current scanner times out. */
-  private ResultScanner mResultScanner;
+  //private ResultScanner mResultScanner;
   /** Replaced after every call to {@link #next()}. */
-  private Result mNextResult;
+  //private Result mNextResult;
 
   /**
    * Initialize a new HBaseKijiResultScanner.
@@ -88,43 +84,50 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
    * @param reopenScannerOnTimeout Whether to reopen the underlying scanner if it times out.
    * @throws IOException in case of an error connecting to HBase.
    */
-  public HBaseKijiResultScanner(
-      final KijiDataRequest request,
-      final HBaseKijiTable table,
-      final Scan scan,
-      final CellDecoderProvider decoderProvider,
-      final KijiColumnNameTranslator columnNameTranslator,
-      final boolean reopenScannerOnTimeout
-  ) throws IOException {
-    mRequest = request;
-    mTable = table;
-    mScan = scan;
-    mDecoderProvider = decoderProvider;
-    mColumnNameTranslator = columnNameTranslator;
-    mReopenScannerOnTimeout = reopenScannerOnTimeout;
-    mEidFactory = EntityIdFactory.getFactory(mTable.getLayout());
-    mHTable = mTable.openHTableConnection();
-    try {
-      mResultScanner = mHTable.getScanner(scan);
-    } catch (IOException ioe) {
-      mHTable.close();
-      throw ioe;
-    } catch (RuntimeException re) {
-      mHTable.close();
-      throw re;
-    }
-    mNextResult = getNextResult();
+  // TODO(gabe): Replace this with asynchbase
 
-    final State oldState = mState.getAndSet(State.OPEN);
-    Preconditions.checkState(oldState == State.UNINITIALIZED,
-        "Cannot open KijiRowScanner instance in state %s.", oldState);
+  /*
+public AsyncKijiResultScanner(
+    final KijiDataRequest request,
+    final AsyncKijiTable table,
+    final Scan scan,
+    final CellDecoderProvider decoderProvider,
+    final KijiColumnNameTranslator columnNameTranslator,
+    final boolean reopenScannerOnTimeout
+) throws IOException {
+  mRequest = request;
+  mTable = table;
+  mScan = scan;
+  mDecoderProvider = decoderProvider;
+  mColumnNameTranslator = columnNameTranslator;
+  mReopenScannerOnTimeout = reopenScannerOnTimeout;
+  mEidFactory = EntityIdFactory.getFactory(mTable.getLayout());
+  mHTable = mTable.openHTableConnection();
+  try {
+    mResultScanner = mHTable.getScanner(scan);
+  } catch (IOException ioe) {
+    mHTable.close();
+    throw ioe;
+  } catch (RuntimeException re) {
+    mHTable.close();
+    throw re;
   }
+  mNextResult = getNextResult();
 
-  /**
-   * Reopen the ResultScanner if mReopenScannerOnTimeout is true. The new ResultScanner should be
-   * set to start where the old scanner left off.
-   */
+  final State oldState = mState.getAndSet(State.OPEN);
+  Preconditions.checkState(oldState == State.UNINITIALIZED,
+      "Cannot open KijiRowScanner instance in state %s.", oldState);
+} */
+
+/**
+ * Reopen the ResultScanner if mReopenScannerOnTimeout is true. The new ResultScanner should be
+ * set to start where the old scanner left off.
+ */
   private void reopenScanner() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     if (mReopenScannerOnTimeout) {
       LOG.debug("HBase scanner timed out: closing an reopening a new scanner.");
       final byte[] nextRow = (null == mNextResult)
@@ -140,6 +143,7 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
     } else {
       throw new KijiIOException("HBase scanner timed out with automatic reopening disabled.");
     }
+    */
   }
 
   /**
@@ -147,31 +151,43 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
    *
    * @return the next HBase Result from the ResultScanner.
    */
-  private Result getNextResult() {
-    for (int retries = 0; retries < MAX_RETRIES_ON_TIMEOUT; ++retries) {
-      try {
-        return mResultScanner.next();
-      } catch (LeaseException le) {
-        reopenScanner();
-      } catch (ScannerTimeoutException ste) {
-        reopenScanner();
-      } catch (IOException ioe) {
-        throw new KijiIOException(ioe);
-      }
-    }
-    throw new KijiIOException(String.format(
-        "Unable to get Result from HBase scanner after %d attempts.", MAX_RETRIES_ON_TIMEOUT));
-  }
+  // TODO(gabe): Replace this with asynchbase
 
-  /** {@inheritDoc} */
+  /*
+private Result getNextResult() {
+  for (int retries = 0; retries < MAX_RETRIES_ON_TIMEOUT; ++retries) {
+    try {
+      return mResultScanner.next();
+    } catch (LeaseException le) {
+      reopenScanner();
+    } catch (ScannerTimeoutException ste) {
+      reopenScanner();
+    } catch (IOException ioe) {
+      throw new KijiIOException(ioe);
+    }
+  }
+  throw new KijiIOException(String.format(
+      "Unable to get Result from HBase scanner after %d attempts.", MAX_RETRIES_ON_TIMEOUT));
+} */
+
+/** {@inheritDoc} */
   @Override
   public boolean hasNext() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     return null != mNextResult;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
-  public HBaseKijiResult next() {
+  public AsyncKijiResult next() {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State oldState = mState.get();
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot get element from KijiResultScanner in state %s.", oldState);
@@ -180,13 +196,14 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
       throw new NoSuchElementException();
     }
     mNextResult = getNextResult();
-    return new HBaseKijiResult(
+    return new AsyncKijiResult(
         mEidFactory.getEntityIdFromHBaseRowKey(next.getRow()),
         mRequest,
         next,
         mColumnNameTranslator,
         mDecoderProvider,
         mTable);
+    */
   }
 
   /** {@inheritDoc} */
@@ -199,10 +216,15 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close KijiResultScanner instance in state %s.", oldState);
     mResultScanner.close();
     mHTable.close();
+    */
   }
 }

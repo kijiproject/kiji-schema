@@ -17,16 +17,13 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.NoSuchElementException;
 
 import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,8 +51,8 @@ import org.kiji.schema.layout.impl.LayoutCapsule;
  * </p>
  */
 @ApiAudience.Private
-public final class HBaseVersionPager implements KijiPager {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseVersionPager.class);
+public final class AsyncVersionPager implements KijiPager {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncVersionPager.class);
 
   /** Entity ID of the row being paged through. */
   private final EntityId mEntityId;
@@ -67,7 +64,7 @@ public final class HBaseVersionPager implements KijiPager {
   private final KijiDataRequest.Column mColumnRequest;
 
   /** HBase KijiTable to read from. */
-  private final HBaseKijiTable mTable;
+  private final AsyncKijiTable mTable;
 
   /** Provider for cell decoders. */
   private final CellDecoderProvider mCellDecoderProvider;
@@ -112,10 +109,10 @@ public final class HBaseVersionPager implements KijiPager {
    * @param cellDecoderProvider Provider for cell decoders.
    * @throws KijiColumnPagingNotEnabledException If paging is not enabled for the specified column.
    */
-  protected HBaseVersionPager(
+  protected AsyncVersionPager(
       EntityId entityId,
       KijiDataRequest dataRequest,
-      HBaseKijiTable table,
+      AsyncKijiTable table,
       KijiColumnName colName,
       CellDecoderProvider cellDecoderProvider)
       throws KijiColumnPagingNotEnabledException {
@@ -181,6 +178,10 @@ public final class HBaseVersionPager implements KijiPager {
   /** {@inheritDoc} */
   @Override
   public KijiRowData next(int pageSize) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkArgument(pageSize > 0, "Page size must be >= 1, got %s", pageSize);
     if (!mHasNext) {
       throw new NoSuchElementException();
@@ -198,7 +199,7 @@ public final class HBaseVersionPager implements KijiPager {
         .build();
 
     final LayoutCapsule capsule = mTable.getLayoutCapsule();
-    final HBaseDataRequestAdapter adapter = new HBaseDataRequestAdapter(
+    final AsyncDataRequestAdapter adapter = new AsyncDataRequestAdapter(
         nextPageDataRequest, capsule.getKijiColumnNameTranslator());
     try {
       final Get hbaseGet = adapter.toGet(mEntityId, capsule.getLayout());
@@ -221,12 +222,15 @@ public final class HBaseVersionPager implements KijiPager {
           mHasNext = false;
         }
       }
+      // TODO(gabe): Uncomment this when done implementing
+      //return new AsyncKijiRowData(
+          //mTable, nextPageDataRequest, mEntityId, result, mCellDecoderProvider);
+      throw new UnsupportedOperationException("Not yet implemented with asynchbase");
 
-      return new HBaseKijiRowData(
-          mTable, nextPageDataRequest, mEntityId, result, mCellDecoderProvider);
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
+    */
   }
 
   /**
@@ -236,16 +240,19 @@ public final class HBaseVersionPager implements KijiPager {
    * @return the HBase Result.
    * @throws IOException on I/O error.
    */
-  private Result doHBaseGet(Get get) throws IOException {
-    final HTableInterface htable = mTable.openHTableConnection();
-    try {
-      return htable.get(get);
-    } finally {
-      htable.close();
-    }
-  }
+  // TODO(gabe): Replace this with asynchbase
 
-  /** {@inheritDoc} */
+  /*
+  private Result doHBaseGet(Get get) throws IOException {
+  final HTableInterface htable = mTable.openHTableConnection();
+  try {
+    return htable.get(get);
+  } finally {
+    htable.close();
+  }
+} */
+
+/** {@inheritDoc} */
   @Override
   public void remove() {
     throw new UnsupportedOperationException("KijiPager.remove() is not supported.");

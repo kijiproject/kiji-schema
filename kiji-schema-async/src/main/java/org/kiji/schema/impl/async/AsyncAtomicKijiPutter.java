@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.lang.UnsupportedOperationException;
@@ -58,11 +58,11 @@ import org.kiji.schema.layout.impl.LayoutCapsule;
  * concurrent access to a writer while a transaction is being constructed.
  */
 @ApiAudience.Private
-public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
-  private static final Logger LOG = LoggerFactory.getLogger(HBaseAtomicKijiPutter.class);
+public final class AsyncAtomicKijiPutter implements AtomicKijiPutter {
+  private static final Logger LOG = LoggerFactory.getLogger(AsyncAtomicKijiPutter.class);
 
   /** The Kiji table instance. */
-  private final HBaseKijiTable mTable;
+  private final AsyncKijiTable mTable;
 
   /** The HTableInterface associated with the KijiTable. */
   // TODO(gabe): Replace all mHTable use with asynchbase implementation
@@ -170,7 +170,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
    * @param table The HBaseKijiTable to which this writer writes.
    * @throws IOException in case of an error.
    */
-  public HBaseAtomicKijiPutter(HBaseKijiTable table) throws IOException {
+  public AsyncAtomicKijiPutter(AsyncKijiTable table) throws IOException {
     // TODO(gabe): Replace this with asynchbase
     throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
 
@@ -263,7 +263,6 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   public <T> boolean checkAndCommit(String family, String qualifier, T value) throws IOException {
     // TODO(gabe): Replace this with asynchbase
     throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-    return false;
 
     /*
     Preconditions.checkState(mPut != null,
@@ -326,6 +325,11 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** {@inheritDoc} */
   @Override
   public <T> void put(String family, String qualifier, long timestamp, T value) throws IOException {
+
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkState(mPut != null, "calls to put() must be between calls to begin() and "
         + "commit(), checkAndCommit(), or rollback()");
     final State state = mState.get();
@@ -342,6 +346,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
 
     mHopper.add(new KeyValue(
         mId, columnName.getFamily(), columnName.getQualifier(), timestamp, encoded));
+    */
   }
 
   /**
@@ -370,6 +375,11 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
+
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close an AtomicKijiPutter instance in state %s.", oldState);
@@ -381,5 +391,6 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     mTable.unregisterLayoutConsumer(mInnerLayoutUpdater);
     mHTable.close();
     mTable.release();
+    */
   }
 }

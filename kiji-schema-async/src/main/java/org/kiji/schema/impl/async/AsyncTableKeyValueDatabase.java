@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -32,13 +32,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.hadoop.hbase.KeyValue;
-import org.apache.hadoop.hbase.client.Delete;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.Put;
-import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.ResultScanner;
-import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -55,19 +48,21 @@ import org.kiji.schema.util.ResourceUtils;
  * a column family of an HTable.
  */
 @ApiAudience.Private
-public final class HBaseTableKeyValueDatabase
-    implements KijiTableKeyValueDatabase<HBaseTableKeyValueDatabase> {
+public final class AsyncTableKeyValueDatabase
+    implements KijiTableKeyValueDatabase<AsyncTableKeyValueDatabase> {
 
-  public static final Logger LOG = LoggerFactory.getLogger(HBaseTableKeyValueDatabase.class);
+  public static final Logger LOG = LoggerFactory.getLogger(AsyncTableKeyValueDatabase.class);
 
+   // TODO(gabe): Uncomment once asynchbase has been implemented
   /** The name of the column family used to store the key-value database.*/
-  private final String mFamily;
+  //private final String mFamily;
 
    /** The HBase column family, as bytes. */
-  private final byte[] mFamilyBytes;
+  //private final byte[] mFamilyBytes;
 
   /**  The HBase table that stores Kiji metadata. */
-  private final HTableInterface mTable;
+  // TODO(gabe): Replace this with asynchbase
+  //private final HTableInterface mTable;
 
   /**
    * This class manages the storage and retrieval of key-value pairs on a per table basis. It is
@@ -76,14 +71,17 @@ public final class HBaseTableKeyValueDatabase
    * @param hTable The table to store the key-value information in.
    * @param metaFamily the name of the column family to use.
    */
-  public HBaseTableKeyValueDatabase(HTableInterface hTable, String metaFamily) {
-    mTable = Preconditions.checkNotNull(hTable);
-    mFamily = Preconditions.checkNotNull(metaFamily);
-    mFamilyBytes =  Bytes.toBytes(mFamily);
-  }
+   // TODO(gabe): Replace this with asynchbase
+
+   /*
+   public AsyncTableKeyValueDatabase(HTableInterface hTable, String metaFamily) {
+   mTable = Preconditions.checkNotNull(hTable);
+   mFamily = Preconditions.checkNotNull(metaFamily);
+   mFamilyBytes =  Bytes.toBytes(mFamily);
+ } */
 
 
-  /** {@inheritDoc} */
+ /** {@inheritDoc} */
   @Override
   public byte[] getValue(String table, String key) throws IOException {
     final List<byte[]> values = getValues(table, key, 1);
@@ -93,6 +91,10 @@ public final class HBaseTableKeyValueDatabase
   /** {@inheritDoc} */
   @Override
   public List<byte[]> getValues(String table, String key, int numVersions) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkArgument(numVersions >= 1,  "numVersions must be positive");
 
     final byte[] bKey = Bytes.toBytes(key);
@@ -105,17 +107,23 @@ public final class HBaseTableKeyValueDatabase
           "Could not find any values associated with table %s and key %s", table, key));
     }
     /** List of values, ordered from  */
+    /*
     final List<byte[]> values = Lists.newArrayList();
     for (KeyValue column : result.getColumn(mFamilyBytes, bKey)) {
       values.add(column.getValue());
     }
     return values;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public NavigableMap<Long, byte[]> getTimedValues(String table, String key, int numVersions)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Preconditions.checkArgument(numVersions >= 1,  "numVersions must be positive");
     final byte[] bKey = Bytes.toBytes(key);
     Get get = new Get(Bytes.toBytes(table))
@@ -123,6 +131,7 @@ public final class HBaseTableKeyValueDatabase
     Result result = mTable.get(get);
 
     /** Map from timestamp to values. */
+    /*
     final NavigableMap<Long, byte[]> timedValues = Maps.newTreeMap();
 
     // Pull out the full map: family -> qualifier -> timestamp -> TableLayoutDesc.
@@ -140,29 +149,44 @@ public final class HBaseTableKeyValueDatabase
       Preconditions.checkState(timedValues.put(timestamp, bytes) == null);
     }
     return timedValues;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
-  public HBaseTableKeyValueDatabase putValue(String table, String key, byte[] value)
+  public AsyncTableKeyValueDatabase putValue(String table, String key, byte[] value)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Put put = new Put(Bytes.toBytes(table));
     put.add(mFamilyBytes, Bytes.toBytes(key), value);
     mTable.put(put);
     return this;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public void removeValues(String table, String key) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Delete delete = new Delete(Bytes.toBytes(table));
     delete.deleteColumns(mFamilyBytes, Bytes.toBytes(key));
     mTable.delete(delete);
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public Set<String> keySet(String table) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Set<String> keys = new HashSet<String>();
     Get get = new Get(Bytes.toBytes(table));
     get.addFamily(mFamilyBytes);
@@ -177,11 +201,16 @@ public final class HBaseTableKeyValueDatabase
       keys.add(Bytes.toString(qualifier));
     }
     return keys;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public Set<String> tableSet() throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     Scan scan = new Scan();
     scan.addFamily(mFamilyBytes).setFilter(new KeyOnlyFilter());
     ResultScanner resultScanner = mTable.getScanner(scan);
@@ -198,6 +227,7 @@ public final class HBaseTableKeyValueDatabase
     }
     ResourceUtils.closeOrLog(resultScanner);
     return tableNames;
+    */
 
   }
 
@@ -233,6 +263,10 @@ public final class HBaseTableKeyValueDatabase
   @Override
   public void restoreKeyValuesFromBackup(final String tableName, KeyValueBackup keyValueBackup)
       throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+
+    /*
     LOG.debug(String.format("Restoring '%s' key-value(s) from backup for table '%s'.",
         keyValueBackup.getKeyValues().size(), tableName));
     for (KeyValueBackupEntry kvRecord : keyValueBackup.getKeyValues()) {
@@ -250,5 +284,6 @@ public final class HBaseTableKeyValueDatabase
     }
     LOG.debug("Flushing commits to restore key-values from backup.");
     mTable.flushCommits();
+    */
   }
 }
