@@ -693,7 +693,12 @@ public final class HBaseKijiResult implements KijiResult {
     Preconditions.checkArgument(!columnRequest.isPagingEnabled(),
         "Cannot get the most recent version of a paged column. Found column: %s in request: %s",
         column, mDataRequest);
-    return cellFromKeyValue(kvAtIndex(kvIndex(mostRecentKey(column))));
+    final KeyValue maybeKv = kvAtIndex(kvIndex(mostRecentKey(column)));
+    if ((null != maybeKv) && Objects.equal(column, kcnFromKeyValue(maybeKv))) {
+      return cellFromKeyValue(maybeKv);
+    } else {
+      return null;
+    }
   }
 
   /** {@inheritDoc} */
@@ -708,11 +713,14 @@ public final class HBaseKijiResult implements KijiResult {
     Preconditions.checkNotNull(columnRequest, "No request for column: %s in request: %s",
         column, mDataRequest);
     Preconditions.checkArgument(!columnRequest.isPagingEnabled(),
-        "Cannot get the most recent version of a paged column. Found column: %s in request: %s",
+        "Cannot get a cell from a paged column. Found column: %s in request: %s",
         column, mDataRequest);
     final KeyValue kv = toKey(column, timestamp);
     final KeyValue kvAtIndex = kvAtIndex(kvIndex(kv));
-    if (Objects.equal(column, kcnFromKeyValue(kvAtIndex))) {
+    if ((null != kvAtIndex)
+        && Objects.equal(column, kcnFromKeyValue(kvAtIndex))
+        && Objects.equal(timestamp, kvAtIndex.getTimestamp())
+    ) {
       return cellFromKeyValue(kvAtIndex);
     } else {
       return null;
@@ -727,6 +735,9 @@ public final class HBaseKijiResult implements KijiResult {
     final KijiDataRequest.Column columnRequest = mDataRequest.getRequestForColumn(column);
     Preconditions.checkNotNull(columnRequest, "No request for column: %s in request: %s",
         column, mDataRequest);
+    Preconditions.checkArgument(column.isFullyQualified()
+        || mTable.getLayout().getFamilyMap().get(column.getFamily()).isMapType(),
+        "May only iterate over a fully qualified column or a map-type family.");
     final KijiCellDecoder<T> decoder = getDecoder(column);
     if (columnRequest.isPagingEnabled()) {
       final HBaseQualifierIterator optionalQualifierIterator;
