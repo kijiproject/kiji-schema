@@ -24,8 +24,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NavigableMap;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.TreeMap;
 
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
@@ -66,6 +68,45 @@ public final class HBaseKijiResult implements KijiResult {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiResult.class);
   private static final Comparator<KeyValue> KV_COMPARATOR = new KVComparator();
   private static final Comparator<IndexRange> INDEX_RANGE_COMPARATOR = new IndexStartComparator();
+
+  /**
+   * Builds a map from family to qualifier to timestamp to value, of the given KijiResult.
+   *
+   * @param result KijiResult from which to build the map.
+   * @return A map encoding the data contained in the KijiResult.
+   */
+  public static NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>> buildMap(
+      final KijiResult result
+  ) {
+    final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>> familyMap =
+        new TreeMap<String, NavigableMap<String, NavigableMap<Long, Object>>>();
+
+    for (KijiCell cell : result) {
+      final NavigableMap<String, NavigableMap<Long, Object>> qualifierMap;
+      final String family = cell.getFamily();
+      if (familyMap.containsKey(family)) {
+        qualifierMap = familyMap.get(family);
+      } else {
+        qualifierMap = new TreeMap<String, NavigableMap<Long, Object>>();
+      }
+
+      final NavigableMap<Long, Object> timestampMap;
+      final String qualifier = cell.getQualifier();
+      if (qualifierMap.containsKey(qualifier)) {
+        timestampMap = qualifierMap.get(qualifier);
+      } else {
+        timestampMap = new TreeMap<Long, Object>();
+      }
+
+      Long timestamp = cell.getTimestamp();
+      Object data = cell.getData();
+      timestampMap.put(timestamp, data);
+
+      qualifierMap.put(qualifier, timestampMap);
+      familyMap.put(family, qualifierMap);
+    }
+    return familyMap;
+  }
 
   // -----------------------------------------------------------------------------------------------
   // Static classes and methods

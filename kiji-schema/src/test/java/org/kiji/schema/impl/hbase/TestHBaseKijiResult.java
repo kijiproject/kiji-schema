@@ -21,8 +21,12 @@ package org.kiji.schema.impl.hbase;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSortedMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import junit.framework.Assert;
@@ -46,6 +50,56 @@ import org.kiji.schema.util.InstanceBuilder;
 
 public class TestHBaseKijiResult extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestHBaseKijiResult.class);
+  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
+      COMPLETE_MAP = ImmutableSortedMap
+          .<String, NavigableMap<String, NavigableMap<Long, Object>>>naturalOrder()
+              .put(
+                  "primitive",
+                  ImmutableSortedMap.<String, NavigableMap<Long, Object>>naturalOrder()
+                      .put("string_column", ImmutableSortedMap.<Long, Object>naturalOrder()
+                          .put(10L, new Utf8("ten"))
+                          .put(5L, new Utf8("five"))
+                          .put(4L, new Utf8("four"))
+                          .put(3L, new Utf8("three"))
+                          .put(2L, new Utf8("two"))
+                          .put(1L, new Utf8("one"))
+                          .build()
+                      )
+                      .put("double_column", ImmutableSortedMap.<Long, Object>naturalOrder()
+                          .put(10L, 10.0)
+                          .put(5L, 5.0)
+                          .put(4L, 4.0)
+                          .put(3L, 3.0)
+                          .put(2L, 2.0)
+                          .put(1L, 1.0)
+                          .build()
+                      )
+                      .build()
+              )
+              .put(
+                  "string_map",
+                  ImmutableSortedMap.<String, NavigableMap<Long, Object>>naturalOrder()
+                      .put("smap_1", ImmutableSortedMap.<Long, Object>naturalOrder()
+                          .put(10L, new Utf8("sm1-ten"))
+                          .put(5L, new Utf8("sm1-five"))
+                          .put(4L, new Utf8("sm1-four"))
+                          .put(3L, new Utf8("sm1-three"))
+                          .put(2L, new Utf8("sm1-two"))
+                          .put(1L, new Utf8("sm1-one"))
+                          .build()
+                      )
+                      .put("smap_2", ImmutableSortedMap.<Long, Object>naturalOrder()
+                          .put(10L, new Utf8("sm2-ten"))
+                          .put(5L, new Utf8("sm2-five"))
+                          .put(4L, new Utf8("sm2-four"))
+                          .put(3L, new Utf8("sm2-three"))
+                          .put(2L, new Utf8("sm2-two"))
+                          .put(1L, new Utf8("sm2-one"))
+                          .build()
+                      )
+                      .build()
+              )
+              .build();
 
   private static final KijiDataRequest REQUEST = KijiDataRequest.builder().addColumns(
       ColumnsDef.create()
@@ -53,6 +107,9 @@ public class TestHBaseKijiResult extends KijiClientTest {
           .add("primitive", "string_column")
           .add("primitive", "double_column")
   ).build();
+  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
+      EXPECTED_REQUEST_MAP = COMPLETE_MAP.subMap("primitive", true, "primitive", true);
+
   private static final KijiDataRequest PAGED_REQUEST = KijiDataRequest.builder().addColumns(
       ColumnsDef.create()
           .withPageSize(2)
@@ -60,10 +117,19 @@ public class TestHBaseKijiResult extends KijiClientTest {
           .add("primitive", "string_column")
           .add("primitive", "double_column")
   ).build();
+  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
+      EXPECTED_PAGED_REQUEST_MAP = EXPECTED_REQUEST_MAP;
+
   private static final KijiDataRequest MAP_REQUEST = KijiDataRequest.builder().addColumns(
       ColumnsDef.create().withMaxVersions(10).add("string_map", null)).build();
+  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
+      EXPECTED_MAP_REQUEST_MAP = COMPLETE_MAP.subMap("string_map", true, "string_map", true);
+
   private static final KijiDataRequest PAGED_MAP_REQUEST = KijiDataRequest.builder().addColumns(
       ColumnsDef.create().withPageSize(1).withMaxVersions(10).add("string_map", null)).build();
+  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
+      EXPECTED_PAGED_MAP_REQUEST_MAP = EXPECTED_MAP_REQUEST_MAP;
+
   private static final KijiDataRequest COMPLETE_REQUEST = KijiDataRequest.builder().addColumns(
       ColumnsDef.create()
           .withMaxVersions(10)
@@ -71,6 +137,9 @@ public class TestHBaseKijiResult extends KijiClientTest {
           .add("primitive", "string_column")
           .add("primitive", "double_column")
   ).build();
+  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
+      EXPECTED_COMPLETE_REQUEST_MAP = COMPLETE_MAP;
+
   private static final KijiDataRequest PAGED_COMPLETE_REQUEST = KijiDataRequest.builder()
       .addColumns(ColumnsDef.create()
           .withPageSize(2)
@@ -79,6 +148,9 @@ public class TestHBaseKijiResult extends KijiClientTest {
           .add("primitive", "string_column")
           .add("primitive", "double_column")
       ).build();
+  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
+      EXPECTED_PAGED_COMPLETE_REQUEST_MAP = EXPECTED_COMPLETE_REQUEST_MAP;
+
   private static final KijiDataRequest MAX_VERSIONS_REQUEST = KijiDataRequest.builder()
       .addColumns(ColumnsDef.create()
           .withMaxVersions(3)
@@ -88,6 +160,44 @@ public class TestHBaseKijiResult extends KijiClientTest {
           .withMaxVersions(10)
           .add("primitive", "double_column"))
       .build();
+  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
+      EXPECTED_MAX_VERSIONS_REQUEST_MAP =
+      ImmutableSortedMap.<String, NavigableMap<String, NavigableMap<Long, Object>>>naturalOrder()
+          .put("primitive", ImmutableSortedMap.<String, NavigableMap<Long, Object>>naturalOrder()
+              .put("string_column", ImmutableSortedMap.<Long, Object>naturalOrder()
+                  .put(10L, new Utf8("ten"))
+                  .put(5L, new Utf8("five"))
+                  .put(4L, new Utf8("four"))
+                  .build()
+              )
+              .put("double_column", ImmutableSortedMap.<Long, Object>naturalOrder()
+                  .put(10L, 10.0)
+                  .put(5L, 5.0)
+                  .put(4L, 4.0)
+                  .put(3L, 3.0)
+                  .put(2L, 2.0)
+                  .put(1L, 1.0)
+                  .build()
+              )
+              .build()
+          )
+          .put("string_map", ImmutableSortedMap.<String, NavigableMap<Long, Object>>naturalOrder()
+              .put("smap_1", ImmutableSortedMap.<Long, Object>naturalOrder()
+                  .put(10L, new Utf8("sm1-ten"))
+                  .put(5L, new Utf8("sm1-five"))
+                  .put(4L, new Utf8("sm1-four"))
+                  .build()
+              )
+              .put("smap_2", ImmutableSortedMap.<Long, Object>naturalOrder()
+                  .put(10L, new Utf8("sm2-ten"))
+                  .put(5L, new Utf8("sm2-five"))
+                  .put(4L, new Utf8("sm2-four"))
+                  .build()
+              )
+              .build()
+          )
+          .build();
+
   private static final KijiDataRequest PAGED_MAX_VERSIONS_REQUEST = KijiDataRequest.builder()
       .addColumns(ColumnsDef.create()
           .withPageSize(2)
@@ -99,22 +209,28 @@ public class TestHBaseKijiResult extends KijiClientTest {
           .withMaxVersions(10)
           .add("primitive", "double_column"))
       .build();
+  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
+      EXPECTED_PAGED_MAX_VERSIONS_REQUEST_MAP = EXPECTED_MAX_VERSIONS_REQUEST_MAP;
+
   private static final KijiDataRequest EMPTY_COLUMN_REQUEST = KijiDataRequest.builder()
       .addColumns(ColumnsDef.create()
           .withMaxVersions(3)
           .add("primitive", "string_column")
           .add("primitive", "boolean_column"))
       .build();
-  private static final KijiDataRequest MIXED_PAGING_REQUEST = KijiDataRequest.builder()
-      .addColumns(ColumnsDef.create()
-          .withMaxVersions(10)
-          .withPageSize(2)
-          .add("primitive", "string_column"))
-      .addColumns(ColumnsDef.create()
-          .withMaxVersions(10)
-          .add("primitive", "double_column"))
-      .build();
-
+  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
+      EXPECTED_EMPTY_COLUMN_REQUEST_MAP =
+      ImmutableSortedMap.<String, NavigableMap<String, NavigableMap<Long, Object>>>naturalOrder()
+          .put("primitive", ImmutableSortedMap.<String, NavigableMap<Long, Object>>naturalOrder()
+              .put("string_column", ImmutableSortedMap.<Long, Object>naturalOrder()
+                  .put(10L, new Utf8("ten"))
+                  .put(5L, new Utf8("five"))
+                  .put(4L, new Utf8("four"))
+                  .build()
+              )
+              .build()
+          )
+          .build();
 
   private static final KijiColumnName PRIMITIVE_STRING =
       KijiColumnName.create("primitive", "string_column");
@@ -146,7 +262,6 @@ public class TestHBaseKijiResult extends KijiClientTest {
   private KijiResult mMaxVersionsResult = null;
   private KijiResult mPagedMaxVersionsResult = null;
   private KijiResult mEmptyColumnResult = null;
-  private KijiResult mMixedPagingResult = null;
 
   @Before
   public void setupTestHBaseKijiResult() throws IOException {
@@ -197,7 +312,6 @@ public class TestHBaseKijiResult extends KijiClientTest {
       mMaxVersionsResult = mReader.getResult(eid, MAX_VERSIONS_REQUEST);
       mPagedMaxVersionsResult = mReader.getResult(eid, PAGED_MAX_VERSIONS_REQUEST);
       mEmptyColumnResult = mReader.getResult(eid, EMPTY_COLUMN_REQUEST);
-      mMixedPagingResult = mReader.getResult(eid, MIXED_PAGING_REQUEST);
     } finally {
       table.release();
     }
@@ -206,6 +320,38 @@ public class TestHBaseKijiResult extends KijiClientTest {
   @After
   public void cleanupTestHBaseKijiResult() throws IOException {
     mReader.close();
+  }
+
+  @Test
+  public void testBuildMap() throws Exception {
+    final Map<KijiResult, NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>>
+        testMaps =
+            ImmutableMap.<KijiResult,
+                NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>>builder()
+                    .put(mResult, EXPECTED_REQUEST_MAP)
+                    .put(mPagedResult, EXPECTED_PAGED_REQUEST_MAP)
+                    .put(mMapResult, EXPECTED_MAP_REQUEST_MAP)
+                    .put(mPagedMapResult, EXPECTED_PAGED_MAP_REQUEST_MAP)
+                    .put(mCompleteResult, EXPECTED_COMPLETE_REQUEST_MAP)
+                    .put(mPagedCompleteResult, EXPECTED_PAGED_COMPLETE_REQUEST_MAP)
+                    .put(mMaxVersionsResult, EXPECTED_MAX_VERSIONS_REQUEST_MAP)
+                    .put(mPagedMaxVersionsResult, EXPECTED_PAGED_MAX_VERSIONS_REQUEST_MAP)
+                    .put(mEmptyColumnResult, EXPECTED_EMPTY_COLUMN_REQUEST_MAP)
+                    .build();
+
+    for (
+        Map.Entry<
+            KijiResult,
+            NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>> entry
+        : testMaps.entrySet()
+    ) {
+      KijiResult testResult = entry.getKey();
+      NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>> actualMap =
+          HBaseKijiResult.buildMap(testResult);
+      NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>> predictedMap =
+          entry.getValue();
+      Assert.assertEquals(predictedMap, actualMap);
+    }
   }
 
   @Test
