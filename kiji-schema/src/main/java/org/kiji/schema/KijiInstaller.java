@@ -22,6 +22,7 @@ package org.kiji.schema;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.base.Joiner;
 import org.apache.curator.framework.CuratorFramework;
@@ -37,12 +38,15 @@ import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HBaseAdminFactory;
 import org.kiji.schema.impl.HTableInterfaceFactory;
+import org.kiji.schema.impl.Versions;
 import org.kiji.schema.impl.hbase.HBaseMetaTable;
 import org.kiji.schema.impl.hbase.HBaseSchemaTable;
 import org.kiji.schema.impl.hbase.HBaseSystemTable;
 import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.LockFactory;
+import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.ResourceUtils;
+import org.kiji.schema.zookeeper.UsersTracker;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /** Installs or uninstalls Kiji instances from an HBase cluster. */
@@ -155,6 +159,7 @@ public final class KijiInstaller {
           "Kiji URI '%s' does not specify a Kiji instance name", uri));
     }
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
+    final HTableInterfaceFactory htableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
 
     // TODO: Factor this in HBaseKiji
     conf.set(HConstants.ZOOKEEPER_QUORUM, Joiner.on(",").join(uri.getZookeeperQuorumOrdered()));
@@ -162,6 +167,32 @@ public final class KijiInstaller {
 
     LOG.info(String.format("Removing the kiji instance '%s'.", uri.getInstance()));
 
+    final ProtocolVersion systemVersion = getSystemVersion(uri, conf, htableFactory);
+    if (systemVersion.compareTo(Versions.SYSTEM_2_0) < 0) {
+      uninstallSystem_1_0(uri, conf, adminFactory);
+    } else if (systemVersion.compareTo(Versions.SYSTEM_2_0) == 0) {
+      uninstallSystem_2_0(uri, conf, adminFactory);
+    } else {
+      throw new InternalKijiError(String.format("Unknown System version %s.", systemVersion));
+    }
+
+    LOG.info("Removed kiji instance '{}'.", uri.getInstance());
+  }
+
+  // CSOFF: MethodName
+  /**
+   * Uninstall a Kiji SYSTEM_1_0 instance.
+   *
+   * @param uri of instance.
+   * @param conf configuration to connect to instance.
+   * @param adminFactory to connect to instance.
+   * @throws IOException on unrecoverable error.
+   */
+  private static void uninstallSystem_1_0(
+      final KijiURI uri,
+      final Configuration conf,
+      final HBaseAdminFactory adminFactory
+  ) throws IOException {
     final Kiji kiji = Kiji.Factory.open(uri, conf);
     try {
       // If security is enabled, make sure the user has GRANT access on the instance
@@ -193,20 +224,69 @@ public final class KijiInstaller {
     } finally {
       kiji.release();
     }
+  }
 
-    // Delete instance ZNodes from ZooKeeper
+  /**
+   * Uninstall a Kiji SYSTEM_2_0 instance.
+   *
+   * @param uri of instance.
+   * @param conf configuration to connect to instance.
+   * @param adminFactory to connect to instance.
+   * @throws IOException on unrecoverable error.
+   */
+  private static void uninstallSystem_2_0(
+      final KijiURI uri,
+      final Configuration conf,
+      final HBaseAdminFactory adminFactory
+  ) throws IOException {
     final CuratorFramework zkClient = ZooKeeperUtils.getZooKeeperClient(uri);
+    final String instanceZKPath = ZooKeeperUtils.getInstanceDir(uri).getPath();
     try {
-      zkClient
-          .delete()
-          .deletingChildrenIfNeeded()
-          .forPath(ZooKeeperUtils.getInstanceDir(uri).getPath());
-    } catch (Exception e) {
-      ZooKeeperUtils.wrapAndRethrow(e);
+      final UsersTracker usersTracker = ZooKeeperUtils.newInstanceUsersTracker(zkClient, uri);
+      try {
+        usersTracker.start();
+        final Set<String> users = usersTracker.getUsers().keySet();
+        if (!users.isEmpty()) {
+          LOG.error(
+              "Uninstalling Kiji instance '{}' with registered users."
+                  + " Current registered users: {}. Stale instance metadata will remain in"
+                  + " ZooKeeper at path {}.", uri.getInstance(), users, instanceZKPath);
+        }
+      } finally {
+        usersTracker.close();
+      }
+
+      // The uninstall of tables from HBase is the same as System_1_0
+      uninstallSystem_1_0(uri, conf, adminFactory);
+
+      // Try to delete instance ZNodes from ZooKeeper
+      ZooKeeperUtils.atomicRecursiveDelete(zkClient, instanceZKPath);
     } finally {
       zkClient.close();
     }
-    LOG.info(String.format("Removed kiji instance '%s'.", uri.getInstance()));
+  }
+  // CSON
+
+  /**
+   * Get the system version of an installed Kiji instance.
+   *
+   * @param instanceURI of Kiji instance.
+   * @param conf to connect to instance.
+   * @param htableFactory to connect to instance.
+   * @return the system version.
+   * @throws IOException if unrecoverable error.
+   */
+  private static ProtocolVersion getSystemVersion(
+      final KijiURI instanceURI,
+      final Configuration conf,
+      final HTableInterfaceFactory htableFactory
+  ) throws IOException {
+    final KijiSystemTable systemTable = new HBaseSystemTable(instanceURI, conf, htableFactory);
+    try {
+      return systemTable.getDataVersion();
+    } finally {
+      systemTable.close();
+    }
   }
 
   /**

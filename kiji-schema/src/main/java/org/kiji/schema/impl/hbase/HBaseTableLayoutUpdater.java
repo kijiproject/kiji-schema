@@ -46,8 +46,8 @@ import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.Time;
 import org.kiji.schema.zookeeper.TableLayoutTracker;
 import org.kiji.schema.zookeeper.TableLayoutUpdateHandler;
-import org.kiji.schema.zookeeper.TableUsersTracker;
-import org.kiji.schema.zookeeper.TableUsersUpdateHandler;
+import org.kiji.schema.zookeeper.UsersTracker;
+import org.kiji.schema.zookeeper.UsersUpdateHandler;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
@@ -79,7 +79,7 @@ public class HBaseTableLayoutUpdater {
   // -----------------------------------------------------------------------------------------------
 
   /** Handles update notifications of the users list of the table. */
-  private final class UpdaterUsersUpdateHandler implements TableUsersUpdateHandler {
+  private final class UpdaterUsersUpdateHandler implements UsersUpdateHandler {
     /** Monitor for table users notifications. */
     private final Object mLock = new Object();
 
@@ -280,12 +280,15 @@ public class HBaseTableLayoutUpdater {
           KijiTableLayout.createUpdatedLayout(update , currentLayout));
 
       final TableLayoutTracker layoutTracker =
-          new TableLayoutTracker(mZKClient, mTableURI, mLayoutUpdateHandler).start();
+          new TableLayoutTracker(mZKClient, mTableURI, mLayoutUpdateHandler);
       try {
-        final TableUsersTracker usersTracker =
-            new TableUsersTracker(mZKClient, mTableURI, mUsersUpdateHandler)
-                .start();
+        layoutTracker.start();
+        final UsersTracker usersTracker =
+            ZooKeeperUtils
+                .newTableUsersTracker(mZKClient, mTableURI)
+                .registerUpdateHandler(mUsersUpdateHandler);
         try {
+          usersTracker.start();
           final String currentLayoutId = mLayoutUpdateHandler.getCurrentLayoutId();
           LOG.info("Table {} has current layout ID {}.", mTableURI, currentLayoutId);
           if (!Objects.equal(currentLayoutId, currentLayout.getDesc().getLayoutId())) {
@@ -328,7 +331,6 @@ public class HBaseTableLayoutUpdater {
         } finally {
           usersTracker.close();
         }
-
       } finally {
         layoutTracker.close();
       }

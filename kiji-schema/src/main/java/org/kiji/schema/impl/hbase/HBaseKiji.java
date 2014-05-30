@@ -22,6 +22,7 @@ package org.kiji.schema.impl.hbase;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -41,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiMetaTable;
@@ -72,6 +74,7 @@ import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.ReferenceCountedCache;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
+import org.kiji.schema.zookeeper.UsersTracker;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
@@ -722,9 +725,27 @@ public final class HBaseKiji implements Kiji {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot delete table in Kiji instance %s in state %s.", this, state);
+
+    if (mSystemVersion.compareTo(Versions.SYSTEM_2_0) < 0) {
+      deleteTableSystem_1_0(tableName);
+    } else if (mSystemVersion.compareTo(Versions.SYSTEM_2_0) == 0) {
+      deleteTableSystem_2_0(tableName);
+    } else {
+      throw new InternalKijiError(String.format("Unknown System version %s.", mSystemVersion));
+    }
+  }
+
+  // CSOFF: MethodName
+  /**
+   * Attempt to delete a table from this System_1_0 Kiji instance.
+   *
+   * @param tableName to delete
+   * @throws IOException on unrecoverable error.
+   */
+  private void deleteTableSystem_1_0(String tableName) throws IOException {
     // Delete from HBase.
-    String hbaseTable = KijiManagedHBaseTableName.getKijiTableName(mURI.getInstance(),
-        tableName).toString();
+    String hbaseTable =
+        KijiManagedHBaseTableName.getKijiTableName(mURI.getInstance(), tableName).toString();
     getHBaseAdmin().disableTable(hbaseTable);
     getHBaseAdmin().deleteTable(hbaseTable);
 
@@ -734,20 +755,39 @@ public final class HBaseKiji implements Kiji {
     // If the table persists immediately after deletion attempt, then give up.
     if (getHBaseAdmin().tableExists(hbaseTable)) {
       LOG.warn("HBase table " + hbaseTable + " survives deletion attempt. Giving up...");
-      return;
-    }
-
-    // Delete ZNodes from ZooKeeper
-    try {
-      KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableName).build();
-      mZKClient
-          .delete()
-          .deletingChildrenIfNeeded()
-          .forPath(ZooKeeperUtils.getTableDir(tableURI).getPath());
-    } catch (Exception e) {
-      ZooKeeperUtils.wrapAndRethrow(e);
     }
   }
+
+  /**
+   * Attempt to delete a table from this System_2_0 Kiji instance.
+   *
+   * @param tableName to delete
+   * @throws IOException on unrecoverable error.
+   */
+  private void deleteTableSystem_2_0(String tableName) throws IOException {
+    final KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableName).build();
+    final String tableZKPath = ZooKeeperUtils.getTableDir(tableURI).getPath();
+    final UsersTracker usersTracker = ZooKeeperUtils.newTableUsersTracker(mZKClient, tableURI);
+    try {
+      usersTracker.start();
+      final Set<String> users = usersTracker.getUsers().keySet();
+      if (!users.isEmpty()) {
+        LOG.warn(
+            "Uninstalling Kiji table '{}' with registered users."
+                + " Current registered users: {}. Stale table metadata will remain in"
+                + " ZooKeeper at path {}.", tableName, users, tableZKPath);
+      }
+    } finally {
+      usersTracker.close();
+    }
+
+    // The delete of tables from HBase is the same as System_1_0
+    deleteTableSystem_1_0(tableName);
+
+    // Delete ZNodes from ZooKeeper if table delete was successful
+    ZooKeeperUtils.atomicRecursiveDelete(mZKClient, tableZKPath);
+  }
+  // CSON
 
   /** {@inheritDoc} */
   @Override

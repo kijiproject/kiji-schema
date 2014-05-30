@@ -28,6 +28,8 @@ import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
+import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.layout.KijiTableLayouts;
 
 /** Tests for HBaseKiji. */
 public class TestHBaseKiji extends KijiClientTest {
@@ -45,6 +47,20 @@ public class TestHBaseKiji extends KijiClientTest {
       // Expected!
       LOG.debug("Expected error: {}", ktnfe);
       Assert.assertEquals("unknown", ktnfe.getTableURI().getTable());
+    }
+  }
+
+  @Test
+  public void testDeletingKijiTableWithUsersDoesNotFail() throws Exception {
+    final Kiji kiji = getKiji();
+    final TableLayoutDesc layoutDesc = KijiTableLayouts.getLayout(KijiTableLayouts.FOO_TEST);
+    final String tableName = layoutDesc.getName();
+    kiji.createTable(layoutDesc);
+    final KijiTable table = kiji.openTable(tableName);
+    try {
+      kiji.deleteTable(tableName);
+    } finally {
+      table.release();
     }
   }
 }

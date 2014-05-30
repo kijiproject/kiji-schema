@@ -23,15 +23,20 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
+import java.util.List;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.framework.api.transaction.CuratorTransaction;
+import org.apache.curator.framework.api.transaction.CuratorTransactionFinal;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.zookeeper.KeeperException.NoNodeException;
+import org.apache.zookeeper.KeeperException.NotEmptyException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -191,22 +196,110 @@ public final class ZooKeeperUtils {
   // -----------------------------------------------------------------------------------------------
 
   /**
+   * Gets a users tracker for a table.
+   *
+   * @param zkClient connection to ZooKeeper.
+   * @param tableURI of table whose users to track.
+   * @return a UsersTracker for the table.
+   */
+  public static UsersTracker newTableUsersTracker(
+      final CuratorFramework zkClient,
+      final KijiURI tableURI
+  ) {
+    return new UsersTracker(zkClient, getTableUsersDir(tableURI));
+  }
+
+  /**
+   * Gets a users tracker for a Kiji instance.
+   *
+   * @param zkClient connection to ZooKeeper.
+   * @param instanceURI of Kiji instance whose users to track.
+   * @return a UsersTracker for the table.
+   */
+  public static UsersTracker newInstanceUsersTracker(
+      final CuratorFramework zkClient,
+      final KijiURI instanceURI
+  ) {
+    return new UsersTracker(zkClient, getInstanceUsersDir(instanceURI));
+  }
+
+  // -----------------------------------------------------------------------------------------------
+
+  /**
+   * Try to recursively delete a directory in ZooKeeper. If another thread modifies the directory
+   * or any children of the directory, the recursive delete will fail, and this method will return
+   * {@code false}.
+   *
+   * @param zkClient connection to ZooKeeper.
+   * @param path to the node to remove.
+   * @return whether the delete succeeded or failed.
+   * @throws IOException on unrecoverable ZooKeeper error.
+   */
+  public static boolean atomicRecursiveDelete(
+      final CuratorFramework zkClient,
+      final String path
+  ) throws IOException {
+    try {
+      buildAtomicRecursiveDelete(zkClient, zkClient.inTransaction(), path).commit();
+      return true;
+    } catch (NoNodeException nne) {
+      LOG.debug("NoNodeException while attempting an atomic recursive delete: {}.",
+          nne.getMessage());
+      // Node was deleted out from under us; we still have to try again because if this is
+      // thrown any parents of the deleted node possibly still exist.
+    } catch (NotEmptyException nee) {
+      LOG.debug("NotEmptyException while attempting an atomic recursive delete: {}.",
+          nee.getMessage());
+      // Someone else created a node in the tree between the time we built the transaction and
+      // committed it.
+    } catch (Exception e) {
+      wrapAndRethrow(e);
+    }
+    return false;
+  }
+
+  /**
+   * Build a transaction to atomically delete a directory tree.  Package private for testing.
+   *
+   * @param zkClient connection to ZooKeeper.
+   * @param tx recursive transaction being built up.
+   * @param path current directory to delete.
+   * @return a transaction to delete the directory tree.
+   * @throws Exception on unrecoverable ZooKeeper error.
+   */
+  static CuratorTransactionFinal buildAtomicRecursiveDelete(
+      final CuratorFramework zkClient,
+      final CuratorTransaction tx,
+      final String path
+  ) throws Exception {
+    final List<String> children = zkClient.getChildren().forPath(path);
+
+    for (String child : children) {
+      buildAtomicRecursiveDelete(zkClient, tx, path + "/" + child);
+    }
+    return tx.delete().forPath(path).and();
+  }
+
+  // -----------------------------------------------------------------------------------------------
+
+  /**
    * Constructs the ZooKeeper node name for the specified user ID and layout ID.
    *
    * @param userId ID of the user to construct a ZooKeeper node for.
-   * @param layoutId ID of the table layout to construct a ZooKeeper node for.
+   * @param value is the layout ID in the case of a table user, or System version in the case of an
+   *           instance user.
    * @return the ZooKeeper node for the specified user ID and layout ID.
    */
-  public static String makeZKNodeName(String userId, String layoutId) {
+  public static String makeZKNodeName(String userId, String value) {
     try {
       return String.format("%s" + ZK_NODE_NAME_SEPARATOR + "%s",
           URLEncoder.encode(userId, Charsets.UTF_8.displayName()),
-          URLEncoder.encode(layoutId, Charsets.UTF_8.displayName()));
-    } catch (UnsupportedEncodingException uee) {
-      throw new InternalKijiError(uee);
+          URLEncoder.encode(value, Charsets.UTF_8.displayName()));
+    } catch (UnsupportedEncodingException e) {
+      // this should never happen
+      throw new InternalKijiError(e);
     }
   }
-
 
   /**
    * Takes any Exception and rethrows it if it is an IOException, or wraps it in a KijiIOException

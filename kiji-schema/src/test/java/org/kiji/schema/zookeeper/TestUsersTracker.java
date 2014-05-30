@@ -35,25 +35,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.layout.impl.TestZooKeeperMonitor.QueueingUsersUpdateHandler;
 import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.layout.impl.ZooKeeperMonitor;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor.UsersTracker;
 import org.kiji.schema.util.ZooKeeperTest;
 
-public class TestTableUsersTracker extends ZooKeeperTest {
-  private static final Logger LOG = LoggerFactory.getLogger(TestTableUsersTracker.class);
+public class TestUsersTracker extends ZooKeeperTest {
+  private static final Logger LOG = LoggerFactory.getLogger(TestUsersTracker.class);
 
   private volatile CuratorFramework mZKClient;
 
   @Before
-  public void setUp() throws Exception {
-    mZKClient =
-        ZooKeeperUtils.getZooKeeperClient(getZKAddress());
+  public void setUpTestUsersTracker() throws Exception {
+    mZKClient = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDownTestUsersTracker() throws Exception {
     mZKClient.close();
   }
 
@@ -65,8 +62,10 @@ public class TestTableUsersTracker extends ZooKeeperTest {
     final String layout2 = "layout-id-2";
 
     BlockingQueue<Multimap<String, String>> usersQueue = Queues.newSynchronousQueue();
-    TableUsersTracker tracker = new TableUsersTracker(mZKClient, tableURI,
-        new QueueingTableUsersUpdateHandler(usersQueue));
+    UsersTracker tracker =
+        ZooKeeperUtils
+            .newTableUsersTracker(mZKClient, tableURI)
+            .registerUpdateHandler(new QueueingUsersUpdateHandler(usersQueue));
     try {
       tracker.start();
       Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
@@ -106,8 +105,10 @@ public class TestTableUsersTracker extends ZooKeeperTest {
     BlockingQueue<Multimap<String, String>> usersQueue = Queues.newSynchronousQueue();
     CuratorFramework registrationConnection = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
 
-    TableUsersTracker tracker = new TableUsersTracker(mZKClient, tableURI,
-        new QueueingTableUsersUpdateHandler(usersQueue));
+    UsersTracker tracker =
+        ZooKeeperUtils
+            .newTableUsersTracker(mZKClient, tableURI)
+            .registerUpdateHandler(new QueueingUsersUpdateHandler(usersQueue));
     try {
       tracker.start();
 
@@ -148,7 +149,7 @@ public class TestTableUsersTracker extends ZooKeeperTest {
     final String userID = "user";
     final String layoutID = "layout-id";
 
-    BlockingQueue<Multimap<String, String>> usersQueue = Queues.newSynchronousQueue();
+    BlockingQueue<Multimap<String, String>> usersQueue = Queues.newArrayBlockingQueue(10);
     CuratorFramework trackerConnection = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
 
     TableUserRegistration userRegistration =
@@ -156,8 +157,10 @@ public class TestTableUsersTracker extends ZooKeeperTest {
     try {
       userRegistration.start(layoutID);
 
-      TableUsersTracker tracker = new TableUsersTracker(mZKClient, tableURI,
-          new QueueingTableUsersUpdateHandler(usersQueue));
+      UsersTracker tracker =
+          ZooKeeperUtils
+              .newTableUsersTracker(mZKClient, tableURI)
+              .registerUpdateHandler(new QueueingUsersUpdateHandler(usersQueue));
       try {
         tracker.start();
 
@@ -178,7 +181,6 @@ public class TestTableUsersTracker extends ZooKeeperTest {
     }
   }
 
-
   /** Test the TableUsersTracker correctly recognizes ZooKeeperMonitor based user registrations. */
   @Test
   public void testUsersTrackerHandlesZKMTableUserRegistrations() throws Exception {
@@ -190,13 +192,12 @@ public class TestTableUsersTracker extends ZooKeeperTest {
 
     BlockingQueue<Multimap<String, String>> usersQueue = Queues.newSynchronousQueue();
 
-
     ZooKeeperMonitor zkMonitor =
         new ZooKeeperMonitor(ZooKeeperClient.getZooKeeperClient(getZKAddress()));
 
-
-    TableUsersTracker tracker = new TableUsersTracker(mZKClient, tableURI,
-        new QueueingTableUsersUpdateHandler(usersQueue));
+    UsersTracker tracker =
+        ZooKeeperUtils.newTableUsersTracker(mZKClient, tableURI)
+        .registerUpdateHandler(new QueueingUsersUpdateHandler(usersQueue));
     try {
       tracker.start();
       Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
@@ -214,7 +215,7 @@ public class TestTableUsersTracker extends ZooKeeperTest {
         KillSession.kill(mZKClient.getZookeeperClient().getZooKeeper(), getZKAddress());
 
         userRegistration.updateRegisteredLayout(layout2);
-        // Temporary the table user registration goes away before being replaced
+        // Temporarily the table user registration goes away before being replaced
         Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
             usersQueue.poll(5, TimeUnit.SECONDS));
         Assert.assertEquals(ImmutableSetMultimap.of(userID, layout2),
@@ -246,8 +247,10 @@ public class TestTableUsersTracker extends ZooKeeperTest {
     ZooKeeperMonitor zkMonitor =
         new ZooKeeperMonitor(ZooKeeperClient.getZooKeeperClient(getZKAddress()));
 
-    UsersTracker tracker =
-        zkMonitor.newTableUsersTracker(tableURI, new QueueingUsersUpdateHandler(usersQueue));
+    ZooKeeperMonitor.UsersTracker tracker =
+        zkMonitor.newTableUsersTracker(tableURI,
+            new org.kiji.schema.layout.impl.TestZooKeeperMonitor
+                .QueueingUsersUpdateHandler(usersQueue));
     try {
       tracker.open();
       Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
@@ -265,7 +268,7 @@ public class TestTableUsersTracker extends ZooKeeperTest {
         KillSession.kill(mZKClient.getZookeeperClient().getZooKeeper(), getZKAddress());
 
         userRegistration.updateLayoutID(layout2);
-        // Temporary the table user registration goes away before being replaced
+        // Temporarily the table user registration goes away before being replaced
         Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
             usersQueue.poll(5, TimeUnit.SECONDS));
         Assert.assertEquals(ImmutableSetMultimap.of(userID, layout2),
@@ -280,11 +283,11 @@ public class TestTableUsersTracker extends ZooKeeperTest {
     }
   }
 
-  public static final class QueueingTableUsersUpdateHandler implements TableUsersUpdateHandler {
+  public static final class QueueingUsersUpdateHandler implements UsersUpdateHandler {
 
     private final BlockingQueue<Multimap<String, String>> mUsersQueue;
 
-    public QueueingTableUsersUpdateHandler(BlockingQueue<Multimap<String, String>> usersQueue) {
+    public QueueingUsersUpdateHandler(BlockingQueue<Multimap<String, String>> usersQueue) {
       mUsersQueue = usersQueue;
     }
 

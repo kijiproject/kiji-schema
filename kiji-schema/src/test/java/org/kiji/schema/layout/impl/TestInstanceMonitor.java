@@ -36,8 +36,8 @@ import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.zookeeper.TableUsersTracker;
-import org.kiji.schema.zookeeper.TestTableUsersTracker.QueueingTableUsersUpdateHandler;
+import org.kiji.schema.zookeeper.TestUsersTracker.QueueingUsersUpdateHandler;
+import org.kiji.schema.zookeeper.UsersTracker;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 public class TestInstanceMonitor extends KijiClientTest {
@@ -93,9 +93,10 @@ public class TestInstanceMonitor extends KijiClientTest {
   @Test
   public void testReleasingTableLayoutMonitorWillUpdateZooKeeper() throws Exception {
     final BlockingQueue<Multimap<String, String>> usersQueue = Queues.newSynchronousQueue();
-    TableUsersTracker tracker =
-        new TableUsersTracker(mZKClient, mTableURI,
-            new QueueingTableUsersUpdateHandler(usersQueue));
+    final UsersTracker tracker =
+        ZooKeeperUtils
+            .newTableUsersTracker(mZKClient, mTableURI)
+            .registerUpdateHandler(new QueueingUsersUpdateHandler(usersQueue));
     try {
       tracker.start();
       Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),

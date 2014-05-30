@@ -22,13 +22,13 @@ package org.kiji.schema.zookeeper;
 import com.google.common.collect.Multimap;
 
 /**
- * Interface for objects that wish to be notified when a table's current users change.
+ * Interface for objects that wish to be notified when a table or instance's current users change.
  */
-public interface TableUsersUpdateHandler {
+public interface UsersUpdateHandler {
   /**
-   * Processes an update to the set of users of the Kiji table being tracked.
+   * Processes an update to the set of users of the Kiji table or instance being tracked.
    *
-   * @param users Updated mapping from user ID to currently used layout ID.
+   * @param users Updated mapping from user ID to currently used layout ID or System version.
    */
   void update(Multimap<String, String> users);
 }
