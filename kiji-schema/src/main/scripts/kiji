@@ -1,70 +1,88 @@
 #!/usr/bin/env bash
-#
-#   (c) Copyright 2012 WibiData, Inc.
-#
-#   See the NOTICE file distributed with this work for additional
-#   information regarding copyright ownership.
-#
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
-#
-#
-#   The kiji script is the entry point to several tools for interacting with the kiji system.
-#   Tools are run as:
-#
-#   bash> $KIJI_HOME/bin/kiji <tool-name> [options]
-#
-#   For full usage information, use:
-#
-#   bash> $KIJI_HOME/bin/kiji help
-#
 
-# Resolve a symlink to its absolute target, like how 'readlink -f' works on Linux.
+# (c) Copyright 2012 WibiData, Inc.
+#
+# See the NOTICE file distributed with this work for additional
+# information regarding copyright ownership.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
+# The kiji script is the entry point to several tools for interacting with the kiji system.
+# Tools are run as:
+#
+# bash> ${KIJI_HOME}/bin/kiji <tool-name> [options]
+#
+# For full usage information, use:
+#
+# bash> ${KIJI_HOME}/bin/kiji help
+
+set -o nounset   # Fail when referencing undefined variables
+set -o errexit   # Script exits on the first error
+set -o pipefail  # Pipeline status failure if any command fails
+[[ ! -z "${DEBUG:-}" ]] && set -x
+
+# The following variable expansion is replaced by Maven at compile time:
+kiji_schema_version="${project.version}"
+
+# ------------------------------------------------------------------------------
+
+# Canonicalize a path into an absolute, symlink free path.
+#
+# Portable implementation of the GNU coreutils "readlink -f path".
+# The '-f' option of readlink does not exist on MacOS, for instance.
+#
+# Args:
+#   param $1: path to canonicalize.
+# Stdout:
+#   Prints the canonicalized path on stdout.
 function resolve_symlink() {
-  TARGET_FILE=$1
+  local target_file=$1
 
-  if [ -z "$TARGET_FILE" ]; then
+  if [[ -z "${target_file}" ]]; then
     echo ""
     return 0
   fi
 
-  cd $(dirname "$TARGET_FILE")
-  TARGET_FILE=$(basename "$TARGET_FILE")
+  cd "$(dirname "${target_file}")"
+  target_file=$(basename "${target_file}")
 
   # Iterate down a (possible) chain of symlinks
-  count=0
-  while [ -L "$TARGET_FILE" ]; do
-      if [ "$count" -gt 1000 ]; then
-        # Just stop here, we've hit 1,000 recursive symlinks. (cycle?)
-        break
-      fi
+  local count=0
+  while [[ -L "${target_file}" ]]; do
+    if [[ "${count}" -gt 1000 ]]; then
+      # Just stop here, we've hit 1,000 recursive symlinks. (cycle?)
+      break
+    fi
 
-      TARGET_FILE=$(readlink "$TARGET_FILE")
-      cd $(dirname "$TARGET_FILE")
-      TARGET_FILE=$(basename "$TARGET_FILE")
-      count=$(( $count + 1 ))
+    target_file=$(readlink "${target_file}")
+    cd $(dirname "${target_file}")
+    target_file=$(basename "${target_file}")
+    count=$(( ${count} + 1 ))
   done
 
   # Compute the canonicalized name by finding the physical path
   # for the directory we're in and appending the target file.
-  PHYS_DIR=$(pwd -P)
-  RESULT="$PHYS_DIR/$TARGET_FILE"
-  echo "$RESULT"
+  local phys_dir=$(pwd -P)
+  echo "${phys_dir}/${target_file}"
 }
 
+# ------------------------------------------------------------------------------
+
 prgm="$0"
-prgm=`resolve_symlink "$prgm"`
-bin=`dirname "$prgm"`
-bin=`cd "${bin}" && pwd`
+prgm=$(resolve_symlink "${prgm}")
+bin=$(dirname "${prgm}")
+bin=$(cd "${bin}" && pwd -P)
 
 KIJI_HOME="${KIJI_HOME:-${bin}/../}"
 export BENTO_CHECKIN_SERVER=${BENTO_CHECKIN_SERVER:-"https://updates.kiji.org/api/1.0.0/"}
@@ -81,8 +99,8 @@ KIJI_JAVA_OPTS=${KIJI_JAVA_OPTS:-""}
 
 # This is a workaround for OS X Lion, where a bug in JRE 1.6
 # creates a lot of 'SCDynamicStore' errors.
-if [ `uname` = "Darwin" ]; then
-    KIJI_JAVA_OPTS="$KIJI_JAVA_OPTS -Djava.security.krb5.realm= -Djava.security.krb5.kdc="
+if [[ "$(uname)" = "Darwin" ]]; then
+    KIJI_JAVA_OPTS="${KIJI_JAVA_OPTS} -Djava.security.krb5.realm= -Djava.security.krb5.kdc="
 fi
 
 # An existing set of directories to use for the java.library.path property should
@@ -93,126 +111,137 @@ java_opts=
 
 # Try using the binary to locate the root dir of hadoop and hbase.
 bin="$(resolve_symlink `which hbase`)"
-if [ $bin ]; then
-  if [ -z $HBASE_HOME ]; then
-    HBASE_HOME="${HBASE_HOME:-"$(dirname $(dirname $bin))"}"
-    echo "HBASE_HOME not set. Trying: $HBASE_HOME"
+if [[ ${bin} ]]; then
+  if [[ -z ${HBASE_HOME:-} ]]; then
+    HBASE_HOME="$(dirname $(dirname ${bin}))"
+    echo "HBASE_HOME not set. Trying: ${HBASE_HOME}"
   fi
 fi
 bin="$(resolve_symlink `which hadoop`)"
-if [ $bin ]; then
-  if [ -z $HADOOP_HOME ]; then
-    HADOOP_HOME="${HADOOP_HOME:-"$(dirname $(dirname $bin))"}"
-    echo "HADOOP_HOME not set. Trying: $HADOOP_HOME"
+if [[ ${bin} ]]; then
+  if [[ -z ${HADOOP_HOME:-} ]]; then
+    HADOOP_HOME="$(dirname $(dirname ${bin}))"
+    echo "HADOOP_HOME not set. Trying: ${HADOOP_HOME}"
   fi
 fi
 # Try defaults.
-if [ -z $HBASE_HOME ]; then
+if [[ -z ${HBASE_HOME} ]]; then
   HBASE_HOME="${HBASE_HOME:-/usr/lib/hbase}"
-   echo "HBASE_HOME not set. Trying: $HBASE_HOME"
+   echo "HBASE_HOME not set. Trying: ${HBASE_HOME}"
 fi
-if [ -z $HADOOP_HOME ]; then
+if [[ -z ${HADOOP_HOME} ]]; then
   HADOOP_HOME="${HADOOP_HOME:-/usr/lib/hadoop}"
-  echo "HADOOP_HOME not set. Trying: $HADOOP_HOME"
+  echo "HADOOP_HOME not set. Trying: ${HADOOP_HOME}"
 fi
 
 # Also try finding java root directory, because HBASE fails without it set.
 bin="$(resolve_symlink `which java`)"
-if [ -n $"bin" ]; then
-  if [ -z $JAVA_HOME ]; then
-    JAVA_HOME="${JAVA_HOME:-"$(dirname $(dirname $bin))"}"
-    echo "JAVA_HOME set. Trying: $JAVA_HOME"
+if [[ -n $"bin" ]]; then
+  if [[ -z ${JAVA_HOME} ]]; then
+    JAVA_HOME="${JAVA_HOME:-"$(dirname $(dirname ${bin}))"}"
+    echo "JAVA_HOME set. Trying: ${JAVA_HOME}"
   fi
 fi
 
 # First make sure we have everything we need in the environment.
-if [ -z $KIJI_HOME -o ! -d "$KIJI_HOME" ]; then
-    echo "Please set your KIJI_HOME environment variable."
-    exit 1
+if [[ -z ${KIJI_HOME} || ! -d "${KIJI_HOME}" ]]; then
+  echo "Please set your KIJI_HOME environment variable."
+  exit 1
 fi
-if [ -z $HBASE_HOME -o ! -d "$HBASE_HOME" ]; then
-    echo "Please set your HBASE_HOME environment variable."
-    exit 1
+if [[ -z ${HBASE_HOME} || ! -d "${HBASE_HOME}" ]]; then
+  echo "Please set your HBASE_HOME environment variable."
+  exit 1
 fi
-if [ -z $HADOOP_HOME -o ! -d "$HADOOP_HOME" ]; then
-    echo "Please set your HADOOP_HOME environment variable."
-    exit 1
+if [[ -z ${HADOOP_HOME} || ! -d "${HADOOP_HOME}" ]]; then
+  echo "Please set your HADOOP_HOME environment variable."
+  exit 1
 fi
 
-if [ -z $1 ]; then
-    echo "kiji: Tool launcher for the Kiji framework"
-    echo "Run 'kiji help' to see a list of available tools."
-    exit 1
+if [[ -z "${1:-}" ]]; then
+  echo "kiji: Tool launcher for the Kiji framework"
+  echo "Run 'kiji help' to see a list of available tools."
+  exit 1
 fi
 
 # Gather the kiji dependency jars.
 libjars="${KIJI_HOME}/lib/*"
 
+# ------------------------------------------------------------------------------
+
 # We may have Hadoop distribution-specific jars to load in
-# $KIJI_HOME/lib/distribution/hadoopN, where N is the major digit of the Hadoop
-# version. Only load at most one such set of jars.
+# ${KIJI_HOME}/lib/distribution/hadoop${N}, where N is the major digit of the
+# Hadoop version. Only load at most one such set of jars.
+#
+# ${KIJI_HOME}/lib/distribution/hadoop${N} is part of the KijiBento distribution.
 
 # Detect and extract the current Hadoop version number. e.g. "Hadoop 2.x-..." -> "2"
-# You can override this with $KIJI_HADOOP_DISTRO_VER (e.g. "hadoop1" or "hadoop2").
-hadoop_major_version=`$HADOOP_HOME/bin/hadoop version | head -1 | cut -c 8`
-if [ -z "$hadoop_major_version" -a -z "$KIJI_HADOOP_DISTRO_VER" ]; then
+# You can override this with ${KIJI_HADOOP_DISTRO_VER} (e.g. "hadoop1" or "hadoop2").
+hadoop_major_version=`${HADOOP_HOME}/bin/hadoop version | head -1 | cut -c 8`
+if [[ -z "${hadoop_major_version}" && -z "${KIJI_HADOOP_DISTRO_VER:-}" ]]; then
   echo "Warning: Unknown Hadoop version. May not be able to load all Kiji jars."
   echo "Set KIJI_HADOOP_DISTRO_VER to 'hadoop1' or 'hadoop2' to load these."
+  KIJI_HADOOP_DISTRO_VER=""
 else
   # If the hadoop version is 0 (i.e. 0.20) then use the hadoop1 bridge
-  if [ $hadoop_major_version -eq 0 ]; then
+  if [[ ${hadoop_major_version} -eq 0 ]]; then
     hadoop_major_version=1
   fi
-  KIJI_HADOOP_DISTRO_VER=${KIJI_HADOOP_DISTRO_VER:-"hadoop$hadoop_major_version"}
+  KIJI_HADOOP_DISTRO_VER=${KIJI_HADOOP_DISTRO_VER:-"hadoop${hadoop_major_version}"}
 fi
 
-distrodir="$KIJI_HOME/lib/distribution/$KIJI_HADOOP_DISTRO_VER"
-if [ -d "$distrodir" ]; then
-  distrojars="$distrodir/*"
+distrodir="${KIJI_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}"
+if [[ -d "${distrodir}" ]]; then
+  distrojars="${distrodir}/*"
+else
+  distrojars=""
 fi
 
 # If KIJI_MR_HOME is set and is not equal to KIJI_HOME, add jars in
-# $KIJI_MR_HOME/lib to classpath.
-if [[ -n "$KIJI_MR_HOME" && "$KIJI_HOME" != "$KIJI_MR_HOME" ]]; then
+# ${KIJI_MR_HOME}/lib to classpath.
+if [[ -n "${KIJI_MR_HOME}" && "${KIJI_HOME}" != "${KIJI_MR_HOME}" ]]; then
   libjars="${libjars}:${KIJI_MR_HOME}/lib/*"
-  if [ -d "$KIJI_MR_HOME/lib/distribution/$KIJI_HADOOP_DISTRO_VER" ]; then
-    distrojars="${distrojars}:$KIJI_MR_HOME/lib/distribution/$KIJI_HADOOP_DISTRO_VER/*"
+  if [[ -d "${KIJI_MR_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}" ]]; then
+    distrojars="${distrojars}:${KIJI_MR_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}/*"
   fi
 fi
 
+# ${distrojars} now holds Hadoop1 or Hadoop2 jars, or nothing.
+
+# ------------------------------------------------------------------------------
+
 # Gather the HBase classpath.
-hbase_cp=$($HBASE_HOME/bin/hbase classpath)
+hbase_cp=$(${HBASE_HOME}/bin/hbase classpath)
 
 # Hadoop classpath
-hadoop_cp=$($HADOOP_HOME/bin/hadoop classpath)
+hadoop_cp=$(${HADOOP_HOME}/bin/hadoop classpath)
 
 # The KijiSchema jar needs to go at the head of the classpath to suppress slf4j warnings.
 # The KijiSchema jar filename will be either a "normal" KijiSchema jar, or one compiled with
 # profiling enabled, denoted by ...-profiling.jar. Select the appropriate jar filename here
-if [ -f "${KIJI_HOME}/lib/kiji-schema-${project.version}-profiling.jar" ]; then
-  schema_jar="$KIJI_HOME/lib/kiji-schema-${project.version}-profiling.jar"
+if [[ -f "${KIJI_HOME}/lib/kiji-schema-${kiji_schema_version}-profiling.jar" ]]; then
+  schema_jar="${KIJI_HOME}/lib/kiji-schema-${kiji_schema_version}-profiling.jar"
 else
-  schema_jar="$KIJI_HOME/lib/kiji-schema-${project.version}.jar"
+  schema_jar="${KIJI_HOME}/lib/kiji-schema-${kiji_schema_version}.jar"
 fi
 
 # Note that we put the libjars before the hbase jars, in case there are conflicts.
-kiji_conf=$KIJI_HOME/conf
-# We put $KIJI_CLASSPATH at the beginning classpath to allow users to win when there are conflicts.
-kiji_cp="$schema_jar:$KIJI_CLASSPATH:$kiji_conf:$libjars:$distrojars:$hadoop_cp:$hbase_cp"
+kiji_conf=${KIJI_HOME}/conf
+# We put ${KIJI_CLASSPATH} at the beginning classpath to allow users to win when there are conflicts.
+kiji_cp="${schema_jar}:${KIJI_CLASSPATH}:${kiji_conf}:${libjars}:${distrojars}:${hadoop_cp}:${hbase_cp}"
 
 # Determine location of Hadoop native libraries and set java.library.path.
-if [ -d "${HADOOP_HOME}/lib/native" ]; then
+if [[ -d "${HADOOP_HOME}/lib/native" ]]; then
   JAVA_PLATFORM=`java -cp ${hadoop_cp} -Xmx32m org.apache.hadoop.util.PlatformName | sed -e "s/ /_/g"`
-  if [ -d "${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}" ]; then
-    # if $HADOOP_HOME/lib/native/$JAVA_PLATFORM exists, use native libs from there.
-    if [ ! -z "${JAVA_LIBRARY_PATH}" ]; then
+  if [[ -d "${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}" ]]; then
+    # if ${HADOOP_HOME}/lib/native/${JAVA_PLATFORM} exists, use native libs from there.
+    if [[ ! -z "${JAVA_LIBRARY_PATH}" ]]; then
       JAVA_LIBRARY_PATH="${JAVA_LIBRARY_PATH}:${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}"
     else
       JAVA_LIBRARY_PATH="${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}"
     fi
-  elif [ -d "${HADOOP_HOME}/lib/native" ]; then
-    # If not, check for a global $HADOOP_HOME/lib/native/ and just use that dir.
-    if [ ! -z "${JAVA_LIBRARY_PATH}" ]; then
+  elif [[ -d "${HADOOP_HOME}/lib/native" ]]; then
+    # If not, check for a global ${HADOOP_HOME}/lib/native/ and just use that dir.
+    if [[ ! -z "${JAVA_LIBRARY_PATH}" ]]; then
       JAVA_LIBRARY_PATH="${JAVA_LIBRARY_PATH}:${HADOOP_HOME}/lib/native/"
     else
       JAVA_LIBRARY_PATH="${HADOOP_HOME}/lib/native/"
@@ -224,78 +253,73 @@ fi
 # check-in server, if we are running inside a Kiji BentoBox. We know we're running in
 # a Kiji BentoBox if the timestamp generation script exists.
 usage_timestamp_script="${bin}/record-usage-timestamp.sh"
-if [ -f "${usage_timestamp_script}" -a -x "${usage_timestamp_script}" ]; then
+if [[ -f "${usage_timestamp_script}" && -x "${usage_timestamp_script}" ]]; then
   "${usage_timestamp_script}"
 fi
 
 # If we're running in a Kiji BentoBox, inform the user of any BentoBox upgrades that
 # are available.
 upgrade_informer_script="${bin}/upgrade-informer.sh"
-if [ -f "${upgrade_informer_script}" -a -x "${upgrade_informer_script}" ]; then
+if [[ -f "${upgrade_informer_script}" && -x "${upgrade_informer_script}" ]]; then
   "${upgrade_informer_script}"
 fi
 
-command=$1
-foreground=true # Run command in the foreground.
+command="$1"
 
-case $command in
-    classpath)
-        echo "$kiji_cp"
-        exit 0
-        ;;
+case "${command}" in
+  classpath)
+    echo "${kiji_cp}"
+    exit 0
+    ;;
 
-    jar)
-        shift  # pop off the command
-        if [[ $# > 0 && $1 == "--help" ]]; then
-          echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
-          echo
-          exit 0
-        fi
-        user_jar_file=$1
-        class=$2
-        shift
-        shift
-        if [ -z "$user_jar_file" ]; then
-          echo "Error: no jar file specified."
-          echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
-          exit 1
-        fi
-        if [ ! -f "$user_jar_file" ]; then
-          echo "Error: Cannot find jar file $user_jar_file"
-          echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
-          exit 1
-        fi
-        if [ -z "$class" ]; then
-          echo "Error: no main class specified."
-          echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
-          exit 1
-        fi
-        kiji_cp="${user_jar_file}:${kiji_cp}"
-        ;;
+  jar)
+    shift  # pop off the command
+    if [[ $# > 0 && $1 == "--help" ]]; then
+      echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
+      echo
+      exit 0
+    fi
+    user_jar_file="$1"
+    class="$2"
+    shift
+    shift
+    if [[ -z "${user_jar_file}" ]]; then
+      echo "Error: no jar file specified."
+      echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
+      exit 1
+    fi
+    if [[ ! -f "${user_jar_file}" ]]; then
+      echo "Error: Cannot find jar file ${user_jar_file}"
+      echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
+      exit 1
+    fi
+    if [[ -z "${class}" ]]; then
+      echo "Error: no main class specified."
+      echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
+      exit 1
+    fi
+    kiji_cp="${user_jar_file}:${kiji_cp}"
+    ;;
 
-    *)
-        class=org.kiji.schema.tools.KijiToolLauncher
-        ;;
+  *)
+    class=org.kiji.schema.tools.KijiToolLauncher
+    ;;
 esac
 
-if [ -z $class ]; then
-    echo "Unknown command: $command"
-    echo "Try:"
-    echo "  kiji help"
-    exit 1
+if [[ -z "${class}" ]]; then
+  echo "Unknown command: ${command}"
+  echo "Try:"
+  echo "  kiji help"
+  exit 1
 fi
 
 export KIJI_JAVA_OPTS
 
-if [ ! -z "$JAVA_LIBRARY_PATH" ]; then
-  java_opts="$java_opts -Djava.library.path=$JAVA_LIBRARY_PATH"
+if [[ ! -z "${JAVA_LIBRARY_PATH}" ]]; then
+  # Let's pray that there is no space in ${JAVA_LIBRARY_PATH}
+  java_opts="${java_opts} -Djava.library.path=${JAVA_LIBRARY_PATH}"
 fi
 
 # Run it!
 
-if $foreground ; then
-  exec java -cp "$kiji_cp" $java_opts $KIJI_JAVA_OPTS $class "$@"
-else
-  nohup java -cp "$kiji_cp" $java_opts $KIJI_JAVA_OPTS $class "$@" \
-      >/dev/null 2>&1 </dev/null &
-fi
+exec java -cp "${kiji_cp}" ${java_opts} ${KIJI_JAVA_OPTS} "${class}" "$@"
