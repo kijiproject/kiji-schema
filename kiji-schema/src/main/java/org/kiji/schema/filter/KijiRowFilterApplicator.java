@@ -36,8 +36,8 @@ import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.hbase.HBaseDataRequestAdapter;
 import org.kiji.schema.layout.CellSpec;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.InvalidLayoutException;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**
@@ -64,14 +64,14 @@ public final class KijiRowFilterApplicator {
    */
   @ApiAudience.Private
   private final class KijiRowFilterContext extends KijiRowFilter.Context {
-    private final KijiColumnNameTranslator mColumnNameTranslator;
+    private final HBaseColumnNameTranslator mColumnNameTranslator;
 
     /**
      * Constructs a KijiRowFilterContext.
      *
      * @param columnNameTranslator Column name translator for the table to apply filter to.
      */
-    private KijiRowFilterContext(KijiColumnNameTranslator columnNameTranslator) {
+    private KijiRowFilterContext(HBaseColumnNameTranslator columnNameTranslator) {
       mColumnNameTranslator = columnNameTranslator;
     }
 
@@ -104,8 +104,8 @@ public final class KijiRowFilterApplicator {
    * This private constructor is used by the <code>create()</code> factory method.
    *
    * @param rowFilter The row filter to be applied.
-   * @param schemaTable The kiji schema table.
    * @param tableLayout The layout of the table this filter applies to.
+   * @param schemaTable The kiji schema table.
    */
   private KijiRowFilterApplicator(KijiRowFilter rowFilter, KijiTableLayout tableLayout,
       KijiSchemaTable schemaTable) {
@@ -143,7 +143,7 @@ public final class KijiRowFilterApplicator {
       // TODO: SCHEMA-444 Avoid constructing a new KijiColumnNameTranslator below.
       new HBaseDataRequestAdapter(
           mRowFilter.getDataRequest(),
-          KijiColumnNameTranslator.from(mTableLayout))
+          HBaseColumnNameTranslator.from(mTableLayout))
           .applyToScan(scan, mTableLayout);
     } catch (InvalidLayoutException e) {
       throw new InternalKijiError(e);
@@ -151,7 +151,7 @@ public final class KijiRowFilterApplicator {
 
     // Set the filter.
     final KijiRowFilter.Context context =
-        new KijiRowFilterContext(KijiColumnNameTranslator.from(mTableLayout));
+        new KijiRowFilterContext(HBaseColumnNameTranslator.from(mTableLayout));
     scan.setFilter(mRowFilter.toHBaseFilter(context));
   }
 }

@@ -71,15 +71,14 @@ public class TestInstanceMonitor extends KijiClientTest {
   @Test
   public void testCanRetrieveTableMonitor() throws Exception {
     TableLayoutMonitor monitor = mInstanceMonitor.getTableLayoutMonitor(mTableURI.getTable());
-    Assert.assertEquals("layout-1.0",
-        monitor.getLayoutCapsule().getLayout().getDesc().getVersion());
+    Assert.assertEquals("layout-1.0", monitor.getLayout().getDesc().getVersion());
   }
 
   @Test(expected = IllegalStateException.class)
   public void testClosingInstanceMonitorWillCloseTableLayoutMonitor() throws Exception {
     TableLayoutMonitor monitor = mInstanceMonitor.getTableLayoutMonitor(mTableURI.getTable());
     mInstanceMonitor.close();
-    monitor.getLayoutCapsule();
+    monitor.getLayout();
   }
 
   @Test

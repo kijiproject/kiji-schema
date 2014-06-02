@@ -254,7 +254,7 @@ import org.kiji.schema.util.ToJson;
  * For storage efficiency purposes, Kiji family and column names are translated into short
  * HBase column names by default.
  * This translation happens in
- *   {@link org.kiji.schema.layout.impl.ShortColumnNameTranslator ShortColumnNameTranslator}
+ *   {@link org.kiji.schema.layout.impl.hbase.ShortColumnNameTranslator ShortColumnNameTranslator}
  * and relies on
  *   {@link org.kiji.schema.layout.impl.ColumnId ColumnId}.
  * Column IDs are assigned automatically by KijiTableLayout.
@@ -267,7 +267,7 @@ import org.kiji.schema.util.ToJson;
  * For compatibility with other HBase tools, Kiji family and column names can be written to HBase
  * directly.
  * This translation happens in
- *   {@link org.kiji.schema.layout.impl.IdentityColumnNameTranslator}
+ *   {@link org.kiji.schema.layout.impl.hbase.IdentityColumnNameTranslator}
  * In this mode:
  * <ul>
  *   <li>Kiji locality groups are translated into HBase families.</li>
@@ -279,7 +279,7 @@ import org.kiji.schema.util.ToJson;
  * For compatibility with existing HBase tables, the notion of a Kiji locality group can be
  * ignored, mapping Kiji family and column names directly to their HBase equivalents.
  * This translation happens in
- *   {@link org.kiji.schema.layout.impl.HBaseNativeColumnNameTranslator}
+ *   {@link org.kiji.schema.layout.impl.hbase.HBaseNativeColumnNameTranslator}
  * In this mode:
  * <ul>
  *   <li>Kiji locality groups and column families are translated into HBase families.</li>
@@ -997,7 +997,7 @@ public final class KijiTableLayout {
     // Range scan index cannot be the first element or anything greater
     // than the components length (number of components).
     if (format.getRangeScanStartIndex() <= 0
-      || format.getRangeScanStartIndex() > format.getComponents().size()) {
+        || format.getRangeScanStartIndex() > format.getComponents().size()) {
       throw new InvalidLayoutException("Invalid range scan index. Range scans are supported "
           + "starting with the second component.");
     }

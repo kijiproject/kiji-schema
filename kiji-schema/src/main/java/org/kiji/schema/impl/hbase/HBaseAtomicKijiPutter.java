@@ -40,9 +40,10 @@ import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.impl.hbase.HBaseKijiTableWriter.WriterLayoutCapsule;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.LayoutUpdatedException;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
-import org.kiji.schema.layout.impl.LayoutCapsule;
 
 /**
  * HBase implementation of AtomicKijiPutter.
@@ -123,7 +124,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
   private final class InnerLayoutUpdater implements LayoutConsumer {
     /** {@inheritDoc} */
     @Override
-    public void update(final LayoutCapsule capsule) throws IOException {
+    public void update(final KijiTableLayout layout) throws IOException {
       if (mState.get() == State.CLOSED) {
         LOG.debug("AtomicKijiPutter instance is closed; ignoring layout update.");
         return;
@@ -133,7 +134,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
         // Update the state of the writer.
         final CellEncoderProvider provider = new CellEncoderProvider(
             mTable.getURI(),
-            capsule.getLayout(),
+            layout,
             mTable.getKiji().getSchemaTable(),
             DefaultKijiCellEncoderFactory.get());
         // If the capsule is null this is the initial setup and we do not need a log message.
@@ -143,17 +144,15 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
               this,
               mTable.getURI(),
               mWriterLayoutCapsule.getLayout().getDesc().getLayoutId(),
-              capsule.getLayout().getDesc().getLayoutId());
+              layout.getDesc().getLayoutId());
         } else {
           LOG.debug("Initializing AtomicKijiPutter: {} for table: {} with table layout version: {}",
               this,
               mTable.getURI(),
-              capsule.getLayout().getDesc().getLayoutId());
+              layout.getDesc().getLayoutId());
         }
-        mWriterLayoutCapsule = new WriterLayoutCapsule(
-            provider,
-            capsule.getLayout(),
-            capsule.getKijiColumnNameTranslator());
+        mWriterLayoutCapsule =
+            new WriterLayoutCapsule(provider, layout, HBaseColumnNameTranslator.from(layout));
       }
     }
   }

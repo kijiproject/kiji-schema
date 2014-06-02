@@ -35,7 +35,7 @@ import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableAnnotator;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 
 /** HBase implementation of {@link org.kiji.schema.KijiTableAnnotator}. */
 @ApiAudience.Private
@@ -141,7 +141,7 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
       final KijiColumnName columnName,
       final String key
   ) throws NoSuchColumnException {
-    final KijiColumnNameTranslator translator = table.getColumnNameTranslator();
+    final HBaseColumnNameTranslator translator = table.getColumnNameTranslator();
     Preconditions.checkArgument(isValidAnnotationKey(key), "Annotation key: %s does not conform to "
         + "required pattern: %s", key, ALLOWED_ANNOTATION_KEY_PATTERN);
     return String.format("%s%s.%s",
@@ -176,7 +176,7 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
       final HBaseKijiTable table,
       final String metaTableKey
   ) throws NoSuchColumnException {
-    final KijiColumnNameTranslator translator = table.getColumnNameTranslator();
+    final HBaseColumnNameTranslator translator = table.getColumnNameTranslator();
     // Everything between the prefix and the annotation key.
     final String hbaseColumnString =
         metaTableKey.substring(METATABLE_KEY_PREFIX.length(), metaTableKey.lastIndexOf("."));

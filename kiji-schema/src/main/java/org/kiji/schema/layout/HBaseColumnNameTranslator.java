@@ -19,50 +19,45 @@
 
 package org.kiji.schema.layout;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.impl.HBaseNativeColumnNameTranslator;
-import org.kiji.schema.layout.impl.IdentityColumnNameTranslator;
-import org.kiji.schema.layout.impl.ShortColumnNameTranslator;
+import org.kiji.schema.layout.impl.hbase.HBaseNativeColumnNameTranslator;
+import org.kiji.schema.layout.impl.hbase.IdentityColumnNameTranslator;
+import org.kiji.schema.layout.impl.hbase.ShortColumnNameTranslator;
 
 /**
- * Translates between HTable and Kiji table column names.
+ * Translates between HBase and Kiji table column names.
  *
  * <p>This abstract class defines an interface for mapping between names of HBase HTable
  * families/qualifiers and Kiji table family/qualifiers.</p>
  */
 @ApiAudience.Framework
 @ApiStability.Experimental
-public abstract class KijiColumnNameTranslator {
-  private static final Logger LOG = LoggerFactory.getLogger(KijiColumnNameTranslator.class);
-
+public abstract class HBaseColumnNameTranslator {
   /**
-   * Creates a new <code>KijiColumnNameTranslator</code> instance.  Supports either
-   * {@link org.kiji.schema.layout.impl.ShortColumnNameTranslator},
-   * {@link org.kiji.schema.layout.impl.IdentityColumnNameTranslator},
-   * {@link org.kiji.schema.layout.impl.HBaseNativeColumnNameTranslator} based on the table layout.
+   * Creates a new {@link HBaseColumnNameTranslator} instance.  Supports either
+   * {@link ShortColumnNameTranslator}, {@link IdentityColumnNameTranslator}, or
+   * {@link HBaseNativeColumnNameTranslator} based on the table layout.
    *
    * @param tableLayout The layout of the table to translate column names for.
-   * @return KijiColumnNameTranslator of the appropriate type specified by the layout
+   * @return {@link HBaseColumnNameTranslator} of the appropriate type.
    */
-  public static KijiColumnNameTranslator from(KijiTableLayout tableLayout) {
+  public static HBaseColumnNameTranslator from(KijiTableLayout tableLayout) {
     switch (tableLayout.getDesc().getColumnNameTranslator()) {
-    case SHORT:
-      return new ShortColumnNameTranslator(tableLayout);
-    case IDENTITY:
-      return new IdentityColumnNameTranslator(tableLayout);
-    case HBASE_NATIVE:
-      return new HBaseNativeColumnNameTranslator(tableLayout);
-    default:
-       throw new UnsupportedOperationException("Unsupported ColumnNameTranslator: "
-         + tableLayout.getDesc().getColumnNameTranslator().toString()
-         + " for column: " + tableLayout.getName());
+      case SHORT:
+        return new ShortColumnNameTranslator(tableLayout);
+      case IDENTITY:
+        return new IdentityColumnNameTranslator(tableLayout);
+      case HBASE_NATIVE:
+        return new HBaseNativeColumnNameTranslator(tableLayout);
+      default:
+        throw new UnsupportedOperationException(String.format(
+            "Unsupported HBaseColumnNameTranslator: %s for column: %s.",
+            tableLayout.getDesc().getColumnNameTranslator(),
+            tableLayout.getName()));
     }
   }
 

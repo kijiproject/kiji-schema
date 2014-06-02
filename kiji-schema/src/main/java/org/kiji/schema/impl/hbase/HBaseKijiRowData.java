@@ -55,10 +55,9 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.BoundColumnReaderSpec;
 import org.kiji.schema.layout.ColumnReaderSpec;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
-import org.kiji.schema.layout.impl.LayoutCapsule;
 import org.kiji.schema.util.TimestampComparator;
 
 /**
@@ -98,10 +97,11 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @return a new CellDecoderProvider for the specified HBase KijiTable.
    * @throws IOException on I/O error.
    */
-  private static CellDecoderProvider createCellProvider(HBaseKijiTable table) throws IOException {
-    final LayoutCapsule capsule = table.getLayoutCapsule();
+  private static CellDecoderProvider createCellProvider(
+      final HBaseKijiTable table
+  ) throws IOException {
     return new CellDecoderProvider(
-        capsule.getLayout(),
+        table.getLayout(),
         Maps.<KijiColumnName, BoundColumnReaderSpec>newHashMap(),
         Sets.<BoundColumnReaderSpec>newHashSet(),
         KijiTableReaderBuilder.DEFAULT_CACHE_MISS);
@@ -126,12 +126,12 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @throws IOException on I/O error.
    */
   public HBaseKijiRowData(
-      HBaseKijiTable table,
-      KijiDataRequest dataRequest,
-      EntityId entityId,
-      Result result,
-      CellDecoderProvider decoderProvider)
-      throws IOException {
+      final HBaseKijiTable table,
+      final KijiDataRequest dataRequest,
+      final EntityId entityId,
+      final Result result,
+      final CellDecoderProvider decoderProvider
+  ) throws IOException {
     mTable = table;
     mTableLayout = table.getLayout();
     mDataRequest = dataRequest;
@@ -148,7 +148,7 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @return a cell decoder which can read the given column.
    * @throws IOException in case of an error getting the cell decoder.
    */
-  private <T> KijiCellDecoder<T> getDecoder(KijiColumnName column) throws IOException {
+  private <T> KijiCellDecoder<T> getDecoder(final KijiColumnName column) throws IOException {
     final KijiDataRequest.Column requestColumn = mDataRequest.getRequestForColumn(column);
     if (null != requestColumn) {
       final ColumnReaderSpec spec = requestColumn.getReaderSpec();
@@ -173,7 +173,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     /** The cell decoder for this column. */
     private final KijiCellDecoder<T> mDecoder;
     /** The column name translator for the given table. */
-    private final KijiColumnNameTranslator mColumnNameTranslator;
+    private final HBaseColumnNameTranslator mColumnNameTranslator;
     /** The maximum number of versions requested. */
     private final int mMaxVersions;
     /** An array of KeyValues returned by HBase. */
@@ -193,13 +193,18 @@ public final class HBaseKijiRowData implements KijiRowData {
      * @param columnName The Kiji column that is being iterated over.
      * @param rowdata The HBaseKijiRowData instance containing the desired data.
      * @param eId of the rowdata we are iterating over.
+     * @param columnNameTranslator of the table being iterated over.
      * @throws IOException on I/O error
      */
-    protected KijiCellIterator(KijiColumnName columnName, HBaseKijiRowData rowdata, EntityId eId)
-        throws IOException {
+    protected KijiCellIterator(
+        final KijiColumnName columnName,
+        final HBaseKijiRowData rowdata,
+        final EntityId eId,
+        final HBaseColumnNameTranslator columnNameTranslator
+    ) throws IOException {
       mColumn = columnName;
       // Initialize column name translator.
-      mColumnNameTranslator = KijiColumnNameTranslator.from(rowdata.mTableLayout);
+      mColumnNameTranslator = Preconditions.checkNotNull(columnNameTranslator);
       // Get cell decoder.
       mDecoder = rowdata.getDecoder(mColumn);
       // Get info about the data request for this column.
@@ -272,7 +277,7 @@ public final class HBaseKijiRowData implements KijiRowData {
      * @return The index of the next KeyValue from the column we are iterating over.If there are no
      * more cells to iterate over, the returned value will be mKVs.length.
      */
-    private int getNextIndex(int lastIndex) {
+    private int getNextIndex(final int lastIndex) {
       int nextIndex = lastIndex;
       if (mColumn.isFullyQualified()) {
         if (mNumVersions < mMaxVersions) {
@@ -320,7 +325,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     *     column, and larger than any KeyValue that may preceed values for our desired column.
     * @return The index of the first KeyValue in the desired map type family.
     */
-    private static int findInsertionPoint(KeyValue[] kvs, KeyValue pivotKeyValue) {
+    private static int findInsertionPoint(final KeyValue[] kvs, final KeyValue pivotKeyValue) {
       // Now find where the pivotKeyValue would be placed
       int binaryResult = Arrays.<KeyValue>binarySearch(kvs, pivotKeyValue, KV_COMPARATOR);
       if (binaryResult < 0) {
@@ -341,7 +346,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     *     defined by KVComparator.
     *
     */
-    private static KeyValue makePivotKeyValue(KeyValue baselineKV) {
+    private static KeyValue makePivotKeyValue(final KeyValue baselineKV) {
       // Generate a byte[] that is the qualifier of the baseline byte[], with a 0 byte appended.
       byte[] baselineQualifier = baselineKV.getQualifier();
       byte[] smallestStrictlyGreaterQualifier = Arrays.copyOf(baselineQualifier,
@@ -363,24 +368,38 @@ public final class HBaseKijiRowData implements KijiRowData {
     private final HBaseKijiRowData mRowData;
     /** The entity id for the row. */
     private final EntityId mEntityId;
+    /** The HBaseColumnNameTranslator for the column. */
+    private final HBaseColumnNameTranslator mHBaseColumnNameTranslator;
+
     /**
      * An iterable of KijiCells, for a particular column.
      *
      * @param colName The Kiji column family that is being iterated over.
      * @param rowdata The HBaseKijiRowData instance containing the desired data.
      * @param eId of the rowdata we are iterating over.
+     * @param columnNameTranslator of the table we are iterating over.
      */
-    protected CellIterable(KijiColumnName colName, HBaseKijiRowData rowdata, EntityId eId) {
+    protected CellIterable(
+        final KijiColumnName colName,
+        final HBaseKijiRowData rowdata,
+        final EntityId eId,
+        final HBaseColumnNameTranslator columnNameTranslator
+    ) {
       mColumnName = colName;
       mRowData = rowdata;
       mEntityId = eId;
+      mHBaseColumnNameTranslator = columnNameTranslator;
     }
 
     /** {@inheritDoc} */
     @Override
     public Iterator<KijiCell<T>> iterator() {
       try {
-        return new KijiCellIterator<T>(mColumnName , mRowData, mEntityId);
+        return new KijiCellIterator<T>(
+            mColumnName,
+            mRowData,
+            mEntityId,
+            mHBaseColumnNameTranslator);
       } catch (IOException ex) {
         throw new KijiIOException(ex);
       }
@@ -449,8 +468,8 @@ public final class HBaseKijiRowData implements KijiRowData {
       return mFilteredMap;
     }
 
-    final KijiColumnNameTranslator columnNameTranslator =
-        KijiColumnNameTranslator.from(mTableLayout);
+    final HBaseColumnNameTranslator columnNameTranslator =
+        HBaseColumnNameTranslator.from(mTableLayout);
     // Loop over the families in the HTable.
     for (NavigableMap.Entry<byte[], NavigableMap<byte[], NavigableMap<Long, byte[]>>> familyEntry
              : map.entrySet()) {
@@ -526,12 +545,12 @@ public final class HBaseKijiRowData implements KijiRowData {
 
   /** {@inheritDoc} */
   @Override
-  public synchronized boolean containsColumn(String family, String qualifier) {
+  public synchronized boolean containsColumn(final String family, final String qualifier) {
     final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
     if (null == columnMap) {
       return false;
     }
-   final  NavigableMap<Long, byte[]> versionMap = columnMap.get(qualifier);
+    final NavigableMap<Long, byte[]> versionMap = columnMap.get(qualifier);
     if (null == versionMap) {
       return false;
     }
@@ -540,7 +559,7 @@ public final class HBaseKijiRowData implements KijiRowData {
 
   /** {@inheritDoc} */
   @Override
-  public synchronized boolean containsColumn(String family) {
+  public synchronized boolean containsColumn(final String family) {
 
     final NavigableMap<String, NavigableMap<Long, byte[]>> columnMap = getMap().get(family);
     if (null == columnMap) {
@@ -555,14 +574,18 @@ public final class HBaseKijiRowData implements KijiRowData {
 
   /** {@inheritDoc} */
   @Override
-  public synchronized boolean containsCell(String family, String qualifier, long timestamp) {
+  public synchronized boolean containsCell(
+      final String family,
+      final String qualifier,
+      long timestamp
+  ) {
     return containsColumn(family, qualifier)
         && getTimestamps(family, qualifier).contains(timestamp);
   }
 
   /** {@inheritDoc} */
   @Override
-  public synchronized NavigableSet<String> getQualifiers(String family) {
+  public synchronized NavigableSet<String> getQualifiers(final String family) {
     final NavigableMap<String, NavigableMap<Long, byte[]>> qmap = getRawQualifierMap(family);
     if (null == qmap) {
       return Sets.newTreeSet();
@@ -572,7 +595,10 @@ public final class HBaseKijiRowData implements KijiRowData {
 
   /** {@inheritDoc} */
   @Override
-  public synchronized NavigableSet<Long> getTimestamps(String family, String qualifier) {
+  public synchronized NavigableSet<Long> getTimestamps(
+      final String family,
+      final String qualifier
+  ) {
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
     if (null == tmap) {
       return Sets.newTreeSet(TimestampComparator.INSTANCE);
@@ -582,7 +608,7 @@ public final class HBaseKijiRowData implements KijiRowData {
 
   /** {@inheritDoc} */
   @Override
-  public Schema getReaderSchema(String family, String qualifier) throws IOException {
+  public Schema getReaderSchema(final String family, final String qualifier) throws IOException {
     return mTableLayout.getCellSpec(KijiColumnName.create(family, qualifier)).getAvroSchema();
   }
 
@@ -592,7 +618,7 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @param family Family to look up.
    * @return the encoded map of qualifiers in the specified family, or null.
    */
-  private NavigableMap<String, NavigableMap<Long, byte[]>> getRawQualifierMap(String family) {
+  private NavigableMap<String, NavigableMap<Long, byte[]>> getRawQualifierMap(final String family) {
     return getMap().get(family);
   }
 
@@ -603,7 +629,10 @@ public final class HBaseKijiRowData implements KijiRowData {
    * @param qualifier Qualifier to look up.
    * @return the encoded time-series in the specified family:qualifier column, or null.
    */
-  private NavigableMap<Long, byte[]> getRawTimestampMap(String family, String qualifier) {
+  private NavigableMap<Long, byte[]> getRawTimestampMap(
+      final String family,
+      final String qualifier
+  ) {
     final NavigableMap<String, NavigableMap<Long, byte[]>> qmap = getRawQualifierMap(family);
     if (null == qmap) {
       return null;
@@ -784,7 +813,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     Preconditions.checkArgument(
         mDataRequest.getRequestForColumn(column) != null,
         "Column %s has no data request.", column);
-    return new KijiCellIterator<T>(column, this, mEntityId);
+    return new KijiCellIterator<T>(column, this, mEntityId, mTable.getColumnNameTranslator());
   }
 
   /** {@inheritDoc} */
@@ -800,7 +829,7 @@ public final class HBaseKijiRowData implements KijiRowData {
             + " on map type column families. The column family [%s], is a group type column family."
             + " Please use the iterator(String family, String qualifier) method.",
         family);
-    return new KijiCellIterator<T>(column, this, mEntityId);
+    return new KijiCellIterator<T>(column, this, mEntityId, mTable.getColumnNameTranslator());
   }
 
   /** {@inheritDoc} */
@@ -810,7 +839,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     Preconditions.checkArgument(
         mDataRequest.getRequestForColumn(column) != null,
         "Column %s has no data request.", column);
-    return new CellIterable<T>(column, this, mEntityId);
+    return new CellIterable<T>(column, this, mEntityId, mTable.getColumnNameTranslator());
   }
 
   /** {@inheritDoc} */
@@ -825,7 +854,7 @@ public final class HBaseKijiRowData implements KijiRowData {
             + " on map type column families. The column family [%s], is a group type column family."
             + " Please use the asIterable(String family, String qualifier) method.",
         family);
-    return new CellIterable<T>(column, this, mEntityId);
+    return new CellIterable<T>(column, this, mEntityId, mTable.getColumnNameTranslator());
   }
 
   /** {@inheritDoc} */
@@ -859,7 +888,7 @@ public final class HBaseKijiRowData implements KijiRowData {
         mEntityId,
         mDataRequest,
         mResult,
-        KijiColumnNameTranslator.from(mTableLayout),
+        mTable.getColumnNameTranslator(),
         mDecoderProvider,
         mTable);
   }

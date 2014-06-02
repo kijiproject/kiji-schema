@@ -58,7 +58,7 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.BoundColumnReaderSpec;
 import org.kiji.schema.layout.ColumnReaderSpec;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
 
 /** HBase implementation of KijiResult. */
@@ -308,7 +308,7 @@ public final class HBaseKijiResult implements KijiResult {
   private final EntityId mEntityId;
   private final KijiDataRequest mDataRequest;
   private final Result mUnpagedResult;
-  private final KijiColumnNameTranslator mColumnNameTranslator;
+  private final HBaseColumnNameTranslator mColumnNameTranslator;
   private final CellDecoderProvider mCellDecoderProvider;
   private final HBaseKijiTable mTable;
   private final KeyValueToKijiCell<Object> mKeyValueToKijiCell;
@@ -330,7 +330,7 @@ public final class HBaseKijiResult implements KijiResult {
       final EntityId entityId,
       final KijiDataRequest dataRequest,
       final Result unPagedResult,
-      final KijiColumnNameTranslator columnNameTranslator,
+      final HBaseColumnNameTranslator columnNameTranslator,
       final CellDecoderProvider cellDecoderProvider,
       final HBaseKijiTable table
   ) {

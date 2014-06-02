@@ -52,12 +52,11 @@ import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.LayoutConsumer;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
-import org.kiji.schema.layout.impl.LayoutCapsule;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /**
@@ -105,7 +104,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   public static final class WriterLayoutCapsule {
     private final CellEncoderProvider mCellEncoderProvider;
     private final KijiTableLayout mLayout;
-    private final KijiColumnNameTranslator mTranslator;
+    private final HBaseColumnNameTranslator mTranslator;
 
     /**
      * Default constructor.
@@ -117,7 +116,8 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     public WriterLayoutCapsule(
         final CellEncoderProvider cellEncoderProvider,
         final KijiTableLayout layout,
-        final KijiColumnNameTranslator translator) {
+        final HBaseColumnNameTranslator translator
+    ) {
       mCellEncoderProvider = cellEncoderProvider;
       mLayout = layout;
       mTranslator = translator;
@@ -128,7 +128,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
      *
      * @return the column name translator from this container.
      */
-    public KijiColumnNameTranslator getColumnNameTranslator() {
+    public HBaseColumnNameTranslator getColumnNameTranslator() {
       return mTranslator;
     }
 
@@ -155,7 +155,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
   private final class InnerLayoutUpdater implements LayoutConsumer {
     /** {@inheritDoc} */
     @Override
-    public void update(final LayoutCapsule capsule) throws IOException {
+    public void update(final KijiTableLayout layout) throws IOException {
       final State state = mState.get();
       if (state == State.CLOSED) {
         LOG.debug("Writer is closed: ignoring layout update.");
@@ -163,7 +163,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
       }
       final CellEncoderProvider provider = new CellEncoderProvider(
           mTable.getURI(),
-          capsule.getLayout(),
+          layout,
           mTable.getKiji().getSchemaTable(),
           DefaultKijiCellEncoderFactory.get());
       // If the capsule is null this is the initial setup and we do not need a log message.
@@ -173,19 +173,19 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
             this,
             mTable.getURI(),
             mWriterLayoutCapsule.getLayout().getDesc().getLayoutId(),
-            capsule.getLayout().getDesc().getLayoutId());
+            layout.getDesc().getLayoutId());
       } else {
         LOG.debug("Initializing KijiTableWriter: {} for table: {} with table layout version: {}",
             this,
             mTable.getURI(),
-            capsule.getLayout().getDesc().getLayoutId());
+            layout.getDesc().getLayoutId());
       }
       // Normally we would atomically flush and update mWriterLayoutCapsule here,
       // but since this writer is unbuffered, the flush is unnecessary
       mWriterLayoutCapsule = new WriterLayoutCapsule(
           provider,
-          capsule.getLayout(),
-          capsule.getKijiColumnNameTranslator());
+          layout,
+          HBaseColumnNameTranslator.from(layout));
     }
   }
 

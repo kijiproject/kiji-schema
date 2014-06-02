@@ -19,7 +19,8 @@
 
 package org.kiji.schema.hbase;
 
-import com.google.common.base.Objects;
+import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang.builder.HashCodeBuilder;
 import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
@@ -37,17 +38,11 @@ public final class HBaseColumnName {
   /** The HBase column qualifier. */
   private final byte[] mQualifier;
 
-  /** A cached string version of the family. */
-  private String mFamilyString;
-
-  /** A cached string version of the qualifier. */
-  private String mQualifierString;
-
   /**
-   * Creates a new <code>HBaseColumnName</code> instance.
+   * Creates a new {@code HBaseColumnName} instance.
    *
-   * @param family HBase column family.
-   * @param qualifier HBase column qualifier.
+   * @param family HBase column family, not null.
+   * @param qualifier HBase column qualifier, not null.
    */
   public HBaseColumnName(byte[] family, byte[] qualifier) {
     mFamily = family;
@@ -55,10 +50,11 @@ public final class HBaseColumnName {
   }
 
   /**
-   * Creates a new <code>HBaseColumnName</code> instance.
+   * Creates a new {@code HBaseColumnName} instance.
    *
-   * @param family HBase family as a String.
-   * @param qualifier HBase qualifier as a String.
+   * @param family HBase family as a String, not null.
+   * @param qualifier HBase qualifier as a String, not null.
+   * @deprecated HBase families and qualifiers are not always valid {@link String}s.
    */
   public HBaseColumnName(
       final String family,
@@ -66,8 +62,6 @@ public final class HBaseColumnName {
   ) {
     mFamily = Bytes.toBytes(family);
     mQualifier = Bytes.toBytes(qualifier);
-    mFamilyString = family;
-    mQualifierString = qualifier;
   }
 
   /**
@@ -85,10 +79,7 @@ public final class HBaseColumnName {
    * @return The family as a string.
    */
   public String getFamilyAsString() {
-    if (null == mFamilyString) {
-      mFamilyString = Bytes.toString(mFamily);
-    }
-    return mFamilyString;
+    return Bytes.toString(mFamily);
   }
 
   /**
@@ -104,16 +95,20 @@ public final class HBaseColumnName {
    * Gets the HBase column qualifier as a string.
    *
    * @return The qualifier as a string.
+   * @deprecated HBase qualifiers are not always valid {@link String}s.
    */
+  @Deprecated
   public String getQualifierAsString() {
-    if (null == mQualifierString) {
-      mQualifierString = Bytes.toString(mQualifier);
-    }
-    return mQualifierString;
+    return Bytes.toString(mQualifier);
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   *
+   * @deprecated do not rely on the {@link #toString()} format of this class.
+   */
   @Override
+  @Deprecated
   public String toString() {
     return getFamilyAsString() + ":" + getQualifierAsString();
   }
@@ -121,15 +116,22 @@ public final class HBaseColumnName {
   /** {@inheritDoc} */
   @Override
   public int hashCode() {
-    return Objects.hashCode(mFamily, mQualifier);
+    return new HashCodeBuilder()
+        .append(mFamily)
+        .append(mQualifier)
+        .toHashCode();
   }
 
   /** {@inheritDoc} */
   @Override
-  public boolean equals(Object other) {
-    if (!(other instanceof HBaseColumnName)) {
+  public boolean equals(Object obj) {
+    if (obj == null || !(obj.getClass().equals(this.getClass()))) {
       return false;
     }
-    return toString().equals(other.toString());
+    final HBaseColumnName other = (HBaseColumnName) obj;
+    return new EqualsBuilder()
+        .append(mFamily, other.mFamily)
+        .append(mQualifier, other.mQualifier)
+        .isEquals();
   }
 }

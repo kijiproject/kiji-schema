@@ -53,10 +53,11 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.LayoutConsumer;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
-import org.kiji.schema.layout.impl.LayoutCapsule;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /**
@@ -124,7 +125,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   private final class InnerLayoutUpdater implements LayoutConsumer {
     /** {@inheritDoc} */
     @Override
-    public void update(final LayoutCapsule capsule) throws IOException {
+    public void update(final KijiTableLayout layout) throws IOException {
       synchronized (mInternalLock) {
         if (mState == State.CLOSED) {
           LOG.debug("BufferedWriter instance is closed; ignoring layout update.");
@@ -138,7 +139,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
         final CellEncoderProvider provider = new CellEncoderProvider(
             mTable.getURI(),
-            capsule.getLayout(),
+            layout,
             mTable.getKiji().getSchemaTable(),
             DefaultKijiCellEncoderFactory.get());
         // If the capsule is null this is the initial setup and we do not need a log message.
@@ -149,19 +150,19 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
               this,
               mTable.getURI(),
               mWriterLayoutCapsule.getLayout().getDesc().getLayoutId(),
-              capsule.getLayout().getDesc().getLayoutId());
+              layout.getDesc().getLayoutId());
         } else {
           LOG.debug(
               "Initializing HBaseKijiBufferedWriter: {} for table: "
                   + "{} with table layout version: {}",
               this,
               mTable.getURI(),
-              capsule.getLayout().getDesc().getLayoutId());
+              layout.getDesc().getLayoutId());
         }
         mWriterLayoutCapsule = new HBaseKijiTableWriter.WriterLayoutCapsule(
             provider,
-            capsule.getLayout(),
-            capsule.getKijiColumnNameTranslator());
+            layout,
+            HBaseColumnNameTranslator.from(layout));
       }
     }
   }

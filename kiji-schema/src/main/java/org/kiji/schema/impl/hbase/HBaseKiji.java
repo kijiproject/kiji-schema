@@ -607,7 +607,7 @@ public final class HBaseKiji implements Kiji {
     LOG.debug("Computing new HBase schema");
     final HTableSchemaTranslator translator = new HTableSchemaTranslator();
     final HTableDescriptor newTableDescriptor =
-        translator.toHTableDescriptor(mURI.getInstance(), newLayout);
+        translator.toHTableDescriptor(tableURI.getInstance(), newLayout);
 
     LOG.debug("Reading existing HBase schema");
     final KijiManagedHBaseTableName hbaseTableName =
@@ -943,7 +943,7 @@ public final class HBaseKiji implements Kiji {
     try {
       final HTableSchemaTranslator translator = new HTableSchemaTranslator();
       final HTableDescriptor desc =
-          translator.toHTableDescriptor(mURI.getInstance(), kijiTableLayout);
+          translator.toHTableDescriptor(tableURI.getInstance(), kijiTableLayout);
       LOG.debug("Creating HBase table '{}'.", desc.getNameAsString());
       if (null != splitKeys) {
         getHBaseAdmin().createTable(desc, splitKeys);

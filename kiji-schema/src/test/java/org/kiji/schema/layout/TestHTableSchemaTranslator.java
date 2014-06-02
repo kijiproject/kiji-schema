@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.layout.impl.HTableSchemaTranslator;
 
 public class TestHTableSchemaTranslator {
@@ -37,8 +38,14 @@ public class TestHTableSchemaTranslator {
 
     final KijiTableLayout tableLayout =
         KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.FULL_FEATURED));
+
+    final KijiURI tableURI =
+        KijiURI
+            .newBuilder()
+            .withInstanceName("myinstance")
+            .withTableName(tableLayout.getName()).build();
     final HTableDescriptor tableDescriptor =
-        translator.toHTableDescriptor("myinstance", tableLayout);
+        translator.toHTableDescriptor(tableURI.getInstance(), tableLayout);
 
     assertEquals("kiji.myinstance.table.user", tableDescriptor.getNameAsString());
     assertEquals(2, tableDescriptor.getColumnFamilies().length);

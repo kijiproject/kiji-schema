@@ -45,7 +45,7 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.hbase.HBaseScanOptions;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.platform.SchemaPlatformBridge;
@@ -62,7 +62,7 @@ public final class HBaseDataRequestAdapter {
   /** The wrapped KijiDataRequest. */
   private final KijiDataRequest mKijiDataRequest;
   /** The translator for generating HBase column names. */
-  private final KijiColumnNameTranslator mColumnNameTranslator;
+  private final HBaseColumnNameTranslator mColumnNameTranslator;
 
   /**
    * Creates a new HBaseDataRequestAdapter for a given data request using a given
@@ -71,8 +71,10 @@ public final class HBaseDataRequestAdapter {
    * @param kijiDataRequest the data request to adapt for HBase.
    * @param translator the name translator for getting HBase column names.
    */
-  public HBaseDataRequestAdapter(KijiDataRequest kijiDataRequest,
-                                 KijiColumnNameTranslator translator) {
+  public HBaseDataRequestAdapter(
+      final KijiDataRequest kijiDataRequest,
+      final HBaseColumnNameTranslator translator
+  ) {
     mKijiDataRequest = kijiDataRequest;
     mColumnNameTranslator = translator;
   }
@@ -85,7 +87,7 @@ public final class HBaseDataRequestAdapter {
    * @return An HBase Scan descriptor.
    * @throws IOException If there is an error.
    */
-  public Scan toScan(KijiTableLayout tableLayout) throws IOException {
+  public Scan toScan(final KijiTableLayout tableLayout) throws IOException {
     return toScan(tableLayout, new HBaseScanOptions());
   }
 
@@ -98,7 +100,10 @@ public final class HBaseDataRequestAdapter {
    * @return An HBase Scan descriptor.
    * @throws IOException If there is an error.
    */
-  public Scan toScan(KijiTableLayout tableLayout, HBaseScanOptions scanOptions) throws IOException {
+  public Scan toScan(
+      final KijiTableLayout tableLayout,
+      final HBaseScanOptions scanOptions
+  ) throws IOException {
     // Unfortunately in HBase 95+, we can no longer create empty gets.
     // So create a fake one for this table and fill in the fields of a new scan.
     final Get tempGet = toGet(HBaseEntityId.fromHBaseRowKey(new byte[1]), tableLayout);
@@ -122,7 +127,10 @@ public final class HBaseDataRequestAdapter {
    * @param tableLayout The layout of the Kiji table the scan will read from.
    * @throws IOException If there is an error.
    */
-  public void applyToScan(Scan scan, KijiTableLayout tableLayout) throws IOException {
+  public void applyToScan(
+      final Scan scan,
+      final KijiTableLayout tableLayout
+  ) throws IOException {
     final Scan newScan = toScan(tableLayout);
 
     // It's okay to put columns into the Scan that are already there.
@@ -157,8 +165,10 @@ public final class HBaseDataRequestAdapter {
    * @return An HBase Get descriptor.
    * @throws IOException If there is an error.
    */
-  public Get toGet(EntityId entityId, KijiTableLayout tableLayout)
-      throws IOException {
+  public Get toGet(
+      final EntityId entityId,
+      final KijiTableLayout tableLayout
+  ) throws IOException {
 
     // Context to translate user Kiji filters into HBase filters:
     final KijiColumnFilter.Context filterContext =
@@ -269,7 +279,7 @@ public final class HBaseDataRequestAdapter {
    * @param column Fully-qualified HBase column to add to the Get request.
    * @return the Get request.
    */
-  private static Get addColumn(Get get, HBaseColumnName column) {
+  private static Get addColumn(final Get get, final HBaseColumnName column) {
     // Calls to Get.addColumn() invalidate previous calls to Get.addFamily(),
     // so we only do it if:
     //   1. No data from the family has been added to the request yet,
@@ -291,7 +301,7 @@ public final class HBaseDataRequestAdapter {
    * @param scan The Scan to configure.
    * @param scanOptions The options to configure this Scan with.
    */
-  private void configureScan(Scan scan, HBaseScanOptions scanOptions) {
+  private void configureScan(final Scan scan, final HBaseScanOptions scanOptions) {
     if (null != scanOptions.getClientBufferSize()) {
       scan.setBatch(scanOptions.getClientBufferSize());
     }
@@ -314,10 +324,10 @@ public final class HBaseDataRequestAdapter {
    * @throws IOException If there is an error.
    */
   private static Filter toFilter(
-      KijiDataRequest.Column columnRequest,
-      HBaseColumnName hbaseColumnName,
-      KijiColumnFilter.Context filterContext)
-      throws IOException {
+      final KijiDataRequest.Column columnRequest,
+      final HBaseColumnName hbaseColumnName,
+      final KijiColumnFilter.Context filterContext
+  ) throws IOException {
 
     final KijiColumnName kijiColumnName = columnRequest.getColumnName();
 
@@ -395,21 +405,22 @@ public final class HBaseDataRequestAdapter {
    */
   private static final class NameTranslatingFilterContext extends KijiColumnFilter.Context {
     /** The translator to use. */
-    private final KijiColumnNameTranslator mTranslator;
+    private final HBaseColumnNameTranslator mTranslator;
 
     /**
      * Initialize this context with the specified column name translator.
      *
      * @param translator the translator to use.
      */
-    private NameTranslatingFilterContext(KijiColumnNameTranslator translator) {
+    private NameTranslatingFilterContext(final HBaseColumnNameTranslator translator) {
       mTranslator = translator;
     }
 
     /** {@inheritDoc} */
     @Override
-    public HBaseColumnName getHBaseColumnName(KijiColumnName kijiColumnName)
-        throws NoSuchColumnException {
+    public HBaseColumnName getHBaseColumnName(
+        final KijiColumnName kijiColumnName
+    ) throws NoSuchColumnException {
       return mTranslator.toHBaseColumnName(kijiColumnName);
     }
   }

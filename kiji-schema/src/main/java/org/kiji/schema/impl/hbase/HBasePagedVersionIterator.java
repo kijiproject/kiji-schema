@@ -42,7 +42,7 @@ import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiResultIterator;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**
@@ -209,7 +209,7 @@ public class HBasePagedVersionIterator<T> implements KijiResultIterator<T> {
   private final long mMinTimestamp;
   private final long mMaxTimestamp;
   private final KijiCellDecoder<T> mCellDecoder;
-  private final KijiColumnNameTranslator mColumnNameTranslator;
+  private final HBaseColumnNameTranslator mColumnNameTranslator;
   private final KijiTableLayout mLayout;
   private final HBaseKijiTable mTable;
   private final HBaseQualifierIterator mQualifierIterator;
@@ -237,7 +237,7 @@ public class HBasePagedVersionIterator<T> implements KijiResultIterator<T> {
       final KijiDataRequest dataRequest,
       final KijiColumnName column,
       final KijiCellDecoder<T> cellDecoder,
-      final KijiColumnNameTranslator columnNameTranslator,
+      final HBaseColumnNameTranslator columnNameTranslator,
       final KijiTableLayout layout,
       final HBaseKijiTable table,
       final HBaseQualifierIterator qualifierIterator // Optional.

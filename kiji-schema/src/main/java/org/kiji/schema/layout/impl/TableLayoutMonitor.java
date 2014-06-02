@@ -43,7 +43,6 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.RuntimeInterruptedException;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.impl.LayoutConsumer.Registration;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.JvmId;
 import org.kiji.schema.util.ReferenceCountedCache;
@@ -65,11 +64,11 @@ import org.kiji.schema.zookeeper.TableUserRegistration;
 @ApiAudience.Private
 public interface TableLayoutMonitor extends Closeable {
   /**
-   * Get the LayoutCapsule of a table.
+   * Get the Kiji table layout of the table.
    *
-   * @return the table's layout capsule.
+   * @return the table's layout.
    */
-  LayoutCapsule getLayoutCapsule();
+  KijiTableLayout getLayout();
 
   /**
    * Register a LayoutConsumer to receive a callback when this table's layout is updated. This
@@ -144,12 +143,10 @@ public interface TableLayoutMonitor extends Closeable {
     private final AtomicReference<State> mState = new AtomicReference<State>();
 
     /**
-     * Capsule containing all objects which should be mutated in response to a table layout update.
-     * The capsule itself is immutable and should be replaced atomically with a new capsule.
-     * References only the LayoutCapsule for the most recent layout for this table.
+     * A reference to the latest {@link KijiTableLayout} for the table.  Updated automatically by a
+     * ZooKeeper watcher when the layout is updated.
      */
-    private final AtomicReference<LayoutCapsule> mLayoutCapsule =
-        new AtomicReference<LayoutCapsule>();
+    private final AtomicReference<KijiTableLayout> mLayout = new AtomicReference<KijiTableLayout>();
 
     /** Holds the set of LayoutConsumers who should be notified of layout updates. */
     private final Set<LayoutConsumer> mConsumers =
@@ -185,7 +182,7 @@ public interface TableLayoutMonitor extends Closeable {
             new InnerLayoutUpdater(
                 mUserRegistration,
                 mInitializationLatch,
-                mLayoutCapsule,
+                mLayout,
                 mTableURI,
                 mConsumers,
                 mMetaTable,
@@ -218,7 +215,7 @@ public interface TableLayoutMonitor extends Closeable {
       } else {
         final KijiTableLayout layout =
             mMetaTable.getTableLayout(mTableURI.getTable()).setSchemaTable(mSchemaTable);
-        mLayoutCapsule.set(new LayoutCapsule(layout, KijiColumnNameTranslator.from(layout)));
+        mLayout.set(layout);
       }
       return this;
     }
@@ -231,16 +228,16 @@ public interface TableLayoutMonitor extends Closeable {
           "TableLayoutMonitor is not started.");
       ResourceUtils.closeOrLog(mUserRegistration);
       ResourceUtils.closeOrLog(mTableLayoutTracker);
-      mLayoutCapsule.set(null);
+      mLayout.set(null);
       mConsumers.clear();
     }
 
     @Override
     /** {@inheritDoc} */
-    public LayoutCapsule getLayoutCapsule() {
+    public KijiTableLayout getLayout() {
       Preconditions.checkState(mState.get() == State.STARTED,
           "TableLayoutMonitor has not been started.");
-      return mLayoutCapsule.get();
+      return mLayout.get();
     }
 
     @Override
@@ -250,7 +247,7 @@ public interface TableLayoutMonitor extends Closeable {
       Preconditions.checkState(mState.get() == State.STARTED,
           "TableLayoutMonitor has not been started.");
       mConsumers.add(consumer);
-      consumer.update(getLayoutCapsule());
+      consumer.update(getLayout());
       return new LayoutConsumerRegistration(mConsumers, consumer);
     }
 
@@ -268,10 +265,8 @@ public interface TableLayoutMonitor extends Closeable {
       Preconditions.checkState(mState.get() == State.STARTED,
           "TableLayoutMonitor has not been started.");
       layout.setSchemaTable(mSchemaTable);
-      final LayoutCapsule capsule =
-          new LayoutCapsule(layout, KijiColumnNameTranslator.from(layout));
       for (LayoutConsumer consumer : getLayoutConsumers()) {
-        consumer.update(capsule);
+        consumer.update(layout);
       }
     }
 
@@ -315,7 +310,7 @@ public interface TableLayoutMonitor extends Closeable {
 
       private final CountDownLatch mInitializationLatch;
 
-      private final AtomicReference<LayoutCapsule> mLayoutCapsule;
+      private final AtomicReference<KijiTableLayout> mLayout;
 
       private final KijiURI mTableURI;
 
@@ -331,24 +326,24 @@ public interface TableLayoutMonitor extends Closeable {
        *
        * @param userRegistration ZooKeeper table user registration.
        * @param initializationLatch latch that will be counted down upon successful initialization.
-       * @param layoutCapsule layout capsule to store most recent layout in.
+       * @param layout layout reference to store most recent layout in.
        * @param tableURI URI of table whose layout is to be tracked.
        * @param consumers Set of layout consumers to notify on table layout update.
        * @param metaTable containing meta information.
        * @param schemaTable containing schema information.
        */
       private InnerLayoutUpdater(
-          TableUserRegistration userRegistration,
-          CountDownLatch initializationLatch,
-          AtomicReference<LayoutCapsule> layoutCapsule,
-          KijiURI tableURI,
-          Set<LayoutConsumer> consumers,
-          KijiMetaTable metaTable,
-          KijiSchemaTable schemaTable
+          final TableUserRegistration userRegistration,
+          final CountDownLatch initializationLatch,
+          final AtomicReference<KijiTableLayout> layout,
+          final KijiURI tableURI,
+          final Set<LayoutConsumer> consumers,
+          final KijiMetaTable metaTable,
+          final KijiSchemaTable schemaTable
       ) {
         mUserRegistration = userRegistration;
         mInitializationLatch = initializationLatch;
-        mLayoutCapsule = layoutCapsule;
+        mLayout = layout;
         mTableURI = tableURI;
         mConsumers = consumers;
         mMetaTable = metaTable;
@@ -358,19 +353,29 @@ public interface TableLayoutMonitor extends Closeable {
       /** {@inheritDoc} */
       @Override
       public void update(final String notifiedLayoutID) {
-        final String currentLayoutId =
-            (mLayoutCapsule.get() == null)
-                ? null
-                : mLayoutCapsule.get().getLayout().getDesc().getLayoutId();
-        if (currentLayoutId == null) {
-          LOG.debug("Setting initial layout for table {} to layout ID {}.",
-              mTableURI, notifiedLayoutID);
-        } else {
-          LOG.debug("Updating layout for table {} from layout ID {} to layout ID {}.",
-              mTableURI, currentLayoutId, notifiedLayoutID);
-        }
-
         try {
+          final String currentLayoutId =
+              (mLayout.get() == null)
+                  ? null
+                  : mLayout.get().getDesc().getLayoutId();
+          if (currentLayoutId == null) {
+            LOG.debug(
+                "Setting initial layout for table {} to layout ID {}.",
+                mTableURI, notifiedLayoutID);
+          } else {
+            LOG.debug(
+                "Updating layout for table {} from layout ID {} to layout ID {}.",
+                mTableURI, currentLayoutId, notifiedLayoutID);
+          }
+
+          if (notifiedLayoutID == null) {
+            LOG.warn(
+                "Received a null layout update for table {}. Check the table metadata integrity.",
+                mTableURI);
+            mLayout.set(null);
+            return;
+          }
+
           final KijiTableLayout newLayout =
               mMetaTable.getTableLayout(mTableURI.getTable()).setSchemaTable(mSchemaTable);
 
@@ -379,14 +384,13 @@ public interface TableLayoutMonitor extends Closeable {
               "New layout ID %s does not match most recent layout ID %s from meta-table.",
               notifiedLayoutID, newLayout.getDesc().getLayoutId());
 
-          mLayoutCapsule.set(
-              new LayoutCapsule(newLayout, KijiColumnNameTranslator.from(newLayout)));
+          mLayout.set(newLayout);
 
           // Propagates the new layout to all consumers. A copy of mConsumers is made in order to
           // avoid concurrent modifications while iterating. The contract of Guava's ImmutableSet
           // specifies that #copyOf is safe on concurrent collections.
           for (LayoutConsumer consumer : ImmutableSet.copyOf(mConsumers)) {
-            consumer.update(mLayoutCapsule.get());
+            consumer.update(mLayout.get());
           }
 
           // Registers this KijiTable in ZooKeeper as a user of the new table layout,
@@ -396,10 +400,10 @@ public interface TableLayoutMonitor extends Closeable {
           } else {
             mUserRegistration.updateLayoutID(notifiedLayoutID);
           }
-
-          mInitializationLatch.countDown();
         } catch (IOException e) {
           throw new KijiIOException(e);
+        } finally {
+          mInitializationLatch.countDown();
         }
       }
     }
@@ -431,8 +435,8 @@ public interface TableLayoutMonitor extends Closeable {
 
     /** {@inheritDoc} */
     @Override
-    public LayoutCapsule getLayoutCapsule() {
-      return mTableLayoutMonitor.getLayoutCapsule();
+    public KijiTableLayout getLayout() {
+      return mTableLayoutMonitor.getLayout();
     }
 
     /** {@inheritDoc} */

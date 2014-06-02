@@ -56,7 +56,7 @@ import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
@@ -66,7 +66,7 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
 
   private KijiTableLayout mTableLayout;
   private EntityIdFactory mEntityIdFactory;
-  private KijiColumnNameTranslator mColumnNameTranslator;
+  private HBaseColumnNameTranslator mColumnNameTranslator;
 
   @Before
   public void setupLayout() throws Exception {
@@ -76,7 +76,7 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
 
     mTableLayout = getKiji().getMetaTable().getTableLayout("user");
     mEntityIdFactory = EntityIdFactory.getFactory(mTableLayout);
-    mColumnNameTranslator = KijiColumnNameTranslator.from(mTableLayout);
+    mColumnNameTranslator = HBaseColumnNameTranslator.from(mTableLayout);
   }
 
   @Test
@@ -134,16 +134,16 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
     expectedScan.setMaxVersions(2);
     expectedScan.setTimeRange(1L, 3L);
 
-    HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(
-        request, KijiColumnNameTranslator.from(mTableLayout));
+    HBaseDataRequestAdapter hbaseDataRequest =
+        new HBaseDataRequestAdapter(request, mColumnNameTranslator);
     assertEquals(expectedScan.toString(), hbaseDataRequest.toScan(mTableLayout).toString());
   }
 
   @Test
   public void testDataRequestToScanEmpty() throws IOException {
     KijiDataRequest request = KijiDataRequest.builder().build();
-    HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(
-        request, KijiColumnNameTranslator.from(mTableLayout));
+    HBaseDataRequestAdapter hbaseDataRequest =
+        new HBaseDataRequestAdapter(request, mColumnNameTranslator);
     assertFalse(hbaseDataRequest.toScan(mTableLayout).hasFamilies());
   }
 
@@ -190,8 +190,8 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
     expectedGet.setMaxVersions(2);
     expectedGet.setTimeRange(1L, 3L);
 
-    HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(
-        request, KijiColumnNameTranslator.from(mTableLayout));
+    HBaseDataRequestAdapter hbaseDataRequest =
+        new HBaseDataRequestAdapter(request, mColumnNameTranslator);
     assertEquals(expectedGet.toString(),
         hbaseDataRequest.toGet(entityId, mTableLayout).toString());
   }
@@ -199,8 +199,8 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
   @Test
   public void testDataRequestToGetEmpty() throws IOException {
     KijiDataRequest request = KijiDataRequest.builder().build();
-    HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(
-        request, KijiColumnNameTranslator.from(mTableLayout));
+    HBaseDataRequestAdapter hbaseDataRequest =
+        new HBaseDataRequestAdapter(request, mColumnNameTranslator);
     assertFalse(
         hbaseDataRequest.toGet(mEntityIdFactory.getEntityId("entity"), mTableLayout).hasFamilies());
   }
