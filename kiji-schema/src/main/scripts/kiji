@@ -17,23 +17,78 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ------------------------------------------------------------------------------
 
-# The kiji script is the entry point to several tools for interacting with the kiji system.
+# The kiji script is the entry point to several tools for interacting with the
+# kiji system.
+#
 # Tools are run as:
 #
-# bash> ${KIJI_HOME}/bin/kiji <tool-name> [options]
+#     $ kiji <tool-name> [options]
 #
 # For full usage information, use:
 #
-# bash> ${KIJI_HOME}/bin/kiji help
+#     $ kiji help
+#
+# Environment variables:
+# - JAVA_HOME : path of the JDK/JRE installation. Required.
+# - HADOOP_HOME : path of the Hadoop installation. Required.
+# - HBASE_HOME : path of the HBase installation. Required.
+# - KIJI_HOME : path of the Kiji installation. Required.
+# - KIJI_MR_HOME : path of the Kiji MapReduce installation. Optional.
+#
+# - KIJI_CLASSPATH : extra classpath entries prepended to the actual classpath.
+# - KIJI_HADOOP_DISTRO_VER : manually select the Hadoop distribution.
+#       Either "hadoop1" or "hadoop2".
+# - KIJI_JAVA_OPTS : extra options passed to the JVM.
+# - JAVA_LIBRARY_PATH : extra paths of directories containing native libraries.
+#
+# - DEBUG : Run the script in debugging mode.
+#     $ DEBUG=1 kiji ...
+#
+# - QUIET : silence the script log message.
+#     $ QUIET=1 kiji ...
+#
+# Notes:
+#  - If JAVA_HOME is defined and java is available on the PATH,
+#    the java program available on the PATH takes precedence.
+#
+#  - If HADOOP_HOME is defined and hadoop is available on the PATH,
+#    ${HADOOP_HOME}/bin/hadoop takes precedence.
+#
+#  - If HBASE_HOME is defined and hbase is available on the PATH,
+#    ${HADOOP_HOME}/bin/hbase takes precedence.
+
+# ------------------------------------------------------------------------------
 
 set -o nounset   # Fail when referencing undefined variables
 set -o errexit   # Script exits on the first error
 set -o pipefail  # Pipeline status failure if any command fails
-[[ ! -z "${DEBUG:-}" ]] && set -x
+if [[ ! -z "${DEBUG:-}" ]]; then
+  source=$(basename "${BASH_SOURCE}")
+  PS4="# ${source}":'${LINENO}: '
+  set -x
+fi
 
-# The following variable expansion is replaced by Maven at compile time:
-kiji_schema_version="${project.version}"
+# ------------------------------------------------------------------------------
+
+function log() {
+  if [[ -z "${QUIET:-}" ]]; then
+    echo "$(date +"%F %T") $@" >&2
+  fi
+}
+
+function info() {
+  log "INFO $@"
+}
+
+function warn() {
+  log "WARN $@"
+}
+
+function error() {
+  log "ERROR $@"
+}
 
 # ------------------------------------------------------------------------------
 
@@ -79,12 +134,29 @@ function resolve_symlink() {
 
 # ------------------------------------------------------------------------------
 
-prgm="$0"
-prgm=$(resolve_symlink "${prgm}")
-bin=$(dirname "${prgm}")
-bin=$(cd "${bin}" && pwd -P)
+kiji_bin_path="$0"
+kiji_bin_path=$(resolve_symlink "${kiji_bin_path}")
+kiji_bin=$(dirname "${kiji_bin_path}")
+kiji_bin=$(cd "${kiji_bin}" && pwd -P)
 
-KIJI_HOME="${KIJI_HOME:-${bin}/../}"
+if [[ -z "${KIJI_HOME:-}" ]]; then
+  warn "KIJI_HOME environment variable is not set."
+  KIJI_HOME=$(cd "${kiji_bin}/.."; pwd -P)
+  if [[ ! -x "${KIJI_HOME}/bin/kiji" ]]; then
+    error "Unable to infer KIJI_HOME."
+    error "Please set the KIJI_HOME environment variable."
+    exit 1
+  fi
+  warn "Using KIJI_HOME=${KIJI_HOME}"
+fi
+
+if [[ ! -f "${KIJI_HOME}/conf/kiji-schema.version" ]]; then
+  error "Invalid KIJI_HOME=${KIJI_HOME}"
+  error "Cannot find \${KIJI_HOME}/conf/kiji-schema.version"
+  exit 1
+fi
+kiji_schema_version=$(cat "${KIJI_HOME}/conf/kiji-schema.version")
+
 export BENTO_CHECKIN_SERVER=${BENTO_CHECKIN_SERVER:-"https://updates.kiji.org/api/1.0.0/"}
 
 # If KIJI_MR_HOME is set, jars that are part of the kiji-mapreduce distribution
@@ -100,73 +172,140 @@ KIJI_JAVA_OPTS=${KIJI_JAVA_OPTS:-""}
 # This is a workaround for OS X Lion, where a bug in JRE 1.6
 # creates a lot of 'SCDynamicStore' errors.
 if [[ "$(uname)" = "Darwin" ]]; then
-    KIJI_JAVA_OPTS="${KIJI_JAVA_OPTS} -Djava.security.krb5.realm= -Djava.security.krb5.kdc="
+  KIJI_JAVA_OPTS="${KIJI_JAVA_OPTS} -Djava.security.krb5.realm= -Djava.security.krb5.kdc="
 fi
 
-# An existing set of directories to use for the java.library.path property should
-# be set with JAVA_LIBRARY_PATH.
+# An existing set of directories to use for the java.library.path property
+# should be set with JAVA_LIBRARY_PATH.
 JAVA_LIBRARY_PATH=${JAVA_LIBRARY_PATH:-""}
 
-java_opts=
-
-# Try using the binary to locate the root dir of hadoop and hbase.
-bin="$(resolve_symlink `which hbase`)"
-if [[ ${bin} ]]; then
-  if [[ -z ${HBASE_HOME:-} ]]; then
-    HBASE_HOME="$(dirname $(dirname ${bin}))"
-    echo "HBASE_HOME not set. Trying: ${HBASE_HOME}"
-  fi
-fi
-bin="$(resolve_symlink `which hadoop`)"
-if [[ ${bin} ]]; then
-  if [[ -z ${HADOOP_HOME:-} ]]; then
-    HADOOP_HOME="$(dirname $(dirname ${bin}))"
-    echo "HADOOP_HOME not set. Trying: ${HADOOP_HOME}"
-  fi
-fi
-# Try defaults.
-if [[ -z ${HBASE_HOME} ]]; then
-  HBASE_HOME="${HBASE_HOME:-/usr/lib/hbase}"
-   echo "HBASE_HOME not set. Trying: ${HBASE_HOME}"
-fi
-if [[ -z ${HADOOP_HOME} ]]; then
-  HADOOP_HOME="${HADOOP_HOME:-/usr/lib/hadoop}"
-  echo "HADOOP_HOME not set. Trying: ${HADOOP_HOME}"
-fi
-
-# Also try finding java root directory, because HBASE fails without it set.
-bin="$(resolve_symlink `which java`)"
-if [[ -n $"bin" ]]; then
-  if [[ -z ${JAVA_HOME} ]]; then
-    JAVA_HOME="${JAVA_HOME:-"$(dirname $(dirname ${bin}))"}"
-    echo "JAVA_HOME set. Trying: ${JAVA_HOME}"
-  fi
-fi
-
-# First make sure we have everything we need in the environment.
-if [[ -z ${KIJI_HOME} || ! -d "${KIJI_HOME}" ]]; then
-  echo "Please set your KIJI_HOME environment variable."
-  exit 1
-fi
-if [[ -z ${HBASE_HOME} || ! -d "${HBASE_HOME}" ]]; then
-  echo "Please set your HBASE_HOME environment variable."
-  exit 1
-fi
-if [[ -z ${HADOOP_HOME} || ! -d "${HADOOP_HOME}" ]]; then
-  echo "Please set your HADOOP_HOME environment variable."
-  exit 1
-fi
-
-if [[ -z "${1:-}" ]]; then
-  echo "kiji: Tool launcher for the Kiji framework"
-  echo "Run 'kiji help' to see a list of available tools."
-  exit 1
-fi
-
-# Gather the kiji dependency jars.
-libjars="${KIJI_HOME}/lib/*"
+# Either "hadoop1" or "hadoop2":
+KIJI_HADOOP_DISTRO_VER=${KIJI_HADOOP_DISTRO_VER:-""}
 
 # ------------------------------------------------------------------------------
+# Locate the JVM.
+
+if java_bin_path=$(which java); then
+  : # No-op : java binary found.
+elif [[ -z "${JAVA_HOME:-}" ]]; then
+  error "Java binary 'java' not found and JAVA_HOME is not set."
+  error "Please bring 'java' on your PATH and set JAVA_HOME accordingly."
+  exit 1
+else
+  java_bin_path="${JAVA_HOME}/bin/java"
+  if [[ ! -x "${java_bin_path}" ]]; then
+    error "Java binary 'java' not found in ${java_bin_path}"
+    error "Please bring 'java' on your PATH and set JAVA_HOME accordingly."
+    exit 1
+  fi
+fi
+java_bin_path=$(resolve_symlink "${java_bin_path}")
+
+if [[ -z "${JAVA_HOME:-}" ]]; then
+  warn "JAVA_HOME is not set."
+  JAVA_HOME=$(dirname "$(dirname "${java_bin_path}")")
+  JAVA_HOME=$(cd "${JAVA_HOME}"; pwd -P)
+  if [[ -x "${JAVA_HOME}/bin/java" ]]; then
+    warn "Using JAVA_HOME=${JAVA_HOME}"
+  else
+    error "Unable to infer JAVA_HOME."
+    error "Please set the JAVA_HOME environment variable."
+    exit 1
+  fi
+fi
+JAVA_HOME=$(resolve_symlink "${JAVA_HOME}")
+
+# JAVA_HOME is required for HBase CLI tool to function properly.
+export JAVA_HOME
+
+# ------------------------------------------------------------------------------
+# Locate the Hadoop installation and the hadoop CLI tool.
+
+if [[ ! -z "${HADOOP_HOME:-}" ]]; then
+  HADOOP_HOME=$(cd "${HADOOP_HOME}"; pwd -P)
+  hadoop_bin_path="${HADOOP_HOME}/bin/hadoop"
+  if [[ ! -x "${hadoop_bin_path}" ]]; then
+    error "Invalid HADOOP_HOME=${HADOOP_HOME}"
+    error "Cannot find \${HADOOP_HOME}/bin/hadoop"
+    error "Please verify and set the HADOOP_HOME environment variable."
+    exit 1
+  fi
+else
+  warn "HADOOP_HOME environment variable is not set."
+  if hadoop_bin_path=$(which hadoop); then
+    hadoop_bin_path=$(resolve_symlink "${hadoop_bin_path}")
+    HADOOP_HOME=$(dirname "$(dirname "${hadoop_bin_path}")")
+    if [[ -x "${HADOOP_HOME}/bin/hadoop" ]]; then
+      warn "Using HADOOP_HOME=${HADOOP_HOME}"
+    else
+      error "Unable to infer HADOOP_HOME"
+      error "Please set the HADOOP_HOME environment variable."
+      exit 1
+    fi
+  else
+    error "HADOOP_HOME is not set and the 'hadoop' tool is not on the PATH."
+    error "Please set the HADOOP_HOME environment variable."
+    exit 1
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# Locate the HBase installation and the HBase CLI tool.
+
+if [[ ! -z "${HBASE_HOME:-}" ]]; then
+  HBASE_HOME=$(cd "${HBASE_HOME}"; pwd -P)
+  hbase_bin_path="${HBASE_HOME}/bin/hbase"
+  if [[ ! -x "${hbase_bin_path}" ]]; then
+    error "Invalid HBASE_HOME=${HBASE_HOME}"
+    error "Cannot find \${HBASE_HOME}/bin/hbase"
+    error "Please verify and set the HBASE_HOME environment variable."
+    exit 1
+  fi
+else
+  warn "HBASE_HOME environment variable is not set."
+  if hbase_bin_path=$(which hbase); then
+    hbase_bin_path=$(resolve_symlink "${hbase_bin_path}")
+    HBASE_HOME=$(dirname "$(dirname "${hbase_bin_path}")")
+    if [[ -x "${HBASE_HOME}/bin/hbase" ]]; then
+      warn "Using HBASE_HOME=${HBASE_HOME}"
+    else
+      error "Unable to infer HBASE_HOME."
+      error "Please set the HBASE_HOME environment variable."
+      exit 1
+    fi
+  else
+    error "HBASE_HOME is not set and the 'hbase' tool is not on the PATH."
+    error "Please set the HBASE_HOME environment variable."
+    exit 1
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+
+# Detect and extract the current Hadoop version number. e.g. "Hadoop 2.x-..." -> "2"
+# You can override this with ${KIJI_HADOOP_DISTRO_VER} (e.g. "hadoop1" or "hadoop2").
+if [[ -z "${KIJI_HADOOP_DISTRO_VER}" ]]; then
+  hadoop_major_version=$("${hadoop_bin_path}" version | head -1 | cut -c 8)
+  if [[ -z "${hadoop_major_version}" ]]; then
+    error "Unknown Hadoop version."
+    error "Please set KIJI_HADOOP_DISTRO_VER manually to 'hadoop1' or 'hadoop2'."
+    exit 1
+  else
+    # If the hadoop version is 0 (i.e. 0.20) then use the hadoop1 bridge
+    if [[ ${hadoop_major_version} -eq 0 ]]; then
+      hadoop_major_version=1
+    fi
+    KIJI_HADOOP_DISTRO_VER="hadoop${hadoop_major_version}"
+  fi
+fi
+
+# ------------------------------------------------------------------------------
+# Compute the Kiji base classpaths:
+
+# Kiji base classpath.
+# When running as part of a Bento distribution, this contains most Kiji
+# components (including KijiSchema, KijiMR, KijiScoring and their dependencies).
+kijis_cp="${KIJI_HOME}/lib/*"
 
 # We may have Hadoop distribution-specific jars to load in
 # ${KIJI_HOME}/lib/distribution/hadoop${N}, where N is the major digit of the
@@ -174,99 +313,200 @@ libjars="${KIJI_HOME}/lib/*"
 #
 # ${KIJI_HOME}/lib/distribution/hadoop${N} is part of the KijiBento distribution.
 
-# Detect and extract the current Hadoop version number. e.g. "Hadoop 2.x-..." -> "2"
-# You can override this with ${KIJI_HADOOP_DISTRO_VER} (e.g. "hadoop1" or "hadoop2").
-hadoop_major_version=`${HADOOP_HOME}/bin/hadoop version | head -1 | cut -c 8`
-if [[ -z "${hadoop_major_version}" && -z "${KIJI_HADOOP_DISTRO_VER:-}" ]]; then
-  echo "Warning: Unknown Hadoop version. May not be able to load all Kiji jars."
-  echo "Set KIJI_HADOOP_DISTRO_VER to 'hadoop1' or 'hadoop2' to load these."
-  KIJI_HADOOP_DISTRO_VER=""
-else
-  # If the hadoop version is 0 (i.e. 0.20) then use the hadoop1 bridge
-  if [[ ${hadoop_major_version} -eq 0 ]]; then
-    hadoop_major_version=1
-  fi
-  KIJI_HADOOP_DISTRO_VER=${KIJI_HADOOP_DISTRO_VER:-"hadoop${hadoop_major_version}"}
+if [[ -d "${KIJI_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}" ]]; then
+  kijis_cp="${kijis_cp}:${KIJI_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}/*"
 fi
 
-distrodir="${KIJI_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}"
-if [[ -d "${distrodir}" ]]; then
-  distrojars="${distrodir}/*"
-else
-  distrojars=""
-fi
-
-# If KIJI_MR_HOME is set and is not equal to KIJI_HOME, add jars in
-# ${KIJI_MR_HOME}/lib to classpath.
-if [[ -n "${KIJI_MR_HOME}" && "${KIJI_HOME}" != "${KIJI_MR_HOME}" ]]; then
-  libjars="${libjars}:${KIJI_MR_HOME}/lib/*"
+# Add KijiMR classpath, if bundled separately ie. if KIJI_HOME != KIJI_MR_HOME:
+kijimr_cp=""
+if [[ ! -z "${KIJI_MR_HOME}" && "${KIJI_HOME}" != "${KIJI_MR_HOME}" ]]; then
+  kijimr_cp="${KIJI_MR_HOME}/lib/*"
   if [[ -d "${KIJI_MR_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}" ]]; then
-    distrojars="${distrojars}:${KIJI_MR_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}/*"
+    kijimr_cp="${kijimr_cp}:${KIJI_MR_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}/*"
   fi
 fi
-
-# ${distrojars} now holds Hadoop1 or Hadoop2 jars, or nothing.
 
 # ------------------------------------------------------------------------------
+# Retrieve HBase and Hadoop classpaths
 
-# Gather the HBase classpath.
-hbase_cp=$(${HBASE_HOME}/bin/hbase classpath)
+hbase_cp=$("${hbase_bin_path}" classpath)
+if [[ $? -ne 0 ]]; then
+  error "Error retrieving HBase classpath."
+  exit 1
+fi
 
-# Hadoop classpath
-hadoop_cp=$(${HADOOP_HOME}/bin/hadoop classpath)
+hadoop_cp=$("${hadoop_bin_path}" classpath)
+if [[ $? -ne 0 ]]; then
+  error "Error retrieving Hadoop classpath."
+  exit 1
+fi
 
-# The KijiSchema jar needs to go at the head of the classpath to suppress slf4j warnings.
-# The KijiSchema jar filename will be either a "normal" KijiSchema jar, or one compiled with
-# profiling enabled, denoted by ...-profiling.jar. Select the appropriate jar filename here
+# ------------------------------------------------------------------------------
+# Compute the Kiji classpath into ${kiji_cp}
+
+# The KijiSchema jar needs to go at the head of the classpath to suppress slf4j
+# warnings.  The KijiSchema jar filename will be either a "normal" KijiSchema
+# jar, or one compiled with profiling enabled, denoted by ...-profiling.jar.
+# Select the appropriate jar filename here:
 if [[ -f "${KIJI_HOME}/lib/kiji-schema-${kiji_schema_version}-profiling.jar" ]]; then
+  info "Using profiling JARs"
   schema_jar="${KIJI_HOME}/lib/kiji-schema-${kiji_schema_version}-profiling.jar"
 else
   schema_jar="${KIJI_HOME}/lib/kiji-schema-${kiji_schema_version}.jar"
 fi
 
-# Note that we put the libjars before the hbase jars, in case there are conflicts.
-kiji_conf=${KIJI_HOME}/conf
-# We put ${KIJI_CLASSPATH} at the beginning classpath to allow users to win when there are conflicts.
-kiji_cp="${schema_jar}:${KIJI_CLASSPATH}:${kiji_conf}:${libjars}:${distrojars}:${hadoop_cp}:${hbase_cp}"
+# Note that we put the Kiji lib jars before the hbase jars,
+# in case there are conflicts.
+kiji_conf="${KIJI_HOME}/conf"
 
-# Determine location of Hadoop native libraries and set java.library.path.
-if [[ -d "${HADOOP_HOME}/lib/native" ]]; then
-  JAVA_PLATFORM=`java -cp ${hadoop_cp} -Xmx32m org.apache.hadoop.util.PlatformName | sed -e "s/ /_/g"`
-  if [[ -d "${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}" ]]; then
-    # if ${HADOOP_HOME}/lib/native/${JAVA_PLATFORM} exists, use native libs from there.
-    if [[ ! -z "${JAVA_LIBRARY_PATH}" ]]; then
-      JAVA_LIBRARY_PATH="${JAVA_LIBRARY_PATH}:${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}"
-    else
-      JAVA_LIBRARY_PATH="${HADOOP_HOME}/lib/native/${JAVA_PLATFORM}"
-    fi
-  elif [[ -d "${HADOOP_HOME}/lib/native" ]]; then
-    # If not, check for a global ${HADOOP_HOME}/lib/native/ and just use that dir.
-    if [[ ! -z "${JAVA_LIBRARY_PATH}" ]]; then
-      JAVA_LIBRARY_PATH="${JAVA_LIBRARY_PATH}:${HADOOP_HOME}/lib/native/"
-    else
-      JAVA_LIBRARY_PATH="${HADOOP_HOME}/lib/native/"
-    fi
+# By decreasing priority:
+kiji_cp="${schema_jar}"  # KijiSchema (profiling or normal JAR)
+kiji_cp="${kiji_cp}:${KIJI_CLASSPATH}"  # KIJI_CLASSPATH overrides
+kiji_cp="${kiji_cp}:${kiji_conf}"
+kiji_cp="${kiji_cp}:${kijimr_cp}"
+kiji_cp="${kiji_cp}:${kijis_cp}"
+kiji_cp="${kiji_cp}:${hbase_cp}"
+kiji_cp="${kiji_cp}:${hadoop_cp}"
+
+# ------------------------------------------------------------------------------
+# Determine location of Hadoop native libraries and set java.library.path
+
+if [[ ! -z "${HADOOP_HOME}" && -d "${HADOOP_HOME}/lib/native" ]]; then
+  java_platform=$("${java_bin_path}" \
+    -classpath "${hadoop_cp}" \
+    -Xmx32m \
+    org.apache.hadoop.util.PlatformName \
+    | sed -e "s/ /_/g")
+
+  if [[ -d "${HADOOP_HOME}/lib/native/${java_platform}" ]]; then
+    # Platform-specific native libraries directory exists:
+    JAVA_LIBRARY_PATH="${JAVA_LIBRARY_PATH}:${HADOOP_HOME}/lib/native/${java_platform}"
+  fi
+  if [[ -d "${HADOOP_HOME}/lib/native" ]]; then
+    # Global native libraries directory exists:
+    JAVA_LIBRARY_PATH="${JAVA_LIBRARY_PATH}:${HADOOP_HOME}/lib/native/"
   fi
 fi
 
-# Before running the command, update the "last used" timestamp to use with the upgrade
-# check-in server, if we are running inside a Kiji BentoBox. We know we're running in
-# a Kiji BentoBox if the timestamp generation script exists.
-usage_timestamp_script="${bin}/record-usage-timestamp.sh"
+# ------------------------------------------------------------------------------
+
+# Before running the command, update the "last used" timestamp to use with the
+# upgrade check-in server, if we are running inside a Kiji BentoBox.  We know
+# we're running in a Kiji BentoBox if the timestamp generation script exists.
+usage_timestamp_script="${kiji_bin}/record-usage-timestamp.sh"
 if [[ -f "${usage_timestamp_script}" && -x "${usage_timestamp_script}" ]]; then
   "${usage_timestamp_script}"
 fi
 
-# If we're running in a Kiji BentoBox, inform the user of any BentoBox upgrades that
-# are available.
-upgrade_informer_script="${bin}/upgrade-informer.sh"
+# If we're running in a Kiji BentoBox, inform the user of any BentoBox upgrades
+# that are available.
+upgrade_informer_script="${kiji_bin}/upgrade-informer.sh"
 if [[ -f "${upgrade_informer_script}" && -x "${upgrade_informer_script}" ]]; then
   "${upgrade_informer_script}"
+fi
+
+# ------------------------------------------------------------------------------
+
+# Checks the consistency of the environment and report suspect parameters.
+function check_environment() {
+  code=0
+
+  log "Checking JAVA environment:"
+  info "JAVA_HOME=${JAVA_HOME}"
+  info "java_bin_path=${java_bin_path}"
+
+  log "Output of ${java_bin_path} -version"
+  echo "----------"
+  "${java_bin_path}" -version
+  echo "----------"
+
+  local which_hadoop
+  if which_java=$(which java); then
+    if [[ "$(resolve_symlink "${which_java}")" != "${JAVA_HOME}/bin/java" ]]; then
+      error "Inconsistent Java environment:"
+      error "java binary found on the PATH is ${which_java}"
+      error "instead of ${JAVA_HOME}/bin/java"
+      error "Please verify and set JAVA_HOME and PATH appropriately."
+      code=1
+    fi
+  fi
+
+  log "Checking Hadoop environment:"
+  info "HADOOP_HOME=${HADOOP_HOME}"
+  info "hadoop_bin_path=${hadoop_bin_path}"
+
+  log "Output of ${hadoop_bin_path} version"
+  echo "----------"
+  "${hadoop_bin_path}" version
+  echo "----------"
+
+  local which_hadoop
+  if which_hadoop=$(which hadoop); then
+    if [[ "$(resolve_symlink "${which_hadoop}")" != "${hadoop_bin_path}" ]]; then
+      error "Inconsistent Hadoop environment:"
+      error "hadoop tool found on the path in ${which_hadoop}"
+      error "instead of ${HADOOP_HOME}/bin/hadoop"
+      error "Please verify and set HADOOP_HOME and PATH appropriately."
+    fi
+  fi
+
+  log "Checking HBase environment:"
+  info "HBASE_HOME=${HBASE_HOME}"
+  info "hbase_bin_path=${hbase_bin_path}"
+
+  log "Output of ${hbase_bin_path} version"
+  echo "----------"
+  "${hbase_bin_path}" version
+  echo "----------"
+
+  local which_hbase
+  if which_hbase=$(which hbase); then
+    if [[ "$(resolve_symlink "${which_hbase}")" != "${hbase_bin_path}" ]]; then
+      error "Inconsistent HBase environment:"
+      error "hbase tool found on the PATH is ${which_hbase}"
+      error "instead of ${HBASE_HOME}/bin/hbase"
+      error "Please verify and set HBASE_HOME and PATH appropriately."
+    fi
+  fi
+
+  log "Checking Kiji environment:"
+  info "KIJI_HOME=${KIJI_HOME}"
+  info "KIJI_MR_HOME=${KIJI_MR_HOME}"
+  info "KIJI_CLASSPATH=${KIJI_CLASSPATH}"
+  info "KIJI_HADOOP_DISTRO_VER=${KIJI_HADOOP_DISTRO_VER}"
+  info "KIJI_JAVA_OPTS=${KIJI_JAVA_OPTS}"
+  info "JAVA_LIBRARY_PATH=${JAVA_LIBRARY_PATH}"
+  if [[ ! -x "${KIJI_HOME}/bin/kiji" ]]; then
+    error "Inconsistent Kiji environment: "
+    error "KIJI_HOME=${KIJI_HOME} but Kiji tool not found."
+    error "${KIJI_HOME}/bin/kiji is missing or not executable."
+    code=1
+  fi
+  if [[ "${kiji_bin_path}" != "${KIJI_HOME}/bin/kiji" ]]; then
+    error "Inconsistent Kiji environment: "
+    error "Kiji tool ${kiji_bin_path} is external to KIJI_HOME=${KIJI_HOME}"
+    code=1
+  fi
+
+  exit ${code}
+}
+
+# ------------------------------------------------------------------------------
+
+if [[ -z "${1:-}" ]]; then
+  echo "kiji: Tool launcher for the Kiji framework"
+  echo "Run 'kiji help' to see a list of available tools."
+  exit 1
 fi
 
 command="$1"
 
 case "${command}" in
+  env-check)
+    check_environment
+    exit 0
+    ;;
+
   classpath)
     echo "${kiji_cp}"
     exit 0
@@ -280,7 +520,7 @@ case "${command}" in
       exit 0
     fi
     user_jar_file="$1"
-    clazz="$2"
+    class="$2"
     shift
     shift
     if [[ -z "${user_jar_file}" ]]; then
@@ -293,7 +533,7 @@ case "${command}" in
       echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
       exit 1
     fi
-    if [[ -z "${clazz}" ]]; then
+    if [[ -z "${class}" ]]; then
       echo "Error: no main class specified."
       echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
       exit 1
@@ -302,24 +542,20 @@ case "${command}" in
     ;;
 
   *)
-    clazz=org.kiji.schema.tools.KijiToolLauncher
+    class="org.kiji.schema.tools.KijiToolLauncher"
     ;;
 esac
 
-if [[ -z "${clazz}" ]]; then
+if [[ -z "${class}" ]]; then
   echo "Unknown command: ${command}"
   echo "Try:"
   echo "  kiji help"
   exit 1
 fi
 
-export KIJI_JAVA_OPTS
-
-if [[ ! -z "${JAVA_LIBRARY_PATH}" ]]; then
-  # Let's pray that there is no space in ${JAVA_LIBRARY_PATH}
-  java_opts="${java_opts} -Djava.library.path=${JAVA_LIBRARY_PATH}"
-fi
-
-# Run it!
-
-exec java -cp "${kiji_cp}" ${java_opts} ${KIJI_JAVA_OPTS} "${clazz}" "$@"
+# Do NOT quote ${KIJI_JAVA_OPTS} as we want to expand it into many arguments.
+exec "${java_bin_path}" \
+  -classpath "${kiji_cp}" \
+  -Djava.library.path="${JAVA_LIBRARY_PATH}" \
+  ${KIJI_JAVA_OPTS} \
+  "${class}" "$@"

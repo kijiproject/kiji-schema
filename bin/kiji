@@ -17,14 +17,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ------------------------------------------------------------------------------
 
 # This script allows developers to run the kiji script in the development
 # distribution built under the project's target directory. If no built
 # development distribution exists, maven will be used to build one.
 
-set -o nounset
-set -o errexit
-[[ ! -z "${DEBUG:-}" ]] && set -x
+# ------------------------------------------------------------------------------
+
+set -o nounset   # Fail when referencing undefined variables
+set -o errexit   # Script exits on the first error
+set -o pipefail  # Pipeline status failure if any command fails
+if [[ ! -z "${DEBUG:-}" ]]; then
+  source=$(basename "${BASH_SOURCE}")
+  PS4="# ${source}":'${LINENO}: '
+  set -x
+fi
+
+# ------------------------------------------------------------------------------
 
 bin="$(dirname $0)"
 
