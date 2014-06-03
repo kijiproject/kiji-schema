@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2013 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -37,7 +37,7 @@ public final class AsyncKijiWriterFactory implements KijiWriterFactory {
   /**
    * Constructor for this writer factory.
    *
-   * @param table The HBaseKijiTable to which this writer factory's writers write.
+   * @param table The AsyncKijiTable to which this writer factory's writers write.
    */
   public AsyncKijiWriterFactory(AsyncKijiTable table) {
     mTable = table;

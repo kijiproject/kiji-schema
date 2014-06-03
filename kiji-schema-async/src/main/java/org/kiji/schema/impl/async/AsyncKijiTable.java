@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -59,6 +59,7 @@ import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.LayoutConsumer;
+import org.kiji.schema.impl.LayoutConsumer.Registration;
 import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.LayoutCapsule;
@@ -256,71 +257,19 @@ public final class AsyncKijiTable implements KijiTable {
 
   /**
    * Register a layout consumer that must be updated before this table will report that it has
-   * completed a table layout update.  Sends the first update immediately before returning.
+   * completed a table layout update.  Sends the first update immediately before returning. The
+   * returned registration object must be closed when layout updates are no longer needed.
    *
    * @param consumer the LayoutConsumer to be registered.
+   * @return a registration object which must be closed when layout updates are no longer needed.
    * @throws IOException in case of an error updating the LayoutConsumer.
    */
-  public void registerLayoutConsumer(LayoutConsumer consumer) throws IOException {
+  public Registration registerLayoutConsumer(LayoutConsumer consumer) throws IOException {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot register a new layout consumer to a KijiTable in state %s.", state);
-    mLayoutMonitor.registerLayoutConsumer(consumer);
+    return mLayoutMonitor.registerLayoutConsumer(consumer);
   }
-
-  /**
-   * Unregister a layout consumer so that it will not be updated when this table performs a layout
-   * update.  Should only be called when a consumer is closed.
-   *
-   * @param consumer the LayoutConsumer to unregister.
-   */
-  public void unregisterLayoutConsumer(LayoutConsumer consumer) {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot unregister a layout consumer from a KijiTable in state %s.", state);
-    mLayoutMonitor.unregisterLayoutConsumer(consumer);
-    */
-  }
-
-  /**
-   * Get the TableLayoutMonitor which is associated with this HBaseKijiTable.
-   *
-   * @return the TableLayoutMonitor associated with this HBaseKijiTable.
-   */
-  public TableLayoutMonitor getTableLayoutMonitor() {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot get a table layout monitor from a KijiTable in state %s.", state);
-    return mLayoutMonitor;
-  }
-
-  /**
-   * Opens a new connection to the HBase table backing this Kiji table.
-   *
-   * <p> The caller is responsible for properly closing the connection afterwards. </p>
-   * <p>
-   *   Note: this does not necessarily create a new HTable instance, but may instead return
-   *   an already existing HTable instance from a pool managed by this HBaseKijiTable.
-   *   Closing a pooled HTable instance internally moves the HTable instance back into the pool.
-   * </p>
-   *
-   * @return A new HTable associated with this KijiTable.
-   * @throws IOException in case of an error.
-   */
-  // TODO(gabe): Replace this with asynchbase
-
-    /*
-  public HTableInterface openHTableConnection() throws IOException {
-
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot open an HTable connection for a KijiTable in state %s.", state);
-    return mHTablePool.getTable();
-  } */
 
   /**
    * {@inheritDoc}
@@ -333,19 +282,6 @@ public final class AsyncKijiTable implements KijiTable {
     Preconditions.checkState(state == State.OPEN,
         "Cannot get the layout of a table in state %s.", state);
     return getLayoutCapsule().getLayout();
-  }
-
-  /**
-   * Get the column name translator for the current layout of this table.  Do not cache this object.
-   * If you need both the table layout and a column name translator within a single short lived
-   * operation, you should use {@link #getLayoutCapsule()} to ensure consistent state.
-   * @return the column name translator for the current layout of this table.
-   */
-  public KijiColumnNameTranslator getColumnNameTranslator() {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot get the column name translator of a table in state %s.", state);
-    return getLayoutCapsule().getKijiColumnNameTranslator();
   }
 
   /**
@@ -415,53 +351,11 @@ public final class AsyncKijiTable implements KijiTable {
   }
 
   /**
-   * Return the regions in this table as a list.
-   *
-   * <p>This method was copied from HFileOutputFormat of 0.90.1-cdh3u0 and modified to
-   * return KijiRegion instead of ImmutableBytesWritable.</p>
-   *
-   * @return An ordered list of the table regions.
-   * @throws IOException on I/O error.
+   * Not supported by AsyncKijiTable.
    */
   @Override
   public List<KijiRegion> getRegions() throws IOException {
-
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot get the regions for a KijiTable in state %s.", state);
-    final HBaseAdmin hbaseAdmin = ((HBaseKiji) getKiji()).getHBaseAdmin();
-    final HTableInterface htable = mHTableFactory.create(mConf,  mHBaseTableName);
-    try {
-      final List<HRegionInfo> regions = hbaseAdmin.getTableRegions(htable.getTableName());
-      final List<KijiRegion> result = Lists.newArrayList();
-
-      // If we can get the concrete HTable, we can get location information.
-      if (htable instanceof HTable) {
-        LOG.debug("Casting HTableInterface to an HTable.");
-        final HTable concreteHBaseTable = (HTable) htable;
-        for (HRegionInfo region: regions) {
-          List<HRegionLocation> hLocations =
-              concreteHBaseTable.getRegionsInRange(region.getStartKey(), region.getEndKey());
-          result.add(new HBaseKijiRegion(region, hLocations));
-        }
-      } else {
-        LOG.warn("Unable to cast HTableInterface {} to an HTable.  "
-            + "Creating Kiji regions without location info.", getURI());
-        for (HRegionInfo region: regions) {
-          result.add(new HBaseKijiRegion(region));
-        }
-      }
-
-      return result;
-
-    } finally {
-      htable.close();
-    }
-    */
+    throw new UnsupportedOperationException("Not supported by AsyncKijiTable");
   }
 
   /** {@inheritDoc} */
@@ -554,101 +448,15 @@ public final class AsyncKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     String layoutId = (null == getLayoutCapsule())
         ? "Uninitialized layout."
         : getLayoutCapsule().getLayout().getDesc().getLayoutId();
-    return Objects.toStringHelper(HBaseKijiTable.class)
+    return Objects.toStringHelper(AsyncKijiTable.class)
         .add("id", System.identityHashCode(this))
         .add("uri", mTableURI)
         .add("retain_counter", mRetainCount.get())
         .add("layout_id", layoutId)
         .add("state", mState.get())
         .toString();
-     */
-  }
-
-  /**
-   * We know that all KijiTables are really HBaseKijiTables
-   * instances.  This is a convenience method for downcasting, which
-   * is common within the internals of Kiji code.
-   *
-   * @param kijiTable The Kiji table to downcast to an HBaseKijiTable.
-   * @return The given Kiji table as an HBaseKijiTable.
-   */
-  public static AsyncKijiTable downcast(KijiTable kijiTable) {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    if (!(kijiTable instanceof HBaseKijiTable)) {
-      // This should really never happen.  Something is seriously
-      // wrong with Kiji code if we get here.
-      throw new InternalKijiError(
-          "Found a KijiTable object that was not an instance of HBaseKijiTable.");
-    }
-    return (HBaseKijiTable) kijiTable;
-    */
-  }
-
-  /**
-   * Creates a new HFile loader.
-   *
-   * @param conf Configuration object for the HFile loader.
-   * @return the new HFile loader.
-   */
-  private static LoadIncrementalHFiles createHFileLoader(Configuration conf) {
-    try {
-      return new LoadIncrementalHFiles(conf); // throws Exception
-    } catch (Exception exn) {
-      throw new InternalKijiError(exn);
-    }
-  }
-
-  /**
-   * Loads partitioned HFiles directly into the regions of this Kiji table.
-   *
-   * @param hfilePath Path of the HFiles to load.
-   * @throws IOException on I/O error.
-   */
-  public void bulkLoad(Path hfilePath) throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    final LoadIncrementalHFiles loader = createHFileLoader(mConf);
-    try {
-      // LoadIncrementalHFiles.doBulkLoad() requires an HTable instance, not an HTableInterface:
-      final HTable htable = (HTable) mHTableFactory.create(mConf, mHBaseTableName);
-      try {
-        final List<Path> hfilePaths = Lists.newArrayList();
-
-        // Try to find any hfiles for partitions within the passed in path
-        final FileStatus[] hfiles = FileSystem.get(mConf).globStatus(new Path(hfilePath, "*"));
-        for (FileStatus hfile : hfiles) {
-          String partName = hfile.getPath().getName();
-          if (!partName.startsWith("_") && partName.endsWith(".hfile")) {
-            Path partHFile = new Path(hfilePath, partName);
-            hfilePaths.add(partHFile);
-          }
-        }
-        if (hfilePaths.isEmpty()) {
-          // If we didn't find any parts, add in the passed in parameter
-          hfilePaths.add(hfilePath);
-        }
-        for (Path path : hfilePaths) {
-          loader.doBulkLoad(path, htable);
-          LOG.info("Successfully loaded: " + path.toString());
-        }
-      } finally {
-        htable.close();
-      }
-    } catch (TableNotFoundException tnfe) {
-      throw new InternalKijiError(tnfe);
-    }
-    */
   }
 }

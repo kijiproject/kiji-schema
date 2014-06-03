@@ -99,12 +99,20 @@ public class TestHBaseKijiResult extends KijiClientTest {
           .withMaxVersions(10)
           .add("primitive", "double_column"))
       .build();
+  private static final KijiDataRequest EMPTY_COLUMN_REQUEST = KijiDataRequest.builder()
+      .addColumns(ColumnsDef.create()
+          .withMaxVersions(3)
+          .add("primitive", "string_column")
+          .add("primitive", "boolean_column"))
+      .build();
 
 
   private static final KijiColumnName PRIMITIVE_STRING =
       new KijiColumnName("primitive", "string_column");
   private static final KijiColumnName PRIMITIVE_DOUBLE =
       new KijiColumnName("primitive", "double_column");
+  private static final KijiColumnName PRIMITIVE_BOOLEAN =
+      new KijiColumnName("primitive", "boolean_column");
   private static final KijiColumnName STRING_MAP = new KijiColumnName("string_map", null);
   private static final KijiColumnName STRING_MAP_1 =
       new KijiColumnName("string_map", "smap_1");
@@ -112,6 +120,8 @@ public class TestHBaseKijiResult extends KijiClientTest {
       new KijiColumnName("string_map", "smap_2");
 
   private static final String EXPECTED_PAGED_GET_EXCEPTION_PREFIX =
+      "Cannot get a cell from a paged column. Found column: ";
+  private static final String EXPECTED_PAGED_MOST_RECENT_EXCEPTION_PREFIX =
       "Cannot get the most recent version of a paged column. Found column: ";
   private static final String EXPECTED_NO_REQUEST_EXCEPTION_PREFIX =
       "No request for column: ";
@@ -126,6 +136,7 @@ public class TestHBaseKijiResult extends KijiClientTest {
   private KijiResult mPagedCompleteResult = null;
   private KijiResult mMaxVersionsResult = null;
   private KijiResult mPagedMaxVersionsResult = null;
+  private KijiResult mEmptyColumnResult = null;
 
   @Before
   public void setupTestHBaseKijiResult() throws IOException {
@@ -175,6 +186,7 @@ public class TestHBaseKijiResult extends KijiClientTest {
       mPagedCompleteResult = mReader.getResult(eid, PAGED_COMPLETE_REQUEST);
       mMaxVersionsResult = mReader.getResult(eid, MAX_VERSIONS_REQUEST);
       mPagedMaxVersionsResult = mReader.getResult(eid, PAGED_MAX_VERSIONS_REQUEST);
+      mEmptyColumnResult = mReader.getResult(eid, EMPTY_COLUMN_REQUEST);
     } finally {
       table.release();
     }
@@ -212,13 +224,13 @@ public class TestHBaseKijiResult extends KijiClientTest {
         mPagedResult.getMostRecentCell(PRIMITIVE_STRING);
         Assert.fail();
       } catch (IllegalArgumentException iae) {
-        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_GET_EXCEPTION_PREFIX));
+        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_MOST_RECENT_EXCEPTION_PREFIX));
       }
       try {
         mPagedResult.getMostRecentCell(PRIMITIVE_DOUBLE);
         Assert.fail();
       } catch (IllegalArgumentException iae) {
-        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_GET_EXCEPTION_PREFIX));
+        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_MOST_RECENT_EXCEPTION_PREFIX));
       }
     }
     {
@@ -296,7 +308,7 @@ public class TestHBaseKijiResult extends KijiClientTest {
         mPagedMapResult.getMostRecentCell(STRING_MAP_1);
         Assert.fail();
       } catch (IllegalArgumentException iae) {
-        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_GET_EXCEPTION_PREFIX));
+        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_MOST_RECENT_EXCEPTION_PREFIX));
       }
     }
     {
@@ -483,6 +495,20 @@ public class TestHBaseKijiResult extends KijiClientTest {
       Assert.fail();
     } catch (NullPointerException npe) {
       Assert.assertTrue(npe.getMessage().startsWith(EXPECTED_NO_REQUEST_EXCEPTION_PREFIX));
+    }
+  }
+
+  @Test
+  public void testEmptyColumn() {
+    {
+      final KijiCell<Boolean> expected = null;
+      final KijiCell<Boolean> actual = mEmptyColumnResult.getMostRecentCell(PRIMITIVE_BOOLEAN);
+      Assert.assertEquals(expected, actual);
+    }
+    {
+      final KijiCell<Boolean> expected = null;
+      final KijiCell<Boolean> actual = mEmptyColumnResult.getCell(PRIMITIVE_BOOLEAN, 10);
+      Assert.assertEquals(expected, actual);
     }
   }
 }

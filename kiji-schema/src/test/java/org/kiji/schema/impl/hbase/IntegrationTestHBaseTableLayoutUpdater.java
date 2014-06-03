@@ -72,7 +72,7 @@ public class IntegrationTestHBaseTableLayoutUpdater extends AbstractKijiIntegrat
 
       final KijiTable table = kiji.openTable("table_name");
       try {
-        final BlockingQueue<String> layoutQueue = Queues.newSynchronousQueue();
+        final BlockingQueue<String> layoutQueue = Queues.newArrayBlockingQueue(1);
 
         final TableLayoutTracker tracker =
             new TableLayoutTracker(((HBaseKiji) kiji).getZKClient(), table.getURI(),
@@ -84,18 +84,20 @@ public class IntegrationTestHBaseTableLayoutUpdater extends AbstractKijiIntegrat
         final HBaseTableLayoutUpdater updater =
             new HBaseTableLayoutUpdater((HBaseKiji) kiji, table.getURI(), layout2);
         try {
-          final Thread thread = new Thread() {
-                              /** {@inheritDoc} */
-                              @Override
-                              public void run() {
-              try {
-                updater.update();
-              } catch (Exception exn) {
-                throw new RuntimeException(exn);
-              }
-          }
-        };
+          final Thread thread =
+              new Thread() {
+                /** {@inheritDoc} */
+                @Override
+                public void run() {
+                  try {
+                    updater.update();
+                  } catch (Exception exn) {
+                    throw new RuntimeException(exn);
+                  }
+                }
+              };
           thread.start();
+          thread.join(5000);
 
           Assert.assertEquals("2", layoutQueue.poll(5, TimeUnit.SECONDS));
 

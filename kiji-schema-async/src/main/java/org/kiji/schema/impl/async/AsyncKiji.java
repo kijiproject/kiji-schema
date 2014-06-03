@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2013 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -34,7 +34,6 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -106,8 +105,6 @@ public final class AsyncKiji implements Kiji {
         }
       });
 
-  /** The hadoop configuration. */
-  private final Configuration mConf;
 
   /** Factory for HTable instances. */
   private final HTableInterfaceFactory mHTableFactory;
@@ -158,9 +155,6 @@ public final class AsyncKiji implements Kiji {
    * {@code getSystemTable().getDataVersion()} to avoid inconsistent behaviors.
    */
   private final ProtocolVersion mSystemVersion;
-
-  /** HBase admin interface. Lazily initialized through {@link #getHBaseAdmin()}. */
-  private HBaseAdmin mAdmin = null;
 
   /** The schema table for this kiji instance. */
   private final KijiSchemaTable mSchemaTable;
@@ -321,10 +315,13 @@ public final class AsyncKiji implements Kiji {
     }
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   * AsyncKiji instances do not support Hadoop configuration.
+   * */
   @Override
   public Configuration getConf() {
-    return mConf;
+    throw new UnsupportedOperationException("AsyncKiji instances do not support Hadoop configuration");
   }
 
   /** {@inheritDoc} */
@@ -358,24 +355,6 @@ public final class AsyncKiji implements Kiji {
     Preconditions.checkState(state == State.OPEN,
         "Cannot get meta table for Kiji instance %s in state %s.", this, state);
     return mMetaTable;
-  }
-
-  /**
-   * Gets the current HBaseAdmin instance for this Kiji. This method will open a new
-   * HBaseAdmin if one doesn't exist already.
-   *
-   * @throws IOException If there is an error opening the HBaseAdmin.
-   * @return The current HBaseAdmin instance for this Kiji.
-   */
-  public synchronized HBaseAdmin getHBaseAdmin() throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot get HBase admin for Kiji instance %s in state %s.", this, state);
-    if (null == mAdmin) {
-      final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
-      mAdmin = hbaseFactory.getHBaseAdminFactory(mURI).create(getConf());
-    }
-    return mAdmin;
   }
 
   /** {@inheritDoc} */
@@ -427,105 +406,66 @@ public final class AsyncKiji implements Kiji {
     */
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   * Table creation is not supported by AsyncKiji.
+   * */
   @Deprecated
   @Override
   public void createTable(String tableName, KijiTableLayout tableLayout)
       throws IOException {
-    if (!tableName.equals(tableLayout.getName())) {
-      throw new RuntimeException(String.format(
-          "Table name from layout descriptor '%s' does match table name '%s'.",
-          tableLayout.getName(), tableName));
-    }
-
-    createTable(tableLayout.getDesc());
+    throw new UnsupportedOperationException("Table creation is outside the scope of async-kiji");
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   * Table creation is not supported by AsyncKiji.
+   * */
   @Override
   public void createTable(TableLayoutDesc tableLayout)
       throws IOException {
-    createTable(tableLayout, 1);
+    throw new UnsupportedOperationException("Table creation is outside the scope of async-kiji");
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   * Table creation is not supported by AsyncKiji.
+   * */
   @Deprecated
   @Override
   public void createTable(String tableName, KijiTableLayout tableLayout, int numRegions)
       throws IOException {
-    if (!tableName.equals(tableLayout.getName())) {
-      throw new RuntimeException(String.format(
-          "Table name from layout descriptor '%s' does match table name '%s'.",
-          tableLayout.getName(), tableName));
-    }
-
-    createTable(tableLayout.getDesc(), numRegions);
+    throw new UnsupportedOperationException("Table creation is outside the scope of async-kiji");
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   * Table creation is not supported by AsyncKiji.
+   * */
   @Override
   public void createTable(TableLayoutDesc tableLayout, int numRegions)
       throws IOException {
-    Preconditions.checkArgument((numRegions >= 1), "numRegions must be positive: " + numRegions);
-    if (numRegions > 1) {
-      if (KijiTableLayout.getEncoding(tableLayout.getKeysFormat())
-          == RowKeyEncoding.RAW) {
-        throw new IllegalArgumentException(
-            "May not use numRegions > 1 if row key hashing is disabled in the layout");
-      }
-
-      createTable(tableLayout, KijiRowKeySplitter.get().getSplitKeys(numRegions,
-          KijiRowKeySplitter.getRowKeyResolution(tableLayout)));
-    } else {
-      createTable(tableLayout, null);
-    }
+    throw new UnsupportedOperationException("Table creation is outside the scope of async-kiji");
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   * Table creation is not supported by AsyncKiji.
+   * */
   @Deprecated
   @Override
   public void createTable(String tableName, KijiTableLayout tableLayout, byte[][] splitKeys)
       throws IOException {
-    if (getMetaTable().tableExists(tableName)) {
-      final KijiURI tableURI =
-          KijiURI.newBuilder(mURI).withTableName(tableName).build();
-      throw new KijiAlreadyExistsException(String.format(
-          "Kiji table '%s' already exists.", tableURI), tableURI);
-    }
-
-    if (!tableName.equals(tableLayout.getName())) {
-      throw new RuntimeException(String.format(
-          "Table name from layout descriptor '%s' does match table name '%s'.",
-          tableLayout.getName(), tableName));
-    }
-
-    createTable(tableLayout.getDesc(), splitKeys);
+    throw new UnsupportedOperationException("Table creation is outside the scope of async-kiji");
   }
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   * Table creation is not supported by AsyncKiji.
+   * */
   @Override
   public void createTable(TableLayoutDesc tableLayout, byte[][] splitKeys) throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot create table in Kiji instance %s in state %s.", this, state);
-
-    final KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableLayout.getName()).build();
-    LOG.debug("Creating Kiji table '{}'.", tableURI);
-
-    ensureValidationCompatibility(tableLayout);
-
-    // If security is enabled, apply the permissions to the new table.
-    if (isSecurityEnabled()) {
-      getSecurityManager().lock();
-      try {
-        createTableUnchecked(tableLayout, splitKeys);
-        getSecurityManager().applyPermissionsToNewTable(tableURI);
-      } finally {
-        getSecurityManager().unlock();
-      }
-    } else {
-      createTableUnchecked(tableLayout, splitKeys);
-    }
+    throw new UnsupportedOperationException("Table creation is outside the scope of async-kiji");
   }
 
   /** {@inheritDoc} */
@@ -732,37 +672,13 @@ public final class AsyncKiji implements Kiji {
   }
   // CSON: MethodLength
 
-  /** {@inheritDoc} */
+  /**
+   * {@inheritDoc}
+   * Table deletion is not supported by AsyncKiji.
+   * */
   @Override
   public void deleteTable(String tableName) throws IOException {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot delete table in Kiji instance %s in state %s.", this, state);
-    // Delete from HBase.
-    String hbaseTable = KijiManagedHBaseTableName.getKijiTableName(mURI.getInstance(),
-        tableName).toString();
-    getHBaseAdmin().disableTable(hbaseTable);
-    getHBaseAdmin().deleteTable(hbaseTable);
-
-    // Delete from the meta table.
-    getMetaTable().deleteTable(tableName);
-
-    // If the table persists immediately after deletion attempt, then give up.
-    if (getHBaseAdmin().tableExists(hbaseTable)) {
-      LOG.warn("HBase table " + hbaseTable + " survives deletion attempt. Giving up...");
-      return;
-    }
-
-    // Delete ZNodes from ZooKeeper
-    try {
-      KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableName).build();
-      mZKClient
-          .delete()
-          .deletingChildrenIfNeeded()
-          .forPath(ZooKeeperUtils.getTableDir(tableURI).getPath());
-    } catch (Exception e) {
-      ZooKeeperUtils.wrapAndRethrow(e);
-    }
+    throw new UnsupportedOperationException("Table deletion is outside the scope of async-kiji");
   }
 
   /** {@inheritDoc} */
@@ -793,8 +709,6 @@ public final class AsyncKiji implements Kiji {
 
     synchronized (this) {
       ResourceUtils.closeOrLog(mSecurityManager);
-      ResourceUtils.closeOrLog(mAdmin);
-      mAdmin = null;
       mSecurityManager = null;
     }
 
@@ -892,62 +806,4 @@ public final class AsyncKiji implements Kiji {
     return mZKClient;
   }
 
-  /**
-   * Creates a Kiji table in an HBase instance, without checking for validation compatibility and
-   * without applying permissions.
-   *
-   * @param tableLayout The initial layout of the table (with unassigned column ids).
-   * @param splitKeys The initial key boundaries between regions.  There will be splitKeys
-   *     + 1 regions created.  Pass null to specify the default single region.
-   * @throws IOException on I/O error.
-   * @throws KijiAlreadyExistsException if the table already exists.
-   */
-  private void createTableUnchecked(
-      TableLayoutDesc tableLayout,
-      byte[][] splitKeys) throws IOException {
-    final KijiURI tableURI = KijiURI.newBuilder(mURI).withTableName(tableLayout.getName()).build();
-
-    // This will validate the layout and may throw an InvalidLayoutException.
-    final KijiTableLayout kijiTableLayout = KijiTableLayout.newLayout(tableLayout);
-
-    if (getMetaTable().tableExists(tableLayout.getName())) {
-      throw new KijiAlreadyExistsException(
-          String.format("Kiji table '%s' already exists.", tableURI), tableURI);
-    }
-
-    if (tableLayout.getKeysFormat() instanceof RowKeyFormat) {
-      LOG.warn("Usage of 'RowKeyFormat' is deprecated. New tables should use 'RowKeyFormat2'.");
-    }
-
-    getMetaTable().updateTableLayout(tableLayout.getName(), tableLayout);
-
-    if (mSystemVersion.compareTo(Versions.SYSTEM_2_0) >= 0) {
-      // system-2.0 clients retrieve the table layout from ZooKeeper as a stream of notifications.
-      // Invariant: ZooKeeper hold the most recent layout of the table.
-      LOG.debug("Writing initial table layout in ZooKeeper for table {}.", tableURI);
-      try {
-        ZooKeeperUtils.setTableLayout(
-            mZKClient,
-            tableURI,
-            kijiTableLayout.getDesc().getLayoutId());
-      } catch (Exception e) {
-        ZooKeeperUtils.wrapAndRethrow(e);
-      }
-    }
-
-    try {
-      final HTableSchemaTranslator translator = new HTableSchemaTranslator();
-      final HTableDescriptor desc =
-          translator.toHTableDescriptor(mURI.getInstance(), kijiTableLayout);
-      LOG.debug("Creating HBase table '{}'.", desc.getNameAsString());
-      if (null != splitKeys) {
-        getHBaseAdmin().createTable(desc, splitKeys);
-      } else {
-        getHBaseAdmin().createTable(desc);
-      }
-    } catch (TableExistsException tee) {
-      throw new KijiAlreadyExistsException(
-          String.format("Kiji table '%s' already exists.", tableURI), tableURI);
-    }
-  }
 }

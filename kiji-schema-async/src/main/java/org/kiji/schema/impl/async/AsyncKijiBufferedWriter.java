@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2013 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -101,6 +101,7 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
   private long mCurrentWriteBufferSize = 0L;
 
   /** Static overhead size of a Delete. */
+  // TODO(gabe): Needs to be recalculated for async objects
   private final long mDeleteSize = ClassSize.align(
       ClassSize.OBJECT + 2 * ClassSize.REFERENCE
       + 2 * Bytes.SIZEOF_LONG + Bytes.SIZEOF_BOOLEAN

@@ -61,7 +61,7 @@ public final class InstanceUserRegistration implements Closeable {
 
     mNode = new PersistentEphemeralNode(zkClient, Mode.EPHEMERAL, path + "/" + node, new byte[] {});
 
-    LOG.debug("Creating instance user registration for table {}.", mInstanceURI);
+    LOG.debug("Creating instance user registration for instance {}.", mInstanceURI);
   }
 
   /**
@@ -85,7 +85,7 @@ public final class InstanceUserRegistration implements Closeable {
   @Override
   public void close() throws IOException {
     // It would be nice to log user info here, but not worth the trip to ZK
-    LOG.debug("Closing table user registration on table {}.", mInstanceURI);
+    LOG.debug("Closing instance user registration for instance {}.", mInstanceURI);
     mNode.close();
   }
 }

@@ -1,3 +1,5 @@
+##**NOTE: THIS BRANCH MAY REBASE AND REWRITE HISTORY AT ANY POINT**
+
 KijiSchema
 ==========
 

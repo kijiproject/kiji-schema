@@ -30,7 +30,7 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.junit.Test;
 
 /** Tests for KijiInstaller. */
-public class TestKijiInstaller {
+public class TestKijiInstaller extends KijiClientTest {
   @Test
   public void testInstallThenUninstall() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
@@ -79,6 +79,20 @@ public class TestKijiInstaller {
       assertTrue(Pattern.matches(
           "Kiji instance kiji://.*/anInstanceThatNeverExisted/ is not installed\\.",
           knie.getMessage()));
+    }
+  }
+
+  @Test
+  public void testUninstallingInstanceWithUsersDoesNotFail() throws Exception {
+    final Configuration conf = HBaseConfiguration.create();
+    final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji-installer/test").build();
+    final KijiInstaller installer = KijiInstaller.get();
+    installer.install(uri, conf);
+    Kiji kiji = Kiji.Factory.get().open(uri);
+    try {
+      installer.uninstall(uri, conf);
+    } finally {
+      kiji.release();
     }
   }
 }

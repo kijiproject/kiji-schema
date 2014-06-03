@@ -1,5 +1,0 @@
-qualifier:email
-schema:"string"
-
-qualifier:name
-schema:"string"

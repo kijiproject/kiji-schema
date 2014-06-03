@@ -54,7 +54,7 @@ public interface KijiResult extends Iterable<KijiCell<?>> {
    *
    * @param column name of the Kiji column from which to get the most recent cell.
    * @param <T> type of the value in the given column.
-   * @return the most recent cell from the given column.
+   * @return the most recent cell from the given column or null if no cells exist.
    * @throws NullPointerException if the given column is not included in the data request which
    *     defines this KijiResult.
    * @throws java.lang.IllegalArgumentException if the given column is marked as paged in the data
@@ -73,7 +73,8 @@ public interface KijiResult extends Iterable<KijiCell<?>> {
    * @param column name of the Kiji column from which to get the cell at the given timestamp.
    * @param timestamp timestamp at which to get the cell in the given column.
    * @param <T> type of the value in the given column.
-   * @return the version of the cell in the given column at the given timestamp.
+   * @return the version of the cell in the given column at the given timestamp or null if none
+   *     exists.
    * @throws NullPointerException if the given column is not included in the data request which
    *     defines this KijiResult.
    * @throws java.lang.IllegalArgumentException if the given column is marked as paged in the data

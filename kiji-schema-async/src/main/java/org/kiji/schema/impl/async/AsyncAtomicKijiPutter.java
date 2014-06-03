@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2013 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -46,7 +46,7 @@ import org.kiji.schema.layout.impl.LayoutCapsule;
 /**
  * HBase implementation of AtomicKijiPutter.
  *
- * Access via HBaseKijiWriterFactory.openAtomicKijiPutter(), facilitates guaranteed atomic
+ * Access via AsyncKijiWriterFactory.openAtomicKijiPutter(), facilitates guaranteed atomic
  * puts in batch on a single row.
  *
  * Use <code>begin(EntityId)</code> to open a new transaction,

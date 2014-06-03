@@ -48,23 +48,26 @@ public class TestDeleteTool extends KijiToolTest {
   /** Table used to test against. Owned by this test. */
   private KijiTable mTable = null;
 
+  private KijiURI mTableURI;
+
   private KijiTableReader mReader = null;
+
+  private KijiTableLayout mLayout;
 
   // -----------------------------------------------------------------------------------------------
 
   @Before
   public final void setupTestDeleteTool() throws Exception {
-    final KijiTableLayout layout = KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE);
+    mLayout = KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE);
     new InstanceBuilder(getKiji())
-        .withTable(layout.getName(), layout)
+        .withTable(mLayout.getName(), mLayout)
             .withRow("row-1")
                 .withFamily("family").withQualifier("column")
                     .withValue(313L, "value1")
                     .withValue(314L, "value2")
                     .withValue(315L, "value3")
         .build();
-    mTable = getKiji().openTable(layout.getName());
-    mReader = mTable.openTableReader();
+    mTableURI = KijiURI.newBuilder(getKiji().getURI()).withTableName(mLayout.getName()).build();
   }
 
   @After
@@ -75,16 +78,27 @@ public class TestDeleteTool extends KijiToolTest {
     mTable = null;
   }
 
+  /**
+   * Many of these tests should not have an open table connection, so only open it on demand.
+   *
+   * @throws Exception sometimes.
+   */
+  private void setupTableAndReader() throws Exception {
+    mTable = getKiji().openTable(mLayout.getName());
+    mReader = mTable.openTableReader();
+  }
+
   // -----------------------------------------------------------------------------------------------
 
   @Test
   public void testDeleteAllCellsInRow() throws Exception {
+    setupTableAndReader();
     final KijiRowData rowBefore =
         mReader.get(mTable.getEntityId("row-1"), KijiDataRequest.create("family"));
     assertTrue(rowBefore.containsColumn("family"));
 
     assertEquals(BaseTool.SUCCESS, runTool(new DeleteTool(),
-      "--target=" + mTable.getURI(),
+      "--target=" + mTableURI,
       "--entity-id=row-1",
       "--interactive=false"
     ));
@@ -96,13 +110,14 @@ public class TestDeleteTool extends KijiToolTest {
 
   @Test
   public void testDeleteAllCellsInFamilyFromRow() throws Exception {
+    setupTableAndReader();
     final KijiRowData rowBefore =
         mReader.get(mTable.getEntityId("row-1"), KijiDataRequest.create("family"));
     assertTrue(rowBefore.containsColumn("family"));
 
     // Target one column family:
     final KijiURI target =
-        KijiURI.newBuilder(mTable.getURI()).addColumnName(new KijiColumnName("family")).build();
+        KijiURI.newBuilder(mTableURI).addColumnName(new KijiColumnName("family")).build();
 
     assertEquals(BaseTool.SUCCESS, runTool(new DeleteTool(),
       "--target=" + target,
@@ -117,12 +132,13 @@ public class TestDeleteTool extends KijiToolTest {
 
   @Test
   public void testDeleteAllCellsInColumnFromRow() throws Exception {
+    setupTableAndReader();
     final KijiRowData rowBefore =
         mReader.get(mTable.getEntityId("row-1"), KijiDataRequest.create("family"));
     assertTrue(rowBefore.containsColumn("family"));
 
     // Target one column:
-    final KijiURI target = KijiURI.newBuilder(mTable.getURI())
+    final KijiURI target = KijiURI.newBuilder(mTableURI)
         .addColumnName(new KijiColumnName("family", "column"))
         .build();
 
@@ -139,6 +155,7 @@ public class TestDeleteTool extends KijiToolTest {
 
   @Test
   public void testDeleteMostRecentCellInColumnFromRow() throws Exception {
+    setupTableAndReader();
     final KijiDataRequestBuilder kdrb = KijiDataRequest.builder();
     kdrb.newColumnsDef().withMaxVersions(HConstants.ALL_VERSIONS)
         .add("family", "column");
@@ -149,7 +166,7 @@ public class TestDeleteTool extends KijiToolTest {
     assertEquals(315L, (long) rowBefore.getValues("family", "column").firstKey());
 
     // Target one column:
-    final KijiURI target = KijiURI.newBuilder(mTable.getURI())
+    final KijiURI target = KijiURI.newBuilder(mTableURI)
         .addColumnName(new KijiColumnName("family", "column"))
         .build();
 
@@ -169,6 +186,7 @@ public class TestDeleteTool extends KijiToolTest {
 
   @Test
   public void testDeleteExactTimestampCellInColumnFromRow() throws Exception {
+    setupTableAndReader();
     final KijiDataRequestBuilder kdrb = KijiDataRequest.builder();
     kdrb.newColumnsDef().withMaxVersions(HConstants.ALL_VERSIONS)
         .add("family", "column");
@@ -179,7 +197,7 @@ public class TestDeleteTool extends KijiToolTest {
     assertEquals(315L, (long) rowBefore.getValues("family", "column").firstKey());
 
     // Target one column:
-    final KijiURI target = KijiURI.newBuilder(mTable.getURI())
+    final KijiURI target = KijiURI.newBuilder(mTableURI)
         .addColumnName(new KijiColumnName("family", "column"))
         .build();
 
@@ -191,8 +209,7 @@ public class TestDeleteTool extends KijiToolTest {
       "--interactive=false"
     ));
 
-    final KijiRowData rowAfter =
-        mReader.get(mTable.getEntityId("row-1"), kdr);
+    final KijiRowData rowAfter = mReader.get(mTable.getEntityId("row-1"), kdr);
     assertEquals(2, rowAfter.getValues("family", "column").size());
     assertEquals(315L, (long) rowAfter.getValues("family", "column").firstKey());
     assertEquals(313L, (long) rowAfter.getValues("family", "column").lastKey());
@@ -200,6 +217,7 @@ public class TestDeleteTool extends KijiToolTest {
 
   @Test
   public void testDeleteUpToTimestampCellInColumnFromRow() throws Exception {
+    setupTableAndReader();
     final KijiDataRequestBuilder kdrb = KijiDataRequest.builder();
     kdrb.newColumnsDef().withMaxVersions(HConstants.ALL_VERSIONS)
         .add("family", "column");
@@ -210,7 +228,7 @@ public class TestDeleteTool extends KijiToolTest {
     assertEquals(315L, (long) rowBefore.getValues("family", "column").firstKey());
 
     // Target one column:
-    final KijiURI target = KijiURI.newBuilder(mTable.getURI())
+    final KijiURI target = KijiURI.newBuilder(mTableURI)
         .addColumnName(new KijiColumnName("family", "column"))
         .build();
 
@@ -230,36 +248,32 @@ public class TestDeleteTool extends KijiToolTest {
 
   @Test
   public void testInteractiveWithWrongInstanceInput() throws Exception {
-    final KijiURI target = mTable.getKiji().getURI();
     assertEquals(BaseTool.FAILURE, runToolWithInput(new DeleteTool(),
         "wrongtable",
-        "--target=" + target
+        "--target=" + mTableURI
     ));
   }
 
   @Test
   public void testInteractiveWithTableInput() throws Exception {
-    final KijiURI target = mTable.getURI();
     assertEquals(BaseTool.SUCCESS, runToolWithInput(new DeleteTool(),
         "table",
-        "--target=" + target
+        "--target=" + mTableURI
     ));
   }
 
   @Test
   public void testInteractiveWithWrongTableInput() throws Exception {
-    final KijiURI target = mTable.getURI();
     assertEquals(BaseTool.FAILURE, runToolWithInput(new DeleteTool(),
         "wrongtable",
-        "--target=" + target
+        "--target=" + mTableURI
     ));
   }
 
   @Test
   public void testNoninteractiveTableDelete() throws Exception {
-    final KijiURI target = mTable.getURI();
     assertEquals(BaseTool.SUCCESS, runTool(new DeleteTool(),
-        "--target=" + target,
+        "--target=" + mTableURI,
         "--interactive=false"
     ));
   }

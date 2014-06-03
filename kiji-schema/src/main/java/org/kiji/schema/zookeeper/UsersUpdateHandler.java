@@ -17,10 +17,18 @@
  * limitations under the License.
  */
 
+package org.kiji.schema.zookeeper;
+
+import com.google.common.collect.Multimap;
+
 /**
- * Kiji security.
- *
- * <p>In version security-0.1, KijiSecurityManager can be used to grant permissions to users on
- * Kiji instances. Permissions are represented by the KijiPermissions class.</p>
+ * Interface for objects that wish to be notified when a table or instance's current users change.
  */
-package org.kiji.schema.security;
+public interface UsersUpdateHandler {
+  /**
+   * Processes an update to the set of users of the Kiji table or instance being tracked.
+   *
+   * @param users Updated mapping from user ID to currently used layout ID or System version.
+   */
+  void update(Multimap<String, String> users);
+}

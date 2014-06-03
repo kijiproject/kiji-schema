@@ -33,11 +33,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.zookeeper.TableUsersTracker;
-import org.kiji.schema.zookeeper.TestTableUsersTracker.QueueingTableUsersUpdateHandler;
+import org.kiji.schema.zookeeper.TestUsersTracker.QueueingUsersUpdateHandler;
+import org.kiji.schema.zookeeper.UsersTracker;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 public class TestHBaseKijiTable extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestHBaseKijiTable.class);
@@ -57,25 +59,25 @@ public class TestHBaseKijiTable extends KijiClientTest {
 
     final BlockingQueue<Multimap<String, String>> queue = Queues.newSynchronousQueue();
 
-    final TableUsersTracker tracker =
-        new TableUsersTracker(
-            kiji.getZKClient(),
-            tableURI,
-            new QueueingTableUsersUpdateHandler(queue));
-    tracker.start();
+    final UsersTracker tracker =
+        ZooKeeperUtils
+            .newTableUsersTracker(kiji.getZKClient(), tableURI)
+            .registerUpdateHandler(new QueueingUsersUpdateHandler(queue));
     try {
+      tracker.start();
       // Initial user map should be empty:
       assertEquals(ImmutableSetMultimap.<String, String>of(), queue.poll(1, TimeUnit.SECONDS));
 
-      kiji.openTable(tableName).release();
-      // We opened a table, user map must contain exactly one entry:
-      final Multimap<String, String> umap = queue.poll(1, TimeUnit.SECONDS);
-      assertEquals(ImmutableSet.of(layoutId1), ImmutableSet.copyOf(umap.values()));
-
-      System.gc();
-
+      final KijiTable table = kiji.openTable(tableName);
+      try {
+        // We opened a table, user map must contain exactly one entry:
+        final Multimap<String, String> umap = queue.poll(1, TimeUnit.SECONDS);
+        assertEquals(ImmutableSet.of(layoutId1), ImmutableSet.copyOf(umap.values()));
+      } finally {
+        table.release();
+      }
       // Table is now closed, the user map should become empty:
-      assertEquals(ImmutableSetMultimap.<String, String>of(), queue.poll(3, TimeUnit.SECONDS));
+      assertEquals(ImmutableSetMultimap.<String, String>of(), queue.poll(1, TimeUnit.SECONDS));
     } finally {
       tracker.close();
     }

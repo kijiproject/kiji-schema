@@ -39,8 +39,9 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
-import org.kiji.schema.zookeeper.TableUsersTracker;
-import org.kiji.schema.zookeeper.TestTableUsersTracker.QueueingTableUsersUpdateHandler;
+import org.kiji.schema.zookeeper.TestUsersTracker.QueueingUsersUpdateHandler;
+import org.kiji.schema.zookeeper.UsersTracker;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 public class IntegrationTestTableLayoutUpdate extends AbstractKijiIntegrationTest {
   private static final Logger LOG = LoggerFactory.getLogger(IntegrationTestTableLayoutUpdate.class);
@@ -63,13 +64,12 @@ public class IntegrationTestTableLayoutUpdate extends AbstractKijiIntegrationTes
 
       final BlockingQueue<Multimap<String, String>> queue = Queues.newArrayBlockingQueue(10);
 
-      final TableUsersTracker tracker =
-          new TableUsersTracker(
-              kiji.getZKClient(),
-              tableURI,
-              new QueueingTableUsersUpdateHandler(queue));
-      tracker.start();
+      final UsersTracker tracker =
+          ZooKeeperUtils
+              .newTableUsersTracker(kiji.getZKClient(), tableURI)
+              .registerUpdateHandler(new QueueingUsersUpdateHandler(queue));
       try {
+        tracker.start();
         // Initial user map should be empty:
         assertEquals(ImmutableSetMultimap.<String, String>of(), queue.poll(2, TimeUnit.SECONDS));
 
@@ -100,10 +100,7 @@ public class IntegrationTestTableLayoutUpdate extends AbstractKijiIntegrationTes
 
         } finally {
           kijiTable.release();
-          kijiTable = null;
         }
-
-        System.gc();
 
         // Table is now closed, the user map should become empty:
         assertEquals(ImmutableSetMultimap.<String, String>of(), queue.poll(2, TimeUnit.SECONDS));
