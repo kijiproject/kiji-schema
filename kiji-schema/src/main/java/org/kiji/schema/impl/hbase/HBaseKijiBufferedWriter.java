@@ -480,8 +480,8 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
         mDeleteBuffer.clear();
       }
       if (mPutBuffer.size() > 0) {
-        for (EntityId eid : mPutBuffer.keySet()) {
-          mHTable.put(mPutBuffer.get(eid));
+        for (Put put : mPutBuffer.values()) {
+          mHTable.put(put);
         }
         mHTable.flushCommits();
         mPutBuffer.clear();
