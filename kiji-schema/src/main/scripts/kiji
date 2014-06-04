@@ -280,7 +280,7 @@ case "${command}" in
       exit 0
     fi
     user_jar_file="$1"
-    class="$2"
+    clazz="$2"
     shift
     shift
     if [[ -z "${user_jar_file}" ]]; then
@@ -293,7 +293,7 @@ case "${command}" in
       echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
       exit 1
     fi
-    if [[ -z "${class}" ]]; then
+    if [[ -z "${clazz}" ]]; then
       echo "Error: no main class specified."
       echo "Usage: kiji jar <jarFile> <mainClass> [args...]"
       exit 1
@@ -302,11 +302,11 @@ case "${command}" in
     ;;
 
   *)
-    class=org.kiji.schema.tools.KijiToolLauncher
+    clazz=org.kiji.schema.tools.KijiToolLauncher
     ;;
 esac
 
-if [[ -z "${class}" ]]; then
+if [[ -z "${clazz}" ]]; then
   echo "Unknown command: ${command}"
   echo "Try:"
   echo "  kiji help"
@@ -322,4 +322,4 @@ fi
 
 # Run it!
 
-exec java -cp "${kiji_cp}" ${java_opts} ${KIJI_JAVA_OPTS} "${class}" "$@"
+exec java -cp "${kiji_cp}" ${java_opts} ${KIJI_JAVA_OPTS} "${clazz}" "$@"
