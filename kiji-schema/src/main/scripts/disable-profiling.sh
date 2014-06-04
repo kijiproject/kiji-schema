@@ -59,7 +59,7 @@ if [[ -z "${HADOOP_HOME}" ]]; then
 fi
 
 # Name of the profiling version of the kiji schema jar
-kiji_profiling_schema_jar_name="kiji-schema-${kiji_schema_version}-profiling.jar"
+kiji_profiling_schema_jar_name="kiji-schema-profiling-${kiji_schema_version}.jar"
 
 # Name of the original kiji schema jar
 kiji_schema_jar_name="kiji-schema-${kiji_schema_version}.jar"
@@ -81,7 +81,7 @@ fi
 distrodir="$KIJI_HOME/lib/distribution/$KIJI_HADOOP_DISTRO_VER"
 
 # This name represents both profiling and non profiling jar for KijiMR
-kiji_mr_jar_prefix="kiji-mapreduce-${KIJI_HADOOP_DISTRO_VER}-"
+kiji_mr_jar_prefix="kiji-mapreduce-"
 
 # The location to store the original KijiSchema and KijiMR jars during profiling
 # so that they may be restored later.
@@ -117,12 +117,12 @@ fi
 
 # Remove the KijiMR profiling-enabled jar
 if [[ -d "${distrodir}" ]]; then
-  profiling_jar="${distrodir}/${kiji_mr_jar_prefix}"*"profiling.jar"
+  profiling_jar=$(ls "${distrodir}"/"${kiji_mr_jar_prefix}"profiling-*.jar)
   if [[ -f "${profiling_jar}" ]]; then
     echo "Remove profile enabled kiji mapreduce jar..."
     rm -f "${profiling_jar}"
   else
-    echo "Did not find ${kiji_mr_jar_prefix}*-profiling.jar in ${distrodir}. "
+    echo "Did not find ${kiji_mr_jar_prefix}profiling-*.jar in ${distrodir}. "
     echo "Is profiling enabled?"
     inconsistent_state="true"
   fi
@@ -140,7 +140,7 @@ if [[ -d "${orig_dir}" ]]; then
     mv "${orig_dir}/${kiji_schema_jar_name}" "${KIJI_HOME}/lib/"
   fi
 
-  kijimr_jar="${orig_dir}/${kiji_mr_jar_prefix}"*".jar"
+  kijimr_jar=$(ls "${orig_dir}"/"${kiji_mr_jar_prefix}"*.jar)
   if [[ ! -f "${kijimr_jar}" ]]; then
     echo "Cannot find the original KijiMR jar in ${orig_dir}. " \
       "Please move the jar named ${kiji_mr_jar_prefix}*.jar " \
@@ -148,7 +148,7 @@ if [[ -d "${orig_dir}" ]]; then
     inconsistent_state="true"
   else
     echo "Moving ${orig_dir}/${kiji_mr_jar_prefix}-* to ${distrodir}"
-    mv "${orig_dir}/${kiji_mr_jar_prefix}"* "${distrodir}"
+    mv "${orig_dir}"/"${kiji_mr_jar_prefix}"* "${distrodir}"
   fi
 else
   echo "Did not find ${orig_dir}. This may be because profiling was not enabled."
@@ -165,7 +165,7 @@ else
   inconsistent_state="true"
 fi
 
-if [[ "${inconsistent_state}" == "false" ]]; then
+if ! "${inconsistent_state}"; then
   echo ""
   echo "Profiling jars have been disabled. " \
     "The normal Kiji modules have been restored."

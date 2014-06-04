@@ -61,7 +61,7 @@ if [[ -z "${HADOOP_HOME}" ]]; then
 fi
 
 # Name of the profiled version of the KijiSchema jar
-profiling_kiji_schema_jar_name="kiji-schema-${kiji_schema_version}-profiling.jar"
+profiling_kiji_schema_jar_name="kiji-schema-profiling-${kiji_schema_version}.jar"
 # Name of the original KijiSchema jar
 kiji_schema_jar_name="kiji-schema-${kiji_schema_version}.jar"
 
@@ -82,7 +82,7 @@ fi
 distrodir="$KIJI_HOME/lib/distribution/$KIJI_HADOOP_DISTRO_VER"
 
 # This name represents both profiling and non profiling jar for KijiMR
-kiji_mr_jar_prefix="kiji-mapreduce-${KIJI_HADOOP_DISTRO_VER}-"
+kiji_mr_jar_prefix="kiji-mapreduce-"
 
 # Create a directory to move the non-profiling jars to, so we can install
 # profiling-enabled jars in their normal place
@@ -144,12 +144,12 @@ if [[ -d "${distrodir}" ]]; then
       # clobber it with another profiling jar
       has_kijimr_profile_jar="true"
     else
-      echo "Moving ${fname} to ${orig_dir}"
+      echo "Moving KijiMR ${fname} to ${orig_dir}"
       mv "${fname}" "${orig_dir}/"
     fi
   done
 
-  if [[ "${has_kijimr_profile_jar}" != "true" ]]; then
+  if ! "${has_kijimr_profile_jar}"; then
     cp "${KIJI_HOME}/lib/profiling/${kiji_mr_jar_prefix}"* "${distrodir}"
   else
     echo "A KijiMR profiling jar is already installed at ${distrodir}. " \
@@ -158,7 +158,7 @@ if [[ -d "${distrodir}" ]]; then
   fi
 fi
 
-if [[ "${inconsistent_state}" == "false" ]]; then
+if ! "${inconsistent_state}"; then
   echo ""
   echo "Profiling has been enabled."
   echo ""

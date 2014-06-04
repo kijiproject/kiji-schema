@@ -64,6 +64,7 @@
     <module>hadoop1-hbase94-bridge</module>
 
     <module>kiji-schema</module>
+    <module>profiling</module>
     <module>kiji-schema-extras</module>
     <module>kiji-schema-archetype</module>
   </modules>
