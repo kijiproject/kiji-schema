@@ -8,6 +8,7 @@ org.kiji.schema.tools.InstallTool
 org.kiji.schema.tools.LayoutTool
 org.kiji.schema.tools.LsTool
 org.kiji.schema.tools.MetadataTool
+org.kiji.schema.tools.NotesTool
 org.kiji.schema.tools.PutTool
 org.kiji.schema.tools.ScanTool
 org.kiji.schema.tools.SchemaTableTool
