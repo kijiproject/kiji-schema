@@ -314,7 +314,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
         : overrides.entrySet()) {
       final KijiColumnName column = override.getKey();
       if (!layoutColumns.contains(column)
-          && !layoutColumns.contains(new KijiColumnName(column.getFamily()))) {
+          && !layoutColumns.contains(KijiColumnName.create(column.getFamily()))) {
         throw new NoSuchColumnException(String.format(
             "KijiTableLayout: %s does not contain column: %s", layout, column));
       } else {
@@ -328,7 +328,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
         : alternatives.entries()) {
       final KijiColumnName column = altsEntry.getKey();
       if (!layoutColumns.contains(column)
-          && !layoutColumns.contains(new KijiColumnName(column.getFamily()))) {
+          && !layoutColumns.contains(KijiColumnName.create(column.getFamily()))) {
         throw new NoSuchColumnException(String.format(
             "KijiTableLayout: %s does not contain column: %s", layout, column));
       } else {

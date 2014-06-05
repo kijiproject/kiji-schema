@@ -108,10 +108,10 @@ public final class CellDecoderProvider {
     final Set<KijiColumnName> columns = Sets.newHashSet(overrides.keySet());
     for (FamilyLayout fLayout : layout.getFamilies()) {
       if (fLayout.isMapType()) {
-        columns.add(new KijiColumnName(fLayout.getName(), null));
+        columns.add(KijiColumnName.create(fLayout.getName(), null));
       } else if (fLayout.isGroupType()) {
         for (ColumnLayout cLayout : fLayout.getColumns()) {
-          columns.add(new KijiColumnName(fLayout.getName(), cLayout.getName()));
+          columns.add(KijiColumnName.create(fLayout.getName(), cLayout.getName()));
         }
       } else {
         throw new InternalKijiError(

@@ -179,7 +179,7 @@ public abstract class KijiRowFilter {
    * KijiCell&lt;CharSequence&gt; bobCellValue = new KijiCell&lt;CharSequence&gt;(
    *     Schema.create(Schema.Type.STRING), "Bob");
    * HBaseColumnName hbaseColumn = context.getHBaseColumnName(
-   *     new KijiColumnName("info", "name"));
+   *     KijiColumnName.create("info", "name"));
    * SingleColumnValueFilter filter = new SingleColumnValueFilter(
    *     hbaseColumn.getFamily(),
    *     hbaseColumn.getQualifier(),

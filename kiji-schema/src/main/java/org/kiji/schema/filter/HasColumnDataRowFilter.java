@@ -81,7 +81,7 @@ public final class HasColumnDataRowFilter extends KijiRowFilter {
       throw new IllegalArgumentException("columnName is required");
     }
 
-    KijiColumnName kijiColName = new KijiColumnName(columnName);
+    KijiColumnName kijiColName = KijiColumnName.create(columnName);
     if (!kijiColName.isFullyQualified()) {
       throw new IllegalArgumentException("Cannot use an unqualified column family.");
     }
@@ -105,7 +105,7 @@ public final class HasColumnDataRowFilter extends KijiRowFilter {
     // not an empty byte array.  Since all kiji cells have data (at the very least, the
     // schema hash), this will accept all cells that exist.
     HBaseColumnName hbaseColumnName = context.getHBaseColumnName(
-        new KijiColumnName(mFamily, mQualifier));
+        KijiColumnName.create(mFamily, mQualifier));
     SingleColumnValueFilter filter = new SingleColumnValueFilter(
         hbaseColumnName.getFamily(),
         hbaseColumnName.getQualifier(),

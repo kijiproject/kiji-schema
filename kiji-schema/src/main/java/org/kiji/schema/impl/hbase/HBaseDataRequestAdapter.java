@@ -221,7 +221,7 @@ public final class HBaseDataRequestAdapter {
           // Expand the family request into individual column requests:
           for (String qualifier : fLayout.getColumnMap().keySet()) {
             final KijiColumnName fqKijiColumnName =
-                new KijiColumnName(kijiColumnName.getFamily(), qualifier);
+                KijiColumnName.create(kijiColumnName.getFamily(), qualifier);
             final HBaseColumnName fqHBaseColumnName =
                 mColumnNameTranslator.toHBaseColumnName(fqKijiColumnName);
             addColumn(get, fqHBaseColumnName);

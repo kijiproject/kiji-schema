@@ -126,7 +126,7 @@ public class TestKijiTableReaderPool {
         final KijiTableReaderPool pool = KijiTableReaderPool.Builder.create()
             .withReaderFactory(table.getReaderFactory())
             .withColumnReaderSpecOverrides(ImmutableMap.of(
-                new KijiColumnName("family", "empty"),
+                KijiColumnName.create("family", "empty"),
                 ColumnReaderSpec.avroReaderSchemaSpecific(TestRecord1.class))
             ).build();
         try {

@@ -380,7 +380,7 @@ public class TestKijiURI {
   public void testConstructedUriIsEscaped() {
     // SCHEMA-6. Column qualifier must be URL-encoded in KijiURI.
     final KijiURI uri = KijiURI.newBuilder("kiji://zkhost/instance/table/")
-        .addColumnName(new KijiColumnName("map:one two")).build();
+        .addColumnName(KijiColumnName.create("map:one two")).build();
     assertEquals("kiji://zkhost:2181/instance/table/map:one%20two/", uri.toString());
   }
 }

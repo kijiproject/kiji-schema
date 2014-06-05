@@ -33,7 +33,7 @@ public class TestKijiColumnName {
   @Test
   public void testNull() {
     try {
-      new KijiColumnName(null);
+      KijiColumnName.create(null);
       fail("An exception should have been thrown.");
     } catch (IllegalArgumentException iae) {
       assertEquals("Column name may not be null. At least specify family", iae.getMessage());
@@ -43,7 +43,7 @@ public class TestKijiColumnName {
   @Test
   public void testNullFamily() {
     try {
-      new KijiColumnName(null, "qualifier");
+      KijiColumnName.create(null, "qualifier");
       fail("An exception should have been thrown.");
     } catch (IllegalArgumentException iae) {
       assertEquals("Family name may not be null.", iae.getMessage());
@@ -52,7 +52,7 @@ public class TestKijiColumnName {
 
   @Test
   public void testMapFamily() {
-    KijiColumnName columnName = new KijiColumnName("family");
+    KijiColumnName columnName = KijiColumnName.create("family");
     assertEquals("family", columnName.getFamily());
     assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
     assertNull(columnName.getQualifier());
@@ -61,7 +61,7 @@ public class TestKijiColumnName {
 
   @Test
   public void testEmptyQualifier() {
-    KijiColumnName columnName = new KijiColumnName("family:");
+    KijiColumnName columnName = KijiColumnName.create("family:");
     assertEquals("family", columnName.getFamily());
     assertNull(columnName.getQualifier());
     assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
@@ -71,7 +71,7 @@ public class TestKijiColumnName {
 
   @Test
   public void testEmptyQualifierTwo() {
-    KijiColumnName columnName = new KijiColumnName("family", "");
+    KijiColumnName columnName = KijiColumnName.create("family", "");
     assertEquals("family", columnName.getFamily());
     assertNull(columnName.getQualifier());
     assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
@@ -81,7 +81,7 @@ public class TestKijiColumnName {
 
   @Test
   public void testNormal() {
-    KijiColumnName columnName = new KijiColumnName("family:qualifier");
+    KijiColumnName columnName = KijiColumnName.create("family:qualifier");
     assertEquals("family", columnName.getFamily());
     assertEquals("qualifier", columnName.getQualifier());
     assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
@@ -91,7 +91,7 @@ public class TestKijiColumnName {
 
   @Test
   public void testNullQualifier() {
-    KijiColumnName columnName = new KijiColumnName("family", null);
+    KijiColumnName columnName = KijiColumnName.create("family", null);
     assertEquals("family", columnName.getFamily());
     assertNull(columnName.getQualifier());
     assertArrayEquals(Bytes.toBytes("family"), columnName.getFamilyBytes());
@@ -102,7 +102,7 @@ public class TestKijiColumnName {
   @Test
   public void testInvalidFamilyName() {
     try {
-      new KijiColumnName("1:qualifier");
+      KijiColumnName.create("1:qualifier");
       fail("An exception should have been thrown.");
     } catch (KijiInvalidNameException kine) {
       assertEquals("Invalid family name: 1 Name must match pattern: [a-zA-Z_][a-zA-Z0-9_]*",
@@ -112,9 +112,9 @@ public class TestKijiColumnName {
 
   @Test
   public void testEquals() {
-    KijiColumnName columnA = new KijiColumnName("family", "qualifier1");
-    KijiColumnName columnC = new KijiColumnName("family", null);
-    KijiColumnName columnD = new KijiColumnName("family", "qualifier2");
+    KijiColumnName columnA = KijiColumnName.create("family", "qualifier1");
+    KijiColumnName columnC = KijiColumnName.create("family", null);
+    KijiColumnName columnD = KijiColumnName.create("family", "qualifier2");
     assertTrue(columnA.equals(columnA)); // reflexive
     assertFalse(columnA.equals(columnC) || columnC.equals(columnA));
     assertFalse(columnA.equals(columnD) || columnD.equals(columnA));
@@ -122,16 +122,16 @@ public class TestKijiColumnName {
 
   @Test
   public void testHashCode() {
-    KijiColumnName columnA = new KijiColumnName("family", "qualifier");
-    KijiColumnName columnB = new KijiColumnName("family:qualifier");
+    KijiColumnName columnA = KijiColumnName.create("family", "qualifier");
+    KijiColumnName columnB = KijiColumnName.create("family:qualifier");
     assertEquals(columnA.hashCode(), columnB.hashCode());
   }
 
   @Test
   public void testCompareTo() {
-    KijiColumnName columnA = new KijiColumnName("family");
-    KijiColumnName columnB = new KijiColumnName("familyTwo");
-    KijiColumnName columnC = new KijiColumnName("family:qualifier");
+    KijiColumnName columnA = KijiColumnName.create("family");
+    KijiColumnName columnB = KijiColumnName.create("familyTwo");
+    KijiColumnName columnC = KijiColumnName.create("family:qualifier");
     assertTrue(0 == columnA.compareTo(columnA));
     assertTrue(0 > columnA.compareTo(columnB) && 0 < columnB.compareTo(columnA));
     assertTrue(0 > columnA.compareTo(columnC) && 0 < columnC.compareTo(columnA));

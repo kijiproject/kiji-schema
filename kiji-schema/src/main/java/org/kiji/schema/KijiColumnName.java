@@ -40,6 +40,37 @@ import org.kiji.schema.util.KijiNameValidator;
 @ApiStability.Stable
 public final class KijiColumnName implements Comparable<KijiColumnName> {
 
+  /**
+   * Create a new KijiColumnName from a family and qualifier.
+   *
+   * @param family Family of the Kiji column for which to create a name.
+   * @param qualifier Qualifier of the Kiji column for which to create a name.
+   * @return a new KijiColumnName from the given family and qualifier.
+   */
+  public static KijiColumnName create(
+      final String family,
+      final String qualifier
+  ) {
+    return new KijiColumnName(family, qualifier);
+  }
+
+  /**
+   * Create a new KijiColumnName from a column's full name.
+   *
+   * <p>
+   *   The full name of a column is either "family" or "family:qualifier". An empty qualifier is
+   *   interpreted as a null qualifier (i.e. "family" and "family:" are treated the same.
+   * </p>
+   *
+   * @param fullName The full name of the Kiji column for which to create a name.
+   * @return a new KijiColumnName from the given full name.
+   */
+  public static KijiColumnName create(
+      final String fullName
+  ) {
+    return new KijiColumnName(fullName);
+  }
+
   /** The column family name must match VALID_LAYOUT_NAME_PATTERN. */
   private final String mFamily;
 
@@ -56,7 +87,11 @@ public final class KijiColumnName implements Comparable<KijiColumnName> {
    * of the form "family" or "family:", the qualifier will be treated as null.
    *
    * @param fullName The name of a kiji column "family:qualifier".
+   * @deprecated KijiColumnName constructors are deprecated. Please use the factory method
+   *     {@link KijiColumnName#create(String)}. This constructor will become private in KijiSchema
+   *     3.0.
    */
+  @Deprecated
   public KijiColumnName(String fullName) {
     Preconditions.checkArgument(fullName != null,
         "Column name may not be null. At least specify family");
@@ -72,7 +107,11 @@ public final class KijiColumnName implements Comparable<KijiColumnName> {
    * @param family The kiji column family.
    * @param qualifier The kiji column qualifier: null means unqualified.
    *   Empty string qualifiers are forced to be null.
+   * @deprecated KijiColumnName constructors are deprecated. Please use the factory method
+   *     {@link KijiColumnName#create(String, String)}. This constructor will become private in
+   *     the future.
    */
+  @Deprecated
   public KijiColumnName(String family, String qualifier) {
     Preconditions.checkArgument(family != null, "Family name may not be null.");
     mFamily = family;

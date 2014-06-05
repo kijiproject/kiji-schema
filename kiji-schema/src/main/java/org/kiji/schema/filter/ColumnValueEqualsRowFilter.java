@@ -110,7 +110,7 @@ public final class ColumnValueEqualsRowFilter extends KijiRowFilter {
   public Filter toHBaseFilter(Context context) throws IOException {
     // Create a filter that accepts a cell from mFamily and mQualifier only if it is
     // equals to the specified value.
-    final KijiColumnName column = new KijiColumnName(mFamily, mQualifier);
+    final KijiColumnName column = KijiColumnName.create(mFamily, mQualifier);
     HBaseColumnName hbaseColumnName = context.getHBaseColumnName(column);
     SingleColumnValueFilter filter = new SingleColumnValueFilter(
         hbaseColumnName.getFamily(),

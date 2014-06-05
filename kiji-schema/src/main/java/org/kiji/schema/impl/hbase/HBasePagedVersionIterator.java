@@ -301,7 +301,7 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
    */
   private KijiColumnName getNextColumn() {
     Preconditions.checkNotNull(mQualifierIterator);
-    return new KijiColumnName(mOuterPagedColumn.getFamily(), mQualifierIterator.next());
+    return KijiColumnName.create(mOuterPagedColumn.getFamily(), mQualifierIterator.next());
   }
 
   /**

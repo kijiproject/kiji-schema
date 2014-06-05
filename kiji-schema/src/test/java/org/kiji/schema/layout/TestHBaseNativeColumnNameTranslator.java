@@ -45,21 +45,21 @@ public class TestHBaseNativeColumnNameTranslator {
   public void testTranslateFromKijiToHBase() throws Exception {
     KijiColumnNameTranslator translator = KijiColumnNameTranslator.from(mTableLayout);
 
-    HBaseColumnName infoName = translator.toHBaseColumnName(new KijiColumnName("info:name"));
+    HBaseColumnName infoName = translator.toHBaseColumnName(KijiColumnName.create("info:name"));
     assertEquals("info", infoName.getFamilyAsString());
     assertEquals("name", infoName.getQualifierAsString());
 
-    HBaseColumnName infoEmail = translator.toHBaseColumnName(new KijiColumnName("info:email"));
+    HBaseColumnName infoEmail = translator.toHBaseColumnName(KijiColumnName.create("info:email"));
     assertEquals("info", infoEmail.getFamilyAsString());
     assertEquals("email", infoEmail.getQualifierAsString());
 
     HBaseColumnName recommendationsProduct = translator.toHBaseColumnName(
-        new KijiColumnName("recommendations:product"));
+        KijiColumnName.create("recommendations:product"));
     assertEquals("recommendations", recommendationsProduct.getFamilyAsString());
     assertEquals("product", recommendationsProduct.getQualifierAsString());
 
     HBaseColumnName purchases = translator.toHBaseColumnName(
-        new KijiColumnName("recommendations:product"));
+        KijiColumnName.create("recommendations:product"));
     assertEquals("recommendations", purchases.getFamilyAsString());
     assertEquals("product", purchases.getQualifierAsString());
   }
@@ -127,7 +127,7 @@ public class TestHBaseNativeColumnNameTranslator {
     KijiColumnNameTranslator translator = KijiColumnNameTranslator.from(mTableLayout);
 
     try {
-      translator.toHBaseColumnName(new KijiColumnName("doesnt:exist"));
+      translator.toHBaseColumnName(KijiColumnName.create("doesnt:exist"));
       fail("An exception should have been thrown.");
     } catch (NoSuchColumnException nsce) {
       assertEquals("No family 'doesnt' in layout.", nsce.getMessage());

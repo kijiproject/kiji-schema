@@ -44,20 +44,21 @@ public class TestIdentityColumnNameTranslator {
   public void testTranslateFromKijiToHBase() throws Exception {
     KijiColumnNameTranslator translator = KijiColumnNameTranslator.from(mTableLayout);
 
-    HBaseColumnName infoName = translator.toHBaseColumnName(new KijiColumnName("info:name"));
+    HBaseColumnName infoName = translator.toHBaseColumnName(KijiColumnName.create("info:name"));
     assertEquals("default", infoName.getFamilyAsString());
     assertEquals("info:name", infoName.getQualifierAsString());
 
-    HBaseColumnName infoEmail = translator.toHBaseColumnName(new KijiColumnName("info:email"));
+    HBaseColumnName infoEmail = translator.toHBaseColumnName(KijiColumnName.create("info:email"));
     assertEquals("default", infoEmail.getFamilyAsString());
     assertEquals("info:email", infoEmail.getQualifierAsString());
 
     HBaseColumnName recommendationsProduct = translator.toHBaseColumnName(
-        new KijiColumnName("recommendations:product"));
+        KijiColumnName.create("recommendations:product"));
     assertEquals("inMemory", recommendationsProduct.getFamilyAsString());
     assertEquals("recommendations:product", recommendationsProduct.getQualifierAsString());
 
-    HBaseColumnName purchases = translator.toHBaseColumnName(new KijiColumnName("purchases:foo"));
+    HBaseColumnName purchases = translator.toHBaseColumnName(
+        KijiColumnName.create("purchases:foo"));
     assertEquals("inMemory", purchases.getFamilyAsString());
     assertEquals("purchases:foo", purchases.getQualifierAsString());
   }
@@ -170,7 +171,7 @@ public class TestIdentityColumnNameTranslator {
     KijiColumnNameTranslator translator = KijiColumnNameTranslator.from(mTableLayout);
 
     try {
-      translator.toHBaseColumnName(new KijiColumnName("doesnt:exist"));
+      translator.toHBaseColumnName(KijiColumnName.create("doesnt:exist"));
       fail("An exception should have been thrown.");
     } catch (NoSuchColumnException nsce) {
       assertEquals("doesnt:exist", nsce.getMessage());

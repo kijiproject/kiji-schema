@@ -42,7 +42,7 @@ import org.kiji.schema.KijiColumnName;
  *   <pre><tt>{@code
  *   final KijiTable table = ...;
  *   final KijiTableLayout layout = table.getLayout();
- *   final KijiColumnName column = new KijiColumnName("family", "qualifier");
+ *   final KijiColumnName column = KijiColumnName.create("family", "qualifier");
  *   final Map<KijiColumnName, CellSpec> overrides =
  *       ImmutableMap.<KijiColumnName, CellSpec>builder()
  *       .put(column, layout.getCellSpec(column)

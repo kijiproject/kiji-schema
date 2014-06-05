@@ -106,14 +106,14 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
 
     final TableLayoutDesc originalDesc = new TableLayoutBuilder(desc, kiji)
         .withAvroValidationPolicy(
-            new KijiColumnName("info:fullname"), policy)
-        .withReader(new KijiColumnName("info:fullname"), STRING_SCHEMA)
+            KijiColumnName.create("info:fullname"), policy)
+        .withReader(KijiColumnName.create("info:fullname"), STRING_SCHEMA)
         .build();
 
     kiji.createTable(originalDesc);
 
     final TableLayoutDesc newDesc = new TableLayoutBuilder(originalDesc, kiji)
-        .withWriter(new KijiColumnName("info:fullname"), INT_SCHEMA)
+        .withWriter(KijiColumnName.create("info:fullname"), INT_SCHEMA)
         .build();
     return newDesc;
   }
@@ -123,7 +123,7 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
     final TableLayoutUpdateValidator validator = new TableLayoutUpdateValidator(getKiji());
     final TableLayoutDesc basicDesc = KijiTableLayouts.getLayout(KijiTableLayouts.SCHEMA_REG_TEST);
     basicDesc.setVersion("layout-1.3.0");
-    final KijiColumnName validatedColumn = new KijiColumnName("info:fullname");
+    final KijiColumnName validatedColumn = KijiColumnName.create("info:fullname");
     final Schema intSchema = Schema.create(Type.INT);
     final Schema stringSchema = Schema.create(Type.STRING);
 
@@ -253,7 +253,7 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
   @Test
   public void testAddRemoveModifyColumns() throws IOException {
     final TableLayoutUpdateValidator validator = new TableLayoutUpdateValidator(getKiji());
-    final KijiColumnName validatedColumn = new KijiColumnName("info:qual0");
+    final KijiColumnName validatedColumn = KijiColumnName.create("info:qual0");
     final TableLayoutDesc desc = new TableLayoutBuilder(
         KijiTableLayouts.getLayout(AVRO_VALIDATION_TEST), getKiji())
         .withReader(validatedColumn, TestRecord5.SCHEMA$)
@@ -298,14 +298,14 @@ public class TestTableLayoutUpdateValidator extends KijiClientTest {
 
     final TableLayoutDesc originalDesc = new TableLayoutBuilder(desc, kiji)
         .withAvroValidationPolicy(
-            new KijiColumnName("info:fullname"), AvroValidationPolicy.STRICT)
-        .withReader(new KijiColumnName("info:fullname"), emptyRecordSchema)
+            KijiColumnName.create("info:fullname"), AvroValidationPolicy.STRICT)
+        .withReader(KijiColumnName.create("info:fullname"), emptyRecordSchema)
         .build();
 
     kiji.createTable(originalDesc);
 
     final TableLayoutDesc newDesc = new TableLayoutBuilder(originalDesc, kiji)
-        .withWriter(new KijiColumnName("info:fullname"), optIntRecordSchema)
+        .withWriter(KijiColumnName.create("info:fullname"), optIntRecordSchema)
         .build();
 
     kiji.modifyTableLayout(newDesc);

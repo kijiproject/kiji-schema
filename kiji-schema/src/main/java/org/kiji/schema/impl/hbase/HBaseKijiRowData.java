@@ -583,7 +583,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public Schema getReaderSchema(String family, String qualifier) throws IOException {
-    return mTableLayout.getCellSpec(new KijiColumnName(family, qualifier)).getAvroSchema();
+    return mTableLayout.getCellSpec(KijiColumnName.create(family, qualifier)).getAvroSchema();
   }
 
   /**
@@ -630,7 +630,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> T getValue(String family, String qualifier, long timestamp) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(new KijiColumnName(family, qualifier));
+    final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     return decoder.decodeValue(bytes);
   }
@@ -639,7 +639,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> KijiCell<T> getCell(String family, String qualifier, long timestamp)
       throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(new KijiColumnName(family, qualifier));
+    final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     return KijiCell.create(
         new KijiColumnName(family, qualifier),
@@ -650,7 +650,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> T getMostRecentValue(String family, String qualifier) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(new KijiColumnName(family, qualifier));
+    final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
     if (null == tmap) {
       return null;
@@ -706,7 +706,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> KijiCell<T> getMostRecentCell(String family, String qualifier) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(new KijiColumnName(family, qualifier));
+    final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
     if (null == tmap) {
       return null;
@@ -740,7 +740,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> NavigableMap<Long, KijiCell<T>> getCells(String family, String qualifier)
       throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(new KijiColumnName(family, qualifier));
+    final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
 
     final NavigableMap<Long, KijiCell<T>> result = Maps.newTreeMap(TimestampComparator.INSTANCE);
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
@@ -780,7 +780,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> Iterator<KijiCell<T>> iterator(String family, String qualifier)
       throws IOException {
-    final KijiColumnName column = new KijiColumnName(family, qualifier);
+    final KijiColumnName column = KijiColumnName.create(family, qualifier);
     Preconditions.checkArgument(
         mDataRequest.getRequestForColumn(column) != null,
         "Column %s has no data request.", column);
@@ -791,7 +791,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> Iterator<KijiCell<T>> iterator(String family)
       throws IOException {
-    final KijiColumnName column = new KijiColumnName(family, null);
+    final KijiColumnName column = KijiColumnName.create(family, null);
     Preconditions.checkArgument(
         mDataRequest.getRequestForColumn(column) != null,
         "Column %s has no data request.", column);
@@ -806,7 +806,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> Iterable<KijiCell<T>> asIterable(String family, String qualifier) {
-    final KijiColumnName column = new KijiColumnName(family, qualifier);
+    final KijiColumnName column = KijiColumnName.create(family, qualifier);
     Preconditions.checkArgument(
         mDataRequest.getRequestForColumn(column) != null,
         "Column %s has no data request.", column);
@@ -816,7 +816,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> Iterable<KijiCell<T>> asIterable(String family) {
-    final KijiColumnName column = new KijiColumnName(family, null);
+    final KijiColumnName column = KijiColumnName.create(family, null);
     Preconditions.checkArgument(
         mDataRequest.getRequestForColumn(column) != null,
         "Column %s has no data request.", column);
@@ -832,7 +832,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public KijiPager getPager(String family, String qualifier)
       throws KijiColumnPagingNotEnabledException {
-    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
+    final KijiColumnName kijiColumnName = KijiColumnName.create(family, qualifier);
     return new HBaseVersionPager(
         mEntityId, mDataRequest, mTable,  kijiColumnName, mDecoderProvider);
   }
@@ -840,7 +840,7 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public KijiPager getPager(String family) throws KijiColumnPagingNotEnabledException {
-    final KijiColumnName kijiFamily = new KijiColumnName(family, null);
+    final KijiColumnName kijiFamily = KijiColumnName.create(family, null);
     Preconditions.checkState(mTableLayout.getFamilyMap().get(family).isMapType(),
         "getPager(String family) is only enabled on map type column families. "
         + "The column family '%s' is a group type column family. "

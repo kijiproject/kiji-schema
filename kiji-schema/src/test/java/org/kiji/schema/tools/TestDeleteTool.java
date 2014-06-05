@@ -117,7 +117,7 @@ public class TestDeleteTool extends KijiToolTest {
 
     // Target one column family:
     final KijiURI target =
-        KijiURI.newBuilder(mTableURI).addColumnName(new KijiColumnName("family")).build();
+        KijiURI.newBuilder(mTableURI).addColumnName(KijiColumnName.create("family")).build();
 
     assertEquals(BaseTool.SUCCESS, runTool(new DeleteTool(),
       "--target=" + target,
@@ -139,7 +139,7 @@ public class TestDeleteTool extends KijiToolTest {
 
     // Target one column:
     final KijiURI target = KijiURI.newBuilder(mTableURI)
-        .addColumnName(new KijiColumnName("family", "column"))
+        .addColumnName(KijiColumnName.create("family", "column"))
         .build();
 
     assertEquals(BaseTool.SUCCESS, runTool(new DeleteTool(),
@@ -167,7 +167,7 @@ public class TestDeleteTool extends KijiToolTest {
 
     // Target one column:
     final KijiURI target = KijiURI.newBuilder(mTableURI)
-        .addColumnName(new KijiColumnName("family", "column"))
+        .addColumnName(KijiColumnName.create("family", "column"))
         .build();
 
     // Delete cells with latest timestamp, ie. timestamp == 315
@@ -198,7 +198,7 @@ public class TestDeleteTool extends KijiToolTest {
 
     // Target one column:
     final KijiURI target = KijiURI.newBuilder(mTableURI)
-        .addColumnName(new KijiColumnName("family", "column"))
+        .addColumnName(KijiColumnName.create("family", "column"))
         .build();
 
     // Delete cells with timestamp == 314
@@ -229,7 +229,7 @@ public class TestDeleteTool extends KijiToolTest {
 
     // Target one column:
     final KijiURI target = KijiURI.newBuilder(mTableURI)
-        .addColumnName(new KijiColumnName("family", "column"))
+        .addColumnName(KijiColumnName.create("family", "column"))
         .build();
 
     // Delete cells with timestamps <= 314

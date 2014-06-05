@@ -108,16 +108,16 @@ public class TestHBaseKijiResult extends KijiClientTest {
 
 
   private static final KijiColumnName PRIMITIVE_STRING =
-      new KijiColumnName("primitive", "string_column");
+      KijiColumnName.create("primitive", "string_column");
   private static final KijiColumnName PRIMITIVE_DOUBLE =
-      new KijiColumnName("primitive", "double_column");
+      KijiColumnName.create("primitive", "double_column");
   private static final KijiColumnName PRIMITIVE_BOOLEAN =
-      new KijiColumnName("primitive", "boolean_column");
-  private static final KijiColumnName STRING_MAP = new KijiColumnName("string_map", null);
+      KijiColumnName.create("primitive", "boolean_column");
+  private static final KijiColumnName STRING_MAP = KijiColumnName.create("string_map", null);
   private static final KijiColumnName STRING_MAP_1 =
-      new KijiColumnName("string_map", "smap_1");
+      KijiColumnName.create("string_map", "smap_1");
   private static final KijiColumnName STRING_MAP_2 =
-      new KijiColumnName("string_map", "smap_2");
+      KijiColumnName.create("string_map", "smap_2");
 
   private static final String EXPECTED_PAGED_GET_EXCEPTION_PREFIX =
       "Cannot get a cell from a paged column. Found column: ";
@@ -469,8 +469,8 @@ public class TestHBaseKijiResult extends KijiClientTest {
 
   @Test
   public void testUnrequestedColumns() {
-    final KijiColumnName bogusColumn = new KijiColumnName("bogus", "bogus");
-    final KijiColumnName bogusFamily = new KijiColumnName("bogus", null);
+    final KijiColumnName bogusColumn = KijiColumnName.create("bogus", "bogus");
+    final KijiColumnName bogusFamily = KijiColumnName.create("bogus", null);
 
     try {
       mCompleteResult.getMostRecentCell(bogusColumn);

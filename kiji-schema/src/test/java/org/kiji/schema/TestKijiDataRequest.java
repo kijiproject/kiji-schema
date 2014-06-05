@@ -68,7 +68,7 @@ public class TestKijiDataRequest {
   /** Checks that KijiDataRequest with schema overrides serializes and deserializes correctly. */
   @Test
   public void testSchemaOverrideSerializability() throws Exception {
-    final KijiColumnName columnName = new KijiColumnName("family", "empty");
+    final KijiColumnName columnName = KijiColumnName.create("family", "empty");
     final KijiDataRequest overrideRequest = KijiDataRequest.builder()
         .addColumns(ColumnsDef.create()
             .add(columnName, ColumnReaderSpec.avroReaderSchemaSpecific(TestRecord1.class))).build();

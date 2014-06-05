@@ -190,7 +190,7 @@ public final class KijiDataRequest implements Serializable {
      * @return The column name.
      */
     public KijiColumnName getColumnName() {
-      return new KijiColumnName(getFamily(), getQualifier());
+      return KijiColumnName.create(getFamily(), getQualifier());
     }
 
     /**

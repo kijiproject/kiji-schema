@@ -243,7 +243,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     Preconditions.checkState(state == State.OPEN,
         "Cannot checkAndCommit a transaction on an AtomicKijiPutter instance in state %s.", state);
     final WriterLayoutCapsule capsule = getWriterLayoutCapsule();
-    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
+    final KijiColumnName kijiColumnName = KijiColumnName.create(family, qualifier);
     final HBaseColumnName columnName =
         capsule.getColumnNameTranslator().toHBaseColumnName(kijiColumnName);
     final byte[] encoded;
@@ -297,7 +297,7 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
     Preconditions.checkState(state == State.OPEN,
         "Cannot put cell to an AtomicKijiPutter instance in state %s.", state);
     final WriterLayoutCapsule capsule = getWriterLayoutCapsule();
-    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
+    final KijiColumnName kijiColumnName = KijiColumnName.create(family, qualifier);
     final HBaseColumnName columnName =
         capsule.getColumnNameTranslator().toHBaseColumnName(kijiColumnName);
 

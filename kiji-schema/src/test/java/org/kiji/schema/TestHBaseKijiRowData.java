@@ -157,18 +157,23 @@ public class TestHBaseKijiRowData extends KijiClientTest {
 
     final LayoutCapsule capsule = mTable.getLayoutCapsule();
     final KijiColumnNameTranslator translator = capsule.getKijiColumnNameTranslator();
-    HBaseColumnName hcolumn = translator.toHBaseColumnName(new KijiColumnName("family", "empty"));
+    HBaseColumnName hcolumn =
+        translator.toHBaseColumnName(KijiColumnName.create("family", "empty"));
     mHBaseFamily = hcolumn.getFamily();
     mHBaseEmpty = hcolumn.getQualifier();
-    mHBaseQual0 = translator.toHBaseColumnName(new KijiColumnName("family:qual0")).getQualifier();
-    mHBaseQual1 = translator.toHBaseColumnName(new KijiColumnName("family:qual1")).getQualifier();
-    mHBaseQual2 = translator.toHBaseColumnName(new KijiColumnName("family:qual2")).getQualifier();
-    mHBaseQual3 = translator.toHBaseColumnName(new KijiColumnName("family:qual3")).getQualifier();
-    mHBaseNodequal0 = translator.toHBaseColumnName(new KijiColumnName("family:nodequal0"))
+    mHBaseQual0 = translator.toHBaseColumnName(
+        KijiColumnName.create("family:qual0")).getQualifier();
+    mHBaseQual1 = translator.toHBaseColumnName(
+        KijiColumnName.create("family:qual1")).getQualifier();
+    mHBaseQual2 = translator.toHBaseColumnName(
+        KijiColumnName.create("family:qual2")).getQualifier();
+    mHBaseQual3 = translator.toHBaseColumnName(
+        KijiColumnName.create("family:qual3")).getQualifier();
+    mHBaseNodequal0 = translator.toHBaseColumnName(KijiColumnName.create("family:nodequal0"))
         .getQualifier();
-    mHBaseNodequal1 = translator.toHBaseColumnName(new KijiColumnName("family:nodequal1"))
+    mHBaseNodequal1 = translator.toHBaseColumnName(KijiColumnName.create("family:nodequal1"))
         .getQualifier();
-    mHBaseMapFamily = translator.toHBaseColumnName(new KijiColumnName("map")).getFamily();
+    mHBaseMapFamily = translator.toHBaseColumnName(KijiColumnName.create("map")).getFamily();
 
     mEntityIdFactory = EntityIdFactory.getFactory(capsule.getLayout());
   }

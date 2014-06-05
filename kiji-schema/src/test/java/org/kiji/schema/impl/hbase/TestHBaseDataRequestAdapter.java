@@ -89,10 +89,10 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
 
     Scan expectedScan = new Scan();
     HBaseColumnName hbaseColumn = mColumnNameTranslator.toHBaseColumnName(
-        new KijiColumnName("info:name"));
+        KijiColumnName.create("info:name"));
     expectedScan.addColumn(hbaseColumn.getFamily(), hbaseColumn.getQualifier());
     HBaseColumnName hPurchasesColumn = mColumnNameTranslator.toHBaseColumnName(
-        new KijiColumnName("purchases"));
+        KijiColumnName.create("purchases"));
     expectedScan.addFamily(hPurchasesColumn.getFamily());
 
     FilterList filterList = new FilterList(FilterList.Operator.MUST_PASS_ONE);
@@ -158,10 +158,10 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
     EntityId entityId = mEntityIdFactory.getEntityId("entity");
     Get expectedGet = new Get(entityId.getHBaseRowKey());
     HBaseColumnName hbaseColumn = mColumnNameTranslator.toHBaseColumnName(
-        new KijiColumnName("info:name"));
+        KijiColumnName.create("info:name"));
     expectedGet.addColumn(hbaseColumn.getFamily(), hbaseColumn.getQualifier());
     HBaseColumnName hPurchasesColumn = mColumnNameTranslator.toHBaseColumnName(
-        new KijiColumnName("purchases"));
+        KijiColumnName.create("purchases"));
     expectedGet.addFamily(hPurchasesColumn.getFamily());
 
     // See comments in testDataRequestToScan() describing this functionality.

@@ -1293,20 +1293,20 @@ public final class KijiTableLayout {
 
         if (familyLayout.isMapType()) {
           Preconditions.checkState(
-              columnNames.add(new KijiColumnName(familyLayout.getName(), null)));
+              columnNames.add(KijiColumnName.create(familyLayout.getName(), null)));
         }
 
         for (ColumnLayout columnLayout: familyLayout.getColumns()) {
           for (String columnName : columnLayout.getNames()) {
-            final KijiColumnName column = new KijiColumnName(familyLayout.getName(), columnName);
+            final KijiColumnName column = KijiColumnName.create(familyLayout.getName(), columnName);
             if (null != columnMap.put(column, columnLayout)) {
               throw new InvalidLayoutException(String.format(
                   "Layout for table '%s' contains duplicate column '%s'.",
                   getName(), column));
             }
           }
-          Preconditions.checkState(
-              columnNames.add(new KijiColumnName(familyLayout.getName(), columnLayout.getName())));
+          Preconditions.checkState(columnNames.add(
+              KijiColumnName.create(familyLayout.getName(), columnLayout.getName())));
         }
       }
     }

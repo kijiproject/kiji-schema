@@ -104,14 +104,14 @@ public final class IdentityColumnNameTranslator extends KijiColumnNameTranslator
             column, kijiFamily.getDesc().getName()));
       }
       final KijiColumnName result =
-          new KijiColumnName(kijiFamily.getDesc().getName(), kijiColumn.getDesc().getName());
+          KijiColumnName.create(kijiFamily.getDesc().getName(), kijiColumn.getDesc().getName());
       LOG.debug("Translated to Kiji group column '{}'.", result);
       return result;
     }
 
     // Map type family.
     assert kijiFamily.isMapType();
-    final KijiColumnName result = new KijiColumnName(kijiFamily.getDesc().getName(), parts[1]);
+    final KijiColumnName result = KijiColumnName.create(kijiFamily.getDesc().getName(), parts[1]);
     LOG.debug("Translated to Kiji map column '{}'.", result);
     return result;
   }

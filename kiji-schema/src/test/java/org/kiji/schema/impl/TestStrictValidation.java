@@ -82,11 +82,11 @@ public class TestStrictValidation extends KijiClientTest {
                 .build());
 
         final List<AvroSchema> writerSchemaIds =
-            table.getLayout().getCellSchema(new KijiColumnName("info:user")).getWriters();
+            table.getLayout().getCellSchema(KijiColumnName.create("info:user")).getWriters();
         Assert.assertEquals(expectedIds, writerSchemaIds);
 
         final List<AvroSchema> writtenSchemaIds =
-            table.getLayout().getCellSchema(new KijiColumnName("info:user")).getWritten();
+            table.getLayout().getCellSchema(KijiColumnName.create("info:user")).getWritten();
         Assert.assertEquals(expectedIds, writtenSchemaIds);
 
       } finally {
@@ -113,14 +113,14 @@ public class TestStrictValidation extends KijiClientTest {
 
       final TableLayoutDesc updateWithReader =
           new TableLayoutBuilder(table.getLayout().getDesc(), kiji)
-              .withReader(new KijiColumnName("info",  "gender"), readerEnum)
+              .withReader(KijiColumnName.create("info",  "gender"), readerEnum)
               .build();
       LOG.debug("Applying update with enum reader: %s", updateWithReader);
       kiji.modifyTableLayout(updateWithReader);
 
       final TableLayoutDesc updateWithWriter=
           new TableLayoutBuilder(table.getLayout().getDesc(), kiji)
-              .withWriter(new KijiColumnName("info",  "gender"), writerEnum)
+              .withWriter(KijiColumnName.create("info",  "gender"), writerEnum)
               .build();
       LOG.debug("Applying update with enum writer: %s", updateWithWriter);
       try {

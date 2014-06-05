@@ -445,8 +445,8 @@ public class TestKijiTableLayout {
     assertTrue(fLayout.isMapType());
     assertEquals(fLayout, layout.getFamilies().iterator().next());
 
-    assertEquals(SchemaStorage.HASH, layout.getCellFormat(new KijiColumnName("family_name")));
-    assertEquals(Schema.Type.INT, layout.getSchema(new KijiColumnName("family_name")).getType());
+    assertEquals(SchemaStorage.HASH, layout.getCellFormat(KijiColumnName.create("family_name")));
+    assertEquals(Schema.Type.INT, layout.getSchema(KijiColumnName.create("family_name")).getType());
   }
 
   /** Tests for a layout with one column, and with no reference layout. */
@@ -471,9 +471,9 @@ public class TestKijiTableLayout {
     assertEquals(cLayout, fLayout.getColumns().iterator().next());
 
     assertEquals(SchemaStorage.UID,
-        layout.getCellFormat(new KijiColumnName("family_name:column_name")));
+        layout.getCellFormat(KijiColumnName.create("family_name:column_name")));
     assertEquals(Schema.Type.STRING,
-        layout.getSchema(new KijiColumnName("family_name:column_name")).getType());
+        layout.getSchema(KijiColumnName.create("family_name:column_name")).getType());
   }
 
   /** Tests for column removal. */
@@ -1230,7 +1230,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals(
         SchemaStorage.FINAL,
-        layout.getCellSchema(new KijiColumnName("family_name", "column_name")).getStorage());
+        layout.getCellSchema(KijiColumnName.create("family_name", "column_name")).getStorage());
   }
 
   @Test
@@ -1299,7 +1299,7 @@ public class TestKijiTableLayout {
     final KijiTableLayout layout = KijiTableLayout.newLayout(desc);
     assertEquals(
         SchemaStorage.FINAL,
-        layout.getCellSchema(new KijiColumnName("family_name", "column_name")).getStorage());
+        layout.getCellSchema(KijiColumnName.create("family_name", "column_name")).getStorage());
   }
 
   @Test

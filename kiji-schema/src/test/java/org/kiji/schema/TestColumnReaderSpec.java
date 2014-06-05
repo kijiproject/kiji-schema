@@ -44,7 +44,7 @@ import org.kiji.schema.util.InstanceBuilder;
 
 public class TestColumnReaderSpec extends KijiClientTest {
 
-  private static final KijiColumnName EMPTY = new KijiColumnName("family", "empty");
+  private static final KijiColumnName EMPTY = KijiColumnName.create("family", "empty");
 
   @Before
   public void setup() throws IOException {

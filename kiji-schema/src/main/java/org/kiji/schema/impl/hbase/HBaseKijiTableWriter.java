@@ -226,7 +226,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     Preconditions.checkState(state == State.OPEN,
         "Cannot put cell to KijiTableWriter instance %s in state %s.", this, state);
 
-    final KijiColumnName columnName = new KijiColumnName(family, qualifier);
+    final KijiColumnName columnName = KijiColumnName.create(family, qualifier);
     final WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final HBaseColumnName hbaseColumnName =
         capsule.getColumnNameTranslator().toHBaseColumnName(columnName);
@@ -255,7 +255,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
 
     // Translate the Kiji column name to an HBase column name.
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator().
-        toHBaseColumnName(new KijiColumnName(family, qualifier));
+        toHBaseColumnName(KijiColumnName.create(family, qualifier));
 
     // Send the increment to the HBase HTable.
     final Increment increment = new Increment(entityId.getHBaseRowKey());
@@ -284,7 +284,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
    * @throws IOException If the column is not a counter, or it does not exist.
    */
   private void verifyIsCounter(String family, String qualifier) throws IOException {
-    final KijiColumnName column = new KijiColumnName(family, qualifier);
+    final KijiColumnName column = KijiColumnName.create(family, qualifier);
     if (mWriterLayoutCapsule.getLayout().getCellSchema(column).getType() != SchemaType.COUNTER) {
       throw new IOException(String.format("Column '%s' is not a counter", column));
     }
@@ -345,7 +345,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
 
     // The only data in this HBase family is the one Kiji family, so we can delete everything.
     final HBaseColumnName hbaseColumnName = capsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(family));
+        .toHBaseColumnName(KijiColumnName.create(family));
     final Delete delete = new Delete(entityId.getHBaseRowKey());
     delete.deleteFamily(hbaseColumnName.getFamily(), upToTimestamp);
 
@@ -375,7 +375,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     final Delete delete = new Delete(entityId.getHBaseRowKey());
     for (ColumnLayout columnLayout : familyLayout.getColumnMap().values()) {
       final String qualifier = columnLayout.getName();
-      final KijiColumnName column = new KijiColumnName(familyName, qualifier);
+      final KijiColumnName column = KijiColumnName.create(familyName, qualifier);
       final HBaseColumnName hbaseColumnName =
           mWriterLayoutCapsule.getColumnNameTranslator().toHBaseColumnName(column);
       delete.deleteColumns(
@@ -411,7 +411,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
         "Cannot delete map family while KijiTableWriter %s is in state %s.", this, state);
     final String familyName = familyLayout.getName();
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(familyName));
+        .toHBaseColumnName(KijiColumnName.create(familyName));
     final byte[] hbaseRow = entityId.getHBaseRowKey();
 
     // Step 1.
@@ -456,7 +456,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
         "Cannot delete column while KijiTableWriter %s is in state %s.", this, state);
 
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(family, qualifier));
+        .toHBaseColumnName(KijiColumnName.create(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumns(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
     mHTable.delete(delete);
@@ -477,7 +477,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
         "Cannot delete cell while KijiTableWriter %s is in state %s.", this, state);
 
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(family, qualifier));
+        .toHBaseColumnName(KijiColumnName.create(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
     mHTable.delete(delete);

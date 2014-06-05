@@ -67,18 +67,18 @@ public class TestTableLayoutBuilder extends KijiClientTest {
     final TableLayoutBuilder tlb = new TableLayoutBuilder(layout.getDesc(), getKiji());
 
     // Columns to use
-    final KijiColumnName fullNameCol = new KijiColumnName("info:fullname");
-    final KijiColumnName hitPointsCol = new KijiColumnName("info:hitpoints");
-    final KijiColumnName manaCol = new KijiColumnName("info:mana");
-    final KijiColumnName friendsCol = new KijiColumnName("friends");
-    final KijiColumnName questProgressCol = new KijiColumnName("quest_progress");
+    final KijiColumnName fullNameCol = KijiColumnName.create("info:fullname");
+    final KijiColumnName hitPointsCol = KijiColumnName.create("info:hitpoints");
+    final KijiColumnName manaCol = KijiColumnName.create("info:mana");
+    final KijiColumnName friendsCol = KijiColumnName.create("friends");
+    final KijiColumnName questProgressCol = KijiColumnName.create("quest_progress");
 
     // Aliases for above columns, respectively
-    final KijiColumnName aliasCol = new KijiColumnName("profile:alias");
-    final KijiColumnName healthCol = new KijiColumnName("info:health");
-    final KijiColumnName magicCol = new KijiColumnName("profile:magic");
-    final KijiColumnName fellowsCol = new KijiColumnName("fellows");
-    final KijiColumnName heroismCol = new KijiColumnName("heroism");
+    final KijiColumnName aliasCol = KijiColumnName.create("profile:alias");
+    final KijiColumnName healthCol = KijiColumnName.create("info:health");
+    final KijiColumnName magicCol = KijiColumnName.create("profile:magic");
+    final KijiColumnName fellowsCol = KijiColumnName.create("fellows");
+    final KijiColumnName heroismCol = KijiColumnName.create("heroism");
 
     // Check emptiness (not exhaustive)
     // TODO: integrate default schemas
@@ -130,7 +130,7 @@ public class TestTableLayoutBuilder extends KijiClientTest {
 
     // Unqualified group family
     try {
-      tlb.withReader(new KijiColumnName("profile"), stringSchema);
+      tlb.withReader(KijiColumnName.create("profile"), stringSchema);
       fail("An exception should have been thrown.");
     } catch (NoSuchColumnException nsce) {
       assertEquals("Table 'table_name' has no column 'profile'.", nsce.getMessage());
@@ -138,7 +138,7 @@ public class TestTableLayoutBuilder extends KijiClientTest {
 
     // Fully qualified map family
     try {
-      tlb.withReader(new KijiColumnName("heroism:mordor"), stringSchema);
+      tlb.withReader(KijiColumnName.create("heroism:mordor"), stringSchema);
       fail("An exception should have been thrown.");
     } catch (InvalidLayoutException ile) {
       assertEquals("A fully qualified map-type column name was provided.", ile.getMessage());
@@ -146,7 +146,7 @@ public class TestTableLayoutBuilder extends KijiClientTest {
 
     // Nonexistent column
     try {
-      tlb.withReader(new KijiColumnName("info:name"), stringSchema);
+      tlb.withReader(KijiColumnName.create("info:name"), stringSchema);
       fail("An exception should have been thrown.");
     } catch (NoSuchColumnException nsce) {
       assertEquals("Table 'table_name' has no column 'info:name'.", nsce.getMessage());
@@ -154,7 +154,7 @@ public class TestTableLayoutBuilder extends KijiClientTest {
 
     // FINAL column
     try {
-      tlb.withReader(new KijiColumnName("clans"), stringSchema);
+      tlb.withReader(KijiColumnName.create("clans"), stringSchema);
       fail("An exception should have been thrown.");
     } catch (InvalidLayoutException ile) {
       assertEquals("Final or non-AVRO column schema cannot be modified.", ile.getMessage());

@@ -117,7 +117,7 @@ public class KijiColumnRangeFilter extends KijiColumnFilter {
     if (qualifier == null) {
       return null;
     }
-    return context.getHBaseColumnName(new KijiColumnName(family, qualifier)).getQualifier();
+    return context.getHBaseColumnName(KijiColumnName.create(family, qualifier)).getQualifier();
   }
 
   /** {@inheritDoc} */

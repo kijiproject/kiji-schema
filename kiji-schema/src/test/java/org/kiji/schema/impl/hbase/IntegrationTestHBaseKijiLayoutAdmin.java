@@ -101,7 +101,7 @@ public class IntegrationTestHBaseKijiLayoutAdmin extends AbstractKijiIntegration
     KijiColumnNameTranslator columnNameTranslator =
       KijiColumnNameTranslator.from(KijiTableLayout.newLayout(fullFeaturedLayout));
     HBaseColumnName columnName = columnNameTranslator.toHBaseColumnName(
-      new KijiColumnName(FULL_FEATURED_TABLE_FAMILY_NAME, FULL_FEATURED_TABLE_QUALIFIER_NAME));
+      KijiColumnName.create(FULL_FEATURED_TABLE_FAMILY_NAME, FULL_FEATURED_TABLE_QUALIFIER_NAME));
 
     // Check the block size value
     HColumnDescriptor columnDescriptor = hTableDescriptor.getFamily(columnName.getFamily());
@@ -160,7 +160,7 @@ public class IntegrationTestHBaseKijiLayoutAdmin extends AbstractKijiIntegration
 
     KijiColumnNameTranslator columnNameTranslator =
       KijiColumnNameTranslator.from(KijiTableLayout.newLayout(fullFeaturedLayout));
-    KijiColumnName kijiColumnName = new KijiColumnName(FULL_FEATURED_TABLE_FAMILY_NAME,
+    KijiColumnName kijiColumnName = KijiColumnName.create(FULL_FEATURED_TABLE_FAMILY_NAME,
       FULL_FEATURED_TABLE_QUALIFIER_NAME);
     HBaseColumnName columnName = columnNameTranslator.toHBaseColumnName(kijiColumnName);
 
@@ -220,7 +220,7 @@ public class IntegrationTestHBaseKijiLayoutAdmin extends AbstractKijiIntegration
 
     KijiColumnNameTranslator columnNameTranslator =
       KijiColumnNameTranslator.from(KijiTableLayout.newLayout(simpleLayout));
-    KijiColumnName kijiColumnName = new KijiColumnName(SIMPLE_TABLE_FAMILY_NAME,
+    KijiColumnName kijiColumnName = KijiColumnName.create(SIMPLE_TABLE_FAMILY_NAME,
       SIMPLE_TABLE_QUALIFIER_NAME);
     HBaseColumnName columnName = columnNameTranslator.toHBaseColumnName(kijiColumnName);
 

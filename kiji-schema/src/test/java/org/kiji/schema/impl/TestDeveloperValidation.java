@@ -123,11 +123,11 @@ public class TestDeveloperValidation extends KijiClientTest {
               .build());
 
       final List<AvroSchema> writerSchemaIds =
-          table.getLayout().getCellSchema(new KijiColumnName("info:user_id")).getWriters();
+          table.getLayout().getCellSchema(KijiColumnName.create("info:user_id")).getWriters();
       Assert.assertEquals(expectedIds, writerSchemaIds);
 
       final List<AvroSchema> writtenSchemaIds =
-          table.getLayout().getCellSchema(new KijiColumnName("info:user_id")).getWritten();
+          table.getLayout().getCellSchema(KijiColumnName.create("info:user_id")).getWritten();
       Assert.assertEquals(expectedIds, writtenSchemaIds);
 
     } finally {

@@ -92,7 +92,7 @@ public class TestHBaseQualifierPager extends KijiClientTest {
 
     final HBaseQualifierPager pager =
         new HBaseQualifierPager(
-            eid, dataRequest, (HBaseKijiTable) mTable, new KijiColumnName("jobs"));
+            eid, dataRequest, (HBaseKijiTable) mTable, KijiColumnName.create("jobs"));
     try {
       assertTrue(pager.hasNext());
 
@@ -138,7 +138,7 @@ public class TestHBaseQualifierPager extends KijiClientTest {
 
     final HBaseQualifierPager pager =
         new HBaseQualifierPager(
-            eid, dataRequest, (HBaseKijiTable) mTable, new KijiColumnName("jobs"));
+            eid, dataRequest, (HBaseKijiTable) mTable, KijiColumnName.create("jobs"));
     try {
       assertTrue(pager.hasNext());
       assertArrayEquals(new String[]{}, pager.next());
@@ -169,7 +169,7 @@ public class TestHBaseQualifierPager extends KijiClientTest {
 
     final HBaseQualifierPager pager =
         new HBaseQualifierPager(
-            eid, dataRequest, (HBaseKijiTable) mTable, new KijiColumnName("jobs"));
+            eid, dataRequest, (HBaseKijiTable) mTable, KijiColumnName.create("jobs"));
     try {
       assertTrue(pager.hasNext());
 
@@ -215,7 +215,7 @@ public class TestHBaseQualifierPager extends KijiClientTest {
 
     final HBaseQualifierPager pager =
         new HBaseQualifierPager(
-            eid, dataRequest, (HBaseKijiTable) mTable, new KijiColumnName("jobs"));
+            eid, dataRequest, (HBaseKijiTable) mTable, KijiColumnName.create("jobs"));
     try {
       assertTrue(pager.hasNext());
 

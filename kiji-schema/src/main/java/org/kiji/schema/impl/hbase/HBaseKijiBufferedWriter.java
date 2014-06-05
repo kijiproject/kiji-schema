@@ -241,7 +241,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   @Override
   public <T> void put(EntityId entityId, String family, String qualifier, long timestamp, T value)
       throws IOException {
-    final KijiColumnName columnName = new KijiColumnName(family, qualifier);
+    final KijiColumnName columnName = KijiColumnName.create(family, qualifier);
     final HBaseKijiTableWriter.WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final HBaseColumnName hbaseColumnName =
         capsule.getColumnNameTranslator().toHBaseColumnName(columnName);
@@ -319,7 +319,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
     // The only data in this HBase family is the one Kiji family, so we can delete everything.
     final HBaseColumnName hbaseColumnName = capsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(family));
+        .toHBaseColumnName(KijiColumnName.create(family));
     final Delete delete = new Delete(entityId.getHBaseRowKey());
     delete.deleteFamily(hbaseColumnName.getFamily(), upToTimestamp);
 
@@ -346,7 +346,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     final Delete delete = new Delete(entityId.getHBaseRowKey());
     for (ColumnLayout columnLayout : familyLayout.getColumnMap().values()) {
       final String qualifier = columnLayout.getName();
-      final KijiColumnName column = new KijiColumnName(familyName, qualifier);
+      final KijiColumnName column = KijiColumnName.create(familyName, qualifier);
       final HBaseColumnName hbaseColumnName =
           mWriterLayoutCapsule.getColumnNameTranslator().toHBaseColumnName(column);
       delete.deleteColumns(
@@ -379,7 +379,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
 
     final String familyName = familyLayout.getName();
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(familyName));
+        .toHBaseColumnName(KijiColumnName.create(familyName));
     final byte[] hbaseRow = entityId.getHBaseRowKey();
 
     // Lock the row.
@@ -427,7 +427,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   public void deleteColumn(EntityId entityId, String family, String qualifier, long upToTimestamp)
       throws IOException {
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(family, qualifier));
+        .toHBaseColumnName(KijiColumnName.create(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumns(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
     updateBuffer(delete);
@@ -443,8 +443,8 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
   @Override
   public void deleteCell(EntityId entityId, String family, String qualifier, long timestamp)
       throws IOException {
-    final HBaseColumnName hbaseColumnName =
-        mTable.getColumnNameTranslator().toHBaseColumnName(new KijiColumnName(family, qualifier));
+    final HBaseColumnName hbaseColumnName = mTable.getColumnNameTranslator()
+        .toHBaseColumnName(KijiColumnName.create(family, qualifier));
     final Delete delete = new Delete(entityId.getHBaseRowKey())
         .deleteColumn(hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
     updateBuffer(delete);

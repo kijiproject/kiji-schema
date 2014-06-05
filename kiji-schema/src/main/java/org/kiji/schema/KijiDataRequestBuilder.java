@@ -283,7 +283,7 @@ public final class KijiDataRequestBuilder {
      * @throws KijiInvalidNameException if the family name is invalid.
      */
     public ColumnsDef addFamily(final String family) {
-      return add(new KijiColumnName(family, null));
+      return add(KijiColumnName.create(family, null));
     }
 
     /**
@@ -303,7 +303,7 @@ public final class KijiDataRequestBuilder {
         final String family,
         final ColumnReaderSpec columnReaderSpec
     ) {
-      return add(new KijiColumnName(family, null), columnReaderSpec);
+      return add(KijiColumnName.create(family, null), columnReaderSpec);
     }
 
     /**
@@ -324,7 +324,7 @@ public final class KijiDataRequestBuilder {
         final String family,
         final String qualifier
     ) {
-      return add(new KijiColumnName(family, qualifier));
+      return add(KijiColumnName.create(family, qualifier));
     }
 
     /**
@@ -347,7 +347,7 @@ public final class KijiDataRequestBuilder {
         final String qualifier,
         final ColumnReaderSpec columnReaderSpec
     ) {
-      return add(new KijiColumnName(family, qualifier), columnReaderSpec);
+      return add(KijiColumnName.create(family, qualifier), columnReaderSpec);
     }
 
     /**

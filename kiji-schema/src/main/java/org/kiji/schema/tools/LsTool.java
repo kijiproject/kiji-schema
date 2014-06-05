@@ -232,12 +232,12 @@ public final class LsTool extends BaseTool {
         for (FamilyLayout family : tableLayout.getFamilies()) {
           if (family.isMapType()) {
             getPrintStream().println(KijiURI.newBuilder(table.getURI())
-                .addColumnName(new KijiColumnName(family.getName()))
+                .addColumnName(KijiColumnName.create(family.getName()))
                 .build());
           } else {
             for (ColumnLayout column : family.getColumns()) {
               getPrintStream().println(KijiURI.newBuilder(table.getURI())
-                  .addColumnName(new KijiColumnName(family.getName(), column.getName()))
+                  .addColumnName(KijiColumnName.create(family.getName(), column.getName()))
                   .build());
             }
           }

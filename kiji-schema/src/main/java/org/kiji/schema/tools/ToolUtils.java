@@ -323,7 +323,7 @@ public final class ToolUtils {
     for (Entry<FamilyLayout, List<ColumnLayout>> entry : groupTypeColumns.entrySet()) {
       String familyName = entry.getKey().getName();
       for (ColumnLayout column : entry.getValue()) {
-        final KijiColumnName colName = new KijiColumnName(familyName, column.getName());
+        final KijiColumnName colName = KijiColumnName.create(familyName, column.getName());
         if (column.getDesc().getColumnSchema().getType() == SchemaType.COUNTER) {
           final KijiCell<Long> counter =
               row.getMostRecentCell(colName.getFamily(), colName.getQualifier());

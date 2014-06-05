@@ -57,7 +57,7 @@ import org.kiji.schema.util.KijiNameValidator;
  *   final KijiURI uri = KijiURI.newBuilder()
  *     .withInstanceName("default")
  *     .withTableName("mytable")
- *     .addColumnName(new KijiColumnName(col))
+ *     .addColumnName(KijiColumnName.create(col))
  *     .build();
  * </code></pre>
  *
@@ -204,7 +204,7 @@ public final class KijiURI {
       if (!path[3].equals(UNSET_URI_STRING)) {
         String[] split = path[3].split(",");
         for (String name : split) {
-          builder.add(new KijiColumnName(name));
+          builder.add(KijiColumnName.create(name));
         }
       }
     }
@@ -336,7 +336,7 @@ public final class KijiURI {
     public KijiURIBuilder withColumnNames(Collection<String> columnNames) {
       ImmutableList.Builder<KijiColumnName> builder = ImmutableList.builder();
       for (String column : columnNames) {
-        builder.add(new KijiColumnName(column));
+        builder.add(KijiColumnName.create(column));
       }
       mColumnNames = builder.build();
       return this;

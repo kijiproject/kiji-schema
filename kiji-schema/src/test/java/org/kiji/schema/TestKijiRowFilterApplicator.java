@@ -70,7 +70,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
     getKiji().createTable(mTableLayout.getDesc());
 
     mColumnNameTranslator = KijiColumnNameTranslator.from(mTableLayout);
-    final CellSpec cellSpec = mTableLayout.getCellSpec(new KijiColumnName("family", "new"))
+    final CellSpec cellSpec = mTableLayout.getCellSpec(KijiColumnName.create("family", "new"))
         .setSchemaTable(getKiji().getSchemaTable());
     mCellEncoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
 
@@ -94,7 +94,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
       assertArrayEquals("Row key not translated correctly by KijiRowFilter.Context",
           Bytes.toBytes("foo"), context.getHBaseRowKey("foo"));
 
-      final KijiColumnName column = new KijiColumnName("family", "new");
+      final KijiColumnName column = KijiColumnName.create("family", "new");
       final HBaseColumnName hbaseColumn = context.getHBaseColumnName(column);
       final HBaseColumnName expected = mColumnNameTranslator.toHBaseColumnName(column);
       assertArrayEquals("Family name not translated correctly by KijiRowFilter.Context",

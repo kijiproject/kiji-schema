@@ -102,7 +102,7 @@ public class TestReaderSchema extends KijiClientTest {
   public void testDecodeEmptyAsRecord1() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    final KijiColumnName colEmpty = new KijiColumnName("family", "empty");
+    final KijiColumnName colEmpty = KijiColumnName.create("family", "empty");
     final Map<KijiColumnName, CellSpec> overrides =
         ImmutableMap.<KijiColumnName, CellSpec>builder()
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
@@ -124,7 +124,7 @@ public class TestReaderSchema extends KijiClientTest {
   public void testDecodeRecord1AsRecord2() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    final KijiColumnName colEmpty = new KijiColumnName("family", "record1");
+    final KijiColumnName colEmpty = KijiColumnName.create("family", "record1");
     final Map<KijiColumnName, CellSpec> overrides =
         ImmutableMap.<KijiColumnName, CellSpec>builder()
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
@@ -148,7 +148,7 @@ public class TestReaderSchema extends KijiClientTest {
   public void testDecodeRecord2AsRecord1() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    final KijiColumnName colEmpty = new KijiColumnName("family", "record2");
+    final KijiColumnName colEmpty = KijiColumnName.create("family", "record2");
     final Map<KijiColumnName, CellSpec> overrides =
         ImmutableMap.<KijiColumnName, CellSpec>builder()
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
@@ -169,7 +169,7 @@ public class TestReaderSchema extends KijiClientTest {
   public void testDecodeRecord2AsRecord3() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    final KijiColumnName colEmpty = new KijiColumnName("family", "record2");
+    final KijiColumnName colEmpty = KijiColumnName.create("family", "record2");
     final Map<KijiColumnName, CellSpec> overrides =
         ImmutableMap.<KijiColumnName, CellSpec>builder()
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
@@ -193,7 +193,7 @@ public class TestReaderSchema extends KijiClientTest {
   public void testDecodeRecord2AsRecord3Generic() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    final KijiColumnName colEmpty = new KijiColumnName("family", "record2");
+    final KijiColumnName colEmpty = KijiColumnName.create("family", "record2");
     final Map<KijiColumnName, CellSpec> overrides =
         ImmutableMap.<KijiColumnName, CellSpec>builder()
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
@@ -218,7 +218,7 @@ public class TestReaderSchema extends KijiClientTest {
   public void testDecodeIntAsLong() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    final KijiColumnName colEmpty = new KijiColumnName("family", "integer");
+    final KijiColumnName colEmpty = KijiColumnName.create("family", "integer");
     final Map<KijiColumnName, CellSpec> overrides =
         ImmutableMap.<KijiColumnName, CellSpec>builder()
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
@@ -240,7 +240,7 @@ public class TestReaderSchema extends KijiClientTest {
   public void testDecodeIntAsStringFails() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    final KijiColumnName colEmpty = new KijiColumnName("family", "integer");
+    final KijiColumnName colEmpty = KijiColumnName.create("family", "integer");
     final Map<KijiColumnName, CellSpec> overrides =
         ImmutableMap.<KijiColumnName, CellSpec>builder()
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
@@ -268,7 +268,7 @@ public class TestReaderSchema extends KijiClientTest {
   public void testDecodeIntAsRecord2Fails() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    final KijiColumnName colEmpty = new KijiColumnName("family", "integer");
+    final KijiColumnName colEmpty = KijiColumnName.create("family", "integer");
     final Map<KijiColumnName, CellSpec> overrides =
         ImmutableMap.<KijiColumnName, CellSpec>builder()
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)
@@ -296,7 +296,7 @@ public class TestReaderSchema extends KijiClientTest {
   public void testDecodeWithWriterSchema() throws Exception {
     final EntityId eid = mTable.getEntityId("eid");
 
-    final KijiColumnName colEmpty = new KijiColumnName("family", "records");
+    final KijiColumnName colEmpty = KijiColumnName.create("family", "records");
     final Map<KijiColumnName, CellSpec> overrides =
         ImmutableMap.<KijiColumnName, CellSpec>builder()
             .put(colEmpty, mTable.getLayout().getCellSpec(colEmpty)

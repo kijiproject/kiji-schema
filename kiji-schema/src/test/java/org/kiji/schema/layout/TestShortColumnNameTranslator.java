@@ -44,20 +44,21 @@ public class TestShortColumnNameTranslator {
   public void testTranslateFromKijiToHBase() throws Exception {
     KijiColumnNameTranslator translator = KijiColumnNameTranslator.from(mTableLayout);
 
-    HBaseColumnName infoName = translator.toHBaseColumnName(new KijiColumnName("info:name"));
+    HBaseColumnName infoName = translator.toHBaseColumnName(KijiColumnName.create("info:name"));
     assertEquals("B", infoName.getFamilyAsString());
     assertEquals("B:B", infoName.getQualifierAsString());
 
-    HBaseColumnName infoEmail = translator.toHBaseColumnName(new KijiColumnName("info:email"));
+    HBaseColumnName infoEmail = translator.toHBaseColumnName(KijiColumnName.create("info:email"));
     assertEquals("B", infoEmail.getFamilyAsString());
     assertEquals("B:C", infoEmail.getQualifierAsString());
 
     HBaseColumnName recommendationsProduct = translator.toHBaseColumnName(
-        new KijiColumnName("recommendations:product"));
+        KijiColumnName.create("recommendations:product"));
     assertEquals("C", recommendationsProduct.getFamilyAsString());
     assertEquals("B:B", recommendationsProduct.getQualifierAsString());
 
-    HBaseColumnName purchases = translator.toHBaseColumnName(new KijiColumnName("purchases:foo"));
+    HBaseColumnName purchases = translator.toHBaseColumnName(
+        KijiColumnName.create("purchases:foo"));
     assertEquals("C", purchases.getFamilyAsString());
     assertEquals("C:foo", purchases.getQualifierAsString());
   }
@@ -150,7 +151,7 @@ public class TestShortColumnNameTranslator {
     KijiColumnNameTranslator translator = KijiColumnNameTranslator.from(mTableLayout);
 
     try {
-      translator.toHBaseColumnName(new KijiColumnName("doesnt:exist"));
+      translator.toHBaseColumnName(KijiColumnName.create("doesnt:exist"));
       fail("An exception should have been thrown.");
     } catch (NoSuchColumnException nsce) {
       assertEquals("doesnt:exist", nsce.getMessage());

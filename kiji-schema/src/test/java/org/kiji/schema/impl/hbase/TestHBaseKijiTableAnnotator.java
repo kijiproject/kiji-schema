@@ -54,8 +54,8 @@ public class TestHBaseKijiTableAnnotator {
   private static final Map<String, String> KVS =
       ImmutableMap.<String, String>builder().put(KEY, VALUE).put(KEY2, VALUE2).build();
   private static final Set<String> KEYS = Sets.newHashSet(KEY, KEY2);
-  private static final KijiColumnName INFONAME = new KijiColumnName("info:name");
-  private static final KijiColumnName INFOEMAIL = new KijiColumnName("info:email");
+  private static final KijiColumnName INFONAME = KijiColumnName.create("info:name");
+  private static final KijiColumnName INFOEMAIL = KijiColumnName.create("info:email");
   private static final String INFO = "info";
 
   private Kiji mKiji = null;

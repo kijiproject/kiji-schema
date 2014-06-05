@@ -102,7 +102,7 @@ public final class HBaseNativeColumnNameTranslator extends KijiColumnNameTransla
       }
     }
 
-    final KijiColumnName result = new KijiColumnName(hbaseColumnName.getFamilyAsString(),
+    final KijiColumnName result = KijiColumnName.create(hbaseColumnName.getFamilyAsString(),
         hbaseColumnName.getQualifierAsString());
     LOG.debug("Translated to Kiji group column '{}'.", result);
     return result;

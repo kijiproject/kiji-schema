@@ -89,8 +89,8 @@ public class TestNotesTool extends KijiClientTest {
   private static final String VALUE3 = "wvu";
   private static final Map<String, String> KVS =
       ImmutableMap.<String, String>builder().put(KEY, VALUE).put(KEY2, VALUE2).build();
-  private static final KijiColumnName INFONAME = new KijiColumnName("info:name");
-  private static final KijiColumnName INFOEMAIL = new KijiColumnName("info:email");
+  private static final KijiColumnName INFONAME = KijiColumnName.create("info:name");
+  private static final KijiColumnName INFOEMAIL = KijiColumnName.create("info:email");
   private static final String INFO = "info";
 
   //------------------------------------------------------------------------------------------------
@@ -113,7 +113,7 @@ public class TestNotesTool extends KijiClientTest {
 
   private KijiURI getInfoNameURI() {
     return KijiURI.newBuilder(mTable.getURI())
-        .withColumnNames(Lists.newArrayList(new KijiColumnName("info:name"))).build();
+        .withColumnNames(Lists.newArrayList(KijiColumnName.create("info:name"))).build();
   }
 
   private void assertFailure(String... args) throws Exception {
