@@ -105,6 +105,15 @@ public class TestHBaseKijiResult extends KijiClientTest {
           .add("primitive", "string_column")
           .add("primitive", "boolean_column"))
       .build();
+  private static final KijiDataRequest MIXED_PAGING_REQUEST = KijiDataRequest.builder()
+      .addColumns(ColumnsDef.create()
+          .withMaxVersions(10)
+          .withPageSize(2)
+          .add("primitive", "string_column"))
+      .addColumns(ColumnsDef.create()
+          .withMaxVersions(10)
+          .add("primitive", "double_column"))
+      .build();
 
 
   private static final KijiColumnName PRIMITIVE_STRING =
@@ -137,6 +146,7 @@ public class TestHBaseKijiResult extends KijiClientTest {
   private KijiResult mMaxVersionsResult = null;
   private KijiResult mPagedMaxVersionsResult = null;
   private KijiResult mEmptyColumnResult = null;
+  private KijiResult mMixedPagingResult = null;
 
   @Before
   public void setupTestHBaseKijiResult() throws IOException {
@@ -187,6 +197,7 @@ public class TestHBaseKijiResult extends KijiClientTest {
       mMaxVersionsResult = mReader.getResult(eid, MAX_VERSIONS_REQUEST);
       mPagedMaxVersionsResult = mReader.getResult(eid, PAGED_MAX_VERSIONS_REQUEST);
       mEmptyColumnResult = mReader.getResult(eid, EMPTY_COLUMN_REQUEST);
+      mMixedPagingResult = mReader.getResult(eid, MIXED_PAGING_REQUEST);
     } finally {
       table.release();
     }
@@ -508,6 +519,11 @@ public class TestHBaseKijiResult extends KijiClientTest {
     {
       final KijiCell<Boolean> expected = null;
       final KijiCell<Boolean> actual = mEmptyColumnResult.getCell(PRIMITIVE_BOOLEAN, 10);
+      Assert.assertEquals(expected, actual);
+    }
+    {
+      final boolean expected = false;
+      final boolean actual = mEmptyColumnResult.iterator(PRIMITIVE_BOOLEAN).hasNext();
       Assert.assertEquals(expected, actual);
     }
   }

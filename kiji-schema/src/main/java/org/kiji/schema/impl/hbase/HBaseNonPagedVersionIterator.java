@@ -34,6 +34,7 @@ import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiIOException;
+import org.kiji.schema.KijiResultIterator;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.KijiColumnNameTranslator;
@@ -45,7 +46,7 @@ import org.kiji.schema.layout.KijiColumnNameTranslator;
  */
 @ApiAudience.Private
 @ApiStability.Experimental
-public final class HBaseNonPagedVersionIterator<T> implements Iterator<KijiCell<T>> {
+public final class HBaseNonPagedVersionIterator<T> implements KijiResultIterator<T> {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseNonPagedVersionIterator.class);
 
   private final Iterator<KeyValue> mResultIterator;
@@ -77,7 +78,7 @@ public final class HBaseNonPagedVersionIterator<T> implements Iterator<KijiCell<
     mCellDecoder = cellDecoder;
     mEntityId = entityId;
     mResultIterator = result;
-    mNextCell = (mResultIterator.hasNext()) ? getNextCell() : null;
+    mNextCell = getNextCell();
   }
 
 /**

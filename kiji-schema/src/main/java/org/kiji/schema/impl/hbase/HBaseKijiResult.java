@@ -51,6 +51,7 @@ import org.kiji.schema.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiResult;
+import org.kiji.schema.KijiResultIterator;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.BoundColumnReaderSpec;
@@ -317,7 +318,7 @@ public final class HBaseKijiResult implements KijiResult {
   }
 
   /** An iterator across all cells requested by the data request which defines this KijiResult. */
-  private final class FullRequestIterator implements Iterator<KijiCell<?>> {
+  private final class FullRequestIterator implements KijiResultIterator<Object> {
 
     private final Iterator<KijiCell<Object>> mUnpagedIterator;
     private final Iterator<KijiColumnName> mPagedColumns;
@@ -366,8 +367,8 @@ public final class HBaseKijiResult implements KijiResult {
 
     /** {@inheritDoc} */
     @Override
-    public KijiCell<?> next() {
-      final KijiCell<?> nextCell = mNextCell;
+    public KijiCell<Object> next() {
+      final KijiCell<Object> nextCell = mNextCell;
       if (null == nextCell) {
         throw new NoSuchElementException();
       } else {
@@ -421,7 +422,7 @@ public final class HBaseKijiResult implements KijiResult {
   }
 
   /**
-   * Filter the given Result to only include values which were requested as part of data request
+   * Filter the given Result to only include values which were requested as part of the data request
    * which defines this KijiResult.
    *
    * <p>
@@ -497,10 +498,9 @@ public final class HBaseKijiResult implements KijiResult {
       return result;
     } else {
       Collections.sort(rangesToRemove, INDEX_RANGE_COMPARATOR);
-      LOG.debug("removing retrieved cells outside data request at indices: {}",
-          rangesToRemove.toString());
+      LOG.debug("removing retrieved cells outside data request at indices: {}", rangesToRemove);
       final List<IndexRange> rangesToKeep = invertRanges(rangesToRemove, 0, result.size());
-      LOG.debug("keeping cells matching request at indices: {}", rangesToKeep.toString());
+      LOG.debug("keeping cells matching request at indices: {}", rangesToKeep);
 
       final List<KeyValue> kvsToKeep = Lists.newArrayList();
       for (IndexRange range : rangesToKeep) {
@@ -728,7 +728,7 @@ public final class HBaseKijiResult implements KijiResult {
 
   /** {@inheritDoc} */
   @Override
-  public <T> Iterator<KijiCell<T>> iterator(
+  public <T> KijiResultIterator<T> iterator(
       final KijiColumnName column
   ) {
     final KijiDataRequest.Column columnRequest = mDataRequest.getRequestForColumn(column);
@@ -769,7 +769,7 @@ public final class HBaseKijiResult implements KijiResult {
 
   /** {@inheritDoc} */
   @Override
-  public Iterator<KijiCell<?>> iterator() {
+  public KijiResultIterator<Object> iterator() {
     return new FullRequestIterator();
   }
 }

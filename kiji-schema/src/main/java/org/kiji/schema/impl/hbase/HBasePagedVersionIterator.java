@@ -39,6 +39,7 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.KijiIOException;
+import org.kiji.schema.KijiResultIterator;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.KijiColumnNameTranslator;
@@ -54,7 +55,7 @@ import org.kiji.schema.layout.KijiTableLayout;
  *
  * @param <T> type of the values returned by this iterator.
  */
-public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
+public class HBasePagedVersionIterator<T> implements KijiResultIterator<T> {
   private static final Logger LOG = LoggerFactory.getLogger(HBasePagedVersionIterator.class);
 
   /** Internally paged iterator across the values in a single qualified column. */

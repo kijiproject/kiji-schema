@@ -18,8 +18,6 @@
  */
 package org.kiji.schema;
 
-import java.util.Iterator;
-
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
@@ -28,7 +26,7 @@ import org.kiji.annotations.Inheritance;
 @ApiAudience.Framework
 @ApiStability.Experimental
 @Inheritance.Sealed
-public interface KijiResult extends Iterable<KijiCell<?>> {
+public interface KijiResult extends Iterable<KijiCell<Object>> {
 
   /**
    * Get the EntityId of this KijiResult.
@@ -107,7 +105,7 @@ public interface KijiResult extends Iterable<KijiCell<?>> {
    * @throws NullPointerException if the given column is not included in the data request which
    *     defines this KijiResult.
    */
-  <T> Iterator<KijiCell<T>> iterator(KijiColumnName column);
+  <T> KijiResultIterator<T> iterator(KijiColumnName column);
 
   /**
    * {@inheritDoc}
@@ -124,8 +122,8 @@ public interface KijiResult extends Iterable<KijiCell<?>> {
    *   before all paged columns. Within one qualified column, cells are sorted most recent first.
    * </p>
    *
-   * @return a new Iterator over all the cells in this KijiResult.
+   * @return an iterator over all the cells in this KijiResult.
    */
   @Override
-  Iterator<KijiCell<?>> iterator();
+  KijiResultIterator<Object> iterator();
 }
