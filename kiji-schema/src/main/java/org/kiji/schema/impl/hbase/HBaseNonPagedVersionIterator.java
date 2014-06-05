@@ -108,9 +108,8 @@ public final class HBaseNonPagedVersionIterator<T> implements Iterator<KijiCell<
       final KeyValue kv = mResultIterator.next();
       final KijiColumnName kijiColumn = fromKeyValue(kv);
       try {
-        return new KijiCell(
-            kijiColumn.getFamily(),
-            kijiColumn.getQualifier(),
+        return KijiCell.create(
+            kijiColumn,
             kv.getTimestamp(),
             mCellDecoder.decodeCell(kv.getValue()));
       } catch (IOException ioe) {

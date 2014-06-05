@@ -41,17 +41,23 @@ import org.kiji.annotations.ApiStability;
 @ApiAudience.Framework
 @ApiStability.Evolving
 public final class KijiCell<T> {
-  /** Decoded cell content. */
-  private final DecodedCell<T> mDecodedCell;
 
-  /** Kiji column family name. */
-  private final String mFamily;
-
-  /** Kiji column qualifier name. */
-  private final String mQualifier;
-
-  /** Timestamp of the cell, in ms since the Epoch. */
-  private final long mTimestamp;
+  /**
+   * Create a new KijiCell from the given coordinates and decoded value.
+   *
+   * @param column Name of the column in which this cell exists.
+   * @param timestamp Timestamp of this cell in milliseconds since the epoch.
+   * @param decodedCell Decoded cell content.
+   * @param <T> Type of the value of this cell.
+   * @return a new KijiCell from the given coordinates and decoded value.
+   */
+  public static <T> KijiCell<T> create(
+      final KijiColumnName column,
+      final long timestamp,
+      final DecodedCell<T> decodedCell
+  ) {
+    return new KijiCell<T>(column, timestamp, decodedCell);
+  }
 
   /** Type of a Kiji cell. */
   public enum CellType {
@@ -62,6 +68,30 @@ public final class KijiCell<T> {
     COUNTER
   }
 
+  private final KijiColumnName mColumn;
+  private final long mTimestamp;
+  private final DecodedCell<T> mDecodedCell;
+
+  /**
+   * Initializes a new KijiCell.
+   *
+   * @param column Name of the column in which this cell exists.
+   * @param timestamp Timestamp of this cell in milliseconds since the epoch.
+   * @param decodedCell Decoded cell content.
+   */
+  private KijiCell(
+      final KijiColumnName column,
+      final long timestamp,
+      final DecodedCell<T> decodedCell
+  ) {
+    Preconditions.checkArgument(column.isFullyQualified(),
+        "Cannot create a KijiCell without a fully qualified column. Found family: %s",
+        column.getName());
+    mColumn = column;
+    mTimestamp = timestamp;
+    mDecodedCell = decodedCell;
+  }
+
   /**
    * Initializes a KijiCell.
    *
@@ -69,45 +99,89 @@ public final class KijiCell<T> {
    * @param qualifier Kiji column qualifier name of the cell.
    * @param timestamp Timestamp the cell was written at, in ms since the Epoch.
    * @param decodedCell Decoded cell content.
+   * @deprecated KijiCell constructor is deprecated. Please use factory method
+   *     {@link #create(KijiColumnName, long, DecodedCell)}. This constructor will become private in
+   *     the future.
    */
+  @Deprecated
   public KijiCell(String family, String qualifier, long timestamp, DecodedCell<T> decodedCell) {
-    mDecodedCell = Preconditions.checkNotNull(decodedCell);
-    mFamily = Preconditions.checkNotNull(family);
-    mQualifier = Preconditions.checkNotNull(qualifier);
+    mColumn = new KijiColumnName(
+        Preconditions.checkNotNull(family),
+        Preconditions.checkNotNull(qualifier));
     mTimestamp = timestamp;
+    mDecodedCell = Preconditions.checkNotNull(decodedCell);
   }
 
-  /** @return the Kiji column family name of this cell. */
+  /**
+   * Get the name of the column in which this cell exists.
+   *
+   * @return the name of the column in which this cell exists.
+   */
+  public KijiColumnName getColumn() {
+    return mColumn;
+  }
+
+  /**
+   * @return the Kiji column family name of this cell.
+   * @deprecated getFamily is deprecated. Please use {@link #getColumn()}. This method will be
+   *     removed in the future.
+   */
+  @Deprecated
   public String getFamily() {
-    return mFamily;
+    return mColumn.getFamily();
   }
 
-  /** @return the Kiji column qualifier name of this cell. */
+  /**
+   * @return the Kiji column qualifier name of this cell.
+   * @deprecated getQualifier is deprecated. Please use {@link #getColumn()}. This method will be
+   *     removed in the future.
+   */
+  @Deprecated
   public String getQualifier() {
-    return mQualifier;
+    return mColumn.getQualifier();
   }
 
-  /** @return the timestamp this cell was written with, in ms since the Epoch. */
+  /**
+   * Get the timestamp of this cell in milliseconds since the epoch.
+   *
+   * @return the timestamp of this cell in milliseconds since the epoch.
+   */
   public long getTimestamp() {
     return mTimestamp;
   }
 
-  /** @return the cell content. */
+  /**
+   * Get the content of this cell.
+   *
+   * @return the content of this cell.
+   */
   public T getData() {
     return mDecodedCell.getData();
   }
 
-  /** @return the Avro Schema used to decode this cell, or null for non-Avro values. */
+  /**
+   * Get the Avro Schema used to decode this cell, or null for non-Avro values.
+   *
+   * @return the Avro Schema used to decode this cell, or null for non-Avro values.
+   */
   public Schema getReaderSchema() {
     return mDecodedCell.getReaderSchema();
   }
 
-  /** @return the Avro Schema used to encode this cell, or null for non-Avro values. */
+  /**
+   * Get the Avro Schema used to encode this cell, or null for non-Avro values.
+   *
+   * @return the Avro Schema used to encode this cell, or null for non-Avro values.
+   */
   public Schema getWriterSchema() {
     return mDecodedCell.getWriterSchema();
   }
 
-  /** @return this cell's encoding type. */
+  /**
+   * Get this cell's encoding type.
+   *
+   * @return this cell's encoding type.
+   */
   public CellType getType() {
     if (mDecodedCell.getWriterSchema() == null) {
       return CellType.COUNTER;
@@ -121,8 +195,7 @@ public final class KijiCell<T> {
   public boolean equals(Object object) {
     if (object instanceof KijiCell) {
       final KijiCell<?> that = (KijiCell<?>) object;
-      return this.mFamily.equals(that.mFamily)
-          && this.mQualifier.equals(that.mQualifier)
+      return this.mColumn.equals(that.mColumn)
           && (this.mTimestamp == that.mTimestamp)
           && this.mDecodedCell.equals(that.mDecodedCell);
     } else {
@@ -133,15 +206,14 @@ public final class KijiCell<T> {
   /** {@inheritDoc} */
   @Override
   public int hashCode() {
-    return Objects.hashCode(mFamily, mQualifier, mTimestamp, mDecodedCell);
+    return Objects.hashCode(mColumn, mTimestamp, mDecodedCell);
   }
 
   /** {@inheritDoc} */
   @Override
   public String toString() {
     return Objects.toStringHelper(KijiCell.class)
-        .add("family", mFamily)
-        .add("qualifier", mQualifier)
+        .add("column", mColumn.getName())
         .add("timestamp", mTimestamp)
         .add("encoding", getType())
         .add("content", getData())

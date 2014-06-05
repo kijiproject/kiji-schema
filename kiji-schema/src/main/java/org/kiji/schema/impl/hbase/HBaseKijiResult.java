@@ -628,9 +628,8 @@ public final class HBaseKijiResult implements KijiResult {
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
-    return new KijiCell<T>(
-        column.getFamily(),
-        column.getQualifier(),
+    return KijiCell.create(
+        column,
         kv.getTimestamp(),
         decodedCell);
   }

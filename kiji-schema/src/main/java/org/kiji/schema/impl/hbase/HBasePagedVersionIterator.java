@@ -163,9 +163,8 @@ public class HBasePagedVersionIterator<T> implements Iterator<KijiCell<T>> {
         final KijiColumnName kijiColumn = fromKeyValue(kv);
         try {
           final DecodedCell<T> decodedCell = mCellDecoder.decodeCell(kv.getValue());
-          return new KijiCell(
-              kijiColumn.getFamily(),
-              kijiColumn.getQualifier(),
+          return KijiCell.create(
+              kijiColumn,
               kv.getTimestamp(),
               decodedCell);
         } catch (IOException ioe) {

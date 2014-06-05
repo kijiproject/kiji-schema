@@ -273,7 +273,7 @@ public final class HBaseKijiTableWriter implements KijiTableWriter {
     final DecodedCell<Long> counter = new DecodedCell<Long>(
         DecodedCell.NO_SCHEMA,
         Bytes.toLong(counterEntry.getValue()));
-    return new KijiCell<Long>(family, qualifier, counterEntry.getKey(), counter);
+    return KijiCell.create(new KijiColumnName(family, qualifier), counterEntry.getKey(), counter);
   }
 
   /**
