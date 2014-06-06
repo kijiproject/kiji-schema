@@ -22,9 +22,12 @@ package org.kiji.schema;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+import java.util.Collections;
 import java.util.List;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
+import junit.framework.Assert;
 import org.junit.Test;
 
 import org.kiji.schema.avro.ComponentType;
@@ -139,5 +142,33 @@ public class TestKijiRowKeyComponents extends KijiClientTest {
     KijiRowKeyComponents krkc1 = KijiRowKeyComponents.fromComponents(bytes1);
     KijiRowKeyComponents krkc2 = KijiRowKeyComponents.fromComponents(bytes2);
     assertEquals(krkc1.hashCode(), krkc2.hashCode());
+  }
+
+  @Test
+  public void testFormattedCompare() {
+    List<KijiRowKeyComponents> sorted = ImmutableList.of(
+        KijiRowKeyComponents.fromComponents("a", null, null),
+        KijiRowKeyComponents.fromComponents("a", 123, 456L),
+        KijiRowKeyComponents.fromComponents("a", 456, null));
+
+    List<KijiRowKeyComponents> shuffled = Lists.newArrayList(sorted);
+    Collections.shuffle(shuffled);
+    Collections.sort(shuffled);
+
+    Assert.assertEquals(sorted, shuffled);
+  }
+
+  @Test
+  public void testRawCompare() {
+    final List<KijiRowKeyComponents> sorted = ImmutableList.of(
+        KijiRowKeyComponents.fromComponents(new Object[] {new byte[] {0x00, 0x00}}),
+        KijiRowKeyComponents.fromComponents(new Object[] {new byte[] {0x00, 0x01}}),
+        KijiRowKeyComponents.fromComponents(new Object[] {new byte[] {0x01, 0x00}}));
+
+    List<KijiRowKeyComponents> shuffled = Lists.newArrayList(sorted);
+    Collections.shuffle(shuffled);
+    Collections.sort(shuffled);
+
+    Assert.assertEquals(sorted, shuffled);
   }
 }

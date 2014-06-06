@@ -22,7 +22,9 @@ package org.kiji.schema;
 import java.util.Arrays;
 import java.util.List;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.primitives.UnsignedBytes;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
@@ -55,7 +57,7 @@ import org.kiji.annotations.ApiStability;
  */
 @ApiAudience.Public
 @ApiStability.Evolving
-public final class KijiRowKeyComponents {
+public final class KijiRowKeyComponents implements Comparable<KijiRowKeyComponents> {
   /** The backing array of components. */
   private Object[] mComponents;
 
@@ -161,5 +163,82 @@ public final class KijiRowKeyComponents {
     final KijiRowKeyComponents krkc = (KijiRowKeyComponents)obj;
 
     return Arrays.deepEquals(mComponents, krkc.mComponents);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(this)
+        .add("Components", Arrays.toString(mComponents))
+        .toString();
+  }
+
+  /**
+   * {@inheritDoc}
+   *
+   * *Note* the ordering of KijiRowKeyComponents is not representative of the scan order of rows in
+   * a Kiji table. Hashing is not taken into account when comparing {@link KijiRowKeyComponents}.
+   *
+   * Only {@link KijiRowKeyComponents} from the same table may be compared. The compared row key
+   * components must contain the same number of components, and the corresponding components in each
+   * row key components must be of the same type.
+   */
+  @Override
+  public int compareTo(KijiRowKeyComponents other) {
+    Object[] components1 = this.getComponents();
+    Object[] components2 = other.getComponents();
+
+    int size1 = components1.length;
+    int size2 = components2.length;
+
+    if (size1 != size2) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Can not compare KijiRowKeyComponents with different numbers of components."
+                  + " Components: %s, %s.", this, other));
+    }
+
+    // Compare individual components
+    for (int i = 0; i < size1; i++) {
+      Object a = components1[i];
+      Object b = components2[i];
+      // null values sort first
+      if (a == null && b == null) {
+        continue;
+      }
+      if (a == null) {
+        return -1;
+      }
+      if (b == null) {
+        return 1;
+      }
+
+      // If both components are non-null, then use natural comparison
+      final int comparison;
+      try {
+        if (a instanceof String) {
+          comparison = ((String) a).compareTo((String) b);
+        } else if (a instanceof Integer) {
+          comparison = ((Integer) a).compareTo((Integer) b);
+        } else if (a instanceof Long) {
+          comparison = ((Long) a).compareTo((Long) b);
+        } else if (a instanceof byte[]) {
+          comparison = UnsignedBytes.lexicographicalComparator().compare((byte[]) a, (byte[]) b);
+        } else {
+          throw new IllegalArgumentException(
+              String.format("Unknown Entity Id component type %s.", a.getClass()));
+        }
+        if (comparison != 0) {
+          return comparison;
+        }
+      } catch (ClassCastException e) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Can not compare KijiRowKeyComponents with different component types."
+                    + " Index: %s. Types: %s, %s. Components: %s, %s.",
+                i, a.getClass(), b.getClass(), this, other));
+      }
+    }
+    return 0;
   }
 }
