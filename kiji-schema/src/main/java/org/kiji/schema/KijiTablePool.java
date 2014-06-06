@@ -320,11 +320,6 @@ public final class KijiTablePool implements Closeable {
         "Cannot close KijiTablePool instance in state %s.", oldState);
     if (null != mCleanupThread) {
       mCleanupThread.interrupt();
-      try {
-        mCleanupThread.join();
-      } catch (InterruptedException e) {
-        // Oh well.
-      }
     }
     for (Pool pool : mPoolCache.values()) {
       ResourceUtils.closeOrLog(pool);
