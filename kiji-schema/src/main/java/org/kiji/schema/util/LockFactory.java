@@ -24,17 +24,23 @@ import java.io.IOException;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.Inheritance;
 
-/** Factory for Lock instances. */
+/**
+ * Factory for Lock instances.
+ *
+ * @deprecated use the lock factory methods in {@link org.kiji.schema.zookeeper.ZooKeeperUtils}.
+ */
 @ApiAudience.Private
 @Inheritance.Sealed
+@Deprecated
 public interface LockFactory {
 
   /**
-   * Creates a new lock with the specified name.
+   * Creates a new lock in the specified directory.  Locks within a directory are exclusive; no two
+   * locks may be taken out from the same directory at the same time.
    *
-   * @param name Lock name (eg. a ZooKeeper node path).
-   * @return the lock with the specified name.
-   * @throws IOException on I/O error.
+   * @param directory identifying an exclusive lock location (e.g. a ZooKeeper ZNode path).
+   * @return a lock which is exclusive in the specified directory.
+   * @throws IOException on unrecoverable error.
    */
-  Lock create(String name) throws IOException;
+  Lock create(String directory) throws IOException;
 }

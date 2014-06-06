@@ -151,7 +151,7 @@ public final class ReferenceCountedCache<K, V extends Closeable> implements Clos
     Preconditions.checkState(mIsOpen, "ReferenceCountedCache is closed.");
     Preconditions.checkNotNull(key);
     CacheEntry<V> entry = mMap.get(key);
-    Preconditions.checkState(entry != null, "No cached value for key %s.", key);
+    Preconditions.checkState(entry != null, "No cached value for key '%s'.", key);
 
     synchronized (entry) {
       if (entry.decrementAndGetCount() == 0) {

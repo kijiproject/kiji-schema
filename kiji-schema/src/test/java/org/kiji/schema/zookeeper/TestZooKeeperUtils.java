@@ -125,4 +125,14 @@ public class TestZooKeeperUtils extends ZooKeeperTest {
     }
     Assert.assertNotNull(mZKClient.checkExists().forPath("/foo"));
   }
+
+  @Test
+  public void testZooKeeperConnectionsAreCached() throws Exception {
+    final CuratorFramework other = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
+    try {
+        Assert.assertTrue(mZKClient.getZookeeperClient() == other.getZookeeperClient());
+    } finally {
+      other.close();
+    }
+  }
 }

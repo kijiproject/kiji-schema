@@ -20,11 +20,8 @@
 package org.kiji.schema.impl.hbase;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
-import com.google.common.base.Joiner;
-import com.google.common.collect.Lists;
 import org.apache.hadoop.conf.Configuration;
 
 import org.kiji.annotations.ApiAudience;
@@ -81,10 +78,6 @@ public final class DefaultHBaseFactory implements HBaseFactory {
   /** {@inheritDoc} */
   @Override
   public String getZooKeeperEnsemble(final KijiURI uri) {
-    final List<String> zkHosts = Lists.newArrayList();
-    for (String host : uri.getZookeeperQuorumOrdered()) {
-      zkHosts.add(String.format("%s:%s", host, uri.getZookeeperClientPort()));
-    }
-    return Joiner.on(",").join(zkHosts);
+    return uri.getZooKeeperEnsemble();
   }
 }

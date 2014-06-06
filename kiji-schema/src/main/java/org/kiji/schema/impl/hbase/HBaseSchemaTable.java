@@ -22,7 +22,6 @@ package org.kiji.schema.impl.hbase;
 import static org.kiji.schema.util.ByteStreamArray.longToVarInt64;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -46,6 +45,7 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
@@ -77,8 +77,9 @@ import org.kiji.schema.util.BytesKey;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.Hasher;
 import org.kiji.schema.util.Lock;
-import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ResourceUtils;
+import org.kiji.schema.zookeeper.ZooKeeperLock;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
  * <p>
@@ -119,6 +120,9 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
 
   /** HTable used to map schema IDs to schema entries. */
   private final HTableInterface mSchemaIdTable;
+
+  /** Connection to ZooKeeper. */
+  private final CuratorFramework mZKClient;
 
   /** Lock for the kiji instance schema table. */
   private final Lock mZKLock;
@@ -180,21 +184,9 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
       Configuration conf,
       HTableInterfaceFactory factory)
       throws IOException {
-    return factory.create(conf,
+    return factory.create(
+        conf,
         KijiManagedHBaseTableName.getSchemaIdTableName(kijiURI.getInstance()).toString());
-  }
-
-  /**
-   * Creates a lock for a given Kiji instance.
-   *
-   * @param kijiURI URI of the Kiji instance.
-   * @param factory Factory for locks.
-   * @return a lock for the specified Kiji instance.
-   * @throws IOException on I/O error.
-   */
-  public static Lock newLock(KijiURI kijiURI, LockFactory factory) throws IOException {
-    final String name = new File("/kiji", kijiURI.getInstance()).toString();
-    return factory.create(name);
   }
 
   /** Avro decoder factory. */
@@ -251,40 +243,18 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
    * @param kijiURI the KijiURI
    * @param conf The Hadoop configuration.
    * @param tableFactory HTableInterface factory.
-   * @param lockFactory Factory for locks.
    * @throws IOException on I/O error.
    */
   public HBaseSchemaTable(
       KijiURI kijiURI,
       Configuration conf,
-      HTableInterfaceFactory tableFactory,
-      LockFactory lockFactory)
-      throws IOException {
-    this(newSchemaHashTable(kijiURI, conf, tableFactory),
-        newSchemaIdTable(kijiURI, conf, tableFactory),
-        newLock(kijiURI, lockFactory),
-        kijiURI);
-  }
-
-  /**
-   * Wrap an existing HBase table assumed to be where the schema data is stored.
-   *
-   * @param hashTable The HTable that maps schema hashes to schema entries.
-   * @param idTable The HTable that maps schema IDs to schema entries.
-   * @param zkLock Lock protecting the schema tables.
-   * @param uri URI of the Kiji instance this schema table belongs to.
-   * @throws IOException on I/O error.
-   */
-  public HBaseSchemaTable(
-      HTableInterface hashTable,
-      HTableInterface idTable,
-      Lock zkLock,
-      KijiURI uri)
-      throws IOException {
-    mSchemaHashTable = Preconditions.checkNotNull(hashTable);
-    mSchemaIdTable = Preconditions.checkNotNull(idTable);
-    mZKLock = Preconditions.checkNotNull(zkLock);
-    mURI = uri;
+      HTableInterfaceFactory tableFactory
+  ) throws IOException {
+    mURI = kijiURI;
+    mSchemaHashTable = newSchemaHashTable(mURI, conf, tableFactory);
+    mSchemaIdTable = newSchemaIdTable(mURI, conf, tableFactory);
+    mZKClient = ZooKeeperUtils.getZooKeeperClient(mURI);
+    mZKLock = new ZooKeeperLock(mZKClient, ZooKeeperUtils.getSchemaTableLock(mURI));
 
     if (CLEANUP_LOG.isDebugEnabled()) {
       mConstructorStack = Debug.getStackTrace();
@@ -585,9 +555,10 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close SchemaTable instance in state %s.", oldState);
-    mSchemaHashTable.close();
-    mSchemaIdTable.close();
+    ResourceUtils.closeOrLog(mSchemaHashTable);
+    ResourceUtils.closeOrLog(mSchemaIdTable);
     ResourceUtils.closeOrLog(mZKLock);
+    ResourceUtils.closeOrLog(mZKClient);
   }
 
   /** {@inheritDoc} */
@@ -609,16 +580,14 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
    * @param kijiURI the KijiURI.
    * @param conf The Hadoop configuration.
    * @param tableFactory HTableInterface factory.
-   * @param lockFactory Factory for locks.
    * @throws IOException on I/O error.
    */
   public static void install(
       HBaseAdmin admin,
       KijiURI kijiURI,
       Configuration conf,
-      HTableInterfaceFactory tableFactory,
-      LockFactory lockFactory)
-      throws IOException {
+      HTableInterfaceFactory tableFactory
+  ) throws IOException {
     // Keep all versions of schema entries:
     //  - entries of the ID table should never be written more than once.
     //  - entries of the hash table could be written more than once:
@@ -655,11 +624,7 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
     idTableDescriptor.addFamily(idColumnDescriptor);
     admin.createTable(idTableDescriptor);
 
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(
-        newSchemaHashTable(kijiURI, conf, tableFactory),
-        newSchemaIdTable(kijiURI, conf, tableFactory),
-        newLock(kijiURI, lockFactory),
-        kijiURI);
+    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(kijiURI, conf, tableFactory);
     try {
       schemaTable.setSchemaIdCounter(0L);
       schemaTable.registerPrimitiveSchemas();

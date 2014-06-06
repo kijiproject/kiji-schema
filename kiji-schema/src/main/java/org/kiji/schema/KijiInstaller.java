@@ -43,7 +43,6 @@ import org.kiji.schema.impl.hbase.HBaseMetaTable;
 import org.kiji.schema.impl.hbase.HBaseSchemaTable;
 import org.kiji.schema.impl.hbase.HBaseSystemTable;
 import org.kiji.schema.security.KijiSecurityManager;
-import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.zookeeper.UsersTracker;
@@ -110,7 +109,6 @@ public final class KijiInstaller {
 
     final HBaseAdminFactory adminFactory = hbaseFactory.getHBaseAdminFactory(uri);
     final HTableInterfaceFactory tableFactory = hbaseFactory.getHTableInterfaceFactory(uri);
-    final LockFactory lockFactory = hbaseFactory.getLockFactory(uri, conf);
 
     // TODO: Factor this in HBaseKiji
     conf.set(HConstants.ZOOKEEPER_QUORUM, Joiner.on(",").join(uri.getZookeeperQuorumOrdered()));
@@ -126,7 +124,7 @@ public final class KijiInstaller {
       LOG.info(String.format("Installing kiji instance '%s'.", uri));
       HBaseSystemTable.install(hbaseAdmin, uri, conf, properties, tableFactory);
       HBaseMetaTable.install(hbaseAdmin, uri);
-      HBaseSchemaTable.install(hbaseAdmin, uri, conf, tableFactory, lockFactory);
+      HBaseSchemaTable.install(hbaseAdmin, uri, conf, tableFactory);
       // Grant the current user all privileges on the instance just created, if security is enabled.
       final Kiji kiji = Kiji.Factory.open(uri, conf);
       try {

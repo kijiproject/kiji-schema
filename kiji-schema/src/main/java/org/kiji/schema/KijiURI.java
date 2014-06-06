@@ -36,8 +36,8 @@ import org.apache.hadoop.hbase.HConstants;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
-import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.util.KijiNameValidator;
+import org.kiji.schema.zookeeper.ZooKeeperFactory;
 
 /**
  * URI that uniquely identifies a Kiji instance, table, column(s).
@@ -550,7 +550,7 @@ public final class KijiURI {
    * @return the addresses of the ZooKeeper ensemble members of the Kiji cluster.
    */
   public String getZooKeeperEnsemble() {
-    return HBaseFactory.Provider.get().getZooKeeperEnsemble(this);
+    return ZooKeeperFactory.Provider.get().getZooKeeperEnsemble(this);
   }
 
   /**

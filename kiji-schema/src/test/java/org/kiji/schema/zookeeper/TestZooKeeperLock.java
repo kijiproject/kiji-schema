@@ -38,7 +38,7 @@ public class TestZooKeeperLock extends ZooKeeperTest {
     final File path = new File("/lock/is/exclusive");
     CuratorFramework zkClient1 = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
     try {
-      CuratorFramework zkClient2 = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
+      CuratorFramework zkClient2 = ZooKeeperUtils.createZooKeeperClient(getZKAddress());
       try {
         ZooKeeperLock lock1 = new ZooKeeperLock(zkClient1, path);
         try {

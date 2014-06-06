@@ -26,7 +26,7 @@ import java.net.URLEncoder;
 import java.util.List;
 
 import com.google.common.base.Charsets;
-import com.google.common.base.Preconditions;
+import com.google.common.base.Function;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.api.transaction.CuratorTransaction;
@@ -46,9 +46,10 @@ import org.kiji.annotations.Inheritance;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.util.ReferenceCountedCache;
 
 /**
- * Utility class which holds constants and utitily methods for working with ZooKeeper.
+ * Utility class which holds constants and utility methods for working with ZooKeeper.
  */
 @ApiAudience.Framework
 @ApiStability.Evolving
@@ -56,6 +57,17 @@ import org.kiji.schema.KijiURI;
 public final class ZooKeeperUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperUtils.class);
+
+  /** Global cache of ZooKeeper connections keyed on ensemble addresses. */
+  private static final ReferenceCountedCache<String, CuratorFramework> ZK_CLIENT_CACHE =
+      ReferenceCountedCache.create(
+          new Function<String, CuratorFramework>() {
+            /** {@inheritDoc}. */
+            @Override
+            public CuratorFramework apply(String zkEnsemble) {
+              return ZooKeeperUtils.createZooKeeperClient(zkEnsemble);
+            }
+          });
 
   /** Root path of the ZooKeeper directory node where to write Kiji nodes. */
   private static final File ROOT_ZOOKEEPER_PATH = new File("/kiji-schema");
@@ -150,6 +162,16 @@ public final class ZooKeeperUtils {
     return new File(getTableDir(tableURI), "layout_update_lock");
   }
 
+  /**
+   * Reports the path of the ZooKeeper node for schema table lock.
+   *
+   * @param instanceURI of schema table for which to retrieve lock directory.
+   * @return the path of the ZooKeeper directory used to create locks for schema table.
+   */
+  public static File getSchemaTableLock(KijiURI instanceURI) {
+    return new File("/kiji/" + instanceURI.getInstance());
+  }
+
   // -----------------------------------------------------------------------------------------------
 
   /**
@@ -189,7 +211,8 @@ public final class ZooKeeperUtils {
    */
   public static ZooKeeperLock newTableLayoutLock(
       final CuratorFramework zkClient,
-      final KijiURI tableURI) {
+      final KijiURI tableURI
+  ) {
     return new ZooKeeperLock(zkClient, getTableLayoutUpdateLock(tableURI));
   }
 
@@ -322,14 +345,56 @@ public final class ZooKeeperUtils {
   }
 
   /**
-   * Create a new ZooKeeper connection to the provided ensemble.  The returned client is already
-   * started, but the caller is responsible for closing it.
+   * Create a new ZooKeeper client for the provided ensemble. The returned client is already
+   * started, but the caller is responsible for closing it. The returned client *may* share an
+   * underlying connection, therefore this method is not suitable if closing the client must
+   * deterministically close outstanding session-based ZooKeeper items such as ephemeral nodes
+   * or watchers.
    *
-   * @param zkEnsemble to connect to.
+   * @param zkEnsemble of the ZooKeeper ensemble to connect to. May not be null.  May contain a
+   *         namespace in suffix form, e.g. {@code "host1:port1,host2:port2/my/namespace"}.
    * @return a ZooKeeper client using the new connection.
    */
   public static CuratorFramework getZooKeeperClient(String zkEnsemble) {
-    Preconditions.checkNotNull(zkEnsemble);
+    String address = zkEnsemble;
+    String namespace = null;
+
+    int index = zkEnsemble.indexOf('/');
+
+    if (index != -1) {
+      address = zkEnsemble.substring(0, index);
+      namespace = zkEnsemble.substring(index + 1);
+    }
+
+    return CachedCuratorFramework.create(ZK_CLIENT_CACHE, address, namespace);
+  }
+
+  /**
+   * Create a new ZooKeeper client for the cluster hosting the provided Kiji. The returned client is
+   * already started, but the caller is responsible for closing it.  The returned client *may* share
+   * an underlying connection, therefore this method is not suitable if closing the client must
+   * deterministically close outstanding session-based ZooKeeper items such as ephemeral nodes
+   * or watchers.
+   *
+   * @param clusterURI of cluster to connect to. May not be null.
+   * @return a ZooKeeper client using the new connection.
+   */
+  public static CuratorFramework getZooKeeperClient(KijiURI clusterURI) {
+    return getZooKeeperClient(clusterURI.getZooKeeperEnsemble());
+  }
+
+  /**
+   * Create a new ZooKeeper client for the provided ensemble. The returned client is already
+   * started, but the caller is responsible for closing it. The returned ZooKeeper client does not
+   * share a connection, and is therefore suitable for use when shutting down a client must close
+   * any registered watchers or outstanding ephemeral nodes. If these use cases do not apply,
+   * prefer {@link #getZooKeeperClient(String)}.
+   *
+   * @param zkEnsemble of the ZooKeeper ensemble to connect to. May not be null.  May contain a
+   *         namespace in suffix form, e.g. {@code "host1:port1,host2:port2/my/namespace"}.
+   * @return a new ZooKeeper client.
+   */
+  public static CuratorFramework createZooKeeperClient(final String zkEnsemble) {
     String address = zkEnsemble;
     String namespace = null;
 
@@ -350,18 +415,6 @@ public final class ZooKeeperUtils {
     zkClient.getConnectionStateListenable().addListener(new LoggingConnectionStateListener());
     zkClient.start();
     return zkClient;
-  }
-
-  /**
-   * Create a new ZooKeeper connection to the provided instance.  The returned client is already
-   * started, but the caller is responsible for closing it.
-   *
-   * @param instanceURI of cluster to connect to.
-   * @return a ZooKeeper client using the new connection.
-   */
-  public static CuratorFramework getZooKeeperClient(KijiURI instanceURI) {
-    Preconditions.checkNotNull(instanceURI);
-    return getZooKeeperClient(instanceURI.getZooKeeperEnsemble());
   }
 
   // -----------------------------------------------------------------------------------------------

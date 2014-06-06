@@ -19,7 +19,6 @@
 
 package org.kiji.schema.zookeeper;
 
-import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
@@ -41,7 +40,7 @@ import org.kiji.schema.util.Time;
 
 /** Distributed lock on top of ZooKeeper. */
 @ApiAudience.Private
-public final class ZooKeeperLock implements Lock, Closeable {
+public final class ZooKeeperLock implements Lock {
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperLock.class);
   private static final Logger CLEANUP_LOG =
       LoggerFactory.getLogger("cleanup." + ZooKeeperLock.class.getName());
@@ -57,7 +56,7 @@ public final class ZooKeeperLock implements Lock, Closeable {
   /**
    * Constructs a ZooKeeper lock object.
    *
-   * @param zkClient ZooKeeper client.
+   * @param zkClient ZooKeeper client.  Will be not be closed by this lock.
    * @param lockDir Path of the directory node to use for the lock.
    */
   public ZooKeeperLock(CuratorFramework zkClient, File lockDir) {

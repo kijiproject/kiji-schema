@@ -48,13 +48,12 @@ public class TestTableLayoutTracker extends ZooKeeperTest {
   private volatile CuratorFramework mZKClient;
 
   @Before
-  public void setUp() throws Exception {
-    mZKClient =
-        ZooKeeperUtils.getZooKeeperClient(getZKAddress());
+  public void setUpTestTableLayoutTracker() throws Exception {
+    mZKClient = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void tearDownTestTableLayoutTracker() throws Exception {
     mZKClient.close();
   }
 

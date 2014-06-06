@@ -22,8 +22,6 @@ package org.kiji.schema.hbase;
 import java.io.IOException;
 
 import org.apache.hadoop.conf.Configuration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
@@ -48,19 +46,12 @@ public interface HBaseFactory extends PriorityProvider {
    * Ensures that there is only one HBaseFactory instance.
    */
   public static final class Provider {
-    private static final Logger LOG = LoggerFactory.getLogger(Provider.class);
-
     /** HBaseFactory instance. */
-    private static HBaseFactory mInstance;
+    private static final HBaseFactory INSTANCE = Lookups.getPriority(HBaseFactory.class).lookup();
 
     /** @return the default HBaseFactory. */
     public static HBaseFactory get() {
-      synchronized (HBaseFactory.Provider.class) {
-        if (null == mInstance) {
-          mInstance = Lookups.getPriority(HBaseFactory.class).lookup();
-        }
-        return mInstance;
-      }
+      return INSTANCE;
     }
 
     /** Utility class may not be instantiated. */
@@ -91,7 +82,11 @@ public interface HBaseFactory extends PriorityProvider {
    * @param conf Hadoop configuration.
    * @return a factory for locks for the specified Kiji instance.
    * @throws IOException on I/O error.
+   * @deprecated {@link LockFactory} has been deprecated.
+   *    Use  {@link org.kiji.schema.zookeeper.ZooKeeperLock} directly.
+   *    Will be removed in the future.
    */
+  @Deprecated
   LockFactory getLockFactory(KijiURI uri, Configuration conf) throws IOException;
 
   /**
@@ -105,10 +100,10 @@ public interface HBaseFactory extends PriorityProvider {
    * @param uri URI of the Kiji instance for which to create a ZooKeeperClient.
    * @return a new open ZooKeeperClient.
    * @throws IOException in case of an error connecting to ZooKeeper.
-   * @deprecated ZooKeeperClient has been deprecated.
+   * @deprecated {@link ZooKeeperClient} has been deprecated.
    *    Use {@link org.kiji.schema.zookeeper.ZooKeeperUtils#getZooKeeperClient(String)} instead with
-   *    the ZooKeeper ensemble from {@link #getZooKeeperEnsemble(org.kiji.schema.KijiURI)}.
-   *    Will be removed in KijiSchema 2.0.
+   *    the ZooKeeper ensemble from {@link KijiURI#getZooKeeperEnsemble()}.
+   *    Will be removed in the future.
    */
   @Deprecated
   ZooKeeperClient getZooKeeperClient(KijiURI uri) throws IOException;
@@ -116,10 +111,13 @@ public interface HBaseFactory extends PriorityProvider {
   /**
    * Returns the ZooKeeper quorum address of the provided KijiURI in comma-separated host:port
    * (standard ZooKeeper) format. This method is considered experimental and should not be called by
-   * clients of Kiji Schema; instead use {@link org.kiji.schema.KijiURI#getZooKeeperEnsemble()}.
+   * clients of Kiji Schema; instead use {@link KijiURI#getZooKeeperEnsemble()}.
    *
    * @param uri of the KijiCluster for which to return the ZooKeeper quorum address.
    * @return the ZooKeeper quorum address of the Kiji cluster.
+   * @deprecated use {@link KijiURI#getZooKeeperEnsemble()} instead.
+   *    Will be removed in the future.
    */
+  @Deprecated
   String getZooKeeperEnsemble(KijiURI uri);
 }

@@ -26,7 +26,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.apache.curator.framework.CuratorFramework;
@@ -69,9 +68,7 @@ import org.kiji.schema.security.KijiSecurityException;
 import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.DebugResourceTracker;
-import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ProtocolVersion;
-import org.kiji.schema.util.ReferenceCountedCache;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 import org.kiji.schema.zookeeper.UsersTracker;
@@ -97,17 +94,6 @@ public final class HBaseKiji implements Kiji {
   private static final String ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE = String.format(
       "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
       CLEANUP_LOG.getName());
-
-  /** Global cache of ZooKeeper connections keyed on ensemble addresses. */
-  private static final ReferenceCountedCache<KijiURI, CuratorFramework> ZK_CLIENT_CACHE =
-      ReferenceCountedCache.create(new Function<KijiURI, CuratorFramework>() {
-        /** {@inheritDoc}. */
-        @Override
-        public CuratorFramework apply(KijiURI instanceURI) {
-          Preconditions.checkNotNull(instanceURI);
-          return ZooKeeperUtils.getZooKeeperClient(instanceURI);
-        }
-      });
 
   /** The hadoop configuration. */
   private final Configuration mConf;
@@ -188,21 +174,18 @@ public final class HBaseKiji implements Kiji {
    * @param kijiURI the KijiURI.
    * @param conf Hadoop Configuration. Deep copied internally.
    * @param tableFactory HTableInterface factory.
-   * @param lockFactory Factory for locks.
    * @throws IOException on I/O error.
    */
   HBaseKiji(
       KijiURI kijiURI,
       Configuration conf,
-      HTableInterfaceFactory tableFactory,
-      LockFactory lockFactory)
-      throws IOException {
+      HTableInterfaceFactory tableFactory
+  ) throws IOException {
     // Deep copy the configuration.
     mConf = new Configuration(conf);
 
     // Validate arguments.
     mHTableFactory = Preconditions.checkNotNull(tableFactory);
-    Preconditions.checkNotNull(lockFactory);
     mURI = Preconditions.checkNotNull(kijiURI);
 
     // Configure the ZooKeeper quorum:
@@ -229,7 +212,7 @@ public final class HBaseKiji implements Kiji {
       close();
       throw kie;
     }
-    mSchemaTable = new HBaseSchemaTable(mURI, mConf, mHTableFactory, lockFactory);
+    mSchemaTable = new HBaseSchemaTable(mURI, mConf, mHTableFactory);
     mMetaTable = new HBaseMetaTable(mURI, mConf, mSchemaTable, mHTableFactory);
 
     LOG.debug("Kiji instance '{}' is now opened.", mURI);
@@ -255,7 +238,7 @@ public final class HBaseKiji implements Kiji {
       // system-2.0 clients must connect to ZooKeeper:
       //  - to register themselves as table users;
       //  - to receive table layout updates.
-      mZKClient = ZK_CLIENT_CACHE.get(mURI);
+      mZKClient = ZooKeeperUtils.getZooKeeperClient(mURI);
     } else {
       // system-1.x clients do not need a ZooKeeper connection.
       mZKClient = null;
@@ -822,9 +805,7 @@ public final class HBaseKiji implements Kiji {
       mSecurityManager = null;
     }
 
-    if (mZKClient != null) {
-      ZK_CLIENT_CACHE.release(mURI);
-    }
+    ResourceUtils.closeOrLog(mZKClient);
 
     if (oldState != State.UNINITIALIZED) {
       DebugResourceTracker.get().unregisterResource(this);

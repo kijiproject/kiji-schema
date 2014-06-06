@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2013 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -17,40 +17,41 @@
  * limitations under the License.
  */
 
-package org.kiji.schema.impl.hbase;
+package org.kiji.schema.zookeeper;
 
-import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
+import com.google.common.base.Joiner;
+import com.google.common.collect.Lists;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.Priority;
-import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiFactory;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.hbase.HBaseFactory;
 
-/** Factory for constructing instances of HBaseKiji. */
+/**
+ * A {@link ZooKeeperFactory} which assumes a KijiURI is pointing to an existing, remote, ZooKeeper
+ * ensemble.  This {@link ZooKeeperFactory} implementation will be used in all non-unit-test
+ * situations.
+ */
 @ApiAudience.Private
-public final class HBaseKijiFactory implements KijiFactory {
-  /** {@inheritDoc} */
+@Inheritance.Sealed
+public class DefaultZooKeeperFactory implements ZooKeeperFactory {
+
+  /** {@inheritDoc}. */
   @Override
-  public Kiji open(KijiURI uri) throws IOException {
-    return open(uri, HBaseConfiguration.create());
+  public String getZooKeeperEnsemble(KijiURI uri) {
+    final List<String> zkHosts = Lists.newArrayList();
+    for (String host : uri.getZookeeperQuorum()) {
+      zkHosts.add(String.format("%s:%s", host, uri.getZookeeperClientPort()));
+    }
+    return Joiner.on(",").join(zkHosts);
   }
 
-  /** {@inheritDoc} */
-  @Override
-  public Kiji open(KijiURI uri, Configuration conf) throws IOException {
-    return new HBaseKiji(uri, conf, HBaseFactory.Provider.get().getHTableInterfaceFactory(uri));
-  }
-
-  /** {@inheritDoc} */
   @Override
   public int getPriority(Map<String, String> runtimeHints) {
-    // Default priority; should be used unless overridden by tests.
+    // Default priority; should be used unless overridden by a higher priority test provider.
     return Priority.NORMAL;
   }
 }

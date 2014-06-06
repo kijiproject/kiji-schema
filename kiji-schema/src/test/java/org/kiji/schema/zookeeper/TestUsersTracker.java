@@ -103,43 +103,50 @@ public class TestUsersTracker extends ZooKeeperTest {
     final String layoutID = "layout-id";
 
     BlockingQueue<Multimap<String, String>> usersQueue = Queues.newSynchronousQueue();
-    CuratorFramework registrationConnection = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
-
-    UsersTracker tracker =
-        ZooKeeperUtils
-            .newTableUsersTracker(mZKClient, tableURI)
-            .registerUpdateHandler(new QueueingUsersUpdateHandler(usersQueue));
+    CuratorFramework registrationConnection = ZooKeeperUtils.createZooKeeperClient(getZKAddress());
     try {
-      tracker.start();
-
-      // Initially no user
-      Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
-          usersQueue.poll(5, TimeUnit.SECONDS));
-
-      TableUserRegistration userRegistration =
-          new TableUserRegistration(registrationConnection, tableURI, userID);
+      UsersTracker tracker =
+          ZooKeeperUtils
+              .newTableUsersTracker(mZKClient, tableURI)
+              .registerUpdateHandler(new QueueingUsersUpdateHandler(usersQueue));
       try {
-        userRegistration.start(layoutID);
+        tracker.start();
 
-        // User is registered
-        Assert.assertEquals(ImmutableSetMultimap.of(userID, layoutID),
+        // Initially no user
+        Assert.assertEquals(
+            ImmutableSetMultimap.<String, String>of(),
             usersQueue.poll(5, TimeUnit.SECONDS));
 
-        KillSession.kill(
-            registrationConnection.getZookeeperClient().getZooKeeper(), getZKAddress());
+        TableUserRegistration userRegistration =
+            new TableUserRegistration(registrationConnection, tableURI, userID);
+        try {
+          userRegistration.start(layoutID);
 
-        // User is de-registered during session loss
-        Assert.assertEquals(ImmutableSetMultimap.<String, String>of(),
-            usersQueue.poll(5, TimeUnit.SECONDS));
+          // User is registered
+          Assert.assertEquals(
+              ImmutableSetMultimap.of(userID, layoutID),
+              usersQueue.poll(5, TimeUnit.SECONDS));
 
-        // The registration recovers and comes back
-        Assert.assertEquals(ImmutableSetMultimap.of(userID, layoutID),
-            usersQueue.poll(5, TimeUnit.SECONDS));
+          KillSession.kill(
+              registrationConnection.getZookeeperClient().getZooKeeper(), getZKAddress());
+
+          // User is de-registered during session loss
+          Assert.assertEquals(
+              ImmutableSetMultimap.<String, String>of(),
+              usersQueue.poll(5, TimeUnit.SECONDS));
+
+          // The registration recovers and comes back
+          Assert.assertEquals(
+              ImmutableSetMultimap.of(userID, layoutID),
+              usersQueue.poll(5, TimeUnit.SECONDS));
+        } finally {
+          userRegistration.close();
+        }
       } finally {
-        userRegistration.close();
+        tracker.close();
       }
     } finally {
-      tracker.close();
+      registrationConnection.close();
     }
   }
 
@@ -150,34 +157,39 @@ public class TestUsersTracker extends ZooKeeperTest {
     final String layoutID = "layout-id";
 
     BlockingQueue<Multimap<String, String>> usersQueue = Queues.newArrayBlockingQueue(10);
-    CuratorFramework trackerConnection = ZooKeeperUtils.getZooKeeperClient(getZKAddress());
-
-    TableUserRegistration userRegistration =
-        new TableUserRegistration(trackerConnection, tableURI, userID);
+    CuratorFramework trackerConnection = ZooKeeperUtils.createZooKeeperClient(getZKAddress());
     try {
-      userRegistration.start(layoutID);
-
-      UsersTracker tracker =
-          ZooKeeperUtils
-              .newTableUsersTracker(mZKClient, tableURI)
-              .registerUpdateHandler(new QueueingUsersUpdateHandler(usersQueue));
+      TableUserRegistration userRegistration =
+          new TableUserRegistration(trackerConnection, tableURI, userID);
       try {
-        tracker.start();
+        userRegistration.start(layoutID);
 
-        // User is registered
-        Assert.assertEquals(ImmutableSetMultimap.of(userID, layoutID),
-            usersQueue.poll(5, TimeUnit.SECONDS));
+        UsersTracker tracker =
+            ZooKeeperUtils
+                .newTableUsersTracker(mZKClient, tableURI)
+                .registerUpdateHandler(new QueueingUsersUpdateHandler(usersQueue));
+        try {
+          tracker.start();
 
-        KillSession.kill(trackerConnection.getZookeeperClient().getZooKeeper(), getZKAddress());
+          // User is registered
+          Assert.assertEquals(
+              ImmutableSetMultimap.of(userID, layoutID),
+              usersQueue.poll(5, TimeUnit.SECONDS));
 
-        // The tracker recovers and comes back
-        Assert.assertEquals(ImmutableSetMultimap.of(userID, layoutID),
-            usersQueue.poll(5, TimeUnit.SECONDS));
+          KillSession.kill(trackerConnection.getZookeeperClient().getZooKeeper(), getZKAddress());
+
+          // The tracker recovers and comes back
+          Assert.assertEquals(
+              ImmutableSetMultimap.of(userID, layoutID),
+              usersQueue.poll(5, TimeUnit.SECONDS));
+        } finally {
+          tracker.close();
+        }
       } finally {
-        tracker.close();
+        userRegistration.close();
       }
     } finally {
-      userRegistration.close();
+      trackerConnection.close();
     }
   }
 
