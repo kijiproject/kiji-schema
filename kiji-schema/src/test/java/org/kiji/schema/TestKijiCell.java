@@ -28,11 +28,11 @@ public class TestKijiCell {
   @Test
   public void testEquals() {
     final KijiCell<Integer> cell1 =
-        KijiCell.create(new KijiColumnName("family", "qualifier"), 1234L,
+        KijiCell.create(KijiColumnName.create("family", "qualifier"), 1234L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 31415));
 
     final KijiCell<Integer> cell2 =
-        KijiCell.create(new KijiColumnName("family", "qualifier"), 1234L,
+        KijiCell.create(KijiColumnName.create("family", "qualifier"), 1234L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 31415));
 
     Assert.assertTrue(cell1.equals(cell2));
@@ -44,11 +44,11 @@ public class TestKijiCell {
   @Test
   public void testEqualsFamilyMismatch() {
     final KijiCell<Integer> cell1 =
-        KijiCell.create(new KijiColumnName("family", "qualifier"), 1234L,
+        KijiCell.create(KijiColumnName.create("family", "qualifier"), 1234L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 31415));
 
     final KijiCell<Integer> cell2 =
-        KijiCell.create(new KijiColumnName("other", "qualifier"), 1234L,
+        KijiCell.create(KijiColumnName.create("other", "qualifier"), 1234L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 31415));
 
     Assert.assertFalse(cell1.equals(cell2));
@@ -57,11 +57,11 @@ public class TestKijiCell {
   @Test
   public void testEqualsQualifierMismatch() {
     final KijiCell<Integer> cell1 =
-        KijiCell.create(new KijiColumnName("family", "qualifier"), 1234L,
+        KijiCell.create(KijiColumnName.create("family", "qualifier"), 1234L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 31415));
 
     final KijiCell<Integer> cell2 =
-        KijiCell.create(new KijiColumnName("family", "other"), 1234L,
+        KijiCell.create(KijiColumnName.create("family", "other"), 1234L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 31415));
 
     Assert.assertFalse(cell1.equals(cell2));
@@ -70,11 +70,11 @@ public class TestKijiCell {
   @Test
   public void testEqualsTimestampMismatch() {
     final KijiCell<Integer> cell1 =
-        KijiCell.create(new KijiColumnName("family", "qualifier"), 1234L,
+        KijiCell.create(KijiColumnName.create("family", "qualifier"), 1234L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 31415));
 
     final KijiCell<Integer> cell2 =
-        KijiCell.create(new KijiColumnName("family", "qualifier"), 1235L,
+        KijiCell.create(KijiColumnName.create("family", "qualifier"), 1235L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 31415));
 
     Assert.assertFalse(cell1.equals(cell2));
@@ -83,11 +83,11 @@ public class TestKijiCell {
   @Test
   public void testEqualsValueContentMismatch() {
     final KijiCell<Integer> cell1 =
-        KijiCell.create(new KijiColumnName("family", "qualifier"), 1234L,
+        KijiCell.create(KijiColumnName.create("family", "qualifier"), 1234L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 31415));
 
     final KijiCell<Integer> cell2 =
-        KijiCell.create(new KijiColumnName("family", "qualifier"), 1234L,
+        KijiCell.create(KijiColumnName.create("family", "qualifier"), 1234L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 0));
 
     Assert.assertFalse(cell1.equals(cell2));
@@ -96,11 +96,11 @@ public class TestKijiCell {
   @Test
   public void testEqualsValueSchemaMismatch() {
     final KijiCell<Integer> cell1 =
-        KijiCell.create(new KijiColumnName("family", "qualifier"), 1234L,
+        KijiCell.create(KijiColumnName.create("family", "qualifier"), 1234L,
             new DecodedCell<Integer>(Schema.create(Schema.Type.INT), 31415));
 
     final KijiCell<Long> cell2 =
-        KijiCell.create(new KijiColumnName("family", "qualifier"), 1235L,
+        KijiCell.create(KijiColumnName.create("family", "qualifier"), 1235L,
             new DecodedCell<Long>(Schema.create(Schema.Type.LONG), 31415L));
 
     Assert.assertFalse(cell1.equals(cell2));

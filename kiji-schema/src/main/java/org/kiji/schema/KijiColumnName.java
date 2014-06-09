@@ -88,8 +88,7 @@ public final class KijiColumnName implements Comparable<KijiColumnName> {
    *
    * @param fullName The name of a kiji column "family:qualifier".
    * @deprecated KijiColumnName constructors are deprecated. Please use the factory method
-   *     {@link KijiColumnName#create(String)}. This constructor will become private in KijiSchema
-   *     3.0.
+   *     {@link KijiColumnName#create(String)}. This constructor will become private in the future.
    */
   @Deprecated
   public KijiColumnName(String fullName) {

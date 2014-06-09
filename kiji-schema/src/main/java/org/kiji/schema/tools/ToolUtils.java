@@ -375,8 +375,8 @@ public final class ToolUtils {
     printStream.printf("entity-id=%s [%d] %s:%s%n                                 %s%n",
         formatEntityId(entityId),
         cell.getTimestamp(),
-        cell.getFamily(),
-        cell.getQualifier(),
+        cell.getColumn().getFamily(),
+        cell.getColumn().getQualifier(),
         cell.getData());
   }
 

@@ -254,7 +254,7 @@ public final class HBaseKijiRowData implements KijiRowData {
           final KijiColumnName colName = mColumnNameTranslator.toKijiColumnName(
               new HBaseColumnName(kv.getFamily(), kv.getQualifier()));
           nextCell = KijiCell.create(
-              new KijiColumnName(mColumn.getFamily(), colName.getQualifier()),
+              KijiColumnName.create(mColumn.getFamily(), colName.getQualifier()),
               kv.getTimestamp(),
               mDecoder.decodeCell(kv.getValue()));
         }
@@ -294,7 +294,7 @@ public final class HBaseKijiRowData implements KijiRowData {
         try {
           final KijiColumnName colName = mColumnNameTranslator.toKijiColumnName(
             new HBaseColumnName(kv.getFamily(), kv.getQualifier()));
-          if (!colName.getQualifier().equals(mNextCell.getQualifier())) {
+          if (!colName.getQualifier().equals(mNextCell.getColumn().getQualifier())) {
             if (mColumn.isFullyQualified()) {
               return mKVs.length;
             } else {
@@ -642,7 +642,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     return KijiCell.create(
-        new KijiColumnName(family, qualifier),
+        KijiColumnName.create(family, qualifier),
         timestamp,
         decoder.decodeCell(bytes));
   }
@@ -714,7 +714,7 @@ public final class HBaseKijiRowData implements KijiRowData {
     final byte[] bytes = tmap.values().iterator().next();
     final long timestamp = tmap.firstKey();
     return KijiCell.create(
-        new KijiColumnName(family, qualifier),
+        KijiColumnName.create(family, qualifier),
         timestamp,
         decoder.decodeCell(bytes));
   }
@@ -750,7 +750,7 @@ public final class HBaseKijiRowData implements KijiRowData {
         final byte[] bytes = entry.getValue();
         final KijiCell<T> cell =
             KijiCell.create(
-                new KijiColumnName(family, qualifier),
+                KijiColumnName.create(family, qualifier),
                 timestamp,
                 decoder.decodeCell(bytes));
         result.put(timestamp, cell);

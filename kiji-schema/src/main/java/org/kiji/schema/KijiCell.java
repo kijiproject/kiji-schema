@@ -105,7 +105,7 @@ public final class KijiCell<T> {
    */
   @Deprecated
   public KijiCell(String family, String qualifier, long timestamp, DecodedCell<T> decodedCell) {
-    mColumn = new KijiColumnName(
+    mColumn = KijiColumnName.create(
         Preconditions.checkNotNull(family),
         Preconditions.checkNotNull(qualifier));
     mTimestamp = timestamp;
