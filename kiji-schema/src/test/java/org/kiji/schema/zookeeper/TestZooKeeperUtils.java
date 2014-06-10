@@ -34,6 +34,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.schema.KijiURI;
 import org.kiji.schema.util.ZooKeeperTest;
 
 /**
@@ -133,6 +134,18 @@ public class TestZooKeeperUtils extends ZooKeeperTest {
         Assert.assertTrue(mZKClient.getZookeeperClient() == other.getZookeeperClient());
     } finally {
       other.close();
+    }
+  }
+
+  @Test
+  public void testFakeURIsAreNamespaced() throws Exception {
+    final String namespace = "testFakeURIsAreNamespaced";
+    final KijiURI uri = KijiURI.newBuilder("kiji://.fake." + namespace).build();
+    final CuratorFramework framework = ZooKeeperUtils.getZooKeeperClient(uri);
+    try {
+      Assert.assertEquals(namespace, framework.getNamespace());
+    } finally {
+      framework.close();
     }
   }
 }

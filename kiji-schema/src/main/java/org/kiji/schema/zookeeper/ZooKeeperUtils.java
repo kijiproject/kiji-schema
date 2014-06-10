@@ -31,6 +31,7 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.api.transaction.CuratorTransaction;
 import org.apache.curator.framework.api.transaction.CuratorTransactionFinal;
+import org.apache.curator.framework.imps.CachedCuratorFramework;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
@@ -355,7 +356,7 @@ public final class ZooKeeperUtils {
    *         namespace in suffix form, e.g. {@code "host1:port1,host2:port2/my/namespace"}.
    * @return a ZooKeeper client using the new connection.
    */
-  public static CuratorFramework getZooKeeperClient(String zkEnsemble) {
+  public static CuratorFramework getZooKeeperClient(final String zkEnsemble) {
     String address = zkEnsemble;
     String namespace = null;
 
