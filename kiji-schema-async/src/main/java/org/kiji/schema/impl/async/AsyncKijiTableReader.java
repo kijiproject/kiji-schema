@@ -20,15 +20,12 @@
 package org.kiji.schema.impl.async;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
@@ -38,7 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestValidator;
@@ -50,14 +46,10 @@ import org.kiji.schema.KijiTableReaderBuilder;
 import org.kiji.schema.KijiTableReaderBuilder.OnDecoderCacheMiss;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.SpecificCellDecoderFactory;
-import org.kiji.schema.filter.KijiRowFilter;
-import org.kiji.schema.filter.KijiRowFilterApplicator;
-import org.kiji.schema.hbase.HBaseScanOptions;
 import org.kiji.schema.impl.BoundColumnReaderSpec;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.ColumnReaderSpec;
-import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;

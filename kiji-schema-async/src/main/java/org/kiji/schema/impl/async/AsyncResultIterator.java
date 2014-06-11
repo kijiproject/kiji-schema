@@ -19,9 +19,7 @@
 package org.kiji.schema.impl.async;
 
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 
-import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.KeyValue;
 
 /** Iterator over the KeyValues in a {@link org.apache.hadoop.hbase.client.Result}. */
