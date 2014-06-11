@@ -96,7 +96,9 @@ public class CachedCuratorFramework {
       super(delegate);
       mCache = cache;
       mCacheKey = key;
-      DebugResourceTracker.get().registerResource(this);
+      DebugResourceTracker
+          .get()
+          .registerResource(this, ExceptionUtils.getStackTrace(new Exception()));
     }
 
 
@@ -144,7 +146,9 @@ public class CachedCuratorFramework {
       super(delegate, namespace);
       mCache = cache;
       mCacheKey = key;
-      DebugResourceTracker.get().registerResource(this);
+      DebugResourceTracker
+          .get()
+          .registerResource(this, ExceptionUtils.getStackTrace(new Exception()));
     }
 
     /** {@inheritDoc} */

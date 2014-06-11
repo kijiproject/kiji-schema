@@ -649,10 +649,9 @@ private Result filterToMatchRequest(
       final KeyValue kv
   ) {
     // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
+    throw new UnsupportedOperationException("Not yet supported by AsyncKiji");
     /*
-    final HBaseColumnName hBaseColumnName = new HBaseColumnName(kv.getFamily(), kv.getQualifier());
+    final HBaseColumnName hBaseColumnName = new HBaseColumnName(kv.family(), kv.qualifier());
     try {
       return mColumnNameTranslator.toKijiColumnName(hBaseColumnName);
     } catch (NoSuchColumnException nsce) {
@@ -671,20 +670,20 @@ private Result filterToMatchRequest(
   private <T> KijiCell<T> cellFromKeyValue(
       final KeyValue kv
   ) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet supported by AsyncKiji");
+    /*
     final KijiColumnName column = kcnFromKeyValue(kv);
     final DecodedCell<T> decodedCell;
     try {
       final KijiCellDecoder<T> decoder = getDecoder(column);
       Preconditions.checkNotNull(decoder);
-      decodedCell = decoder.decodeCell(kv.getValue());
+      decodedCell = decoder.decodeCell(kv.value());
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
-    return new KijiCell<T>(
-        column.getFamily(),
-        column.getQualifier(),
-        kv.getTimestamp(),
-        decodedCell);
+    return KijiCell.create(column,kv.timestamp(),decodedCell);
+    */
   }
 
   /**
@@ -695,9 +694,9 @@ private Result filterToMatchRequest(
    */
   private int columnMaxVersions(
       final KijiColumnName column
-  ) {// TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
+  ) {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet supported by AsyncKiji");
     /*
     return mDataRequest.getRequestForColumn(column).getMaxVersions();
     */
@@ -728,8 +727,7 @@ private Result filterToMatchRequest(
   @Override
   public EntityId getEntityId() {
     // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
+    throw new UnsupportedOperationException("Not yet supported by AsyncKiji");
     /*
     return mEntityId;
     */
@@ -739,8 +737,7 @@ private Result filterToMatchRequest(
   @Override
   public KijiDataRequest getDataRequest() {
     // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
+    throw new UnsupportedOperationException("Not yet supported by AsyncKiji");
     /*
     return mDataRequest;
     */
@@ -752,8 +749,7 @@ private Result filterToMatchRequest(
       final KijiColumnName column
   ) {
     // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
+    throw new UnsupportedOperationException("Not yet supported by AsyncKiji");
     /*
     Preconditions.checkArgument(column.isFullyQualified(),
         "Can only get a cell from a fully qualified column. Found: %s", column);
@@ -773,9 +769,8 @@ private Result filterToMatchRequest(
       final KijiColumnName column,
       final long timestamp
   ) {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
+      // TODO(gabe): Replace this with asynchbase
+      throw new UnsupportedOperationException("Not yet supported by AsyncKiji");
     /*
     Preconditions.checkArgument(column.isFullyQualified(),
         "Can only get a cell from a fully qualified column. Found: %s", column);
