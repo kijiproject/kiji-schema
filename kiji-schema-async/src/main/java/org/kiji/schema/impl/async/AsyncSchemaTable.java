@@ -19,15 +19,24 @@
 
 package org.kiji.schema.impl.async;
 
+import static org.kiji.schema.util.ByteStreamArray.longToVarInt64;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DatumWriter;
@@ -38,25 +47,40 @@ import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.apache.hadoop.conf.Configuration;
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.util.Bytes;
+import org.hbase.async.AtomicIncrementRequest;
+import org.hbase.async.Bytes;
+import org.hbase.async.GetRequest;
+import org.hbase.async.HBaseClient;
+import org.hbase.async.KeyValue;
+import org.hbase.async.PutRequest;
+import org.hbase.async.Scanner;
+import org.hbase.async.TableNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.InternalKijiError;
+import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.MD5Hash;
 import org.kiji.schema.avro.SchemaTableBackup;
 import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
-import org.kiji.schema.impl.HTableInterfaceFactory;
+import org.kiji.schema.util.ByteStreamArray.EncodingException;
 import org.kiji.schema.util.BytesKey;
+import org.kiji.schema.util.DebugResourceTracker;
+import org.kiji.schema.util.Hasher;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.LockFactory;
+import org.kiji.schema.util.ResourceUtils;
+import org.kiji.schema.zookeeper.ZooKeeperLock;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
+import org.kiji.schema.util.ByteStreamArray;
 /**
  * <p>
  * Mapping between schema IDs, hashes and Avro schema objects.
@@ -79,27 +103,29 @@ public final class AsyncSchemaTable implements KijiSchemaTable {
 
   /** The column family in HBase used to store schema entries. */
   public static final String SCHEMA_COLUMN_FAMILY = "schema";
-  private static final byte[] SCHEMA_COLUMN_FAMILY_BYTES = Bytes.toBytes(SCHEMA_COLUMN_FAMILY);
+  private static final byte[] SCHEMA_COLUMN_FAMILY_BYTES = Bytes.UTF8(SCHEMA_COLUMN_FAMILY);
 
   /** The column qualifier in HBase used to store schema entries. */
   public static final String SCHEMA_COLUMN_QUALIFIER = "";
   private static final byte[] SCHEMA_COLUMN_QUALIFIER_BYTES =
-      Bytes.toBytes(SCHEMA_COLUMN_QUALIFIER);
+      Bytes.UTF8(SCHEMA_COLUMN_QUALIFIER);
 
   /** Schema IDs are generated using a counter. The counter is stored in the schema ID table. */
   public static final String SCHEMA_COUNTER_ROW_NAME = "counter";
   private static final byte[] SCHEMA_COUNTER_ROW_NAME_BYTES =
-      Bytes.toBytes(SCHEMA_COUNTER_ROW_NAME);
+      Bytes.UTF8(SCHEMA_COUNTER_ROW_NAME);
 
-  // TODO(gabe): Replace with asynchbase
-  /** HTable used to map schema hash to schema entries. */
-  //private final HTableInterface mSchemaHashTable;
+  /** Table name of the table used to map schema hash to schema entries. */
+  private final byte[] mSchemaHashTableName;
 
-  /** HTable used to map schema IDs to schema entries. */
-  //private final HTableInterface mSchemaIdTable;
+  /** Table name of the table used to map schema IDs to schema entries. */
+  private final byte[] mSchemaIdTableName;
+
+  /** Connection to ZooKeeper. */
+  private final CuratorFramework mZKClient;
 
   /** Lock for the kiji instance schema table. */
-  //private final Lock mZKLock;
+  private final Lock mZKLock;
 
   /** Maps schema MD5 hashes to schema entries. */
   private final Map<BytesKey, SchemaEntry> mSchemaHashMap = new HashMap<BytesKey, SchemaEntry>();
@@ -111,7 +137,10 @@ public final class AsyncSchemaTable implements KijiSchemaTable {
   private final SchemaHashCache mHashCache = new KijiSchemaTable.SchemaHashCache();
 
   /** KijiURI of the Kiji instance this schema table belongs to. */
-  //private final KijiURI mURI;
+  private final KijiURI mURI;
+
+  /** The HBaseClient of the Kiji instance this system table belongs to. */
+  private final HBaseClient mHBClient;
 
   /** States of a SchemaTable instance. */
   private static enum State {
@@ -127,46 +156,53 @@ public final class AsyncSchemaTable implements KijiSchemaTable {
   private String mConstructorStack = "";
 
   /**
-   * Creates an HTable handle to the schema hash table.
+   * Gets the table name for the schema hash table.
    *
    * @param kijiURI the KijiURI.
-   * @param conf the Hadoop configuration.
-   * @param factory HTableInterface factory.
+   * @param hbClient HBaseClient for this Kiji.
    * @return a new interface for the table storing the mapping from schema hash to schema entry.
    * @throws IOException on I/O error.
    */
-  // TODO(gabe): Replace this with asynchbase
+  public static byte[] newSchemaHashTable(
+      KijiURI kijiURI,
+      HBaseClient hbClient)
+      throws IOException {
+    final byte[] tableName =
+        KijiManagedHBaseTableName.getSchemaHashTableName(kijiURI.getInstance()).toBytes();
+    try {
+      hbClient.ensureTableExists(tableName);
+      return tableName;
+    } catch (TableNotFoundException tnfe) {
+      throw new KijiNotInstalledException(
+          String.format("Kiji instance %s is not installed.", kijiURI),
+          kijiURI);
+    }
+  }
 
-  /*
-public static HTableInterface newSchemaHashTable(
-    KijiURI kijiURI,
-    Configuration conf,
-    HTableInterfaceFactory factory)
-    throws IOException {
-  return factory.create(conf,
-      KijiManagedHBaseTableName.getSchemaHashTableName(kijiURI.getInstance()).toString());
-} */
+  /**
+   * Gets the table name for the schema ID table.
+   *
+   * @param kijiURI the KijiURI.
+   * @param hbClient HBaseClient for this Kiji.
+   * @return a new interface for the table storing the mapping from schema ID to schema entry.
+   * @throws IOException on I/O error.
+   */
+  public static byte[] newSchemaIdTable(
+      KijiURI kijiURI,
+      HBaseClient hbClient)
+      throws IOException {
+    final byte[] tableName =
+        KijiManagedHBaseTableName.getSchemaIdTableName(kijiURI.getInstance()).toBytes();
+    try {
+      hbClient.ensureTableExists(tableName);
+      return tableName;
+    } catch (TableNotFoundException tnfe) {
+      throw new KijiNotInstalledException(
+          String.format("Kiji instance %s is not installed.", kijiURI),
+          kijiURI);
+    }
 
-/**
- * Creates an HTable handle to the schema ID table.
- *
- * @param kijiURI the KijiURI.
- * @param conf the Hadoop configuration.
- * @param factory HTableInterface factory.
- * @return a new interface for the table storing the mapping from schema ID to schema entry.
- * @throws IOException on I/O error.
- */
-// TODO(gabe): Replace this with asynchbase
-
-  /*
-public static HTableInterface newSchemaIdTable(
-    KijiURI kijiURI,
-    Configuration conf,
-    HTableInterfaceFactory factory)
-    throws IOException {
-  return factory.create(conf,
-      KijiManagedHBaseTableName.getSchemaIdTableName(kijiURI.getInstance()).toString());
-} */
+  }
 
 /**
  * Creates a lock for a given Kiji instance.
@@ -233,56 +269,25 @@ public static HTableInterface newSchemaIdTable(
    * Open a connection to the HBase schema table for a Kiji instance.
    *
    * @param kijiURI the KijiURI
-   * @param conf The Hadoop configuration.
-   * @param tableFactory HTableInterface factory.
-   * @param lockFactory Factory for locks.
+   * @param hbClient HBaseClient for this schema table.
    * @throws IOException on I/O error.
    */
-  // TODO(gabe): Replace this with asynchbase
-/*
-public AsyncSchemaTable(
-    KijiURI kijiURI,
-    Configuration conf,
-    HTableInterfaceFactory tableFactory,
-    LockFactory lockFactory)
-    throws IOException {
-  this(new SchemaHashTable(kijiURI, conf, tableFactory),
-      new SchemaIdTable(kijiURI, conf, tableFactory),
-      newLock(kijiURI, lockFactory),
-      kijiURI);
-} */
+  public AsyncSchemaTable(
+      KijiURI kijiURI,
+      HBaseClient hbClient
+  ) throws IOException {
+    mURI = kijiURI;
+    mSchemaHashTableName = newSchemaHashTable(mURI, hbClient);
+    mSchemaIdTableName = newSchemaIdTable(mURI, hbClient);
+    mZKClient = ZooKeeperUtils.getZooKeeperClient(mURI);
+    mZKLock = new ZooKeeperLock(mZKClient, ZooKeeperUtils.getSchemaTableLock(mURI));
+    mHBClient = hbClient;
 
-/**
- * Wrap an existing HBase table assumed to be where the schema data is stored.
- *
- * @param hashTable The HTable that maps schema hashes to schema entries.
- * @param idTable The HTable that maps schema IDs to schema entries.
- * @param zkLock Lock protecting the schema tables.
- * @param uri URI of the Kiji instance this schema table belongs to.
- * @throws IOException on I/O error.
- */
-  // TODO(gabe): Replace this with asynchbase
-
-  /*
-public AsyncSchemaTable(
-    HTableInterface hashTable,
-    HTableInterface idTable,
-    Lock zkLock,
-    KijiURI uri)
-    throws IOException {
-  mSchemaHashTable = Preconditions.checkNotNull(hashTable);
-  mSchemaIdTable = Preconditions.checkNotNull(idTable);
-  mZKLock = Preconditions.checkNotNull(zkLock);
-  mURI = uri;
-
-  if (CLEANUP_LOG.isDebugEnabled()) {
-    mConstructorStack = Debug.getStackTrace();
+    final State oldState = mState.getAndSet(State.OPEN);
+    Preconditions.checkState(oldState == State.UNINITIALIZED,
+        "Cannot open SchemaTable instance in state %s.", oldState);
+    DebugResourceTracker.get().registerResource(this);
   }
-
-  final State oldState = mState.getAndSet(State.OPEN);
-  Preconditions.checkState(oldState == State.UNINITIALIZED,
-      "Cannot open SchemaTable instance in state %s.", oldState);
-} */
 
 /**
  * Looks up a schema entry given an Avro schema object.
@@ -336,10 +341,6 @@ public AsyncSchemaTable(
    */
   private SchemaEntry registerNewSchemaInTable(final Schema schema, final BytesKey schemaHash)
       throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     mZKLock.lock();
     try {
       final SchemaTableEntry existingAvroEntry = loadFromHashTable(schemaHash);
@@ -349,8 +350,20 @@ public AsyncSchemaTable(
 
       // Here we know the schema is unknown from the schema tables and no other process can
       // update the schema table.
-      final long schemaId = mSchemaIdTable.incrementColumnValue(SCHEMA_COUNTER_ROW_NAME_BYTES,
-          SCHEMA_COLUMN_FAMILY_BYTES, SCHEMA_COLUMN_QUALIFIER_BYTES, 1) - 1;
+      final AtomicIncrementRequest incrementRequest = new AtomicIncrementRequest(
+          mSchemaIdTableName,
+          SCHEMA_COUNTER_ROW_NAME_BYTES,
+          SCHEMA_COLUMN_FAMILY_BYTES,
+          SCHEMA_COLUMN_QUALIFIER_BYTES,
+          1);
+      final long schemaId;
+      try {
+        schemaId = mHBClient.atomicIncrement(incrementRequest).join() - 1;
+
+      } catch (Exception e) {
+        ZooKeeperUtils.wrapAndRethrow(e);
+        throw new InternalKijiError(e);
+      }
 
       final SchemaEntry entry = new SchemaEntry(schemaId, schemaHash, schema);
       storeInTable(toAvroEntry(entry));
@@ -359,7 +372,6 @@ public AsyncSchemaTable(
     } finally {
       mZKLock.unlock();
     }
-    */
   }
 
 
@@ -388,10 +400,7 @@ public AsyncSchemaTable(
    */
   private void storeInTable(final SchemaTableEntry avroEntry, long timestamp, boolean flush)
       throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
 
-    /*
     final byte[] entryBytes = encodeSchemaEntry(avroEntry);
 
     // Writes the ID mapping first: if the hash table write fails, we just lost one schema ID.
@@ -399,20 +408,39 @@ public AsyncSchemaTable(
     // Otherwise, another client may see the hash entry, write cells with the schema ID that cannot
     // be decoded (since the ID mapping has not been written yet).
 
-    final Put putId = new Put(longToVarInt64(avroEntry.getId()))
-        .add(SCHEMA_COLUMN_FAMILY_BYTES, SCHEMA_COLUMN_QUALIFIER_BYTES, timestamp, entryBytes);
-    mSchemaIdTable.put(putId);
-    if (flush) {
-      mSchemaIdTable.flushCommits();
+    final PutRequest putId = new PutRequest(
+        mSchemaIdTableName,
+        longToVarInt64(avroEntry.getId()),
+        SCHEMA_COLUMN_FAMILY_BYTES,
+        SCHEMA_COLUMN_QUALIFIER_BYTES,
+        entryBytes,
+        timestamp);
+    try {
+      mHBClient.put(putId);
+      if (flush) {
+        mHBClient.flush().join();
+      }
+
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
     }
 
-    final Put putHash = new Put(avroEntry.getHash().bytes())
-        .add(SCHEMA_COLUMN_FAMILY_BYTES, SCHEMA_COLUMN_QUALIFIER_BYTES, timestamp, entryBytes);
-    mSchemaHashTable.put(putHash);
-    if (flush) {
-      mSchemaHashTable.flushCommits();
+    final PutRequest putHash = new PutRequest(
+        mSchemaIdTableName,
+        avroEntry.getHash().bytes(),
+        SCHEMA_COLUMN_FAMILY_BYTES,
+        SCHEMA_COLUMN_QUALIFIER_BYTES,
+        entryBytes,
+        timestamp);
+    try {
+      mHBClient.put(putHash);
+      if (flush) {
+        mHBClient.flush().join();
+      }
+
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
     }
-    */
   }
 
   /**
@@ -423,14 +451,17 @@ public AsyncSchemaTable(
    * @throws IOException on I/O error.
    */
   private SchemaTableEntry loadFromIdTable(long schemaId) throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    final Get get = new Get(longToVarInt64(schemaId));
-    final Result result = mSchemaIdTable.get(get);
-    return result.isEmpty() ? null : decodeSchemaEntry(result.value());
-    */
+    final GetRequest get = new GetRequest(
+        mSchemaIdTableName,
+        longToVarInt64(schemaId));
+    final ArrayList<KeyValue> results;
+    try {
+      results = mHBClient.get(get).join();
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
+      throw new InternalKijiError(e);
+    }
+    return results.isEmpty() ? null : decodeSchemaEntry(results.get(0).value());
   }
 
   /**
@@ -441,14 +472,17 @@ public AsyncSchemaTable(
    * @throws IOException on I/O error.
    */
   private SchemaTableEntry loadFromHashTable(BytesKey schemaHash) throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    final Get get = new Get(schemaHash.getBytes());
-    final Result result = mSchemaHashTable.get(get);
-    return result.isEmpty() ? null : decodeSchemaEntry(result.value());
-    */
+    final GetRequest get = new GetRequest(
+        mSchemaHashTableName,
+        schemaHash.getBytes());
+    final ArrayList<KeyValue> results;
+    try {
+      results = mHBClient.get(get).join();
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
+      throw new InternalKijiError(e);
+    }
+    return results.isEmpty() ? null : decodeSchemaEntry(results.get(0).value());
   }
 
   /**
@@ -580,33 +614,27 @@ public AsyncSchemaTable(
   /** {@inheritDoc} */
   @Override
   public synchronized void flush() throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot flush SchemaTable instance in state %s.", state);
-    mSchemaIdTable.flushCommits();
-    mSchemaHashTable.flushCommits();
-    */
+    try {
+      mHBClient.flush().join();
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
+    }
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized void close() throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     flush();
     final State oldState = mState.getAndSet(State.CLOSED);
-    Preconditions.checkState(oldState == State.OPEN,
+    Preconditions.checkState(
+        oldState == State.OPEN,
         "Cannot close SchemaTable instance in state %s.", oldState);
-    mSchemaHashTable.close();
-    mSchemaIdTable.close();
+    DebugResourceTracker.get().unregisterResource(this);
     ResourceUtils.closeOrLog(mZKLock);
-    */
+    ResourceUtils.closeOrLog(mZKClient);
   }
 
   /** {@inheritDoc} */
@@ -615,82 +643,10 @@ public AsyncSchemaTable(
     final State state = mState.get();
     if (state != State.CLOSED) {
       CLEANUP_LOG.warn("Finalizing unclosed SchemaTable instance %s in state %s.", this, state);
-      CLEANUP_LOG.debug("Stack when HBaseSchemaTable was constructed:\n" + mConstructorStack);
+      CLEANUP_LOG.debug("Stack when AsyncSchemaTable was constructed:\n" + mConstructorStack);
       close();
     }
     super.finalize();
-  }
-
-  /**
-   * Install the schema table into a Kiji instance.
-   *
-   * @param admin The HBase Admin interface for the HBase cluster to install into.
-   * @param kijiURI the KijiURI.
-   * @param conf The Hadoop configuration.
-   * @param tableFactory HTableInterface factory.
-   * @param lockFactory Factory for locks.
-   * @throws IOException on I/O error.
-   */
-  public static void install(
-      HBaseAdmin admin,
-      KijiURI kijiURI,
-      Configuration conf,
-      HTableInterfaceFactory tableFactory,
-      LockFactory lockFactory)
-      throws IOException {
-    // Keep all versions of schema entries:
-    //  - entries of the ID table should never be written more than once.
-    //  - entries of the hash table could be written more than once:
-    //      - with different schema IDs in some rare cases, for example when a client crashes
-    //        while writing an entry.
-    //      - with different schemas on MD5 hash collisions.
-
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    final int maxVersions = Integer.MAX_VALUE;
-
-    final HTableDescriptor hashTableDescriptor = new HTableDescriptor(
-        KijiManagedHBaseTableName.getSchemaHashTableName(kijiURI.getInstance()).toString());
-    final HColumnDescriptor hashColumnDescriptor = SchemaPlatformBridge.get()
-        .createHColumnDescriptorBuilder(SCHEMA_COLUMN_FAMILY_BYTES)
-        .setMaxVersions(maxVersions)
-        .setCompressionType("none")
-        .setInMemory(false)
-        .setBlockCacheEnabled(true)
-        .setTimeToLive(HConstants.FOREVER)
-        .setBloomType("NONE")
-        .build();
-    hashTableDescriptor.addFamily(hashColumnDescriptor);
-    admin.createTable(hashTableDescriptor);
-
-    final HTableDescriptor idTableDescriptor = new HTableDescriptor(
-        KijiManagedHBaseTableName.getSchemaIdTableName(kijiURI.getInstance()).toString());
-    final HColumnDescriptor idColumnDescriptor = SchemaPlatformBridge.get()
-        .createHColumnDescriptorBuilder(SCHEMA_COLUMN_FAMILY_BYTES)
-        .setMaxVersions(maxVersions)
-        .setCompressionType("none")
-        .setInMemory(false)
-        .setBlockCacheEnabled(true)
-        .setTimeToLive(HConstants.FOREVER)
-        .setBloomType("NONE")
-        .build();
-    idTableDescriptor.addFamily(idColumnDescriptor);
-    admin.createTable(idTableDescriptor);
-
-    final HBaseSchemaTable schemaTable = new HBaseSchemaTable(
-        newSchemaHashTable(kijiURI, conf, tableFactory),
-        newSchemaIdTable(kijiURI, conf, tableFactory),
-        newLock(kijiURI, lockFactory),
-        kijiURI);
-    try {
-      schemaTable.setSchemaIdCounter(0L);
-      schemaTable.registerPrimitiveSchemas();
-    } finally {
-      ResourceUtils.closeOrLog(schemaTable);
-    }
-    */
   }
 
   /**
@@ -700,13 +656,17 @@ public AsyncSchemaTable(
    * @throws IOException on I/O error.
    */
   private void setSchemaIdCounter(long counter) throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    mSchemaIdTable.put(new Put(SCHEMA_COUNTER_ROW_NAME_BYTES)
-        .add(SCHEMA_COLUMN_FAMILY_BYTES, SCHEMA_COLUMN_QUALIFIER_BYTES, Bytes.toBytes(counter)));
-    */
+    final PutRequest put = new PutRequest(
+        mSchemaIdTableName,
+        SCHEMA_COUNTER_ROW_NAME_BYTES,
+        SCHEMA_COLUMN_FAMILY_BYTES,
+        SCHEMA_COLUMN_QUALIFIER_BYTES,
+        Bytes.fromLong(counter));
+    try {
+      mHBClient.put(put).join();
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
+    }
   }
 
   /**
@@ -749,10 +709,6 @@ public AsyncSchemaTable(
   /** {@inheritDoc} */
   @Override
   public SchemaTableBackup toBackup() throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot backup SchemaTable instance in state %s.", state);
@@ -760,13 +716,13 @@ public AsyncSchemaTable(
     List<SchemaTableEntry> entries = Lists.newArrayList();
     try {
       /** Entries from the schema hash table. */
-      /*final Set<SchemaEntry> hashTableEntries = loadSchemaHashTable(mSchemaHashTable);
+      final Set<SchemaEntry> hashTableEntries = loadSchemaHashTable(mSchemaHashTableName);
       if (!checkConsistency(hashTableEntries)) {
         LOG.error("Schema hash table is inconsistent");
       }
 
       /** Entries from the schema ID table. */
-      /*final Set<SchemaEntry> idTableEntries = loadSchemaIdTable(mSchemaIdTable);
+      final Set<SchemaEntry> idTableEntries = loadSchemaIdTable(mSchemaIdTableName);
       if (!checkConsistency(idTableEntries)) {
         LOG.error("Schema hash table is inconsistent");
       }
@@ -783,26 +739,21 @@ public AsyncSchemaTable(
       mZKLock.unlock();
     }
     return SchemaTableBackup.newBuilder().setEntries(entries).build();
-    */
   }
 
   /** {@inheritDoc} */
   @Override
   public void fromBackup(final SchemaTableBackup backup) throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot restore backup to SchemaTable instance in state %s.", state);
     mZKLock.lock();
     try {
       /** Entries from the schema hash table. */
-      /*final Set<SchemaEntry> hashTableEntries = loadSchemaHashTable(mSchemaHashTable);
+      final Set<SchemaEntry> hashTableEntries = loadSchemaHashTable(mSchemaHashTableName);
 
       /** Entries from the schema ID table. */
-      /*final Set<SchemaEntry> idTableEntries = loadSchemaIdTable(mSchemaIdTable);
+      final Set<SchemaEntry> idTableEntries = loadSchemaIdTable(mSchemaIdTableName);
 
       final Set<SchemaEntry> mergedEntries = new HashSet<SchemaEntry>(hashTableEntries);
       mergedEntries.addAll(idTableEntries);
@@ -832,8 +783,6 @@ public AsyncSchemaTable(
       final long nextSchemaId = maxSchemaId + 1;
 
       flush();
-      SchemaPlatformBridge.get().setWriteBufferSize(mSchemaIdTable, schemaTableEntries.size() + 1);
-      SchemaPlatformBridge.get().setWriteBufferSize(mSchemaHashTable, schemaTableEntries.size());
 
       // Restored schema entries share the same timestamp:
       final long timestamp = System.currentTimeMillis();
@@ -845,7 +794,6 @@ public AsyncSchemaTable(
     } finally {
       mZKLock.unlock();
     }
-    */
   }
 
   /**
@@ -942,101 +890,119 @@ public AsyncSchemaTable(
   /**
    * Loads and check the consistency of the schema hash table.
    *
-   * @param hashTable schema hash HTable.
+   * @param hashTableName schema hash table name.
    * @return the set of schema entries from the schema hash table.
    * @throws IOException on I/O error.
    */
-  // TODO(gabe): Replace this with asynchbase
-
-  /*
-private Set<SchemaEntry> loadSchemaHashTable(HTableInterface hashTable) throws IOException {
-  LOG.info("Loading entries from schema hash table.");
-  final Set<SchemaEntry> entries = new HashSet<SchemaEntry>();
-  int hashTableRowCounter = 0;
-  final ResultScanner hashTableScanner = hashTable.getScanner(
-      new Scan()
-          .addColumn(SCHEMA_COLUMN_FAMILY_BYTES, SCHEMA_COLUMN_QUALIFIER_BYTES)
-          .setMaxVersions());  // retrieve all versions
-  for (Result result : hashTableScanner) {
-    hashTableRowCounter += 1;
-    if (result.getRow().length != Hasher.HASH_SIZE_BYTES) {
-      LOG.error(String.format(
-          "Invalid schema hash table row key size: %s, expecting %d bytes.",
-          new BytesKey(result.getRow()), Hasher.HASH_SIZE_BYTES));
-      continue;
+  private Set<SchemaEntry> loadSchemaHashTable(byte[] hashTableName) throws IOException {
+    LOG.info("Loading entries from schema hash table.");
+    final Set<SchemaEntry> entries = new HashSet<SchemaEntry>();
+    int hashTableRowCounter = 0;
+    final Scanner scanner = mHBClient.newScanner(hashTableName);
+    scanner.setFamily(SCHEMA_COLUMN_FAMILY_BYTES);
+    scanner.setQualifier(SCHEMA_COLUMN_QUALIFIER_BYTES);
+    scanner.setMaxVersions(Integer.MAX_VALUE); // retrieve all versions
+    ArrayList<ArrayList<KeyValue>> resultsFull = null;
+    try {
+      resultsFull = scanner.nextRows(1).join();
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
     }
-    final BytesKey rowKey = new BytesKey(result.getRow());
-    for (KeyValue keyValue : result.getColumn(SCHEMA_COLUMN_FAMILY_BYTES,
-                                              SCHEMA_COLUMN_QUALIFIER_BYTES)) {
-      try {
-        final SchemaEntry entry = fromAvroEntry(decodeSchemaEntry(keyValue.getValue()));
-        entries.add(entry);
-        if (!getSchemaHash(entry.getSchema()).equals(entry.getHash())) {
-          LOG.error(String.format(
-              "Invalid schema hash table entry: computed schema hash %s does not match entry %s",
-              getSchemaHash(entry.getSchema()), entry));
-        }
-        if (!rowKey.equals(entry.getHash())) {
-          LOG.error(String.format("Inconsistent schema hash table: "
-              + "hash encoded in row key %s does not match schema entry: %s",
-              rowKey, entry));
-        }
-      } catch (IOException ioe) {
+    while (resultsFull != null && resultsFull.size() > 0) {
+      hashTableRowCounter += 1;
+      final ArrayList<KeyValue> results = resultsFull.get(0);
+      if (results.get(0).key().length != Hasher.HASH_SIZE_BYTES) {
         LOG.error(String.format(
-            "Unable to decode schema hash table entry for row %s, timestamp %d: %s",
-            rowKey, keyValue.getTimestamp(), ioe));
-        continue;
-      } catch (AvroRuntimeException are) {
-        LOG.error(String.format(
-            "Unable to decode schema hash table entry for row %s, timestamp %d: %s",
-            rowKey, keyValue.getTimestamp(), are));
+                "Invalid schema hash table row key size: %s, expecting %d bytes.",
+                new BytesKey(results.get(0).key()), Hasher.HASH_SIZE_BYTES));
         continue;
       }
+
+      final BytesKey rowKey = new BytesKey(results.get(0).key());
+      for (KeyValue keyValue : results) {
+        try {
+          final SchemaEntry entry = fromAvroEntry(decodeSchemaEntry(keyValue.value()));
+          entries.add(entry);
+          if (!getSchemaHash(entry.getSchema()).equals(entry.getHash())) {
+            LOG.error(
+                String.format(
+                    "Invalid schema hash table entry: computed schema hash %s does not match entry %s",
+                    getSchemaHash(entry.getSchema()),
+                    entry));
+          }
+          if (!rowKey.equals(entry.getHash())) {
+            LOG.error(
+                String.format(
+                    "Inconsistent schema hash table: "
+                        + "hash encoded in row key %s does not match schema entry: %s",
+                    rowKey, entry));
+          }
+        } catch (IOException ioe) {
+          LOG.error(
+              String.format(
+                  "Unable to decode schema hash table entry for row %s, timestamp %d: %s",
+                  rowKey, keyValue.timestamp(), ioe));
+          continue;
+        } catch (AvroRuntimeException are) {
+          LOG.error(
+              String.format(
+                  "Unable to decode schema hash table entry for row %s, timestamp %d: %s",
+                  rowKey, keyValue.timestamp(), are));
+          continue;
+        }
+      }
+      try {
+        resultsFull = scanner.nextRows(1).join();
+      } catch (Exception e) {
+        ZooKeeperUtils.wrapAndRethrow(e);
+      }
     }
+    LOG.info(String.format(
+            "Schema hash table has %d rows and %d entries.", hashTableRowCounter, entries.size()));
+    return entries;
   }
-  LOG.info(String.format(
-      "Schema hash table has %d rows and %d entries.", hashTableRowCounter, entries.size()));
-  return entries;
-} */
 
 /**
  * Loads and check the consistency of the schema ID table.
  *
- * @param idTable schema ID HTable.
+ * @param idTableName schema ID table name.
  * @return the set of schema entries from the schema ID table.
  * @throws IOException on I/O error.
  */
-// TODO(gabe): Replace this with asynchbase
-
-  /*
-private Set<SchemaEntry> loadSchemaIdTable(HTableInterface idTable) throws IOException {
+private Set<SchemaEntry> loadSchemaIdTable(byte[] idTableName) throws IOException {
   LOG.info("Loading entries from schema ID table.");
   int idTableRowCounter = 0;
   final Set<SchemaEntry> entries = new HashSet<SchemaEntry>();
-  final ResultScanner idTableScanner = idTable.getScanner(
-      new Scan()
-      .addColumn(SCHEMA_COLUMN_FAMILY_BYTES, SCHEMA_COLUMN_QUALIFIER_BYTES)
-      .setMaxVersions());  // retrieve all versions
-  for (Result result : idTableScanner) {
+  final Scanner scanner = mHBClient.newScanner(idTableName);
+  scanner.setFamily(SCHEMA_COLUMN_FAMILY_BYTES);
+  scanner.setQualifier(SCHEMA_COLUMN_QUALIFIER_BYTES);
+  scanner.setMaxVersions(Integer.MAX_VALUE);
+  ArrayList<ArrayList<KeyValue>> resultsFull = null;
+  try {
+    resultsFull = scanner.nextRows(1).join();
+  } catch (Exception e) {
+    ZooKeeperUtils.wrapAndRethrow(e);
+  }
+  while (resultsFull != null && resultsFull.size() > 0) {
     // Skip the schema ID counter row:
-    if (Arrays.equals(result.getRow(), SCHEMA_COUNTER_ROW_NAME_BYTES)) {
+    final ArrayList<KeyValue> results = resultsFull.get(0);
+    if (Arrays.equals(results.get(0).key(), SCHEMA_COUNTER_ROW_NAME_BYTES)) {
       continue;
     }
     idTableRowCounter += 1;
-    final BytesKey rowKey = new BytesKey(result.getRow());
+    final BytesKey rowKey = new BytesKey(results.get(0).key());
 
     long schemaId = -1;
     try {
-      schemaId = new ByteStreamArray(result.getRow()).readVarInt64();
+      schemaId = new ByteStreamArray(results.get(0).key()).readVarInt64();
     } catch (EncodingException exn) {
       LOG.error(String.format("Unable to decode schema ID encoded in row key %s: %s",
           rowKey, exn));
     }
 
-    for (KeyValue keyValue : result.getColumn(SCHEMA_COLUMN_FAMILY_BYTES,
-                                              SCHEMA_COLUMN_QUALIFIER_BYTES)) {
+    for (KeyValue keyValue : results) {
       try {
-        final SchemaEntry entry = fromAvroEntry(decodeSchemaEntry(keyValue.getValue()));
+        final SchemaEntry entry = fromAvroEntry(decodeSchemaEntry(keyValue.value()));
         entries.add(entry);
         if (!getSchemaHash(entry.getSchema()).equals(entry.getHash())) {
           LOG.error(String.format("Invalid schema hash table entry with row key %s: "
@@ -1050,32 +1016,32 @@ private Set<SchemaEntry> loadSchemaIdTable(HTableInterface idTable) throws IOExc
       } catch (IOException ioe) {
         LOG.error(String.format(
             "Unable to decode schema ID table entry for row %s, timestamp %d: %s",
-            rowKey, keyValue.getTimestamp(), ioe));
+            rowKey, keyValue.timestamp(), ioe));
         continue;
       } catch (AvroRuntimeException are) {
         LOG.error(String.format(
             "Unable to decode schema ID table entry for row %s, timestamp %d: %s",
-            rowKey, keyValue.getTimestamp(), are));
+            rowKey, keyValue.timestamp(), are));
         continue;
       }
+    }
+    try {
+      resultsFull = scanner.nextRows(1).join();
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
     }
   }
   LOG.info(String.format(
       "Schema ID table has %d rows and %d entries.", idTableRowCounter, entries.size()));
   return entries;
-} */
+}
 
 /** {@inheritDoc} */
   @Override
   public String toString() {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    return Objects.toStringHelper(HBaseSchemaTable.class)
+    return Objects.toStringHelper(AsyncSchemaTable.class)
         .add("uri", mURI)
         .add("state", mState.get())
         .toString();
-    */
   }
 }
