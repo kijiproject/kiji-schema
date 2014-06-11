@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2014 WibiData, Inc.
+ * (c) Copyright 2012 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.impl.async;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -28,11 +28,21 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import org.kiji.schema.EntityId;
+import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiCell;
+import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiTable;
+import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
 
-public class TestHBaseKijiTableWriter extends KijiClientTest {
+public class TestAsyncKijiTableWriter extends KijiClientTest {
+  private AsyncKiji mAsyncKiji;
+  private KijiTable mAsyncTable;
   private Kiji mKiji;
   private KijiTable mTable;
   private KijiTableWriter mWriter;
@@ -47,18 +57,20 @@ public class TestHBaseKijiTableWriter extends KijiClientTest {
     // Populate the environment.
     mKiji = new InstanceBuilder(getKiji())
         .withTable("user", layout)
-            .withRow("foo")
-                .withFamily("info")
-                    .withQualifier("name").withValue(1L, "foo-val")
-                    .withQualifier("visits").withValue(1L, 42L)
-            .withRow("bar")
-                .withFamily("info")
-                    .withQualifier("visits").withValue(1L, 100L)
+        .withRow("foo")
+        .withFamily("info")
+        .withQualifier("name").withValue(1L, "foo-val")
+        .withQualifier("visits").withValue(1L, 42L)
+        .withRow("bar")
+        .withFamily("info")
+        .withQualifier("visits").withValue(1L, 100L)
         .build();
 
+    mAsyncKiji = new AsyncKiji(mKiji.getURI());
     // Fill local variables.
     mTable = mKiji.openTable("user");
-    mWriter = mTable.openTableWriter();
+    mAsyncTable = mAsyncKiji.openTable("user");
+    mWriter = mAsyncTable.openTableWriter(); //mTable.openTableWriter();
     mReader = mTable.openTableReader();
   }
 
@@ -67,6 +79,8 @@ public class TestHBaseKijiTableWriter extends KijiClientTest {
     mWriter.close();
     mReader.close();
     mTable.release();
+    mAsyncTable.release();
+    mAsyncKiji.release();
   }
 
   @Test

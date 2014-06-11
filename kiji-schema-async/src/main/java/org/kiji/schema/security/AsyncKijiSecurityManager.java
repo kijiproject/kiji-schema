@@ -25,14 +25,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.google.common.base.Charsets;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.security.access.AccessControlLists;
 import org.apache.hadoop.hbase.security.access.AccessControllerProtocol;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.security.access.UserPermission;
@@ -46,11 +43,7 @@ import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
-import org.kiji.schema.impl.Versions;
-import org.kiji.schema.impl.hbase.HBaseKiji;
 import org.kiji.schema.util.Lock;
-import org.kiji.schema.zookeeper.ZooKeeperLock;
-import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
  * The default implementation of KijiSecurityManager.

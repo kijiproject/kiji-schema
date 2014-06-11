@@ -20,36 +20,25 @@
 package org.kiji.schema.impl.async;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Objects;
-import com.google.common.base.Preconditions;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiMetaTable;
-import org.kiji.schema.KijiSchemaTable;
-import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.KeyValueBackup;
 import org.kiji.schema.avro.MetaTableBackup;
-import org.kiji.schema.avro.TableBackup;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.avro.TableLayoutsBackup;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
-import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.layout.KijiTableLayoutDatabase;
 import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
 
 /**

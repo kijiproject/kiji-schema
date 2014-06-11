@@ -20,7 +20,6 @@ package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -50,12 +49,11 @@ import org.kiji.schema.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiResult;
-import org.kiji.schema.NoSuchColumnException;
-import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.impl.BoundColumnReaderSpec;
-import org.kiji.schema.layout.ColumnReaderSpec;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
-import org.kiji.schema.layout.impl.CellDecoderProvider;
+import org.kiji.schema.KijiResultIterator;
+import org.kiji.schema.impl.hbase.HBaseNonPagedVersionIterator;
+import org.kiji.schema.impl.hbase.HBasePagedVersionIterator;
+import org.kiji.schema.impl.hbase.HBaseQualifierIterator;
+import org.kiji.schema.impl.hbase.HBaseResultIterator;
 
 /** HBase implementation of KijiResult. */
 @ApiAudience.Private
@@ -329,7 +327,7 @@ public AsyncKijiResult(
   }
 
   /** An iterator across all cells requested by the data request which defines this KijiResult. */
-  private final class FullRequestIterator implements Iterator<KijiCell<?>> {
+  private final class FullRequestIterator implements KijiResultIterator<Object> {
 
     private final Iterator<KijiCell<Object>> mUnpagedIterator;
     private final Iterator<KijiColumnName> mPagedColumns;
@@ -337,13 +335,13 @@ public AsyncKijiResult(
     private KijiCell<Object> mNextCell;
 
     /** Initialize a new FullRequestIterator. */
+
     private FullRequestIterator() {
       // TODO(gabe): Replace this with asynchbase
       throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-      /*
+    /*
       mUnpagedIterator = Iterators.transform(
-          new AsyncResultIterator(mUnpagedResult), mKeyValueToKijiCell);
+          new HBaseResultIterator(mUnpagedResult), mKeyValueToKijiCell);
 
       final Set<KijiColumnName> pagedColumns = Sets.newHashSet();
       for (KijiDataRequest.Column columnRequest : mDataRequest.getColumns()) {
@@ -363,6 +361,9 @@ public AsyncKijiResult(
      * @return the next cell from the underlying iterators, or null if none exist.
      */
     private KijiCell<Object> getNextCell() {
+      // TODO(gabe): Replace this with asynchbase
+      throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+      /*
       if (mUnpagedIterator.hasNext()) {
         return mUnpagedIterator.next();
       } else if (null != mCurrentPagedIterator && mCurrentPagedIterator.hasNext()) {
@@ -373,6 +374,7 @@ public AsyncKijiResult(
       } else {
         return null;
       }
+      */
     }
 
     /** {@inheritDoc} */
@@ -383,8 +385,8 @@ public AsyncKijiResult(
 
     /** {@inheritDoc} */
     @Override
-    public KijiCell<?> next() {
-      final KijiCell<?> nextCell = mNextCell;
+    public KijiCell<Object> next() {
+      final KijiCell<Object> nextCell = mNextCell;
       if (null == nextCell) {
         throw new NoSuchElementException();
       } else {
@@ -795,19 +797,21 @@ private Result filterToMatchRequest(
 
   /** {@inheritDoc} */
   @Override
-  public <T> Iterator<KijiCell<T>> iterator(
+  public <T> KijiResultIterator<T> iterator(
       final KijiColumnName column
   ) {
     // TODO(gabe): Replace this with asynchbase
     throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
     /*
     final KijiDataRequest.Column columnRequest = mDataRequest.getRequestForColumn(column);
     Preconditions.checkNotNull(columnRequest, "No request for column: %s in request: %s",
         column, mDataRequest);
+    Preconditions.checkArgument(column.isFullyQualified()
+            || mTable.getLayout().getFamilyMap().get(column.getFamily()).isMapType(),
+        "May only iterate over a fully qualified column or a map-type family.");
     final KijiCellDecoder<T> decoder = getDecoder(column);
     if (columnRequest.isPagingEnabled()) {
-      final AsyncQualifierIterator optionalQualifierIterator;
+      final HBaseQualifierIterator optionalQualifierIterator;
       try {
         optionalQualifierIterator = column.isFullyQualified()
             ? null
@@ -832,13 +836,12 @@ private Result filterToMatchRequest(
           decoder,
           mEntityId,
           new HBaseResultIterator(mUnpagedResult, columnSlice.mStart, columnSlice.mEnd));
-    }
-    */
+    } */
   }
 
   /** {@inheritDoc} */
   @Override
-  public Iterator<KijiCell<?>> iterator() {
+  public KijiResultIterator<Object> iterator() {
     return new FullRequestIterator();
   }
 }
