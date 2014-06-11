@@ -29,21 +29,15 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
@@ -52,11 +46,8 @@ import org.kiji.schema.avro.SystemTableEntry;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.Versions;
-import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.CloseableIterable;
-import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.ProtocolVersion;
-import org.kiji.schema.util.ResourceUtils;
 
 /**
  * <p>The Kiji system table that is stored in HBase.</p>
