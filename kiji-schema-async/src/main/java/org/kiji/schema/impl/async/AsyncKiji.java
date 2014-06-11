@@ -55,8 +55,6 @@ import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
-// TODO(gabe): REMOVE THESE
-
 /**
  * Kiji instance class that contains configuration and table information.
  * Multiple instances of Kiji can be installed onto a single HBase cluster.
@@ -78,15 +76,13 @@ public final class AsyncKiji implements Kiji {
       "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
       CLEANUP_LOG.getName());
 
+  /** The hadoop configuration. */
+  private final Configuration mConf;
+
   /** HBaseClient for managing AsyncHBase tables */
   private final HBaseClient mHBClient;
 
-  // TODO(gabe): DELETE THIS! PART OF HACK!
-  /** Factory for HTable instances. */
-  //private final HTableInterfaceFactory mHTableFactory;
-  private final Kiji mKiji;
-
-  /** URI for this HBaseKiji instance. */
+  /** URI for this AsyncKiji instance. */
   private final KijiURI mURI;
 
   /** States of a Kiji instance. */
@@ -98,7 +94,7 @@ public final class AsyncKiji implements Kiji {
     UNINITIALIZED,
     /**
      * Finished initialization.  Both retain counters and DebugResourceTracker counters have been
-     * incremented.  Resources are successfully opened and this HBaseKiji's methods may be used.
+     * incremented.  Resources are successfully opened and this AsyncKiji's methods may be used.
      */
     OPEN,
     /**
@@ -110,7 +106,7 @@ public final class AsyncKiji implements Kiji {
   /** Tracks the state of this Kiji instance. */
   private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
-  /** Retain counter. When decreased to 0, the HBase Kiji may be closed and disposed of. */
+  /** Retain counter. When decreased to 0, the AsyncKiji may be closed and disposed of. */
   private final AtomicInteger mRetainCount = new AtomicInteger(0);
 
   /**
@@ -147,8 +143,11 @@ public final class AsyncKiji implements Kiji {
    */
   private KijiSecurityManager mSecurityManager = null;
 
+  AsyncKiji(KijiURI kijiURI) throws IOException {
+    this(kijiURI, new Configuration(), new HBaseClient(kijiURI.getZooKeeperEnsemble()));
+  }
   /**
-   * Creates a new <code>HBaseKiji</code> instance.
+   * Creates a new <code>AsyncKiji</code> instance.
    *
    * <p> Should only be used by Kiji.Factory.open().
    * <p> Caller does not need to use retain(), but must call release() when done with it.
@@ -156,33 +155,41 @@ public final class AsyncKiji implements Kiji {
    * @param kijiURI the KijiURI.
    * @throws IOException on I/O error.
    */
-  AsyncKiji(KijiURI kijiURI) throws IOException {
-    mURI = Preconditions.checkNotNull(kijiURI);
-
-    // TODO(gabe): TOTAL HACK! FIX THIS ASAP!!
-    mKiji = Kiji.Factory.open(mURI);
-    mHBClient = new HBaseClient(mURI.getZooKeeperEnsemble());
-    mHBClient.setFlushInterval((short) 1000);
+  AsyncKiji(KijiURI kijiURI, Configuration conf, HBaseClient hbClient) throws IOException {
+    // Deep copy the configuration.
+    mConf = new Configuration(conf);
 
     // Validate arguments.
-    // TODO(gabe): Update to work with AsyncHBase
-    //mHTableFactory = Preconditions.checkNotNull(tableFactory);
+    mHBClient = Preconditions.checkNotNull(hbClient);
+    mURI = Preconditions.checkNotNull(kijiURI);
+
+    // Configure the ZooKeeper quorum:
+    mConf.setStrings("hbase.zookeeper.quorum", mURI.getZookeeperQuorum().toArray(new String[0]));
+    mConf.setInt("hbase.zookeeper.property.clientPort", mURI.getZookeeperClientPort());
 
     // Check for an instance name.
     Preconditions.checkArgument(mURI.getInstance() != null,
         "KijiURI '%s' does not specify a Kiji instance name.", mURI);
 
+
+    if (LOG.isDebugEnabled()) {
+      Debug.logConfiguration(mConf);
+      LOG.debug(
+          "Opening kiji instance '{}'"
+              + " with client software version '{}'"
+              + " and client data version '{}'.",
+          mURI, VersionInfo.getSoftwareVersion(), VersionInfo.getClientDataVersion());
+    }
+
     try {
-      // TODO(gabe): REPLACE THESE!!
-      mSystemTable = mKiji.getSystemTable();
+      mSystemTable = new AsyncSystemTable(mURI, mHBClient);
     } catch (KijiNotInstalledException kie) {
       // Some clients handle this unchecked Exception so do the same here.
       close();
       throw kie;
     }
-    // TODO(gabe): REPLACE THESE!
-    mSchemaTable = mKiji.getSchemaTable();
-    mMetaTable = mKiji.getMetaTable();
+    mSchemaTable = new AsyncSchemaTable(mURI, mHBClient);
+    mMetaTable = new AsyncMetaTable(mURI, mSchemaTable, mHBClient);
 
     LOG.debug("Kiji instance '{}' is now opened.", mURI);
 
@@ -312,6 +319,10 @@ public final class AsyncKiji implements Kiji {
     Preconditions.checkState(state == State.OPEN,
         "Cannot get meta table for Kiji instance %s in state %s.", this, state);
     return mMetaTable;
+  }
+
+  public HBaseClient getHBaseClient() {
+    return mHBClient;
   }
 
   /** {@inheritDoc} */
@@ -667,8 +678,10 @@ public final class AsyncKiji implements Kiji {
 
     LOG.debug("Closing {}.", this);
 
+    ResourceUtils.closeOrLog(mSystemTable);
+    ResourceUtils.closeOrLog(mSchemaTable);
+    ResourceUtils.closeOrLog(mMetaTable);
     ResourceUtils.closeOrLog(mInstanceMonitor);
-    ResourceUtils.releaseOrLog(mKiji);
 
     synchronized (this) {
       ResourceUtils.closeOrLog(mSecurityManager);
@@ -735,10 +748,10 @@ public final class AsyncKiji implements Kiji {
   protected void finalize() throws Throwable {
     final State state = mState.get();
     if (state != State.CLOSED) {
-      CLEANUP_LOG.warn("Finalizing unreleased HBaseKiji instance {} in state {}.", this, state);
+      CLEANUP_LOG.warn("Finalizing unreleased AsyncKiji instance {} in state {}.", this, state);
       if (CLEANUP_LOG.isDebugEnabled()) {
         CLEANUP_LOG.debug(
-            "HBaseKiji '{}' was constructed through:\n{}",
+            "AsyncKiji '{}' was constructed through:\n{}",
             mURI,
             mConstructorStack);
       }
