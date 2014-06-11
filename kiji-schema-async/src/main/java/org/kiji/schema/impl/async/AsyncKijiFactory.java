@@ -46,7 +46,8 @@ public final class AsyncKijiFactory implements KijiFactory {
   /** {@inheritDoc} */
   @Override
   public Kiji open(KijiURI uri, Configuration conf) throws IOException {
-    return new AsyncKiji(uri);
+    HBaseClient hbClient = new HBaseClient(uri.getZooKeeperEnsemble());
+    return new AsyncKiji(uri, conf, hbClient);
   }
 
   /** {@inheritDoc} */

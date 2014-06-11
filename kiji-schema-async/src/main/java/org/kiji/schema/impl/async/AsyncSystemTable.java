@@ -26,28 +26,44 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.util.Bytes;
+import org.hbase.async.Bytes;
+import org.hbase.async.GetRequest;
+import org.hbase.async.HBaseClient;
+import org.hbase.async.KeyValue;
+import org.hbase.async.PutRequest;
+import org.hbase.async.Scanner;
+import org.hbase.async.TableNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.SystemTableBackup;
 import org.kiji.schema.avro.SystemTableEntry;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
-import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.Versions;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.CloseableIterable;
+import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.ProtocolVersion;
+import org.kiji.schema.util.ResourceUtils;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
  * <p>The Kiji system table that is stored in HBase.</p>
@@ -80,12 +96,13 @@ public final class AsyncSystemTable implements KijiSystemTable {
       "org/kiji/schema/system-default.properties";
 
   /** URI of the Kiji instance this system table belongs to. */
-  // TODO(gabe): Replace with asynchbase
-  //private final KijiURI mURI;
+  private final KijiURI mURI;
 
-  /** The HTable that stores the Kiji instance properties. */
-  // TODO(gabe): Replace with asynchbase
-  //private final HTableInterface mTable;
+  /** The HBaseClient of the Kiji instance this system table belongs to. */
+  private final HBaseClient mHBClient;
+
+  /** HBase table name */
+  private final byte[] mTableName;
 
   /** States of a SystemTable instance. */
   private static enum State {
@@ -101,67 +118,40 @@ public final class AsyncSystemTable implements KijiSystemTable {
   private String mConstructorStack = "";
 
   /**
-   * Creates a new HTableInterface for the Kiji system table.
+   * Gets the name of the table for the Kiji system table.
    *
    * @param kijiURI The KijiURI.
-   * @param conf The Hadoop configuration.
-   * @param factory HTableInterface factory.
-   * @return a new HTableInterface for the Kiji system table.
+   * @param hbClient HBaseClient for this Kiji.
+   * @return a byte array for the name of the Kiji system table.
    * @throws IOException on I/O error.
    * @throws KijiNotInstalledException if the Kiji instance does not exist.
    */
-  // TODO(gabe): Replace this with asynchbase
-
-  /*
-  public static HTableInterface newSystemTable(
-    KijiURI kijiURI,
-    Configuration conf,
-    HTableInterfaceFactory factory)
-    throws IOException {
-  final String tableName =
-      KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString();
-  try {
-    return factory.create(conf, tableName);
-  } catch (TableNotFoundException tnfe) {
-    throw new KijiNotInstalledException(
-        String.format("Kiji instance %s is not installed.", kijiURI),
-        kijiURI);
+  public static byte[] getSystemTableName(
+      KijiURI kijiURI,
+      HBaseClient hbClient) {
+    final byte[] tableName =
+        KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toBytes();
+    try {
+      hbClient.ensureTableExists(tableName);
+      return tableName;
+    } catch (TableNotFoundException tnfe) {
+      throw new KijiNotInstalledException(
+          String.format("Kiji instance %s is not installed.", kijiURI),
+          kijiURI);
+    }
   }
-} */
-
-/**
- * Connect to the HBase system table inside a Kiji instance.
- *
- * @param kijiURI The KijiURI.
- * @param conf the Hadoop configuration.
- * @param factory HTableInterface factory.
- * @throws IOException If there is an error.
- * @throws KijiNotInstalledException if the Kiji instance does not exist.
- */
-// TODO(gabe): Replace this with asynchbase
-
-  /*
-public AsyncSystemTable(
-    KijiURI kijiURI,
-    Configuration conf,
-    HTableInterfaceFactory factory)
-    throws IOException {
-  this(kijiURI, newSystemTable(kijiURI, conf, factory));
-} */
 
 /**
  * Wrap an existing HTable connection that is assumed to be the table that stores the
  * Kiji instance properties.
  *
  * @param uri URI of the Kiji instance this table belongs to.
- * @param htable An HTable to wrap.
+ * @param hbClient An HTable to wrap.
  */
-// TODO(gabe): Replace this with asynchbase
-
-  /*
-public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
+public AsyncSystemTable(KijiURI uri, HBaseClient hbClient) {
   mURI = uri;
-  mTable = htable;
+  mHBClient = hbClient;
+  mTableName = getSystemTableName(mURI, mHBClient);
 
   if (CLEANUP_LOG.isDebugEnabled()) {
     mConstructorStack = Debug.getStackTrace();
@@ -169,7 +159,7 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
   final State oldState = mState.getAndSet(State.OPEN);
   Preconditions.checkState(oldState == State.UNINITIALIZED,
       "Cannot open SystemTable instance in state %s.", oldState);
-} */
+}
 
 /** {@inheritDoc} */
   @Override
@@ -178,7 +168,7 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
     Preconditions.checkState(state == State.OPEN,
         "Cannot get data version from SystemTable instance in state %s.", state);
     byte[] result = getValue(KEY_DATA_VERSION);
-    return result == null ? null : ProtocolVersion.parse(Bytes.toString(result));
+    return result == null ? null : ProtocolVersion.parse(new String(result));
   }
 
   /** {@inheritDoc} */
@@ -187,7 +177,7 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot set data version in SystemTable instance in state %s.", state);
-    putValue(KEY_DATA_VERSION, Bytes.toBytes(version.toString()));
+    putValue(KEY_DATA_VERSION, Bytes.UTF8(version.toString()));
   }
 
   /** {@inheritDoc} */
@@ -199,48 +189,33 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
     byte[] result = getValue(SECURITY_PROTOCOL_VERSION);
     return result == null
         ? Versions.UNINSTALLED_SECURITY_VERSION
-        : ProtocolVersion.parse(Bytes.toString(result));
+        : ProtocolVersion.parse(new String(result));
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized void setSecurityVersion(ProtocolVersion version) throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     Preconditions.checkNotNull(version);
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot set security version in SystemTable instance in state %s.", state);
     Kiji.Factory.open(mURI).getSecurityManager().checkCurrentGrantAccess();
-    putValue(SECURITY_PROTOCOL_VERSION, Bytes.toBytes(version.toString()));
-    */
+    putValue(SECURITY_PROTOCOL_VERSION, Bytes.UTF8(version.toString()));
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiURI getKijiURI() {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     return mURI;
-    */
   }
 
   /** {@inheritDoc} */
   @Override
   public synchronized void close() throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State oldState = mState.getAndSet(State.CLOSED);
-    Preconditions.checkState(oldState == State.OPEN,
+    Preconditions.checkState(
+        oldState == State.OPEN,
         "Cannot close KijiSystemTable instance in state %s.", oldState);
-    mTable.close();
-    */
   }
 
   /** {@inheritDoc} */
@@ -259,48 +234,51 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
   /** {@inheritDoc} */
   @Override
   public byte[] getValue(String key) throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get value from SystemTable instance in state %s.", state);
-    Get get = new Get(Bytes.toBytes(key));
-    get.addColumn(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0]);
-    Result result = mTable.get(get);
-    return result.getValue(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0]);
-    */
+
+    final GetRequest get = new GetRequest(
+        mTableName,
+        Bytes.UTF8(key),
+        Bytes.UTF8(VALUE_COLUMN_FAMILY),
+        new byte[0]);
+    try {
+      final ArrayList<KeyValue> results = mHBClient.get(get).join();
+      return (results.size() == 0) ? null : results.get(0).value();
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
+    }
+    return null;
   }
 
   /** {@inheritDoc} */
   @Override
   public void putValue(String key, byte[] value) throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot put value into SystemTable instance in state %s.", state);
-    Put put = new Put(Bytes.toBytes(key));
-    put.add(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0], value);
-    mTable.put(put);
-    */
+    PutRequest put = new PutRequest(
+        mTableName,
+        Bytes.UTF8(key),
+        Bytes.UTF8(VALUE_COLUMN_FAMILY),
+        new byte[0],
+        value);
+    try {
+      mHBClient.put(put).join();
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
+    }
   }
 
   /** {@inheritDoc} */
   @Override
   public CloseableIterable<SimpleEntry<String, byte[]>> getAll() throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get all from SystemTable instance in state %s.", state);
-    return new HBaseSystemTableIterable(mTable.getScanner(Bytes.toBytes(VALUE_COLUMN_FAMILY)));
-    */
+    final Scanner scanner = mHBClient.newScanner(mTableName);
+    return new AsyncSystemTableIterable(scanner);
   }
 
   /**
@@ -331,7 +309,7 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
     for (Map.Entry<String, String> entry : newProperties.entrySet()) {
       String key = entry.getKey();
       String value = entry.getValue();
-      putValue(key, Bytes.toBytes(value));
+      putValue(key, Bytes.UTF8(value));
     }
   }
 
@@ -341,16 +319,16 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
    * @param admin The HBase cluster to install into.
    * @param kijiURI The KijiURI.
    * @param conf The Hadoop configuration.
-   * @param factory HTableInterface factory.
+   * @param hbClient HBaseClient for this Kiji.
    * @throws IOException If there is an error.
    */
   public static void install(
       HBaseAdmin admin,
       KijiURI kijiURI,
       Configuration conf,
-      HTableInterfaceFactory factory)
+      HBaseClient hbClient)
       throws IOException {
-    install(admin, kijiURI, conf, Collections.<String, String>emptyMap(), factory);
+    install(admin, kijiURI, conf, Collections.<String, String>emptyMap(), hbClient);
   }
 
   /**
@@ -360,7 +338,7 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
    * @param kijiURI The KijiURI.
    * @param conf The Hadoop configuration.
    * @param properties The initial system properties to be used in addition to the defaults.
-   * @param factory HTableInterface factory.
+   * @param hbClient HBaseClient for this Kiji.
    * @throws IOException If there is an error.
    */
   public static void install(
@@ -368,18 +346,13 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
       KijiURI kijiURI,
       Configuration conf,
       Map<String, String> properties,
-      HTableInterfaceFactory factory)
+      HBaseClient hbClient)
       throws IOException {
-
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     // Install the table.
     HTableDescriptor tableDescriptor = new HTableDescriptor(
         KijiManagedHBaseTableName.getSystemTableName(kijiURI.getInstance()).toString());
     HColumnDescriptor columnDescriptor = SchemaPlatformBridge.get()
-        .createHColumnDescriptorBuilder(Bytes.toBytes(VALUE_COLUMN_FAMILY))
+        .createHColumnDescriptorBuilder(Bytes.UTF8(VALUE_COLUMN_FAMILY))
         .setMaxVersions(1)
         .setCompressionType("none")
         .setInMemory(false)
@@ -390,13 +363,12 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
     tableDescriptor.addFamily(columnDescriptor);
     admin.createTable(tableDescriptor);
 
-    AsyncSystemTable systemTable = new AsyncSystemTable(kijiURI, conf, factory);
+    AsyncSystemTable systemTable = new AsyncSystemTable(kijiURI, hbClient);
     try {
       systemTable.loadSystemTableProperties(properties);
     } finally {
       ResourceUtils.closeOrLog(systemTable);
     }
-    */
   }
 
   /**
@@ -435,11 +407,6 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
   /** {@inheritDoc} */
   @Override
   public void fromBackup(SystemTableBackup backup) throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot restore backup to SystemTable instance in state %s.", state);
@@ -448,106 +415,93 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
     for (SystemTableEntry entry : backup.getEntries()) {
       putValue(entry.getKey(), entry.getValue().array());
     }
-    mTable.flushCommits();
-    */
+    mHBClient.flush();
   }
 
   /** Private class for providing a CloseableIterable over system table key, value pairs. */
-  private static class HBaseSystemTableIterable
+  private static class AsyncSystemTableIterable
       implements CloseableIterable<SimpleEntry<String, byte[]>> {
-    // TODO(gabe): Replace this with asynchbase
 
-
-    /** Uderlying source of system table parameters. */
-    //private ResultScanner mResultScanner;
+    /** Underlying source of system table parameters. */
+    private Scanner mScanner;
 
     /** Iterator returned by iterator(). */
-    //private Iterator<SimpleEntry<String, byte[]>> mIterator;
+    private Iterator<SimpleEntry<String, byte[]>> mIterator;
 
     /**
-     * Create a new HBaseSystemTableIterable across system table properties.
+     * Create a new AsyncSystemTableIterable across system table properties.
      *
-     * @param resultScanner scanner across the target cells.
+     * @param scanner scanner across the target cells.
      */
-    // TODO(gabe): Replace this with asynchbase
-
-    /*
-    public HBaseSystemTableIterable(ResultScanner resultScanner) {
-      mIterator = new HBaseSystemTableIterator(resultScanner.iterator());
-      mResultScanner = resultScanner;
+    public AsyncSystemTableIterable(Scanner scanner) {
+      mIterator = new AsyncSystemTableIterator(scanner);
+      mScanner = scanner;
     }
-    */
 
     /** {@inheritDoc} */
     @Override
     public Iterator<SimpleEntry<String, byte[]>> iterator() {
-      // TODO(gabe): Replace this with asynchbase
-      throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-      /*
       return mIterator;
-      */
     }
 
     /** {@inheritDoc} */
     @Override
     public void close() throws IOException {
-      // TODO(gabe): Replace this with asynchbase
-      throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-      /*
-      mResultScanner.close();
-      */
+      mScanner.close();
     }
 
   }
 
   /** Private calss for providing an Iterator to HBaseSystemTableIterable. */
-  private static class HBaseSystemTableIterator
+  private static class AsyncSystemTableIterator
       implements Iterator<SimpleEntry<String, byte[]>> {
 
     /**
      * Iterator across result scanner results.
-     * Used to build next() for HBaseSystemTableIterator
+     * Used to build next() for AsyncSystemTableIterator
      */
-    // TODO(gabe): Replaces this with asynchbase
-    //private Iterator<Result> mResultIterator;
+    private Scanner mScanner;
+    private KeyValue mNext;
 
     /**
-     * Create an HBaseSystemTableIterator across the results of a ResultScanner.
+     * Create an AsyncSystemTableIterator across the KeyValues of a Scanner.
      *
-     * @param resultScannerIterator iterator across the scanned cells.
+     * @param scanner Scanner to scan over the rows of the SystemTable.
      */
-    // TODO(gabe): Replace this with asynchbase
-    /*
-    public HBaseSystemTableIterator(Iterator<Result> resultScannerIterator) {
-      mResultIterator = resultScannerIterator;
+    public AsyncSystemTableIterator(Scanner scanner) {
+      mScanner = scanner;
+      mScanner.setFamily(Bytes.UTF8(VALUE_COLUMN_FAMILY));
+      mScanner.setMaxVersions(1);
     }
-    */
 
     /** {@inheritDoc} */
     @Override
     public boolean hasNext() {
-      // TODO(gabe): Replace this with asynchbase
-      throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-      /*
-      return mResultIterator.hasNext();
-      */
+      return (null != mNext);
     }
 
     /** {@inheritDoc} */
     @Override
     public SimpleEntry<String, byte[]> next() {
-      // TODO(gabe): Replace this with asynchbase
-      throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-      /*
-      Result next = mResultIterator.next();
-      String key = Bytes.toString(next.getRow());
-      byte[] value = next.getValue(Bytes.toBytes(VALUE_COLUMN_FAMILY), new byte[0]);
-      return new SimpleEntry<String, byte[]>(key, value);
-      */
+      KeyValue next = mNext;
+      if (null == next) {
+        throw new NoSuchElementException();
+      } else {
+        try {
+          mNext = mScanner.nextRows(1).join().get(0).get(0);
+        } catch (Exception e) {
+          if (e instanceof InterruptedException) {
+            Thread.currentThread().interrupt();
+          } else if (e instanceof RuntimeException) {
+            throw (RuntimeException) e;
+          } else {
+            throw new KijiIOException(e);
+          }
+        }
+        String key = new String(next.key());
+        byte[] value = next.value();
+        return new SimpleEntry<String, byte[]>(key, value);
+      }
     }
 
     /** {@inheritDoc} */
@@ -560,14 +514,9 @@ public AsyncSystemTable(KijiURI uri, HTableInterface htable) {
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     return Objects.toStringHelper(AsyncSystemTable.class)
         .add("uri", mURI)
         .add("state", mState.get())
         .toString();
-    */
   }
 }

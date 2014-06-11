@@ -1,3 +1,6 @@
+## WARNING: THIS BRANCH'S HISTORY MAY BE REWRITTEN AT ANYTIME
+#### Note: AsyncKijiSchema uses a modified version of AsyncHBase. To be able to run you will need to build [this](https://github.com/OpenTSDB/asynchbase/pull/79) and [this](https://github.com/OpenTSDB/asynchbase/pull/89)
+
 KijiSchema
 ==========
 
