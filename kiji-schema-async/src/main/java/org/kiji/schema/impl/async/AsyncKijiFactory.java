@@ -24,6 +24,8 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.zookeeper.ZKConfig;
+import org.hbase.async.HBaseClient;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Priority;
@@ -44,13 +46,7 @@ public final class AsyncKijiFactory implements KijiFactory {
   /** {@inheritDoc} */
   @Override
   public Kiji open(KijiURI uri, Configuration conf) throws IOException {
-    final HBaseFactory hbaseFactory = HBaseFactory.Provider.get();
-    final Configuration confCopy = new Configuration(conf);
-    return new AsyncKiji(
-        uri,
-        confCopy,
-        hbaseFactory.getHTableInterfaceFactory(uri),
-        hbaseFactory.getLockFactory(uri, confCopy));
+    return new AsyncKiji(uri);
   }
 
   /** {@inheritDoc} */

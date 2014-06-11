@@ -20,20 +20,15 @@
 package org.kiji.schema.impl.async;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
-import org.apache.hadoop.hbase.filter.FilterList;
-import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.util.StringUtils;
+import org.hbase.async.DeleteRequest;
+import org.hbase.async.HBaseClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,13 +40,14 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
+import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.LayoutConsumer;
+import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
-import org.kiji.schema.layout.impl.CellEncoderProvider;
 import org.kiji.schema.layout.impl.LayoutCapsule;
 import org.kiji.schema.platform.SchemaPlatformBridge;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
  * <p>
@@ -70,12 +66,14 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
   private static final Logger LOG = LoggerFactory.getLogger(AsyncKijiBufferedWriter.class);
 
   /** Underlying dedicated HTableInterface used by this writer. Owned by this writer. */
-  // TODO(gabe): Replace this with asynchbase
-  /* private final HTableInterface mHTable; */
+  /** Dedicated HBaseClient connection. */
+  //private final HBaseClient mHBClient;
+
+  /** HBase table name */
+  //private final byte[] mTableName;
 
   /** KijiTable this writer is attached to. */
-  // TODO(gabe): Replace this with asynchbase
-  /* private final HBaseKijiTable mTable; */
+  //private final AsyncKijiTable mTable;
 
   /** Object which processes layout update from the KijiTable to which this Writer writes. */
   private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
@@ -181,29 +179,33 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
    */
   public AsyncKijiBufferedWriter(AsyncKijiTable table) throws IOException {
 
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
+    // TODO(gabe): Review
     /*
     mTable = table;
+    mTableName = KijiManagedHBaseTableName
+        .getKijiTableName(mTable.getURI().getInstance(), mTable.getURI().getTable()).toBytes();
+
     try {
-      mHTable = mTable.openHTableConnection();
+      mHBClient.ensureTableExists(mTableName).join();
     } catch (TableNotFoundException e) {
       throw new KijiTableNotFoundException(table.getURI());
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
     }
     mTable.registerLayoutConsumer(mInnerLayoutUpdater);
-    Preconditions.checkState(mWriterLayoutCapsule != null,
+    Preconditions.checkState(
+        mWriterLayoutCapsule != null,
         "HBaseKijiBufferedWriter for table: %s failed to initialize.", mTable.getURI());
 
-    SchemaPlatformBridge.get().setAutoFlush(mHTable, false);
+    mHBClient.setFlushInterval(Short.MAX_VALUE); // TODO(gabe): Is this right?
+    //SchemaPlatformBridge.get().setAutoFlush(mHTable, false); // TODO: Delete this!
     // Retain the table only after everything else succeeded:
     mTable.retain();
     synchronized (mInternalLock) {
       Preconditions.checkState(mState == State.UNINITIALIZED,
           "Cannot open HBaseKijiBufferedWriter instance in state %s.", mState);
       mState = State.OPEN;
-    }
-    */
+    }*/
   }
 
   // ----------------------------------------------------------------------------------------------
@@ -258,13 +260,8 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
   @Override
   public <T> void put(EntityId entityId, String family, String qualifier, long timestamp, T value)
       throws IOException {
-
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final KijiColumnName columnName = new KijiColumnName(family, qualifier);
-    final HBaseKijiTableWriter.WriterLayoutCapsule capsule = mWriterLayoutCapsule;
+    final AsyncKijiTableWriter.WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final HBaseColumnName hbaseColumnName =
         capsule.getColumnNameTranslator().toHBaseColumnName(columnName);
 
@@ -274,7 +271,6 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
 
     updateBuffer(entityId, hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp,
         encoded);
-    */
   }
 
   // ----------------------------------------------------------------------------------------------
@@ -286,11 +282,11 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
    * @param d A delete to add to the buffer.
    * @throws IOException in case of an error on flush.
    */
-  // TODO(gabe): Replace this with asynchbase
+  private void updateBuffer(DeleteRequest d) throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
 
     /*
-  private void updateBuffer(Delete d) throws IOException {
-
     synchronized (mInternalLock) {
       mDeleteBuffer.add(d);
       long heapSize = mDeleteSize;
@@ -299,9 +295,9 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
       if (mCurrentWriteBufferSize > mMaxWriteBufferSize) {
         flush();
       }
-    }
+    }*/
 
-  } */
+  }
 
   /** {@inheritDoc} */
   @Override
@@ -311,16 +307,9 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
 
   /** {@inheritDoc} */
   @Override
-  public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {
-
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    final Delete delete = SchemaPlatformBridge.get()
-        .createDelete(entityId.getHBaseRowKey(), upToTimestamp);
-    updateBuffer(delete);
-    */
+  public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {/*
+    final DeleteRequest delete = new DeleteRequest(mTableName, entityId.getHBaseRowKey(), upToTimestamp);
+    updateBuffer(delete);*/ //TODO
   }
 
   /** {@inheritDoc} */
@@ -333,10 +322,7 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
   @Override
   public void deleteFamily(EntityId entityId, String family, long upToTimestamp)
       throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
+    // TODO(gabe): Review
     final AsyncKijiTableWriter.WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final FamilyLayout familyLayout = capsule.getLayout().getFamilyMap().get(family);
     if (null == familyLayout) {
@@ -358,12 +344,13 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
     // The only data in this HBase family is the one Kiji family, so we can delete everything.
     final HBaseColumnName hbaseColumnName = capsule.getColumnNameTranslator()
         .toHBaseColumnName(new KijiColumnName(family));
-    final Delete delete = new Delete(entityId.getHBaseRowKey());
-    delete.deleteFamily(hbaseColumnName.getFamily(), upToTimestamp);
+    final DeleteRequest delete = new DeleteRequest(
+        entityId.getHBaseRowKey(),
+        hbaseColumnName.getFamily(),
+        upToTimestamp);
 
     // Buffer the delete.
     updateBuffer(delete);
-    */
   }
 
   /**
@@ -380,27 +367,31 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
       FamilyLayout familyLayout,
       long upToTimestamp)
       throws IOException {
-
-
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
+    // TODO(gabe): Review
     /*
     final String familyName = Preconditions.checkNotNull(familyLayout.getName());
-    // Delete each column in the group according to the layout.
-    final Delete delete = new Delete(entityId.getHBaseRowKey());
+    final KijiColumnNameTranslator colNameTranslator = mWriterLayoutCapsule.getColumnNameTranslator();
+    int i = 0;
+    final int numColumnLayouts = familyLayout.getColumnMap().size();
+    byte[][] qualifiers = new byte[numColumnLayouts][];
     for (ColumnLayout columnLayout : familyLayout.getColumnMap().values()) {
       final String qualifier = columnLayout.getName();
       final KijiColumnName column = new KijiColumnName(familyName, qualifier);
-      final HBaseColumnName hbaseColumnName =
-          mWriterLayoutCapsule.getColumnNameTranslator().toHBaseColumnName(column);
-      delete.deleteColumns(
-          hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
+      final HBaseColumnName hbaseColumnName = colNameTranslator.toHBaseColumnName(column);
+      qualifiers[i] = hbaseColumnName.getQualifier();
+      i ++;
     }
+    final byte[] hbaseFamilyName = mWriterLayoutCapsule.getColumnNameTranslator().
+        toHBaseFamilyName(familyLayout.getLocalityGroup());
+    final DeleteRequest delete = new DeleteRequest(
+        mTableName,
+        entityId.getHBaseRowKey(),
+        hbaseFamilyName,
+        qualifiers,
+        upToTimestamp);
 
     // Buffer the delete.
-    updateBuffer(delete);
-    */
+    updateBuffer(delete); */
   }
 
   /**
@@ -420,7 +411,6 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
 
     // TODO(gabe): Replace this with asynchbase
     throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
     /*
     // Since multiple Kiji column families are mapped into a single HBase column family,
     // we have to do this delete in a two-step transaction:
@@ -435,6 +425,7 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
     final byte[] hbaseRow = entityId.getHBaseRowKey();
 
     // Lock the row.
+    //Row locks are no longer supported since HBase 0.96?
     final RowLock rowLock = mHTable.lockRow(hbaseRow);
     try {
       // Step 1.
