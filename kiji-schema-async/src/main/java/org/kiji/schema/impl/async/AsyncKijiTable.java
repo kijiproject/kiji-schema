@@ -26,23 +26,15 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
+import com.stumbleupon.async.Deferred;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileStatus;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hbase.HRegionInfo;
-import org.apache.hadoop.hbase.HRegionLocation;
-import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
+import org.hbase.async.HBaseClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
-import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiReaderFactory;
@@ -57,10 +49,8 @@ import org.kiji.schema.KijiWriterFactory;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
-import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.impl.LayoutConsumer.Registration;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.LayoutCapsule;
 import org.kiji.schema.layout.impl.TableLayoutMonitor;
@@ -119,8 +109,8 @@ public final class AsyncKijiTable implements KijiTable {
   /** String representation of the call stack at the time this object is constructed. */
   private final String mConstructorStack;
 
-  /** HTableInterfaceFactory for creating new HTables associated with this KijiTable. */
-  private final HTableInterfaceFactory mHTableFactory;
+  /** HBaseClient for managing AsyncHBase tables associated with this KijiTable. */
+  private final HBaseClient mHBClient;
 
   /** The factory for EntityIds. */
   private final EntityIdFactory mEntityIdFactory;
@@ -128,18 +118,11 @@ public final class AsyncKijiTable implements KijiTable {
   /** Retain counter. When decreased to 0, the HBase KijiTable may be closed and disposed of. */
   private final AtomicInteger mRetainCount = new AtomicInteger(0);
 
-  /** Configuration object for new HTables. */
-  private final Configuration mConf;
-
   /** Writer factory for this table. */
   private final KijiWriterFactory mWriterFactory;
 
   /** Reader factory for this table. */
   private final KijiReaderFactory mReaderFactory;
-
-  /** Pool of HTable connections. Safe for concurrent access. */
-  // TODO(gabe): Replace this with asynchbase
-  //private final KijiHTablePool mHTablePool;
 
 /** Name of the HBase table backing this Kiji table. */
   private final String mHBaseTableName;
@@ -148,15 +131,14 @@ public final class AsyncKijiTable implements KijiTable {
    * Monitor for the layout of this table. Should be initialized in the constructor and nulled out
    * in {@link #closeResources()}. No other method should modify this pointer.
    **/
-  private volatile TableLayoutMonitor mLayoutMonitor;
+  private final TableLayoutMonitor mLayoutMonitor;
 
   /**
    * Construct an opened Kiji table stored in HBase.
    *
    * @param kiji The Kiji instance.
    * @param name The name of the Kiji user-space table to open.
-   * @param conf The Hadoop configuration object.
-   * @param htableFactory A factory that creates HTable objects.
+   * @param hbClient An HBaseClient that manages AsyncHBase tables.
    * @param layoutMonitor a valid TableLayoutMonitor for this table.
    *
    * @throws IOException On an HBase error.
@@ -165,15 +147,9 @@ public final class AsyncKijiTable implements KijiTable {
   AsyncKijiTable(
       AsyncKiji kiji,
       String name,
-      Configuration conf,
-      HTableInterfaceFactory htableFactory,
+      HBaseClient hbClient,
       TableLayoutMonitor layoutMonitor)
       throws IOException {
-
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
         ? Debug.getStackTrace()
         : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
@@ -182,14 +158,19 @@ public final class AsyncKijiTable implements KijiTable {
     mKiji.retain();
 
     mName = name;
-    mHTableFactory = htableFactory;
-    mConf = conf;
+    mHBClient = hbClient;
     mTableURI = KijiURI.newBuilder(mKiji.getURI()).withTableName(mName).build();
     LOG.debug("Opening Kiji table '{}' with client version '{}'.",
         mTableURI, VersionInfo.getSoftwareVersion());
     mHBaseTableName =
         KijiManagedHBaseTableName.getKijiTableName(mTableURI.getInstance(), mName).toString();
 
+    Deferred<Object> ensureTableExists = mHBClient.ensureTableExists(mHBaseTableName);
+    try {
+      ensureTableExists.joinUninterruptibly();
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
     if (!mKiji.getTableNames().contains(mName)) {
       closeResources();
       throw new KijiTableNotFoundException(mTableURI);
@@ -201,8 +182,6 @@ public final class AsyncKijiTable implements KijiTable {
     mLayoutMonitor = layoutMonitor;
     mEntityIdFactory = createEntityIdFactory(mLayoutMonitor.getLayoutCapsule());
 
-    mHTablePool = new KijiHTablePool(mName, (HBaseKiji)getKiji(), mHTableFactory);
-
     // Table is now open and must be released properly:
     mRetainCount.set(1);
 
@@ -211,7 +190,6 @@ public final class AsyncKijiTable implements KijiTable {
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open KijiTable instance in state %s.", oldState);
-    */
   }
 
   /**
@@ -317,19 +295,14 @@ public final class AsyncKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public KijiTableWriter openTableWriter() {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot open a table writer on a KijiTable in state %s.", state);
     try {
-      return new HBaseKijiTableWriter(this);
+      return new AsyncKijiTableWriter(this);
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
-    */
   }
 
   /** {@inheritDoc} */
@@ -378,27 +351,17 @@ public final class AsyncKijiTable implements KijiTable {
    * @throws IOException on I/O error.
    */
   private void closeResources() throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN || oldState == State.UNINITIALIZED,
         "Cannot close KijiTable instance %s in state %s.", this, oldState);
-    LOG.debug("Closing HBaseKijiTable '{}'.", this);
+    LOG.debug("Closing AsyncHBaseKijiTable '{}'.", this);
 
-    ResourceUtils.closeOrLog(mHTablePool);
     ResourceUtils.releaseOrLog(mKiji);
     if (oldState != State.UNINITIALIZED) {
       DebugResourceTracker.get().unregisterResource(this);
     }
 
-    // Relinquish strong reference to the TableLayoutMonitor in case the user keeps their reference
-    // to this KijiTable.
-    mLayoutMonitor = null;
-
-    LOG.debug("HBaseKijiTable '{}' closed.", mTableURI);
-    */
+    LOG.debug("AsyncHBaseKijiTable '{}' closed.", mTableURI);
   }
 
   /** {@inheritDoc} */
@@ -458,5 +421,14 @@ public final class AsyncKijiTable implements KijiTable {
         .add("layout_id", layoutId)
         .add("state", mState.get())
         .toString();
+  }
+
+  /**
+   * Getter method for this instance's HBaseClient.
+   *
+   * @return The HBaseClient that manages this table.
+   */
+  public HBaseClient getHBClient() {
+    return mHBClient;
   }
 }
