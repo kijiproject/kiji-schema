@@ -165,9 +165,8 @@ public final class AsyncKijiTable implements KijiTable {
     mHBaseTableName =
         KijiManagedHBaseTableName.getKijiTableName(mTableURI.getInstance(), mName).toString();
 
-    Deferred<Object> ensureTableExists = mHBClient.ensureTableExists(mHBaseTableName);
     try {
-      ensureTableExists.joinUninterruptibly();
+      mHBClient.ensureTableExists(mHBaseTableName).join();
     } catch (Exception e) {
       e.printStackTrace();
     }
