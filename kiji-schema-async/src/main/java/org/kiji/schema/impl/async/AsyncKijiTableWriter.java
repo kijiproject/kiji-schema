@@ -86,7 +86,7 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
   /** Layout consumer registration resource. */
   private final LayoutConsumer.Registration mLayoutConsumerRegistration;
 
-  /** Dedicated HBaseClient connection. */
+  /** Shared HBaseClient connection. */
   private final HBaseClient mHBClient;
 
   /** HBase table name */
@@ -282,7 +282,7 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
        incrementedVal = mHBClient.atomicIncrement(increment).join();
     } catch (Exception e) {
       ZooKeeperUtils.wrapAndRethrow(e);
-      throw new InternalKijiError(e);//Should never happen
+      throw new RuntimeException(e);
     }
     final DecodedCell<Long> counter = new DecodedCell<Long>(
         DecodedCell.NO_SCHEMA,
@@ -409,8 +409,9 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
       qualifiers[i] = hbaseColumnName.getQualifier();
       i ++;
     }
-    final byte[] hbaseFamilyName = mWriterLayoutCapsule.getColumnNameTranslator().
-        toHBaseFamilyName(familyLayout.getLocalityGroup());
+    final byte[] hbaseFamilyName =
+        mWriterLayoutCapsule.getColumnNameTranslator()
+            .toHBaseFamilyName(familyLayout.getLocalityGroup());
     final DeleteRequest delete = new DeleteRequest(
         mTableName,
         entityId.getHBaseRowKey(),

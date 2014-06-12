@@ -30,7 +30,7 @@ import org.junit.Test;
 
 import org.kiji.schema.impl.hbase.HBaseSystemTable;
 import org.kiji.schema.util.ProtocolVersion;
-//import org.kiji.testing.fakehtable.FakeHTable;
+import org.kiji.testing.fakehtable.FakeHTable;
 
 public class TestHBaseSystemTable {
   /*
