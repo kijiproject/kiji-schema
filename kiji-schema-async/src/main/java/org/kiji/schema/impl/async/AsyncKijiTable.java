@@ -58,6 +58,7 @@ import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.DebugResourceTracker;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
+import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
  * <p>A KijiTable that exposes the underlying HBase implementation.</p>
@@ -168,7 +169,7 @@ public final class AsyncKijiTable implements KijiTable {
     try {
       mHBClient.ensureTableExists(mHBaseTableName).join();
     } catch (Exception e) {
-      e.printStackTrace();
+      ZooKeeperUtils.wrapAndRethrow(e);
     }
     if (!mKiji.getTableNames().contains(mName)) {
       closeResources();
