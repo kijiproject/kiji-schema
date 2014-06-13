@@ -19,23 +19,15 @@
 
 package org.kiji.schema.impl.async;
 
-import static org.kiji.schema.util.ByteStreamArray.longToVarInt64;
-
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DatumWriter;
@@ -47,10 +39,7 @@ import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -64,15 +53,9 @@ import org.kiji.schema.avro.SchemaTableBackup;
 import org.kiji.schema.avro.SchemaTableEntry;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
-import org.kiji.schema.platform.SchemaPlatformBridge;
-import org.kiji.schema.util.ByteStreamArray;
-import org.kiji.schema.util.ByteStreamArray.EncodingException;
 import org.kiji.schema.util.BytesKey;
-import org.kiji.schema.util.Debug;
-import org.kiji.schema.util.Hasher;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.LockFactory;
-import org.kiji.schema.util.ResourceUtils;
 
 /**
  * <p>
@@ -256,16 +239,15 @@ public static HTableInterface newSchemaIdTable(
    * @throws IOException on I/O error.
    */
   // TODO(gabe): Replace this with asynchbase
-
-  /*
+/*
 public AsyncSchemaTable(
     KijiURI kijiURI,
     Configuration conf,
     HTableInterfaceFactory tableFactory,
     LockFactory lockFactory)
     throws IOException {
-  this(newSchemaHashTable(kijiURI, conf, tableFactory),
-      newSchemaIdTable(kijiURI, conf, tableFactory),
+  this(new SchemaHashTable(kijiURI, conf, tableFactory),
+      new SchemaIdTable(kijiURI, conf, tableFactory),
       newLock(kijiURI, lockFactory),
       kijiURI);
 } */

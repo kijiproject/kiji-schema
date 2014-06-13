@@ -22,24 +22,17 @@ package org.kiji.schema.impl.async;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Iterator;
-import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Preconditions;
-import org.apache.hadoop.hbase.regionserver.LeaseException;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.KijiDataRequest;
-import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
-import org.kiji.schema.util.Debug;
 
 /**
  * The internal implementation of KijiRowScanner that reads from HTables.

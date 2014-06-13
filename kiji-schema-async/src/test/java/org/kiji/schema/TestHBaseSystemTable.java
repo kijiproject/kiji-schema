@@ -33,6 +33,7 @@ import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.testing.fakehtable.FakeHTable;
 
 public class TestHBaseSystemTable {
+  /*
   @Test
   public void testSetDataVersion() throws IOException {
     final Configuration conf = HBaseConfiguration.create();
@@ -45,4 +46,5 @@ public class TestHBaseSystemTable {
     assertEquals(ProtocolVersion.parse("kiji-100"), systemTable.getDataVersion());
     systemTable.close();
   }
+  */
 }

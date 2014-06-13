@@ -25,53 +25,37 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HColumnDescriptor;
-import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.TableExistsException;
-import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.zookeeper.KeeperException;
+import org.hbase.async.HBaseClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiAlreadyExistsException;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiNotInstalledException;
-import org.kiji.schema.KijiRowKeySplitter;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.avro.RowKeyEncoding;
-import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.TableLayoutDesc;
-import org.kiji.schema.hbase.HBaseFactory;
-import org.kiji.schema.hbase.KijiManagedHBaseTableName;
-import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.Versions;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.layout.impl.ColumnId;
-import org.kiji.schema.layout.impl.HTableSchemaTranslator;
 import org.kiji.schema.layout.impl.InstanceMonitor;
-import org.kiji.schema.security.KijiSecurityException;
 import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.DebugResourceTracker;
-import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.util.ProtocolVersion;
-import org.kiji.schema.util.ReferenceCountedCache;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
+
+// TODO(gabe): REMOVE THESE
 
 /**
  * Kiji instance class that contains configuration and table information.
@@ -94,20 +78,13 @@ public final class AsyncKiji implements Kiji {
       "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
       CLEANUP_LOG.getName());
 
-  /** Global cache of ZooKeeper connections keyed on ensemble addresses. */
-  private static final ReferenceCountedCache<KijiURI, CuratorFramework> ZK_CLIENT_CACHE =
-      ReferenceCountedCache.create(new Function<KijiURI, CuratorFramework>() {
-        /** {@inheritDoc}. */
-        @Override
-        public CuratorFramework apply(KijiURI instanceURI) {
-          Preconditions.checkNotNull(instanceURI);
-          return ZooKeeperUtils.getZooKeeperClient(instanceURI);
-        }
-      });
+  /** HBaseClient for managing AsyncHBase tables */
+  private final HBaseClient mHBClient;
 
-
+  // TODO(gabe): DELETE THIS! PART OF HACK!
   /** Factory for HTable instances. */
-  private final HTableInterfaceFactory mHTableFactory;
+  //private final HTableInterfaceFactory mHTableFactory;
+  private final Kiji mKiji;
 
   /** URI for this HBaseKiji instance. */
   private final KijiURI mURI;
@@ -177,56 +154,34 @@ public final class AsyncKiji implements Kiji {
    * <p> Caller does not need to use retain(), but must call release() when done with it.
    *
    * @param kijiURI the KijiURI.
-   * @param conf Hadoop Configuration. Deep copied internally.
-   * @param tableFactory HTableInterface factory.
-   * @param lockFactory Factory for locks.
    * @throws IOException on I/O error.
    */
-  AsyncKiji(
-      KijiURI kijiURI,
-      Configuration conf,
-      HTableInterfaceFactory tableFactory,
-      LockFactory lockFactory)
-      throws IOException {
-
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
-    // Deep copy the configuration.
-    mConf = new Configuration(conf);
-
-    // Validate arguments.
-    mHTableFactory = Preconditions.checkNotNull(tableFactory);
-    Preconditions.checkNotNull(lockFactory);
+  AsyncKiji(KijiURI kijiURI) throws IOException {
     mURI = Preconditions.checkNotNull(kijiURI);
 
-    // Configure the ZooKeeper quorum:
-    mConf.setStrings("hbase.zookeeper.quorum", mURI.getZookeeperQuorum().toArray(new String[0]));
-    mConf.setInt("hbase.zookeeper.property.clientPort", mURI.getZookeeperClientPort());
+    // TODO(gabe): TOTAL HACK! FIX THIS ASAP!!
+    mKiji = Kiji.Factory.open(mURI);
+    mHBClient = new HBaseClient(mURI.getZooKeeperEnsemble());
+
+    // Validate arguments.
+    // TODO(gabe): Update to work with AsyncHBase
+    //mHTableFactory = Preconditions.checkNotNull(tableFactory);
 
     // Check for an instance name.
     Preconditions.checkArgument(mURI.getInstance() != null,
         "KijiURI '%s' does not specify a Kiji instance name.", mURI);
 
-    if (LOG.isDebugEnabled()) {
-      Debug.logConfiguration(mConf);
-      LOG.debug(
-          "Opening kiji instance '{}'"
-          + " with client software version '{}'"
-          + " and client data version '{}'.",
-          mURI, VersionInfo.getSoftwareVersion(), VersionInfo.getClientDataVersion());
-    }
-
     try {
-      mSystemTable = new AsyncSystemTable(mURI, mConf, mHTableFactory);
+      // TODO(gabe): REPLACE THESE!!
+      mSystemTable = mKiji.getSystemTable();
     } catch (KijiNotInstalledException kie) {
       // Some clients handle this unchecked Exception so do the same here.
       close();
       throw kie;
     }
-    mSchemaTable = new AsyncSchemaTable(mURI, mConf, mHTableFactory, lockFactory);
-    mMetaTable = new AsyncMetaTable(mURI, mConf, mSchemaTable, mHTableFactory);
+    // TODO(gabe): REPLACE THESE!
+    mSchemaTable = mKiji.getSchemaTable();
+    mMetaTable = mKiji.getMetaTable();
 
     LOG.debug("Kiji instance '{}' is now opened.", mURI);
 
@@ -251,7 +206,7 @@ public final class AsyncKiji implements Kiji {
       // system-2.0 clients must connect to ZooKeeper:
       //  - to register themselves as table users;
       //  - to receive table layout updates.
-      mZKClient = ZK_CLIENT_CACHE.get(mURI);
+      mZKClient = ZooKeeperUtils.getZooKeeperClient(mURI);
     } else {
       // system-1.x clients do not need a ZooKeeper connection.
       mZKClient = null;
@@ -274,7 +229,8 @@ public final class AsyncKiji implements Kiji {
         ? Debug.getStackTrace()
         : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
     DebugResourceTracker.get().registerResource(this, mConstructorStack);
-    */
+
+
   }
 
   /**
@@ -366,6 +322,9 @@ public final class AsyncKiji implements Kiji {
   /** {@inheritDoc} */
   @Override
   public synchronized KijiSecurityManager getSecurityManager() throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get security manager for Kiji instance %s in state %s.", this, state);
@@ -379,15 +338,12 @@ public final class AsyncKiji implements Kiji {
       }
     }
     return mSecurityManager;
+    */
   }
 
   /** {@inheritDoc} */
   @Override
   public KijiTable openTable(String tableName) throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot open table in Kiji instance %s in state %s.", this, state);
@@ -400,10 +356,8 @@ public final class AsyncKiji implements Kiji {
     return new AsyncKijiTable(
         this,
         tableName,
-        mConf,
-        mHTableFactory,
+        mHBClient,
         mInstanceMonitor.getTableLayoutMonitor(tableName));
-    */
   }
 
   /**
@@ -703,23 +657,20 @@ public final class AsyncKiji implements Kiji {
     LOG.debug("Closing {}.", this);
 
     ResourceUtils.closeOrLog(mInstanceMonitor);
-    ResourceUtils.closeOrLog(mMetaTable);
-    ResourceUtils.closeOrLog(mSystemTable);
-    ResourceUtils.closeOrLog(mSchemaTable);
+    ResourceUtils.releaseOrLog(mKiji);
 
     synchronized (this) {
       ResourceUtils.closeOrLog(mSecurityManager);
       mSecurityManager = null;
     }
 
-    if (mZKClient != null) {
-      ZK_CLIENT_CACHE.release(mURI);
-    }
+    ResourceUtils.closeOrLog(mZKClient);
 
     if (oldState != State.UNINITIALIZED) {
       DebugResourceTracker.get().unregisterResource(this);
     }
     LOG.debug("{} closed.", this);
+    mHBClient.shutdown();
   }
 
   /** {@inheritDoc} */

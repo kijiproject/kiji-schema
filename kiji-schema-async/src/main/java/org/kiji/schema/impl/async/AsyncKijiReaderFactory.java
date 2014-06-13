@@ -25,7 +25,6 @@ import java.util.Map;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiReaderFactory;
-import org.kiji.schema.impl.hbase.HBaseKijiTableReader;
 import org.kiji.schema.impl.hbase.HBaseKijiTableReaderBuilder;
 import org.kiji.schema.layout.CellSpec;
 

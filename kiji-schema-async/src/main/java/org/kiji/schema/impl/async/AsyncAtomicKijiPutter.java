@@ -20,11 +20,9 @@
 package org.kiji.schema.impl.async;
 
 import java.io.IOException;
-import java.lang.UnsupportedOperationException;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Preconditions;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.KeyValue;
 import org.slf4j.Logger;
@@ -33,14 +31,9 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.AtomicKijiPutter;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.KijiCellEncoder;
-import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.impl.hbase.HBaseKijiTableWriter.WriterLayoutCapsule;
 import org.kiji.schema.layout.LayoutUpdatedException;
-import org.kiji.schema.layout.impl.CellEncoderProvider;
 import org.kiji.schema.layout.impl.LayoutCapsule;
 
 /**

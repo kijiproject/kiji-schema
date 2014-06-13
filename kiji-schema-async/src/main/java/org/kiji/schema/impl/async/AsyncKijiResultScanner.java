@@ -20,20 +20,12 @@ package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Preconditions;
-import org.apache.hadoop.hbase.regionserver.LeaseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.EntityIdFactory;
-import org.kiji.schema.KijiDataRequest;
-import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiResultScanner;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
-import org.kiji.schema.layout.impl.CellDecoderProvider;
 
 /** Scanner across rows of a KijiTable which returns a KijiResult per row. */
 public class AsyncKijiResultScanner implements KijiResultScanner {
