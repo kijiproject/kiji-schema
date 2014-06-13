@@ -73,6 +73,12 @@ public class TestAsyncKijiBufferedWriter extends KijiClientTest {
         .build();
 
     mAsyncKiji = new AsyncKiji(mKiji.getURI());
+
+    // For the tests, set the flushInterval to a very
+    // long interval to make sure that operations are
+    // buffered and are only added once flush() is called.
+    mAsyncKiji.setFlushInterval(Short.MAX_VALUE);
+
     // Fill local variables.
     mTable = mKiji.openTable("user");
     mAsyncTable = mAsyncKiji.openTable("user");
@@ -171,26 +177,6 @@ public class TestAsyncKijiBufferedWriter extends KijiClientTest {
     // Flush the buffer and confirm the delete has been written.
     mBufferedWriter.flush();
     assertFalse(mReader.get(entityId, request).containsCell("info", "name", 123L));
-  }
-
-  @Test
-  public void testSetBufferSize() throws Exception {
-    final EntityId entityId = mTable.getEntityId("bar");
-    final KijiDataRequest request = KijiDataRequest.create("info", "name");
-
-    // Add a put to the buffer.
-    mBufferedWriter.put(entityId, "info", "name", 123L, "old");
-    assertFalse(mReader.get(entityId, request).containsCell("info", "name", 123L));
-
-    // Shrink the buffer, pushing the buffered put.
-    mBufferedWriter.setBufferSize(1L);
-    final String actual = mReader.get(entityId, request).getValue("info", "name", 123L).toString();
-    assertEquals("old", actual);
-
-    // Add a put which should commit immediately.
-    mBufferedWriter.put(entityId, "info", "name", 234L, "new");
-    final String actual2 = mReader.get(entityId, request).getValue("info", "name", 234L).toString();
-    assertEquals("new", actual2);
   }
 
   @Test

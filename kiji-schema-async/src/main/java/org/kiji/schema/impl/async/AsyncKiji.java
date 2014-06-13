@@ -162,6 +162,7 @@ public final class AsyncKiji implements Kiji {
     // TODO(gabe): TOTAL HACK! FIX THIS ASAP!!
     mKiji = Kiji.Factory.open(mURI);
     mHBClient = new HBaseClient(mURI.getZooKeeperEnsemble());
+    mHBClient.setFlushInterval((short) 1000);
 
     // Validate arguments.
     // TODO(gabe): Update to work with AsyncHBase
@@ -317,6 +318,16 @@ public final class AsyncKiji implements Kiji {
   @Override
   public boolean isSecurityEnabled() throws IOException {
     return mSystemTable.getSecurityVersion().compareTo(Versions.MIN_SECURITY_VERSION) >= 0;
+  }
+
+  /**
+   * Sets the flush interval for the HBaseClient.
+   *
+   * @param flushInterval the new flush interval
+   * @return the old flush interval
+   */
+  public short setFlushInterval(short flushInterval) {
+    return mHBClient.setFlushInterval(flushInterval);
   }
 
   /** {@inheritDoc} */

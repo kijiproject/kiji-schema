@@ -25,6 +25,8 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import com.stumbleupon.async.Deferred;
 import org.apache.hadoop.hbase.HConstants;
 import org.hbase.async.AtomicIncrementRequest;
 import org.hbase.async.ColumnPrefixFilter;
@@ -202,7 +204,6 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
     Preconditions.checkState(mWriterLayoutCapsule != null,
         "KijiTableWriter for table: %s failed to initialize.", mTable.getURI());
     mHBClient = table.getHBClient();
-    mHBClient.setFlushInterval((short) 0);
     mTableName = KijiManagedHBaseTableName
         .getKijiTableName(mTable.getURI().getInstance(), mTable.getURI().getTable()).toBytes();
 
@@ -244,6 +245,7 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
         hbaseColumnName.getQualifier(),
         encoded,
         timestamp);
+    put.setBufferable(false);
     try {
       mHBClient.put(put).join();
     } catch (Exception e) {
@@ -324,6 +326,7 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
         mTableName,
         entityId.getHBaseRowKey(),
         upToTimestamp);
+    delete.setBufferable(false);
     try {
       mHBClient.delete(delete).join();
     } catch (Exception e) {
@@ -370,6 +373,7 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
         entityId.getHBaseRowKey(),
         hbaseColumnName.getFamily(),
         upToTimestamp);
+    delete.setBufferable(false);
 
     //Send the delete to the HBaseClient
     try {
@@ -418,6 +422,7 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
         hbaseFamilyName,
         qualifiers,
         upToTimestamp);
+    delete.setBufferable(false);
     try {
       mHBClient.delete(delete).join();
     } catch (Exception e) {
@@ -470,6 +475,7 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
     }
     scanner.close();
 
+    ArrayList<Deferred<Object>> workers = Lists.newArrayList();
     // Step 2.
     if (results.isEmpty()) {
       LOG.debug("No qualifiers to delete in map family: " + familyName);
@@ -482,8 +488,10 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
             keyValue.family(),
             keyValue.qualifier(),
             upToTimestamp);
+        delete.setBufferable(false);
+        workers.add(mHBClient.delete(delete));
         try {
-          mHBClient.delete(delete).join();
+          Deferred.group(workers).join();
         } catch (Exception e) {
           ZooKeeperUtils.wrapAndRethrow(e);
         }
@@ -511,6 +519,7 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
         mTableName, entityId.getHBaseRowKey(),
         hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
     delete.setDeleteAtTimestampOnly(false);
+    delete.setBufferable(false);
     try {
       mHBClient.delete(delete).join();
     } catch (Exception e) {
@@ -538,6 +547,7 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
         mTableName, entityId.getHBaseRowKey(),
         hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
     delete.setDeleteAtTimestampOnly(true);
+    delete.setBufferable(false);
     try {
       mHBClient.delete(delete).join();
     } catch (Exception e) {
