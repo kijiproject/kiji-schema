@@ -441,7 +441,7 @@ public final class AsyncKijiTableWriter implements KijiTableWriter {
     // Since multiple Kiji column families are mapped into a single HBase column family,
     // we have to do this delete in a two-step transaction:
     //
-    // 1. Use a scanner to retrieve the names of all HBase qualifiers within the HBase
+    // 1. Use a Scanner to retrieve the names of all HBase qualifiers within the HBase
     //    family that belong to the Kiji column family.
     // 2. Send a delete() for each of the HBase qualifiers found in the previous step.
 
