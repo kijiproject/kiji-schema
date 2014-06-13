@@ -67,6 +67,12 @@ public class TestAsyncKijiTableWriter extends KijiClientTest {
         .build();
 
     mAsyncKiji = new AsyncKiji(mKiji.getURI());
+
+    // For the tests, set the flushInterval to a very
+    // long interval to make sure that operations are
+    // not being buffered.
+    mAsyncKiji.setFlushInterval(Short.MAX_VALUE);
+
     // Fill local variables.
     mTable = mKiji.openTable("user");
     mAsyncTable = mAsyncKiji.openTable("user");
