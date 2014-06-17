@@ -21,16 +21,10 @@ package org.kiji.schema.impl.async;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.stumbleupon.async.Deferred;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.TableNotFoundException;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.apache.hadoop.hbase.util.ClassSize;
 import org.apache.hadoop.util.StringUtils;
 import org.hbase.async.ColumnPrefixFilter;
 import org.hbase.async.HBaseClient;
@@ -195,16 +189,25 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
 
   /** {@inheritDoc} */
   @Override
-  public <T> void put(EntityId entityId, String family, String qualifier, T value)
+  public <T> void put(
+      final EntityId entityId,
+      final String family,
+      final String qualifier,
+      final T value)
       throws IOException {
     put(entityId, family, qualifier, HConstants.LATEST_TIMESTAMP, value);
   }
 
   /** {@inheritDoc} */
   @Override
-  public <T> void put(EntityId entityId, String family, String qualifier, long timestamp, T value)
-      throws IOException {
-    final KijiColumnName columnName = new KijiColumnName(family, qualifier);
+  public <T> void put(
+      final EntityId entityId,
+      final String family,
+      final String qualifier,
+      final long timestamp,
+      final T value
+  ) throws IOException {
+    final KijiColumnName columnName = KijiColumnName.create(family, qualifier);
     final AsyncKijiTableWriter.WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final HBaseColumnName hbaseColumnName =
         capsule.getColumnNameTranslator().toHBaseColumnName(columnName);
@@ -227,27 +230,33 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
 
   /** {@inheritDoc} */
   @Override
-  public void deleteRow(EntityId entityId) throws IOException {
+  public void deleteRow(final EntityId entityId) throws IOException {
     deleteRow(entityId, HConstants.LATEST_TIMESTAMP);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteRow(EntityId entityId, long upToTimestamp) throws IOException {
-    final DeleteRequest delete = new DeleteRequest(mTableName, entityId.getHBaseRowKey(), upToTimestamp);
+  public void deleteRow(final EntityId entityId, final long upToTimestamp) throws IOException {
+    final DeleteRequest delete = new DeleteRequest(
+        mTableName,
+        entityId.getHBaseRowKey(),
+        upToTimestamp);
     mHBClient.delete(delete);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFamily(EntityId entityId, String family) throws IOException {
+  public void deleteFamily(final EntityId entityId, final String family) throws IOException {
     deleteFamily(entityId, family, HConstants.LATEST_TIMESTAMP);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFamily(EntityId entityId, String family, long upToTimestamp)
-      throws IOException {
+  public void deleteFamily(
+      final EntityId entityId,
+      final String family,
+      final long upToTimestamp
+  ) throws IOException {
     final AsyncKijiTableWriter.WriterLayoutCapsule capsule = mWriterLayoutCapsule;
     final FamilyLayout familyLayout = capsule.getLayout().getFamilyMap().get(family);
     if (null == familyLayout) {
@@ -268,7 +277,7 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
 
     // The only data in this HBase family is the one Kiji family, so we can delete everything.
     final HBaseColumnName hbaseColumnName = capsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(family));
+        .toHBaseColumnName(KijiColumnName.create(family));
     final DeleteRequest delete = new DeleteRequest(
         entityId.getHBaseRowKey(),
         hbaseColumnName.getFamily(),
@@ -286,12 +295,13 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
    * @throws IOException If there is an IO error.
    */
   private void deleteGroupFamily(
-      EntityId entityId,
-      FamilyLayout familyLayout,
-      long upToTimestamp)
-      throws IOException {
+      final EntityId entityId,
+      final FamilyLayout familyLayout,
+      final long upToTimestamp
+  ) throws IOException {
     final String familyName = Preconditions.checkNotNull(familyLayout.getName());
-    final KijiColumnNameTranslator colNameTranslator = mWriterLayoutCapsule.getColumnNameTranslator();
+    final KijiColumnNameTranslator colNameTranslator =
+        mWriterLayoutCapsule.getColumnNameTranslator();
     int i = 0;
     final int numColumnLayouts = familyLayout.getColumnMap().size();
     byte[][] qualifiers = new byte[numColumnLayouts][];
@@ -324,8 +334,11 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
    * @param upToTimestamp A timestamp.
    * @throws IOException If there is an IO error.
    */
-  private void deleteMapFamily(EntityId entityId, FamilyLayout familyLayout, long upToTimestamp)
-      throws IOException {
+  private void deleteMapFamily(
+      final EntityId entityId,
+      final FamilyLayout familyLayout,
+      final long upToTimestamp
+  ) throws IOException {
     // Since multiple Kiji column families are mapped into a single HBase column family,
     // we have to do this delete in a two-step transaction:
     //
@@ -335,7 +348,7 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
 
     final String familyName = familyLayout.getName();
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(familyName));
+        .toHBaseColumnName(KijiColumnName.create(familyName));
     final byte[] hbaseRow = entityId.getHBaseRowKey();
 
     // Lock the row.
@@ -366,8 +379,7 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
               keyValue.family(),
               keyValue.qualifier(),
               upToTimestamp);
-          LOG.debug("Deleting HBase column " + hbaseColumnName.getFamilyAsString()
-                  + ":" + Bytes.toString(keyValue.qualifier()));
+          LOG.debug("Deleting HBase column {}", hbaseColumnName);
           mHBClient.delete(delete);
         }
       }
@@ -385,16 +397,24 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
 
   /** {@inheritDoc} */
   @Override
-  public void deleteColumn(EntityId entityId, String family, String qualifier) throws IOException {
+  public void deleteColumn(
+      final EntityId entityId,
+      final String family,
+      final String qualifier
+  ) throws IOException {
     deleteColumn(entityId, family, qualifier, HConstants.LATEST_TIMESTAMP);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteColumn(EntityId entityId, String family, String qualifier, long upToTimestamp)
-      throws IOException {
+  public void deleteColumn(
+      final EntityId entityId,
+      final String family,
+      final String qualifier,
+      final long upToTimestamp
+  ) throws IOException {
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(family, qualifier));
+        .toHBaseColumnName(KijiColumnName.create(family, qualifier));
     final DeleteRequest delete = new DeleteRequest(
         mTableName, entityId.getHBaseRowKey(),
         hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
@@ -404,16 +424,24 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
 
   /** {@inheritDoc} */
   @Override
-  public void deleteCell(EntityId entityId, String family, String qualifier) throws IOException {
+  public void deleteCell(
+      final EntityId entityId,
+      final String family,
+      final String qualifier
+  ) throws IOException {
     deleteCell(entityId, family, qualifier, HConstants.LATEST_TIMESTAMP);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteCell(EntityId entityId, String family, String qualifier, long timestamp)
-      throws IOException {
+  public void deleteCell(
+      final EntityId entityId,
+      final String family,
+      final String qualifier,
+      final long timestamp
+  ) throws IOException {
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
-        .toHBaseColumnName(new KijiColumnName(family, qualifier));
+        .toHBaseColumnName(KijiColumnName.create(family, qualifier));
     final DeleteRequest delete = new DeleteRequest(
         mTableName, entityId.getHBaseRowKey(),
         hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
@@ -457,11 +485,11 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
   protected void finalize() throws Throwable {
     try {
       if (mState != State.CLOSED) {
-        LOG.warn("Finalizing unclosed HBaseKijiBufferedWriter {} in state {}.", this, mState);
+        LOG.warn("Finalizing unclosed AsyncKijiBufferedWriter {} in state {}.", this, mState);
         close();
       }
     } catch (Throwable thr) {
-      LOG.warn("Throwable thrown by close() in finalize of HBaseKijiBufferedWriter: {}\n{}",
+      LOG.warn("Throwable thrown by close() in finalize of AsyncKijiBufferedWriter: {}\n{}",
           thr.getMessage(), StringUtils.stringifyException(thr));
     } finally {
       super.finalize();
