@@ -17,7 +17,7 @@
  * limitations under the License.
  */
 
-package org.kiji.schema;
+package org.kiji.schema.impl.hbase;
 
 import java.util.regex.Pattern;
 
@@ -29,8 +29,15 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.junit.Test;
 
-/** Tests for KijiInstaller. */
-public class TestKijiInstaller extends KijiClientTest {
+import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.KijiInstaller;
+import org.kiji.schema.KijiInvalidNameException;
+import org.kiji.schema.KijiNotInstalledException;
+import org.kiji.schema.KijiURI;
+
+/** Tests for HBaseKijiInstaller. */
+public class TestHBaseKijiInstaller extends KijiClientTest {
   @Test
   public void testInstallThenUninstall() throws Exception {
     final Configuration conf = HBaseConfiguration.create();

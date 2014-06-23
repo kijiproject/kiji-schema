@@ -28,8 +28,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
-import org.kiji.delegation.Lookups;
 import org.kiji.schema.avro.TableLayoutDesc;
+import org.kiji.schema.impl.hbase.HBaseKijiFactory;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.ReferenceCountable;
@@ -96,38 +96,47 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
    * Ensures that there is only one KijiFactory instance.
    */
   public static final class Factory {
-    /** KijiFactory instance. */
-    private static KijiFactory mInstance;
 
-    /** @return the default KijiFactory. */
+    /**
+     * Get an HBase-backed KijiFactory instance.
+     *
+     * @return a default HBase KijiFactory.
+     * @deprecated use {@link #get(KijiURI)} instead.
+     */
+    @Deprecated
     public static KijiFactory get() {
-      synchronized (Kiji.Factory.class) {
-        if (null == mInstance) {
-          mInstance = Lookups.getPriority(KijiFactory.class).lookup();
-        }
-        return mInstance;
-      }
+      return new HBaseKijiFactory();
+    }
+
+    /**
+     * Returns a KijiFactory for the appropriate Kiji type of the URI.
+     *
+     * @param uri for the Kiji instance to build with the factory.
+     * @return the default KijiFactory.
+     */
+    public static KijiFactory get(KijiURI uri) {
+      return uri.getKijiFactory();
     }
 
     /**
      * Opens a Kiji instance by URI.
-     *
-     * <p> Caller does not need to call Kiji.retain(),
-     *     but must call Kiji.release() when done with it.
+     * <p>
+     * Caller does not need to call {@code Kiji.retain()}, but must call {@code Kiji.release()}
+     * after the returned {@code Kiji} will no longer be used.
      *
      * @param uri URI specifying the Kiji instance to open.
      * @return the specified Kiji instance.
      * @throws IOException on I/O error.
      */
     public static Kiji open(KijiURI uri) throws IOException {
-      return get().open(uri);
+      return get(uri).open(uri);
     }
 
     /**
      * Opens a Kiji instance by URI.
-     *
-     * <p> Caller does not need to call Kiji.retain(),
-     *     but must call Kiji.release() when done with it.
+     * <p>
+     * Caller does not need to call {@code Kiji.retain()}, but must call {@code Kiji.release()}
+     * after the returned {@code Kiji} will no longer be used.
      *
      * @param uri URI specifying the Kiji instance to open.
      * @param conf Hadoop configuration.
@@ -135,7 +144,7 @@ public interface Kiji extends KijiTableFactory, ReferenceCountable<Kiji> {
      * @throws IOException on I/O error.
      */
     public static Kiji open(KijiURI uri, Configuration conf) throws IOException {
-      return get().open(uri, conf);
+      return get(uri).open(uri, conf);
     }
 
     /** Utility class may not be instantiated. */

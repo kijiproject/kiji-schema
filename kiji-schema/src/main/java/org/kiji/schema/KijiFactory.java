@@ -20,6 +20,7 @@
 package org.kiji.schema;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -51,4 +52,13 @@ public interface KijiFactory extends PriorityProvider {
    * @throws IOException on I/O error.
    */
   Kiji open(KijiURI uri, Configuration conf) throws IOException;
+
+  /**
+   * {@inheritDoc}
+   *
+   * @deprecated use {@link org.kiji.schema.Kiji.Factory#get(KijiURI)}.
+   */
+  @Override
+  @Deprecated
+  int getPriority(Map<String, String> runtimeHints);
 }
