@@ -59,7 +59,7 @@ import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.Versions;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.CloseableIterable;
-import org.kiji.schema.util.Debug;
+import org.kiji.schema.util.DebugResourceTracker;
 import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -74,8 +74,6 @@ import org.kiji.schema.util.ResourceUtils;
 @ApiAudience.Private
 public final class HBaseSystemTable implements KijiSystemTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseSystemTable.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + HBaseSystemTable.class.getName());
 
   /** The HBase column family that stores the value of the properties. */
   public static final String VALUE_COLUMN_FAMILY = "value";
@@ -108,9 +106,6 @@ public final class HBaseSystemTable implements KijiSystemTable {
 
   /** Tracks the state of this SystemTable instance. */
   private AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
-
-  /** Used for testing finalize() behavior. */
-  private String mConstructorStack = "";
 
   /**
    * Creates a new HTableInterface for the Kiji system table.
@@ -166,12 +161,10 @@ public final class HBaseSystemTable implements KijiSystemTable {
     mURI = uri;
     mTable = htable;
 
-    if (CLEANUP_LOG.isDebugEnabled()) {
-      mConstructorStack = Debug.getStackTrace();
-    }
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open SystemTable instance in state %s.", oldState);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /** {@inheritDoc} */
@@ -228,20 +221,8 @@ public final class HBaseSystemTable implements KijiSystemTable {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close KijiSystemTable instance in state %s.", oldState);
+    DebugResourceTracker.get().unregisterResource(this);
     mTable.close();
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void finalize() throws Throwable {
-    final State state = mState.get();
-    if (state != State.CLOSED) {
-      CLEANUP_LOG.warn("Finalizing unclosed Kiji HBaseSystemTable instance {} in state {}.",
-          this, state);
-      CLEANUP_LOG.debug("Stack when HBaseSystemTable was constructed:\n" + mConstructorStack);
-      close();
-    }
-    super.finalize();
   }
 
   /** {@inheritDoc} */

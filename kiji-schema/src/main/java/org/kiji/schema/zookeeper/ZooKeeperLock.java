@@ -24,17 +24,17 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.Watcher.Event.EventType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.util.Debug;
+import org.kiji.schema.util.DebugResourceTracker;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.Time;
 
@@ -42,16 +42,12 @@ import org.kiji.schema.util.Time;
 @ApiAudience.Private
 public final class ZooKeeperLock implements Lock {
   private static final Logger LOG = LoggerFactory.getLogger(ZooKeeperLock.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + ZooKeeperLock.class.getName());
   private static final String LOCK_NAME_PREFIX = "lock-";
 
-  private final String mConstructorStack;
   private final CuratorFramework mZKClient;
   private final File mLockDir;
   private final File mLockPathPrefix;
   private File mCreatedPath = null;
-  private WatchedEvent mPrecedingEvent = null;
 
   /**
    * Constructs a ZooKeeper lock object.
@@ -60,10 +56,10 @@ public final class ZooKeeperLock implements Lock {
    * @param lockDir Path of the directory node to use for the lock.
    */
   public ZooKeeperLock(CuratorFramework zkClient, File lockDir) {
-    mConstructorStack = CLEANUP_LOG.isDebugEnabled() ? Debug.getStackTrace() : null;
     mZKClient = zkClient;
     mLockDir = lockDir;
     mLockPathPrefix = new File(lockDir, LOCK_NAME_PREFIX);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /** Watches the lock directory node. */
@@ -72,7 +68,6 @@ public final class ZooKeeperLock implements Lock {
     public void process(WatchedEvent event) {
       LOG.debug("ZooKeeperLock.LockWatcher: received event {}", event);
       synchronized (ZooKeeperLock.this) {
-        mPrecedingEvent = event;
         ZooKeeperLock.this.notifyAll();
       }
     }
@@ -92,7 +87,13 @@ public final class ZooKeeperLock implements Lock {
   /** {@inheritDoc} */
   @Override
   public boolean lock(double timeout) throws IOException {
-    return lockInternal(timeout);
+    final boolean isAcquired = lockInternal(timeout);
+    if (isAcquired) {
+      DebugResourceTracker.get().registerResource(
+          mCreatedPath,
+          String.format("Locked (acquired) ZooKeeper lock: %s.", this));
+    }
+    return isAcquired;
   }
 
   /**
@@ -152,11 +153,6 @@ public final class ZooKeeperLock implements Lock {
               } else {
                 this.wait();
               }
-              if ((mPrecedingEvent != null)
-                  && (mPrecedingEvent.getType() == EventType.NodeDeleted)
-                  && (index == 1)) {
-                LOG.debug("{}: lock acquired after {} disappeared", this, preceding);
-              }
             }
           }
         }
@@ -173,23 +169,24 @@ public final class ZooKeeperLock implements Lock {
   /** {@inheritDoc} */
   @Override
   public void unlock() throws IOException {
-    unlockInternal();
+    synchronized (this) {
+      DebugResourceTracker.get().unregisterResource(mCreatedPath);
+      unlockInternal();
+    }
   }
 
   /**
-   * Releases the lock.
+   * Releases the lock. Caller must synchronize on {@link this}.
    *
    * @throws IOException on unrecoverable ZooKeeper error.
    */
   private void unlockInternal() throws IOException {
     File pathToDelete;
-    synchronized (this) {
-      Preconditions.checkState(null != mCreatedPath,
-          "unlock() cannot be called while lock is unlocked.");
-      pathToDelete = mCreatedPath;
-      LOG.debug("Releasing lock {}: deleting {}", this, mCreatedPath);
-      mCreatedPath = null;
-    }
+    Preconditions.checkState(null != mCreatedPath,
+        "unlock() cannot be called while lock is unlocked.");
+    pathToDelete = mCreatedPath;
+    LOG.debug("Releasing lock {}: deleting {}", this, mCreatedPath);
+    mCreatedPath = null;
     try {
       mZKClient.delete().forPath(pathToDelete.getPath());
     } catch (Exception e) {
@@ -197,19 +194,21 @@ public final class ZooKeeperLock implements Lock {
     }
   }
 
+  @Override
+  public String toString() {
+    return Objects.toStringHelper(this.getClass()).add("directory", mLockDir).toString();
+  }
+
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
     synchronized (this) {
       if (mCreatedPath != null) {
-        CLEANUP_LOG.warn("Releasing ZooKeeperLock with path: {} in close().  "
-            + "Please ensure that locks are unlocked before closing.", mCreatedPath);
-        if (CLEANUP_LOG.isDebugEnabled()) {
-          CLEANUP_LOG.debug("ZooKeeperLock with path '{}' was constructed through:\n{}",
-              mCreatedPath, mConstructorStack);
-        }
-        unlock();
+        // This will trigger a leaked acquired lock resource error in the cleanup log by not
+        // unregistering mCreatedPath with the DebugResourceTracker.
+        unlockInternal();
       }
+      DebugResourceTracker.get().unregisterResource(this);
     }
   }
 }

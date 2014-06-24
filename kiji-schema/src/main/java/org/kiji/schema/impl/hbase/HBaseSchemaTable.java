@@ -74,7 +74,7 @@ import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.ByteStreamArray;
 import org.kiji.schema.util.ByteStreamArray.EncodingException;
 import org.kiji.schema.util.BytesKey;
-import org.kiji.schema.util.Debug;
+import org.kiji.schema.util.DebugResourceTracker;
 import org.kiji.schema.util.Hasher;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.util.ResourceUtils;
@@ -98,8 +98,6 @@ import org.kiji.schema.zookeeper.ZooKeeperUtils;
 @ApiAudience.Private
 public final class HBaseSchemaTable implements KijiSchemaTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseSchemaTable.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + HBaseSchemaTable.class.getName());
 
   /** The column family in HBase used to store schema entries. */
   public static final String SCHEMA_COLUMN_FAMILY = "schema";
@@ -148,9 +146,6 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
 
   /** Tracks the state of this SchemaTable instance. */
   private AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
-
-  /** Used for testing finalize() behavior. */
-  private String mConstructorStack = "";
 
   /**
    * Creates an HTable handle to the schema hash table.
@@ -256,13 +251,10 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
     mZKClient = ZooKeeperUtils.getZooKeeperClient(mURI);
     mZKLock = new ZooKeeperLock(mZKClient, ZooKeeperUtils.getSchemaTableLock(mURI));
 
-    if (CLEANUP_LOG.isDebugEnabled()) {
-      mConstructorStack = Debug.getStackTrace();
-    }
-
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open SchemaTable instance in state %s.", oldState);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /**
@@ -555,22 +547,11 @@ public final class HBaseSchemaTable implements KijiSchemaTable {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close SchemaTable instance in state %s.", oldState);
+    DebugResourceTracker.get().unregisterResource(this);
     ResourceUtils.closeOrLog(mSchemaHashTable);
     ResourceUtils.closeOrLog(mSchemaIdTable);
     ResourceUtils.closeOrLog(mZKLock);
     ResourceUtils.closeOrLog(mZKClient);
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void finalize() throws Throwable {
-    final State state = mState.get();
-    if (state != State.CLOSED) {
-      CLEANUP_LOG.warn("Finalizing unclosed SchemaTable instance %s in state %s.", this, state);
-      CLEANUP_LOG.debug("Stack when HBaseSchemaTable was constructed:\n" + mConstructorStack);
-      close();
-    }
-    super.finalize();
   }
 
   /**

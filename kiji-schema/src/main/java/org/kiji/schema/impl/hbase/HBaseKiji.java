@@ -89,11 +89,6 @@ import org.kiji.schema.zookeeper.ZooKeeperUtils;
 @ApiAudience.Private
 public final class HBaseKiji implements Kiji {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKiji.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + HBaseKiji.class.getName());
-  private static final String ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE = String.format(
-      "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
-      CLEANUP_LOG.getName());
 
   /** The hadoop configuration. */
   private final Configuration mConf;
@@ -127,12 +122,6 @@ public final class HBaseKiji implements Kiji {
 
   /** Retain counter. When decreased to 0, the HBase Kiji may be closed and disposed of. */
   private final AtomicInteger mRetainCount = new AtomicInteger(0);
-
-  /**
-   * String representation of the call stack at the time this object is constructed.
-   * Used for debugging
-   **/
-  private final String mConstructorStack;
 
   /** ZooKeeper client for this Kiji instance. */
   private final CuratorFramework mZKClient;
@@ -257,10 +246,7 @@ public final class HBaseKiji implements Kiji {
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open Kiji instance in state %s.", oldState);
 
-    mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
-        ? Debug.getStackTrace()
-        : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
-    DebugResourceTracker.get().registerResource(this, mConstructorStack);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /**
@@ -857,23 +843,6 @@ public final class HBaseKiji implements Kiji {
   @Override
   public int hashCode() {
     return mURI.hashCode();
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void finalize() throws Throwable {
-    final State state = mState.get();
-    if (state != State.CLOSED) {
-      CLEANUP_LOG.warn("Finalizing unreleased HBaseKiji instance {} in state {}.", this, state);
-      if (CLEANUP_LOG.isDebugEnabled()) {
-        CLEANUP_LOG.debug(
-            "HBaseKiji '{}' was constructed through:\n{}",
-            mURI,
-            mConstructorStack);
-      }
-      close();
-    }
-    super.finalize();
   }
 
   /** {@inheritDoc} */

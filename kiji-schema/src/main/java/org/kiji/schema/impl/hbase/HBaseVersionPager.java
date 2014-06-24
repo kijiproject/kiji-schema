@@ -44,6 +44,7 @@ import org.kiji.schema.KijiRowData;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
+import org.kiji.schema.util.DebugResourceTracker;
 
 /**
  * Pages through the versions of a fully-qualified column.
@@ -165,6 +166,7 @@ public final class HBaseVersionPager implements KijiPager {
 
     // Only retain the table if everything else ran fine:
     mTable.retain();
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /** {@inheritDoc} */
@@ -255,7 +257,7 @@ public final class HBaseVersionPager implements KijiPager {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    // TODO: Ensure that close() has been invoked properly (through finalize()).
+    DebugResourceTracker.get().unregisterResource(this);
     mTable.release();
   }
 }

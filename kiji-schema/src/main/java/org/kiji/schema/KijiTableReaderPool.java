@@ -57,8 +57,6 @@ public final class KijiTableReaderPool
     extends GenericObjectPool<PooledKijiTableReader>
     implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTableReaderPool.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger(KijiTableReaderPool.class.getName() + ".Cleanup");
 
   /** Builder for KijiTableReaderPool instances. */
   public static final class Builder {

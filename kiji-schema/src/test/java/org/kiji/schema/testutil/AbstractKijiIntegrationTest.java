@@ -286,10 +286,6 @@ public abstract class AbstractKijiIntegrationTest {
         }
         mCreationThread = null;
         mDeletionThread = null;
-
-        // Force garbage compaction to find any remaining references to opened tables, etc.
-        System.gc();
-        System.runFinalization();
       }
     }
   }
@@ -316,10 +312,6 @@ public abstract class AbstractKijiIntegrationTest {
     mHelper = null;
     mKijiURI = null;
     mConf = null;
-
-    // Force garbage collection:
-    System.gc();
-    System.runFinalization();
   }
 
   /** @return The integration helper. */

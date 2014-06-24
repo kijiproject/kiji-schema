@@ -65,6 +65,7 @@ import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
+import org.kiji.schema.util.DebugResourceTracker;
 
 /**
  * Reads from a kiji table by sending the requests directly to the HBase tables.
@@ -282,6 +283,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open KijiTableReader instance in state %s.", oldState);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /**
@@ -347,6 +349,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open KijiTableReader instance in state %s.", oldState);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /** {@inheritDoc} */
@@ -628,6 +631,7 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close KijiTableReader instance %s in state %s.", this, oldState);
+    DebugResourceTracker.get().unregisterResource(this);
     mLayoutConsumerRegistration.close();
     mTable.release();
   }
@@ -664,16 +668,5 @@ public final class HBaseKijiTableReader implements KijiTableReader {
     } finally {
       htable.close();
     }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void finalize() throws Throwable {
-    final State state = mState.get();
-    if (state != State.CLOSED) {
-      LOG.warn("Finalizing unclosed KijiTableReader {} in state {}.", this, state);
-      close();
-    }
-    super.finalize();
   }
 }

@@ -51,7 +51,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
-import org.kiji.schema.util.Debug;
+import org.kiji.schema.util.DebugResourceTracker;
 
 /**
  * This private class is designed to serve as a replacement for HTablePool, to get around the
@@ -84,8 +84,6 @@ public final class KijiHTablePool implements Closeable {
   // migrated there once we support HBase 0.94.11 and later, which have a new way to make
   // HTables.
   private static final Logger LOG = LoggerFactory.getLogger(KijiHTablePool.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + KijiHTablePool.class.getName());
 
   /** The name of the kiji table we're generating tables for. */
   private final String mTableName;
@@ -102,9 +100,6 @@ public final class KijiHTablePool implements Closeable {
   /** The Kiji instance backing the table. */
   private final HBaseKiji mKiji;
 
-  /** String representation of the call stack at the time this object is constructed. */
-  private final String mConstructorStack;
-
   /**
    * Primary constructor.
    *
@@ -117,8 +112,6 @@ public final class KijiHTablePool implements Closeable {
     mTableName = name;
     mHTableFactory = tableFactory;
     mKiji = kiji;
-
-    mConstructorStack = CLEANUP_LOG.isDebugEnabled() ? Debug.getStackTrace() : null;
 
     mHBaseTableName =
         KijiManagedHBaseTableName.getKijiTableName(
@@ -135,6 +128,7 @@ public final class KijiHTablePool implements Closeable {
     config.testOnBorrow = true;
 
     mPool = new GenericObjectPool<PooledHTable>(new PooledHTableFactory(), config);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /**
@@ -161,6 +155,7 @@ public final class KijiHTablePool implements Closeable {
       if (mPool.isClosed()) {
         throw new KijiIOException("Attempting to close an already closed table pool.");
       }
+      DebugResourceTracker.get().unregisterResource(this);
       mPool.close();
     } catch (Exception ex) {
       throw new KijiIOException(
@@ -209,28 +204,7 @@ public final class KijiHTablePool implements Closeable {
         .toString();
   }
 
-  @Override
-  protected void finalize() throws Throwable {
-    try {
-      // Attempt to close all our connections. Also complain that we weren't closed
-      // properly.
-      if (!mPool.isClosed()) {
-        CLEANUP_LOG.warn("Finalizing an unclosed KijiHTablePool for table {}.", mTableName);
-        if (CLEANUP_LOG.isDebugEnabled()) {
-          CLEANUP_LOG.debug(
-              "KijiHTablePool for '{}' in Kiji {} was constructed through:\n{}",
-              mTableName,
-              mKiji.getURI().toString(),
-              mConstructorStack);
-        }
-        mPool.close();
-      }
-    } finally {
-      super.finalize();
-    }
-  }
-
-    /**
+  /**
    * A proxy class that implements HTableInterface.close method to return the
    * wrapped table back to the table pool. This is virtually identical to HBase's
    * implementation inside HTablePool, but adds an {@link #isValid} method.

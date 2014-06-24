@@ -44,7 +44,7 @@ import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
-import org.kiji.schema.util.Debug;
+import org.kiji.schema.util.DebugResourceTracker;
 
 /**
  * The internal implementation of KijiRowScanner that reads from HTables.
@@ -52,8 +52,6 @@ import org.kiji.schema.util.Debug;
 @ApiAudience.Private
 public final class HBaseKijiRowScanner implements KijiRowScanner {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiRowScanner.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + HBaseKijiRowScanner.class.getName());
 
   public static final String MAX_RETRIES_ON_TIMEOUT_PROPERTY =
       "org.kiji.schema.impl.hbase.HBaseKijiRowScanner.MAX_RETRIES_ON_TIMEOUT";
@@ -92,9 +90,6 @@ public final class HBaseKijiRowScanner implements KijiRowScanner {
 
   /** HTable connection. */
   private final HTableInterface mHTable;
-
-  /** For debugging finalize(). */
-  private String mConstructorStack = "";
 
   /** Current HBase result scanner. This scanner may timeout. */
   private ResultScanner mResultScanner = null;
@@ -227,10 +222,6 @@ public final class HBaseKijiRowScanner implements KijiRowScanner {
    * @throws IOException on I/O error.
    */
   public HBaseKijiRowScanner(Options options) throws IOException {
-    if (CLEANUP_LOG.isDebugEnabled()) {
-      mConstructorStack = Debug.getStackTrace();
-    }
-
     mDataRequest = options.getDataRequest();
     mTable = options.getTable();
     mScan = options.getScan();
@@ -253,6 +244,7 @@ public final class HBaseKijiRowScanner implements KijiRowScanner {
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open KijiRowScanner instance in state %s.", oldState);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /**
@@ -299,23 +291,9 @@ public final class HBaseKijiRowScanner implements KijiRowScanner {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close KijiRowScanner instance in state %s.", oldState);
+    DebugResourceTracker.get().unregisterResource(this);
     mResultScanner.close();
     mHTable.close();
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void finalize() throws Throwable {
-    final State state = mState.get();
-    if (state != State.CLOSED) {
-      CLEANUP_LOG.warn(
-          "Finalizing unclosed KijiRowScanner in state {}.\n"
-          + "Call stack when the scanner was constructed:\n{}",
-          state,
-          mConstructorStack);
-      close();
-    }
-    super.finalize();
   }
 
   /**

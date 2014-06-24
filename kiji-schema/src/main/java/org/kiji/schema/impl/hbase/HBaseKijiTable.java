@@ -65,7 +65,6 @@ import org.kiji.schema.impl.LayoutConsumer.Registration;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.TableLayoutMonitor;
-import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.DebugResourceTracker;
 import org.kiji.schema.util.ResourceUtils;
 import org.kiji.schema.util.VersionInfo;
@@ -80,11 +79,6 @@ import org.kiji.schema.util.VersionInfo;
 @ApiAudience.Private
 public final class HBaseKijiTable implements KijiTable {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiTable.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + HBaseKijiTable.class.getName());
-  private static final String ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE = String.format(
-      "Enable DEBUG log level for logger: %s for a stack trace of the construction of this object.",
-      CLEANUP_LOG.getName());
 
   /** The kiji instance this table belongs to. */
   private final HBaseKiji mKiji;
@@ -116,9 +110,6 @@ public final class HBaseKijiTable implements KijiTable {
 
   /** Tracks the state of this kiji table. */
   private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
-
-  /** String representation of the call stack at the time this object is constructed. */
-  private final String mConstructorStack;
 
   /** HTableInterfaceFactory for creating new HTables associated with this KijiTable. */
   private final HTableInterfaceFactory mHTableFactory;
@@ -165,12 +156,8 @@ public final class HBaseKijiTable implements KijiTable {
       String name,
       Configuration conf,
       HTableInterfaceFactory htableFactory,
-      TableLayoutMonitor layoutMonitor)
-      throws IOException {
-    mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
-        ? Debug.getStackTrace()
-        : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
-
+      TableLayoutMonitor layoutMonitor
+  ) throws IOException {
     mKiji = kiji;
     mKiji.retain();
 
@@ -199,11 +186,10 @@ public final class HBaseKijiTable implements KijiTable {
     // Table is now open and must be released properly:
     mRetainCount.set(1);
 
-    DebugResourceTracker.get().registerResource(this, mConstructorStack);
-
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open KijiTable instance in state %s.", oldState);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /**

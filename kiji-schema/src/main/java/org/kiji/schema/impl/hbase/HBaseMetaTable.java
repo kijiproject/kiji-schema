@@ -52,6 +52,7 @@ import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayoutDatabase;
 import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
+import org.kiji.schema.util.DebugResourceTracker;
 
 /**
  * An implementation of the KijiMetaTable that uses the 'kiji-meta' HBase table as the backing
@@ -59,10 +60,7 @@ import org.kiji.schema.layout.impl.HBaseTableLayoutDatabase;
  */
 @ApiAudience.Private
 public final class HBaseMetaTable implements KijiMetaTable {
-
   private static final Logger LOG = LoggerFactory.getLogger(HBaseMetaTable.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup" + HBaseMetaTable.class.getName());
 
   /** The HBase column family that will store table layout specific metadata. */
   private static final String LAYOUT_COLUMN_FAMILY = "layout";
@@ -176,6 +174,7 @@ public final class HBaseMetaTable implements KijiMetaTable {
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open MetaTable instance in state %s.", oldState);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /** {@inheritDoc} */
@@ -268,18 +267,8 @@ public final class HBaseMetaTable implements KijiMetaTable {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close MetaTable instance in state %s.", oldState);
+    DebugResourceTracker.get().unregisterResource(this);
     mTable.close();
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void finalize() throws Throwable {
-    final State state = mState.get();
-    if (state != State.CLOSED) {
-      CLEANUP_LOG.warn("Finalizing unclosed KijiMetaTable instance %s in state %s.", this, state);
-      close();
-    }
-    super.finalize();
   }
 
   /** {@inheritDoc} */

@@ -39,7 +39,6 @@ import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.ClassSize;
-import org.apache.hadoop.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +58,7 @@ import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
 import org.kiji.schema.platform.SchemaPlatformBridge;
+import org.kiji.schema.util.DebugResourceTracker;
 
 /**
  * <p>
@@ -194,6 +194,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
           "Cannot open HBaseKijiBufferedWriter instance in state %s.", mState);
       mState = State.OPEN;
     }
+    DebugResourceTracker.get().registerResource(this);
   }
 
   // ----------------------------------------------------------------------------------------------
@@ -498,25 +499,10 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
       Preconditions.checkState(mState == State.OPEN,
           "Cannot close BufferedWriter instance %s in state %s.", this, mState);
       mState = State.CLOSED;
+      DebugResourceTracker.get().unregisterResource(this);
       mLayoutConsumerRegistration.close();
       mHTable.close();
       mTable.release();
-    }
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  protected void finalize() throws Throwable {
-    try {
-      if (mState != State.CLOSED) {
-        LOG.warn("Finalizing unclosed HBaseKijiBufferedWriter {} in state {}.", this, mState);
-        close();
-      }
-    } catch (Throwable thr) {
-      LOG.warn("Throwable thrown by close() in finalize of HBaseKijiBufferedWriter: {}\n{}",
-          thr.getMessage(), StringUtils.stringifyException(thr));
-    } finally {
-      super.finalize();
     }
   }
 }

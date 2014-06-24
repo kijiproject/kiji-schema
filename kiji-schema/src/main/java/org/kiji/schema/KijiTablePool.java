@@ -38,6 +38,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.Clock;
+import org.kiji.schema.util.DebugResourceTracker;
 import org.kiji.schema.util.ResourceUtils;
 
 /**
@@ -78,8 +79,6 @@ import org.kiji.schema.util.ResourceUtils;
 @ApiStability.Evolving
 public final class KijiTablePool implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(KijiTablePool.class);
-  private static final Logger CLEANUP_LOG =
-      LoggerFactory.getLogger("cleanup." + KijiTablePool.class.getName());
 
   /** Default minimum pool size. */
   public static final int DEFAULT_MIN_POOL_SIZE = 0;
@@ -251,6 +250,7 @@ public final class KijiTablePool implements Closeable {
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
         "Cannot open KijiTablePool instance in state %s.", oldState);
+    DebugResourceTracker.get().registerResource(this);
   }
 
   /**
@@ -318,6 +318,7 @@ public final class KijiTablePool implements Closeable {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot close KijiTablePool instance in state %s.", oldState);
+    DebugResourceTracker.get().unregisterResource(this);
     if (null != mCleanupThread) {
       mCleanupThread.interrupt();
     }
@@ -325,16 +326,6 @@ public final class KijiTablePool implements Closeable {
       ResourceUtils.closeOrLog(pool);
     }
     mPoolCache.clear();
-  }
-
-  @Override
-  protected void finalize() throws Throwable {
-    final State state = mState.get();
-    if (state != State.CLOSED) {
-      CLEANUP_LOG.warn("Finalizing unclosed KijiTablePool instance in state {}.", state);
-      close();
-    }
-    super.finalize();
   }
 
   /**

@@ -214,11 +214,6 @@ public class KijiClientTest {
     FileUtils.deleteDirectory(mLocalTempDir);
     mLocalTempDir = null;
     mTestId = null;
-
-    // Force a garbage collection, to trigger finalization of resources and spot
-    // resources that were not released or closed.
-    System.gc();
-    System.runFinalization();
   }
 
   /**
