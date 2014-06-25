@@ -418,6 +418,22 @@ public final class ZooKeeperUtils {
     return zkClient;
   }
 
+  /**
+   * Close all cached ZooKeeper connections.
+   *
+   * <p>
+   * This method closes all ZooKeeper connections that have been returned from
+   * {@link #getZooKeeperClient).  Clients who continue to use these connections will receive
+   * {@code IOExceptions}. This method should only be called when Kiji objects will no longer be
+   * used in the JVM.
+   * </p>
+   *
+   * @throws java.io.IOException on I/O Exception
+   */
+  public static void closeAllZooKeeperConnections() throws IOException {
+    ZK_CLIENT_CACHE.close();
+  }
+
   // -----------------------------------------------------------------------------------------------
 
   /**
