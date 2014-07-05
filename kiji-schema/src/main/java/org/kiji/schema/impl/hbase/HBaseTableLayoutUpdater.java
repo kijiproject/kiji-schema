@@ -117,7 +117,7 @@ public class HBaseTableLayoutUpdater {
               }
               userIds.add(userId);
             }
-            LOG.info("User map for table {}: {}", mTableURI, mLayoutMap);
+            LOG.debug("User map for table {}: {}", mTableURI, mLayoutMap);
             switch (mLayoutMap.size()) {
               case 0: return null;
               case 1: return mLayoutMap.keySet().iterator().next();
@@ -183,7 +183,7 @@ public class HBaseTableLayoutUpdater {
     public void waitForLayoutNotification(String layoutId) {
       synchronized (mLock) {
         while (!Objects.equal(getCurrentLayoutId(), layoutId)) {
-          LOG.info("Waiting for layout notification with ID {}, current layout ID is {}.",
+          LOG.debug("Waiting for layout notification with ID {}, current layout ID is {}.",
               layoutId, mCurrentLayoutId);
           try {
             mLock.wait();
@@ -290,7 +290,7 @@ public class HBaseTableLayoutUpdater {
         try {
           usersTracker.start();
           final String currentLayoutId = mLayoutUpdateHandler.getCurrentLayoutId();
-          LOG.info("Table {} has current layout ID {}.", mTableURI, currentLayoutId);
+          LOG.debug("Table {} has current layout ID {}.", mTableURI, currentLayoutId);
           if (!Objects.equal(currentLayoutId, currentLayout.getDesc().getLayoutId())) {
             throw new InternalKijiError(String.format(
                 "Inconsistency between meta-table and ZooKeeper: "
@@ -315,14 +315,14 @@ public class HBaseTableLayoutUpdater {
           while (true) {
             final String newLayoutId = waitForConsistentView();
             if (newLayoutId == null) {
-              LOG.info("Layout update complete for table {}: table has no users.", mTableURI);
+              LOG.debug("Layout update complete for table {}: table has no users.", mTableURI);
               break;
             } else if (Objects.equal(newLayoutId, newLayoutDesc.getLayoutId())) {
               LOG.info("Layout update complete for table {}: all users switched to layout ID {}.",
                   mTableURI, newLayoutId);
               break;
             } else {
-              LOG.info("Layout update in progress for table {}: users still using layout ID {}.",
+              LOG.debug("Layout update in progress for table {}: users still using layout ID {}.",
                   mTableURI, newLayoutId);
               Time.sleep(1.0);
             }
@@ -357,7 +357,7 @@ public class HBaseTableLayoutUpdater {
    * @throws IOException on I/O error.
    */
   private void writeMetaTable(TableLayoutDesc update) throws IOException {
-    LOG.info("Updating layout for table {} from layout ID {} to layout ID {} in meta-table.",
+    LOG.debug("Updating layout for table {} from layout ID {} to layout ID {} in meta-table.",
         mTableURI, update.getReferenceLayout(), update.getLayoutId());
     final String table = update.getName();
     mNewLayout = mKiji.getMetaTable().updateTableLayout(table, update);
@@ -374,7 +374,7 @@ public class HBaseTableLayoutUpdater {
    * @throws KeeperException on ZooKeeper error.
    */
   private void writeZooKeeper(TableLayoutDesc update) throws IOException, KeeperException {
-    LOG.info("Updating layout for table {} from layout ID {} to layout ID {} in ZooKeeper.",
+    LOG.debug("Updating layout for table {} from layout ID {} to layout ID {} in ZooKeeper.",
         mTableURI, update.getReferenceLayout(), update.getLayoutId());
     ZooKeeperUtils.setTableLayout(mZKClient, mTableURI, update.getLayoutId());
   }

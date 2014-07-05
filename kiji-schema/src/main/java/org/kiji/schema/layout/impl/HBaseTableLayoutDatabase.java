@@ -395,13 +395,13 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
         .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES);
     Result result = mTable.get(get);
        if (result.isEmpty()) {
-         LOG.info(String.format("There is no row in the MetaTable named '%s'.", table));
+         LOG.warn(String.format("There is no row in the MetaTable named '%s'.", table));
        }
        final Map<byte[], NavigableMap<Long, byte[]>> qualifierMap =
            result.getMap().get(mFamilyBytes);
        final List<TableLayoutBackupEntry> history = Lists.newArrayList();
        if ((qualifierMap == null) || qualifierMap.isEmpty()) {
-         LOG.info(String.format("Empty layout row for table '%s'.", table));
+         LOG.warn(String.format("Empty layout row for table '%s'.", table));
        } else {
          final Map<Long, byte[]> updateSerieMap = qualifierMap.get(QUALIFIER_UPDATE_BYTES);
          final Map<Long, byte[]> layoutSerieMap = qualifierMap.get(QUALIFIER_LAYOUT_BYTES);
@@ -431,7 +431,7 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   @Override
   public void restoreLayoutsFromBackup(String tableName, TableLayoutsBackup layoutBackup) throws
       IOException {
-    LOG.info(String.format("Restoring layout history for table '%s'.", tableName));
+    LOG.debug(String.format("Restoring layout history for table '%s'.", tableName));
     for (TableLayoutBackupEntry lbe : layoutBackup.getLayouts()) {
       final byte[] layoutBytes = encodeTableLayoutDesc(lbe.getLayout());
       final Put put = new Put(Bytes.toBytes(tableName))

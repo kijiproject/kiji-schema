@@ -465,7 +465,7 @@ public final class ZooKeeperMonitor implements Closeable {
           mHandler.update(layoutUpdate);
         }
       } catch (KeeperException.NoNodeException nne) {
-        LOG.info("Tracked table layout node for table {} has been removed. Tracking will cease.",
+        LOG.warn("Tracked table layout node for table {} has been removed. Tracking will cease.",
             mTableURI);
       } catch (KeeperException ke) {
         LOG.error("Unrecoverable ZooKeeper error: {}", ke.getMessage());

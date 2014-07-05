@@ -386,7 +386,7 @@ public final class HBaseMetaTable implements KijiMetaTable {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot restore backup to MetaTable instance in state %s.", state);
-    LOG.info(String.format("Restoring meta table from backup with %d entries.",
+    LOG.debug(String.format("Restoring meta table from backup with %d entries.",
         backup.getTables().size()));
     for (Map.Entry<String, TableBackup> tableEntry: backup.getTables().entrySet()) {
       final String tableName = tableEntry.getKey();
@@ -398,7 +398,7 @@ public final class HBaseMetaTable implements KijiMetaTable {
       restoreKeyValuesFromBackup(tableName, tableBackup.getKeyValueBackup());
     }
     mTable.flushCommits();
-    LOG.info("Flushing commits to table '{}'", Bytes.toString(mTable.getTableName()));
+    LOG.debug("Flushing commits to table '{}'", Bytes.toString(mTable.getTableName()));
   }
 
   /** {@inheritDoc} */

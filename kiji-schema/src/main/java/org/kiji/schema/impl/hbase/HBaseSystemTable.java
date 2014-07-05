@@ -386,7 +386,7 @@ public final class HBaseSystemTable implements KijiSystemTable {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot restore backup to SystemTable instance in state %s.", state);
-    LOG.info(String.format("Restoring system table from backup with %d entries.",
+    LOG.debug(String.format("Restoring system table from backup with %d entries.",
         backup.getEntries().size()));
     for (SystemTableEntry entry : backup.getEntries()) {
       putValue(entry.getKey(), entry.getValue().array());

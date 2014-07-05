@@ -546,7 +546,7 @@ public final class HBaseKijiTable implements KijiTable {
         }
         for (Path path : hfilePaths) {
           loader.doBulkLoad(path, htable);
-          LOG.info("Successfully loaded: " + path.toString());
+          LOG.debug("Successfully loaded: " + path.toString());
         }
       } finally {
         htable.close();

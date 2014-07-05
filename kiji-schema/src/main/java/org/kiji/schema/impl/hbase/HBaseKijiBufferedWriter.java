@@ -132,7 +132,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
           return;
         }
         if (mState == State.OPEN) {
-          LOG.info("Flushing buffer from HBaseKijiBufferedWriter for table: {} in preparation for"
+          LOG.debug("Flushing buffer from HBaseKijiBufferedWriter for table: {} in preparation for"
               + " layout update.", mTable.getURI());
           flush();
         }
