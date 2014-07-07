@@ -56,7 +56,7 @@ public class AsyncKijiResultScanner implements KijiResultScanner {
   //private final AsyncKijiTable mTable;
   //private final Scan mScan;
   //private final CellDecoderProvider mDecoderProvider;
-  //private final KijiColumnNameTranslator mColumnNameTranslator;
+  //private final HBaseColumnNameTranslator mColumnNameTranslator;
   //private final EntityIdFactory mEidFactory;
   //private final HTableInterface mHTable;
   //private final boolean mReopenScannerOnTimeout;
@@ -84,7 +84,7 @@ public AsyncKijiResultScanner(
     final AsyncKijiTable table,
     final Scan scan,
     final CellDecoderProvider decoderProvider,
-    final KijiColumnNameTranslator columnNameTranslator,
+    final HBaseColumnNameTranslator columnNameTranslator,
     final boolean reopenScannerOnTimeout
 ) throws IOException {
   mRequest = request;

@@ -56,9 +56,9 @@ import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.impl.hbase.HBaseKijiRowData;
 import org.kiji.schema.impl.hbase.HBaseKijiTable;
 import org.kiji.schema.layout.CellSpec;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayouts;
-import org.kiji.schema.layout.impl.LayoutCapsule;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.util.InstanceBuilder;
 
 public class TestHBaseKijiRowData extends KijiClientTest {
@@ -155,22 +155,22 @@ public class TestHBaseKijiRowData extends KijiClientTest {
     getKiji().createTable(KijiTableLayouts.getLayout(TEST_LAYOUT_V1));
     mTable = HBaseKijiTable.downcast(getKiji().openTable(TABLE_NAME));
 
-    final LayoutCapsule capsule = mTable.getLayoutCapsule();
-    final KijiColumnNameTranslator translator = capsule.getKijiColumnNameTranslator();
-    HBaseColumnName hcolumn = translator.toHBaseColumnName(new KijiColumnName("family", "empty"));
+    final KijiTableLayout layout = mTable.getLayout();
+    final HBaseColumnNameTranslator translator = HBaseColumnNameTranslator.from(layout);
+    HBaseColumnName hcolumn = translator.toHBaseColumnName(KijiColumnName.create("family", "empty"));
     mHBaseFamily = hcolumn.getFamily();
     mHBaseEmpty = hcolumn.getQualifier();
-    mHBaseQual0 = translator.toHBaseColumnName(new KijiColumnName("family:qual0")).getQualifier();
-    mHBaseQual1 = translator.toHBaseColumnName(new KijiColumnName("family:qual1")).getQualifier();
-    mHBaseQual2 = translator.toHBaseColumnName(new KijiColumnName("family:qual2")).getQualifier();
-    mHBaseQual3 = translator.toHBaseColumnName(new KijiColumnName("family:qual3")).getQualifier();
-    mHBaseNodequal0 = translator.toHBaseColumnName(new KijiColumnName("family:nodequal0"))
+    mHBaseQual0 = translator.toHBaseColumnName(KijiColumnName.create("family:qual0")).getQualifier();
+    mHBaseQual1 = translator.toHBaseColumnName(KijiColumnName.create("family:qual1")).getQualifier();
+    mHBaseQual2 = translator.toHBaseColumnName(KijiColumnName.create("family:qual2")).getQualifier();
+    mHBaseQual3 = translator.toHBaseColumnName(KijiColumnName.create("family:qual3")).getQualifier();
+    mHBaseNodequal0 = translator.toHBaseColumnName(KijiColumnName.create("family:nodequal0"))
         .getQualifier();
-    mHBaseNodequal1 = translator.toHBaseColumnName(new KijiColumnName("family:nodequal1"))
+    mHBaseNodequal1 = translator.toHBaseColumnName(KijiColumnName.create("family:nodequal1"))
         .getQualifier();
-    mHBaseMapFamily = translator.toHBaseColumnName(new KijiColumnName("map")).getFamily();
+    mHBaseMapFamily = translator.toHBaseColumnName(KijiColumnName.create("map")).getFamily();
 
-    mEntityIdFactory = EntityIdFactory.getFactory(capsule.getLayout());
+    mEntityIdFactory = EntityIdFactory.getFactory(layout);
   }
 
   @After
@@ -660,19 +660,19 @@ public class TestHBaseKijiRowData extends KijiClientTest {
       final Iterator<KijiCell<Integer>> cells = row1.iterator("map");
       assertTrue(cells.hasNext());
       final KijiCell<?> cell0 = cells.next();
-      assertEquals("Wrong first cell!", "key0", cell0.getQualifier());
+      assertEquals("Wrong first cell!", "key0", cell0.getColumn());
       assertTrue(cells.hasNext());
       final KijiCell<?> cell1 = cells.next();
-      assertEquals("Wrong second cell!", "key1", cell1.getQualifier());
+      assertEquals("Wrong second cell!", "key1", cell1.getColumn());
       assertTrue(cells.hasNext());
       final KijiCell<?> cell2 = cells.next();
-      assertEquals("Wrong third cell!", "key2", cell2.getQualifier());
+      assertEquals("Wrong third cell!", "key2", cell2.getColumn());
       assertFalse(cells.hasNext());
 
       final Iterator<KijiCell<Integer>> cellsKey1 = row1.iterator("map", "key1");
       assertTrue(cellsKey1.hasNext());
       final KijiCell<Integer> key1Cell = cellsKey1.next();
-      assertEquals("key1", key1Cell.getQualifier());
+      assertEquals("key1", key1Cell.getColumn());
       assertEquals(1L, key1Cell.getTimestamp());
       assertEquals((Integer) 1, key1Cell.getData());
       assertFalse(cellsKey1.hasNext());

@@ -50,10 +50,10 @@ import org.kiji.schema.impl.BoundColumnReaderSpec;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.ColumnReaderSpec;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
-import org.kiji.schema.layout.impl.LayoutCapsule;
+import org.kiji.schema.layout.KijiTableLayout;
 
 /**
  * Reads from a kiji table by sending the requests directly to the HBase tables.
@@ -102,7 +102,7 @@ public final class AsyncKijiTableReader implements KijiTableReader {
   private static final class ReaderLayoutCapsule {
     private final CellDecoderProvider mCellDecoderProvider;
     private final KijiTableLayout mLayout;
-    private final KijiColumnNameTranslator mTranslator;
+    private final HBaseColumnNameTranslator mTranslator;
 
     /**
      * Default constructor.
@@ -110,12 +110,12 @@ public final class AsyncKijiTableReader implements KijiTableReader {
      * @param cellDecoderProvider the CellDecoderProvider to cache.  This provider should reflect
      *     all overrides appropriate to this reader.
      * @param layout the KijiTableLayout to cache.
-     * @param translator the KijiColumnNameTranslator to cache.
+     * @param translator the HBaseColumnNameTranslator to cache.
      */
     private ReaderLayoutCapsule(
         final CellDecoderProvider cellDecoderProvider,
         final KijiTableLayout layout,
-        final KijiColumnNameTranslator translator) {
+        final HBaseColumnNameTranslator translator) {
       mCellDecoderProvider = cellDecoderProvider;
       mLayout = layout;
       mTranslator = translator;
@@ -125,7 +125,7 @@ public final class AsyncKijiTableReader implements KijiTableReader {
      * Get the column name translator for the current layout.
      * @return the column name translator for the current layout.
      */
-    private KijiColumnNameTranslator getColumnNameTranslator() {
+    private HBaseColumnNameTranslator getColumnNameTranslator() {
       return mTranslator;
     }
 
@@ -152,7 +152,7 @@ public final class AsyncKijiTableReader implements KijiTableReader {
   private final class InnerLayoutUpdater implements LayoutConsumer {
     /** {@inheritDoc} */
     @Override
-    public void update(LayoutCapsule capsule) throws IOException {
+    public void update(KijiTableLayout layout) throws IOException {
       if (mState.get() == State.CLOSED) {
         LOG.debug("KijiTableReader instance is closed; ignoring layout update.");
         return;
@@ -160,13 +160,13 @@ public final class AsyncKijiTableReader implements KijiTableReader {
       final CellDecoderProvider provider;
       if (null != mCellSpecOverrides) {
         provider = new CellDecoderProvider(
-            capsule.getLayout(),
+            layout,
             mTable.getKiji().getSchemaTable(),
             SpecificCellDecoderFactory.get(),
             mCellSpecOverrides);
       } else {
         provider = new CellDecoderProvider(
-            capsule.getLayout(),
+            layout,
             mOverrides,
             mAlternatives,
             mOnDecoderCacheMiss);
@@ -177,18 +177,18 @@ public final class AsyncKijiTableReader implements KijiTableReader {
             this,
             mTable.getURI(),
             mReaderLayoutCapsule.getLayout().getDesc().getLayoutId(),
-            capsule.getLayout().getDesc().getLayoutId());
+            layout.getDesc().getLayoutId());
       } else {
         // If the capsule is null this is the initial setup and we need a different log message.
         LOG.debug("Initializing KijiTableReader: {} for table: {} with table layout version: {}",
             this,
             mTable.getURI(),
-            capsule.getLayout().getDesc().getLayoutId());
+            layout.getDesc().getLayoutId());
       }
       mReaderLayoutCapsule = new ReaderLayoutCapsule(
           provider,
-          capsule.getLayout(),
-          capsule.getKijiColumnNameTranslator());
+          layout,
+          HBaseColumnNameTranslator.from(layout));
     }
   }
 
@@ -307,7 +307,7 @@ public final class AsyncKijiTableReader implements KijiTableReader {
         : overrides.entrySet()) {
       final KijiColumnName column = override.getKey();
       if (!layoutColumns.contains(column)
-          && !layoutColumns.contains(new KijiColumnName(column.getFamily()))) {
+          && !layoutColumns.contains(KijiColumnName.create(column.getFamily()))) {
         throw new NoSuchColumnException(String.format(
             "KijiTableLayout: %s does not contain column: %s", layout, column));
       } else {
@@ -321,7 +321,7 @@ public final class AsyncKijiTableReader implements KijiTableReader {
         : alternatives.entries()) {
       final KijiColumnName column = altsEntry.getKey();
       if (!layoutColumns.contains(column)
-          && !layoutColumns.contains(new KijiColumnName(column.getFamily()))) {
+          && !layoutColumns.contains(KijiColumnName.create(column.getFamily()))) {
         throw new NoSuchColumnException(String.format(
             "KijiTableLayout: %s does not contain column: %s", layout, column));
       } else {
@@ -355,9 +355,9 @@ public final class AsyncKijiTableReader implements KijiTableReader {
     Preconditions.checkState(state == State.OPEN,
         "Cannot get row from KijiTableReader instance %s in state %s.", this, state);
 
-    final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
+    final ReaderKijiTableLayout layout = mReaderLayoutCapsule;
     // Make sure the request validates against the layout of the table.
-    final KijiTableLayout tableLayout = capsule.getLayout();
+    final KijiTableLayout tableLayout = layout;
     validateRequestAgainstLayout(dataRequest, tableLayout);
 
     // Construct an HBase Get to send to the HTable.
@@ -399,8 +399,8 @@ public final class AsyncKijiTableReader implements KijiTableReader {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get row from KijiTableReader instance %s in state %s.", this, state);
-    final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
-    final KijiTableLayout tableLayout = capsule.getLayout();
+    final ReaderKijiTableLayout layout = mReaderLayoutCapsule;
+    final KijiTableLayout tableLayout = layout;
     validateRequestAgainstLayout(dataRequest, tableLayout);
     final HBaseDataRequestAdapter hbaseDataRequestAdapter =
         new HBaseDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
@@ -433,8 +433,8 @@ public final class AsyncKijiTableReader implements KijiTableReader {
     if (entityIds.size() == 1) {
       return Collections.singletonList(this.get(entityIds.get(0), dataRequest));
     }
-    final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
-    final KijiTableLayout tableLayout = capsule.getLayout();
+    final ReaderKijiTableLayout layout = mReaderLayoutCapsule;
+    final KijiTableLayout tableLayout = layout;
     validateRequestAgainstLayout(dataRequest, tableLayout);
     final HBaseDataRequestAdapter hbaseRequestAdapter =
         new HBaseDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
@@ -480,10 +480,10 @@ public final class AsyncKijiTableReader implements KijiTableReader {
       KijiRowFilter rowFilter = kijiScannerOptions.getKijiRowFilter();
       HBaseScanOptions scanOptions = kijiScannerOptions.getHBaseScanOptions();
 
-      final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
+      final ReaderKijiTableLayout layout = mReaderLayoutCapsule;
       final HBaseDataRequestAdapter dataRequestAdapter =
           new HBaseDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
-      final KijiTableLayout tableLayout = capsule.getLayout();
+      final KijiTableLayout tableLayout = layout;
       validateRequestAgainstLayout(dataRequest, tableLayout);
       final Scan scan = dataRequestAdapter.toScan(tableLayout, scanOptions);
 
@@ -536,10 +536,10 @@ public final class AsyncKijiTableReader implements KijiTableReader {
     Preconditions.checkState(state == State.OPEN,
         "Cannot get scanner from KijiTableReader instance %s in state %s.", this, state);
 
-    final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
+    final ReaderKijiTableLayout layout = mReaderLayoutCapsule;
     final HBaseDataRequestAdapter adapter =
         new HBaseDataRequestAdapter(request, capsule.getColumnNameTranslator());
-    final KijiTableLayout layout = capsule.getLayout();
+    final KijiTableLayout layout = layout;
     validateRequestAgainstLayout(request, layout);
     final Scan scan = adapter.toScan(layout, scannerOptions.getHBaseScanOptions());
     if (null != scannerOptions.getStartRow()) {
