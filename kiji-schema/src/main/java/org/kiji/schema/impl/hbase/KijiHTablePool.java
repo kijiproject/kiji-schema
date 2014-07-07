@@ -69,7 +69,7 @@ import org.kiji.schema.util.DebugResourceTracker;
  * table name.
  *
  * You may construct a KijiHTablePool using the constructor
- * {@link KijiHTablePool(String, org.kiji.schema.impl.HTableInterfaceFactory ). Note that the
+ * {@link KijiHTablePool(String, org.kiji.schema.impl.HTableInterfaceFactory). Note that the
  * provided HTableInterfaceFactory <i>must</i> return HTables rather than another implementation of
  * HTableInterface.  We rely on this to test connectivity.
  *

@@ -54,9 +54,9 @@ public final class CDH5MR1SchemaBridgeFactory extends SchemaPlatformBridgeFactor
   public int getPriority(Map<String, String> runtimeHints) {
     String hadoopVer = org.apache.hadoop.util.VersionInfo.getVersion();
     String hbaseVer = org.apache.hadoop.hbase.util.VersionInfo.getVersion();
-
+    System.out.println(hadoopVer + hbaseVer);
     if (hadoopVer.matches("2\\..*-cdh5\\..*")
-        && hbaseVer.matches("0\\.9[56]\\..-cdh5\\..*")) {
+        && hbaseVer.matches("0\\.9[56]\\..*-cdh5\\..*")) {
       // This is our only bridge for CDH5; this is the
       // best platform bridge available.
       return Priority.HIGH;
