@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
+import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiReaderFactory;
@@ -51,8 +52,9 @@ import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.impl.LayoutConsumer.Registration;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
-import org.kiji.schema.layout.impl.LayoutCapsule;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.TableLayoutMonitor;
 import org.kiji.schema.util.Debug;
 import org.kiji.schema.util.DebugResourceTracker;
@@ -180,7 +182,7 @@ public final class AsyncKijiTable implements KijiTable {
     mReaderFactory = new AsyncKijiReaderFactory(this);
 
     mLayoutMonitor = layoutMonitor;
-    mEntityIdFactory = createEntityIdFactory(mLayoutMonitor.getLayoutCapsule());
+    mEntityIdFactory = createEntityIdFactory(mLayoutMonitor.getLayout());
 
     // Table is now open and must be released properly:
     mRetainCount.set(1);
@@ -195,11 +197,11 @@ public final class AsyncKijiTable implements KijiTable {
   /**
    * Constructs an Entity ID factory from a layout capsule.
    *
-   * @param capsule Layout capsule to construct an entity ID factory from.
+   * @param layout layout to construct an entity ID factory from.
    * @return a new entity ID factory as described from the table layout.
    */
-  private static EntityIdFactory createEntityIdFactory(final LayoutCapsule capsule) {
-    final Object format = capsule.getLayout().getDesc().getKeysFormat();
+  private static EntityIdFactory createEntityIdFactory(final KijiTableLayout layout) {
+    final Object format = layout.getDesc().getKeysFormat();
     if (format instanceof RowKeyFormat) {
       return EntityIdFactory.getFactory((RowKeyFormat) format);
     } else if (format instanceof RowKeyFormat2) {
@@ -252,26 +254,28 @@ public final class AsyncKijiTable implements KijiTable {
   /**
    * {@inheritDoc}
    * If you need both the table layout and a column name translator within a single short lived
-   * operation, you should use {@link #getLayoutCapsule()} to ensure consistent state.
+   * operation, you should create the column name translator directly from the returned layout.
    */
   @Override
   public KijiTableLayout getLayout() {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get the layout of a table in state %s.", state);
-    return getLayoutCapsule().getLayout();
+    return mLayoutMonitor.getLayout();
   }
 
   /**
-   * Get the LayoutCapsule containing a snapshot of the state of this table's layout and
-   * corresponding KijiColumnNameTranslator.  Do not cache this object or its contents.
-   * @return a layout capsule representing the current state of this table's layout.
+   * Get the column name translator for the current layout of this table.  Do not cache this object.
+   * If you need both the table layout and a column name translator within a single short lived
+   * operation, you should use {@link #getLayout()}} and create your own
+   * {@link org.kiji.schema.layout.HBaseColumnNameTranslator} to ensure consistent state.
+   * @return the column name translator for the current layout of this table.
    */
-  public LayoutCapsule getLayoutCapsule() {
+  public HBaseColumnNameTranslator getColumnNameTranslator() {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
-        "Cannot get the layout capsule of a table in state %s.", state);
-    return mLayoutMonitor.getLayoutCapsule();
+        "Cannot get the column name translator of a table in state %s.", state);
+    return HBaseColumnNameTranslator.from(getLayout());
   }
 
   /** {@inheritDoc} */
@@ -411,9 +415,9 @@ public final class AsyncKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    String layoutId = (null == getLayoutCapsule())
-        ? "Uninitialized layout."
-        : getLayoutCapsule().getLayout().getDesc().getLayoutId();
+    String layoutId = mState.get() == State.OPEN
+        ? mLayoutMonitor.getLayout().getDesc().getLayoutId()
+        : "unknown";
     return Objects.toStringHelper(AsyncKijiTable.class)
         .add("id", System.identityHashCode(this))
         .add("uri", mTableURI)
@@ -421,6 +425,24 @@ public final class AsyncKijiTable implements KijiTable {
         .add("layout_id", layoutId)
         .add("state", mState.get())
         .toString();
+  }
+
+  /**
+   * When we know that a KijiTable is really a AsyncKijiTables
+   * instance, this is a convenience method for downcasting, which
+   * is common within the internals of Kiji code.
+   *
+   * @param kijiTable The Kiji table to downcast to an AsyncKijiTable.
+   * @return The given Kiji table as an AsyncKijiTable.
+   */
+  public static AsyncKijiTable downcast(KijiTable kijiTable) {
+    if (!(kijiTable instanceof AsyncKijiTable)) {
+      // This should really never happen.  Something is seriously
+      // wrong with Kiji code if we get here.
+      throw new InternalKijiError(
+          "Found a KijiTable object that was not an instance of AsyncKijiTable.");
+    }
+    return (AsyncKijiTable) kijiTable;
   }
 
   /**

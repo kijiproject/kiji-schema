@@ -63,7 +63,7 @@ public class TestCellByteSizeAsValueFilter extends KijiClientTest {
       final EntityId eid = table.getEntityId("row");
 
       final KijiTableLayout layout = table.getLayout();
-      final KijiColumnName column = new KijiColumnName("family", "column");
+      final KijiColumnName column = KijiColumnName.create("family", "column");
       final Map<KijiColumnName, CellSpec> overrides =
           ImmutableMap.<KijiColumnName, CellSpec>builder()
           .put(column, layout.getCellSpec(column)

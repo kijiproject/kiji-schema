@@ -86,7 +86,7 @@ public class TestHBaseQualifierIterator extends KijiClientTest {
 
     final HBaseQualifierIterator iterator =
         new HBaseQualifierIterator(
-            eid, dataRequest, (HBaseKijiTable) mTable, new KijiColumnName("jobs"));
+            eid, dataRequest, (HBaseKijiTable) mTable, KijiColumnName.create("jobs"));
     try {
       final List<String> qualifiers = Lists.newArrayList((Iterator<String>) iterator);
       assertEquals(ImmutableList.of("j0", "j1", "j2", "j3", "j4"), qualifiers);
@@ -108,7 +108,7 @@ public class TestHBaseQualifierIterator extends KijiClientTest {
 
     final HBaseQualifierIterator iterator =
         new HBaseQualifierIterator(
-            eid, dataRequest, (HBaseKijiTable) mTable, new KijiColumnName("jobs"));
+            eid, dataRequest, (HBaseKijiTable) mTable, KijiColumnName.create("jobs"));
     try {
       final List<String> qualifiers = Lists.newArrayList((Iterator<String>) iterator);
       assertEquals(ImmutableList.of("j1", "j2"), qualifiers);
