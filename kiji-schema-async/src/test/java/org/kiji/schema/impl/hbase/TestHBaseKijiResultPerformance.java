@@ -72,7 +72,7 @@ public class TestHBaseKijiResultPerformance extends KijiClientTest {
     }
     final KijiResult warmupResult = reader.getResult(table.getEntityId("foo"), request);
     final Iterator<KijiCell<Integer>> warmupIt =
-        warmupResult.iterator(new KijiColumnName("map"));
+        warmupResult.iterator(KijiColumnName.create("map"));
     while (warmupIt.hasNext()) {
       warmupIt.next().getData();
     }
@@ -134,7 +134,7 @@ public class TestHBaseKijiResultPerformance extends KijiClientTest {
       LOG.info("built result in {} milliseconds",
           (double) (System.nanoTime() - resultStartTime) / 1000000);
       final long itstart = System.nanoTime();
-      final Iterator<KijiCell<Integer>> it = testResult.iterator(new KijiColumnName("map"));
+      final Iterator<KijiCell<Integer>> it = testResult.iterator(KijiColumnName.create("map"));
       LOG.info("built iterator in {} milliseconds",
           (double) (System.nanoTime() - itstart) / 1000000);
       int seen = 0;
@@ -164,7 +164,7 @@ public class TestHBaseKijiResultPerformance extends KijiClientTest {
       final KijiResult testResult =
           reader.getResult(table.getEntityId("foo"), singletonRequest);
       final Integer value2 =
-          (Integer) testResult.getMostRecentCell(new KijiColumnName("map", "10")).getData();
+          (Integer) testResult.getMostRecentCell(KijiColumnName.create("map", "10")).getData();
       LOG.info("result single value time = {} nanoseconds",
           (double) (System.nanoTime() - resultStartTime) / 1000000);
 
@@ -206,7 +206,7 @@ public class TestHBaseKijiResultPerformance extends KijiClientTest {
       for (int i = 0; i < 10000; i++) {
         final String qualifier = String.valueOf(rand.nextInt(100));
         final long timestamp = 1L + rand.nextInt(1000);
-        Object v = testResult.getCell(new KijiColumnName("map", qualifier), timestamp);
+        Object v = testResult.getCell(KijiColumnName.create("map", qualifier), timestamp);
       }
       LOG.info("result random access time = {} nanoseconds",
           (double) (System.nanoTime() - resultStartTime) / 1000000);
@@ -231,7 +231,7 @@ public class TestHBaseKijiResultPerformance extends KijiClientTest {
       {
         final long resultStartTime = System.nanoTime();
         final KijiResult testResult = reader.getResult(eid, pagedRequest);
-        final Iterator<KijiCell<Integer>> it = testResult.iterator(new KijiColumnName("map"));
+        final Iterator<KijiCell<Integer>> it = testResult.iterator(KijiColumnName.create("map"));
         int seen = 0;
         while (it.hasNext()) {
           Object v = it.next().getData();

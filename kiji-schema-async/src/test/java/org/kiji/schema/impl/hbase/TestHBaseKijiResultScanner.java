@@ -46,7 +46,7 @@ public class TestHBaseKijiResultScanner extends KijiClientTest {
 
   private static final KijiScannerOptions OPTIONS = new KijiScannerOptions();
   private static final KijiColumnName PRIMITIVE_STRING =
-      new KijiColumnName("primitive", "string_column");
+      KijiColumnName.create("primitive", "string_column");
   private static final KijiDataRequest REQUEST = KijiDataRequest.builder().addColumns(
       ColumnsDef.create().withMaxVersions(10).add(PRIMITIVE_STRING)
   ).build();

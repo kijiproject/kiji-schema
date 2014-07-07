@@ -273,7 +273,7 @@ private static KeyValue kvAtIndex(
   //private final EntityId mEntityId;
   //private final KijiDataRequest mDataRequest;
   //private final Result mUnpagedResult;
-  //private final KijiColumnNameTranslator mColumnNameTranslator;
+  //private final HBaseColumnNameTranslator mColumnNameTranslator;
   //private final CellDecoderProvider mCellDecoderProvider;
   //private final AsyncKijiTable mTable;
   //private final KeyValueToKijiCell<Object> mKeyValueToKijiCell;
@@ -298,7 +298,7 @@ public AsyncKijiResult(
     final EntityId entityId,
     final KijiDataRequest dataRequest,
     final Result unPagedResult,
-    final KijiColumnNameTranslator columnNameTranslator,
+    final HBaseColumnNameTranslator columnNameTranslator,
     final CellDecoderProvider cellDecoderProvider,
     final AsyncKijiTable table
 ) {

@@ -49,11 +49,11 @@ import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.LayoutConsumer;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
-import org.kiji.schema.layout.impl.LayoutCapsule;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
@@ -109,7 +109,7 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
   private final class InnerLayoutUpdater implements LayoutConsumer {
     /** {@inheritDoc} */
     @Override
-    public void update(final LayoutCapsule capsule) throws IOException {
+    public void update(final KijiTableLayout layout) throws IOException {
       synchronized (mInternalLock) {
         if (mState == State.CLOSED) {
           LOG.debug("BufferedWriter instance is closed; ignoring layout update.");
@@ -123,7 +123,7 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
 
         final CellEncoderProvider provider = new CellEncoderProvider(
             mTable.getURI(),
-            capsule.getLayout(),
+            layout,
             mTable.getKiji().getSchemaTable(),
             DefaultKijiCellEncoderFactory.get());
         // If the capsule is null this is the initial setup and we do not need a log message.
@@ -134,19 +134,19 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
               this,
               mTable.getURI(),
               mWriterLayoutCapsule.getLayout().getDesc().getLayoutId(),
-              capsule.getLayout().getDesc().getLayoutId());
+              layout.getDesc().getLayoutId());
         } else {
           LOG.debug(
               "Initializing AsyncKijiBufferedWriter: {} for table: "
                   + "{} with table layout version: {}",
               this,
               mTable.getURI(),
-              capsule.getLayout().getDesc().getLayoutId());
+              layout.getDesc().getLayoutId());
         }
         mWriterLayoutCapsule = new AsyncKijiTableWriter.WriterLayoutCapsule(
             provider,
-            capsule.getLayout(),
-            capsule.getKijiColumnNameTranslator());
+            layout,
+            HBaseColumnNameTranslator.from(layout));
       }
     }
   }
@@ -300,14 +300,14 @@ public final class AsyncKijiBufferedWriter implements KijiBufferedWriter {
       final long upToTimestamp
   ) throws IOException {
     final String familyName = Preconditions.checkNotNull(familyLayout.getName());
-    final KijiColumnNameTranslator colNameTranslator =
+    final HBaseColumnNameTranslator colNameTranslator =
         mWriterLayoutCapsule.getColumnNameTranslator();
     int i = 0;
     final int numColumnLayouts = familyLayout.getColumnMap().size();
     byte[][] qualifiers = new byte[numColumnLayouts][];
     for (ColumnLayout columnLayout : familyLayout.getColumnMap().values()) {
       final String qualifier = columnLayout.getName();
-      final KijiColumnName column = new KijiColumnName(familyName, qualifier);
+      final KijiColumnName column = KijiColumnName.create(familyName, qualifier);
       final HBaseColumnName hbaseColumnName = colNameTranslator.toHBaseColumnName(column);
       qualifiers[i] = hbaseColumnName.getQualifier();
       i ++;
