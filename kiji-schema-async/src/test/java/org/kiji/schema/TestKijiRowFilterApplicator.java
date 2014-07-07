@@ -43,7 +43,7 @@ import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.hbase.HBaseDataRequestAdapter;
 import org.kiji.schema.layout.CellSpec;
-import org.kiji.schema.layout.KijiColumnNameTranslator;
+import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ScanEquals;
@@ -53,7 +53,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
   private KijiTableLayout mTableLayout;
 
   /** Translates kiji column names into hbase byte arrays. */
-  private KijiColumnNameTranslator mColumnNameTranslator;
+  private HBaseColumnNameTranslator mColumnNameTranslator;
 
   /** Encodes kiji cells into HBase cells. */
   private KijiCellEncoder mCellEncoder;
@@ -67,8 +67,8 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
         KijiTableLayouts.getTableLayout(KijiTableLayouts.SIMPLE_UPDATE_NEW_COLUMN);
     getKiji().createTable(mTableLayout.getDesc());
 
-    mColumnNameTranslator = KijiColumnNameTranslator.from(mTableLayout);
-    final CellSpec cellSpec = mTableLayout.getCellSpec(new KijiColumnName("family", "new"))
+    mColumnNameTranslator = HBaseColumnNameTranslator.from(mTableLayout);
+    final CellSpec cellSpec = mTableLayout.getCellSpec(KijiColumnName.create("family", "new"))
         .setSchemaTable(getKiji().getSchemaTable());
     mCellEncoder = DefaultKijiCellEncoderFactory.get().create(cellSpec);
 
@@ -92,7 +92,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
       assertArrayEquals("Row key not translated correctly by KijiRowFilter.Context",
           Bytes.toBytes("foo"), context.getHBaseRowKey("foo"));
 
-      final KijiColumnName column = new KijiColumnName("family", "new");
+      final KijiColumnName column = KijiColumnName.create("family", "new");
       final HBaseColumnName hbaseColumn = context.getHBaseColumnName(column);
       final HBaseColumnName expected = mColumnNameTranslator.toHBaseColumnName(column);
       assertArrayEquals("Family name not translated correctly by KijiRowFilter.Context",
@@ -130,7 +130,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
     final KijiDataRequest priorDataRequest = KijiDataRequest.create("family", "column");
     final Scan actualScan = new HBaseDataRequestAdapter(
         priorDataRequest,
-        KijiColumnNameTranslator.from(mTableLayout))
+        HBaseColumnNameTranslator.from(mTableLayout))
         .toScan(mTableLayout);
 
     // Construct a row filter and apply it to the existing scan.
@@ -142,7 +142,7 @@ public class TestKijiRowFilterApplicator extends KijiClientTest {
     // After filter application, expect the scan to also have the column requested by the filter.
     final Scan expectedScan = new HBaseDataRequestAdapter(
         priorDataRequest.merge(rowFilter.getDataRequest()),
-        KijiColumnNameTranslator.from(mTableLayout))
+        HBaseColumnNameTranslator.from(mTableLayout))
         .toScan(mTableLayout);
     expectedScan.setFilter(mHBaseFilter);
     assertEquals(expectedScan.toString(), actualScan.toString());
