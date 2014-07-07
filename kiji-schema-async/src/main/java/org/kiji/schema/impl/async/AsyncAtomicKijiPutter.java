@@ -34,7 +34,7 @@ import org.kiji.schema.EntityId;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.impl.hbase.HBaseKijiTableWriter.WriterLayoutCapsule;
 import org.kiji.schema.layout.LayoutUpdatedException;
-import org.kiji.schema.layout.impl.LayoutCapsule;
+import org.kiji.schema.layout.KijiTableLayout;
 
 /**
  * HBase implementation of AtomicKijiPutter.
@@ -117,7 +117,7 @@ public final class AsyncAtomicKijiPutter implements AtomicKijiPutter {
   private final class InnerLayoutUpdater implements LayoutConsumer {
     /** {@inheritDoc} */
     @Override
-    public void update(final LayoutCapsule capsule) throws IOException {
+    public void update(final KijiTableLayout layout) throws IOException {
       // TODO(gabe): Replace this with asynchbase
       throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
 
@@ -151,7 +151,7 @@ public final class AsyncAtomicKijiPutter implements AtomicKijiPutter {
         mWriterLayoutCapsule = new WriterLayoutCapsule(
             provider,
             capsule.getLayout(),
-            capsule.getKijiColumnNameTranslator());
+            capsule.getHBaseColumnNameTranslator());
       }
       */
     }
@@ -263,8 +263,8 @@ public final class AsyncAtomicKijiPutter implements AtomicKijiPutter {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot checkAndCommit a transaction on an AtomicKijiPutter instance in state %s.", state);
-    final WriterLayoutCapsule capsule = getWriterLayoutCapsule();
-    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
+    final WriterKijiTableLayout layout = getWriterLayoutCapsule();
+    final KijiColumnName kijiColumnName = KijiColumnName.create(family, qualifier);
     final HBaseColumnName columnName =
         capsule.getColumnNameTranslator().toHBaseColumnName(kijiColumnName);
     final byte[] encoded;
@@ -328,8 +328,8 @@ public final class AsyncAtomicKijiPutter implements AtomicKijiPutter {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot put cell to an AtomicKijiPutter instance in state %s.", state);
-    final WriterLayoutCapsule capsule = getWriterLayoutCapsule();
-    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
+    final WriterKijiTableLayout layout = getWriterLayoutCapsule();
+    final KijiColumnName kijiColumnName = KijiColumnName.create(family, qualifier);
     final HBaseColumnName columnName =
         capsule.getColumnNameTranslator().toHBaseColumnName(kijiColumnName);
 
