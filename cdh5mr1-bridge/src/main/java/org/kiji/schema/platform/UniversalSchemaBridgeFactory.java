@@ -21,6 +21,9 @@ package org.kiji.schema.platform;
 
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Priority;
 
@@ -28,15 +31,22 @@ import org.kiji.delegation.Priority;
  * Factory for fallback SchemaPlatformBridge implementation, if a better provider cannot
  * be found.
  *
- * <p>Defaults to using Hadoop 1.x / HBase 0.92 behavior and hopes for the best.</p>
+ * <p>Defaults to using cdh5mr1-bridge and hopes for the best. This class should always point to
+ * the latest bridge and move accordingly.</p>
  */
 @ApiAudience.Private
 public final class UniversalSchemaBridgeFactory extends SchemaPlatformBridgeFactory {
+  private static final Logger LOG = LoggerFactory.getLogger(UniversalSchemaBridgeFactory.class);
 
   /** {@inheritDoc} */
   @Override
   public SchemaPlatformBridge getBridge() {
-    return new Hadoop1xHBase92SchemaBridgeFactory().getBridge();
+    LOG.warn("No suitable schema bridge provider found, falling back on Universal Bridge.");
+    LOG.warn("This may be an error.  If you have trouble, please file an issue on jira.kiji.org"
+        + " with your hadoop and hbase versions.");
+    LOG.warn("Hadoop version: {}", org.apache.hadoop.util.VersionInfo.getVersion());
+    LOG.warn("HBase version: {}", org.apache.hadoop.hbase.util.VersionInfo.getVersion());
+    return new CDH5MR1SchemaBridgeFactory().getBridge();
   }
 
   /** {@inheritDoc} */

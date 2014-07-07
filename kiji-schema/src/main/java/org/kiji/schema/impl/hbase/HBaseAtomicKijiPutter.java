@@ -44,6 +44,7 @@ import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.LayoutUpdatedException;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /**
  * HBase implementation of AtomicKijiPutter.
@@ -222,8 +223,9 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
         "Cannot commit a transaction on an AtomicKijiPutter instance in state %s.", state);
     // We don't actually need the writer layout capsule here, but we want the layout update check.
     getWriterLayoutCapsule();
+    SchemaPlatformBridge bridge = SchemaPlatformBridge.get();
     for (KeyValue kv : mHopper) {
-      mPut.add(kv);
+      bridge.addKVToPut(mPut, kv);
     }
 
     mHTable.put(mPut);
@@ -257,9 +259,11 @@ public final class HBaseAtomicKijiPutter implements AtomicKijiPutter {
       encoded = cellEncoder.encode(value);
     }
 
+    SchemaPlatformBridge bridge = SchemaPlatformBridge.get();
     for (KeyValue kv : mHopper) {
-      mPut.add(kv);
+      bridge.addKVToPut(mPut, kv);
     }
+
     boolean retVal = mHTable.checkAndPut(
         mId, columnName.getFamily(), columnName.getQualifier(), encoded, mPut);
     if (retVal) {

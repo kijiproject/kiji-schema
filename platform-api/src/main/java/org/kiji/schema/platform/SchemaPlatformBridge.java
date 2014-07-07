@@ -25,8 +25,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HColumnDescriptor;
+import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
@@ -76,6 +78,17 @@ public abstract class SchemaPlatformBridge {
    */
   public abstract void setWriteBufferSize(HTableInterface hTable, long bufSize)
       throws IOException;
+
+
+  /**
+   * Adds an hbase KeyValue to a Put in a platform-safe way.
+   *
+   * @param put The Put object to receive the kv.
+   * @param kv A KeyValue to add.
+   * @throws IOException if there's an error while adding the keyvalue.
+   * @return The amended Put object.
+   */
+  public abstract Put addKVToPut(Put put, KeyValue kv) throws IOException;
 
   /**
    * Creates an HFile writer.

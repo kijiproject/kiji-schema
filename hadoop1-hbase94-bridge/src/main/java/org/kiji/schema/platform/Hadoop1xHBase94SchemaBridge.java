@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
@@ -67,6 +68,12 @@ public final class Hadoop1xHBase94SchemaBridge extends SchemaPlatformBridge {
       throws IOException {
     // setWriteBufferSize is added to HTableInterface in HBase 0.94.2
     hTable.setWriteBufferSize(bufSize);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public Put addKVToPut(Put put, KeyValue kv) throws IOException {
+    return put.add(kv);
   }
 
   /** {@inheritDoc} */
