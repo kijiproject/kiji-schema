@@ -333,13 +333,13 @@ public final class DebugResourceTracker {
         final String stackTrace
     ) {
       LOG.debug("Registering resource {}.", resource);
-      final Object previous = mReferences.put(
+      final ShowablePhantomReference previous = mReferences.put(
           System.identityHashCode(resource),
           new ShowablePhantomReference(mReferenceQueue, resource, message, stackTrace));
       if (previous != null) {
         CLEANUP_LOG.warn(
-            "Hash collision (or double-registration) for resource {}: {}.",
-            resource, message);
+            "Double registration detected: {}\n{}\nPrevious registration: {}\n{}",
+            message, stackTrace, previous.getMessage(), previous.getStackTrace());
       }
     }
 
