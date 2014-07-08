@@ -121,8 +121,6 @@ public final class AsyncDataRequestAdapter {
    * @throws IOException If there is an error.
    */
   public Scanner toScanner(KijiTableLayout tableLayout, HBaseScanOptions scanOptions) throws IOException {
-    // Unfortunately in HBase 95+, we can no longer create empty gets.
-    // So create a fake one for this table and fill in the fields of a new scan.
     final Scanner scanner = mHBClient.newScanner(mTableName);
     setupFilters(scanner, tableLayout);
     configureScanner(scanner, scanOptions);
