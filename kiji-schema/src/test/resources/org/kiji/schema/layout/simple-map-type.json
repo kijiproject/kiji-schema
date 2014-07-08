@@ -1,0 +1,55 @@
+/*
+   The raw JSON view of table layouts is intended for use by
+   system administrators or for debugging purposes.
+
+   Most users should use the 'kiji-schema-shell' DDL tool to modify
+   your table layouts instead.
+*/
+{
+  "name" : "users",
+  "description" : "users and their pets",
+  "keys_format" : {
+    "org.kiji.schema.avro.RowKeyFormat2" : {
+      "encoding" : "FORMATTED",
+      "salt" : {
+        "hash_size" : 2
+      },
+      "components" : [ {
+        "name" : "username",
+        "type" : "STRING"
+      } ]
+    }
+  },
+  "locality_groups" : [ {
+    "id" : 1,
+    "name" : "default",
+    "in_memory" : false,
+    "max_versions" : 2147483647,
+    "ttl_seconds" : 2147483647,
+    "bloom_type" : "NONE",
+    "compression_type" : "NONE",
+    "families" : [ {
+      "id" : 1,
+      "name" : "pets",
+      "map_schema" : {
+        "storage" : "UID",
+        "type" : "AVRO",
+        "avro_validation_policy" : "DEVELOPER",
+        "default_reader" : {
+          "uid" : 0
+        },
+        "readers" : [ {
+          "uid" : 0
+        } ],
+        "written" : [ {
+          "uid" : 0
+        } ],
+        "writers" : [ {
+          "uid" : 0
+        } ]
+      }
+    } ]
+  } ],
+  "version" : "layout-1.3",
+  "layout_id" : "0"
+}

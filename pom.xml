@@ -121,4 +121,25 @@
     <developerConnection>scm:git:git@github.com:kijiproject/kiji-schema.git</developerConnection>
   </scm>
 
+  <!-- Run maven with "-Pcassandra" to build the Cassandra submodule. -->
+  <profiles>
+    <profile>
+      <id>cassandra</id>
+      <modules>
+        <module>build-resources</module>
+        <module>platform-api</module>
+        <module>cdh41mr1-bridge</module>
+        <module>cdh42mr1-bridge</module>
+        <module>cdh5mr1-bridge</module>
+        <module>hadoop1-hbase92-bridge</module>
+        <module>hadoop1-hbase94-bridge</module>
+
+        <module>kiji-schema</module>
+        <module>kiji-schema-cassandra</module>
+        <module>kiji-schema-extras</module>
+        <module>kiji-schema-archetype</module>
+      </modules>
+    </profile>
+  </profiles>
+
 </project>

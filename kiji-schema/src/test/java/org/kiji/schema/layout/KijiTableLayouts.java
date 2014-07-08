@@ -97,6 +97,10 @@ public final class KijiTableLayouts {
   public static final String USER_TABLE =
       "org/kiji/schema/layout/user-table.json";
 
+  /** A simple layout for a user table with formatted entity ids. */
+  public static final String USER_TABLE_FORMATTED_EID =
+      "org/kiji/schema/layout/user-table-formatted-eid.json";
+
   /** A simple layout file example (bare minimum). */
   public static final String SIMPLE =
       "org/kiji/schema/layout/simple.json";
@@ -120,6 +124,10 @@ public final class KijiTableLayouts {
   /** A simple layout file example with two columns. */
   public static final String SIMPLE_TWO_COLUMNS =
       "org/kiji/schema/layout/simple-two-columns.json";
+
+  /** A simple layout file example with two columns. */
+  public static final String SIMPLE_FORMATTED_EID =
+      "org/kiji/schema/layout/simple-formatted-eid.json";
 
   /** A layout file which uses several primitive types as schemas for the columns. */
   public static final String PRIMITIVE_TYPES =
@@ -158,7 +166,15 @@ public final class KijiTableLayouts {
 
   /** Test layout named 'foo' that uses RowKeyFormat with hash MD5 size 16 key settings.*/
   public static final String FOO_TEST_LEGACY =
-            "org/kiji/schema/layout/foo-test-legacy.json";
+      "org/kiji/schema/layout/foo-test-legacy.json";
+
+  /** Test layout named 'foo' with formatted entity IDs. */
+  public static final String FOO_TEST_FORMATTED_EID =
+      "org/kiji/schema/layout/foo-test-formatted-eid.json";
+
+  /** Test layout named 'ttl_test'. */
+  public static final String TTL_TEST =
+      "org/kiji/schema/layout/ttl-test.json";
 
   /** Table named 'table' with a final string column named 'family:column'. */
   public static final String FINAL_COLUMN =
@@ -191,6 +207,9 @@ public final class KijiTableLayouts {
   /** Layout for table 'schemaregtest' to test schema registration. */
   public static final String SCHEMA_REG_TEST =
       "org/kiji/schema/layout/schema-reg-test.json";
+
+  public static final String SIMPLE_MAP_TYPE =
+      "org/kiji/schema/layout/simple-map-type.json";
 
   /** Test layout with hashing disabled. */
   public static TableLayoutDesc getFooUnhashedTestLayout() throws IOException {

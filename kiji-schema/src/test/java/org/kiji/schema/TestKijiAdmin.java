@@ -34,7 +34,7 @@ import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
 
 public class TestKijiAdmin extends KijiClientTest {
-  private static final String LAYOUT_V1 = KijiTableLayouts.SIMPLE;
+  private static final String LAYOUT_V1 = KijiTableLayouts.SIMPLE_FORMATTED_EID;
 
   /** Layout update on top of LAYOUT_V1 with an extra locality group called 'new'. */
   private static final String LAYOUT_V2 =

@@ -45,3 +45,14 @@ For commandline tool usage, issue the command:
 Further documentation is available at the Kiji project
 [Documentation Portal](http://docs.kiji.org)
 
+Note for Cassandra users
+------------------------
+
+The `kiji-schema-cassandra` submodule of this project contains the implementation of a
+Cassandra-backed version of KijiSchema.  Because Cassandra (and therefore also the Cassandra version
+of KijiSchema) requires Java 7, we have disabled building this submodule by default.
+
+If you have Java 7, you may build the Cassandra version of KijiSchema by using the "cassandra"
+profile:
+
+    mvn clean package -Pcassandra

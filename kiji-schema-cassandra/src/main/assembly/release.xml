@@ -1,0 +1,94 @@
+<!-- Assembly configuration for the release bundle. -->
+<assembly
+    xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2
+                        http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+  <!--
+    (c) Copyright 2014 WibiData, Inc.
+
+    See the NOTICE file distributed with this work for additional
+    information regarding copyright ownership.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+  -->
+  <id>release</id>
+  <formats>
+    <format>dir</format>
+    <format>tar.gz</format>
+  </formats>
+
+  <includeBaseDirectory>true</includeBaseDirectory>
+
+  <fileSets>
+    <fileSet>
+      <useDefaultExcludes>true</useDefaultExcludes>
+      <outputDirectory></outputDirectory>
+      <directory>${project.basedir}/../</directory>
+      <fileMode>0644</fileMode>
+      <includes>
+        <include>NOTICE.txt</include>
+        <include>LICENSE.txt</include>
+        <include>README.md</include>
+        <include>RELEASE_NOTES.txt</include>
+      </includes>
+      <filtered>true</filtered>
+    </fileSet>
+    <fileSet>
+      <useDefaultExcludes>false</useDefaultExcludes>
+      <outputDirectory>bin</outputDirectory>
+      <directory>src/main/scripts</directory>
+      <fileMode>0755</fileMode>
+      <excludes>
+        <exclude>*~</exclude>
+        <exclude>*.swp</exclude>
+      </excludes>
+      <filtered>true</filtered>
+    </fileSet>
+    <fileSet>
+      <useDefaultExcludes>false</useDefaultExcludes>
+      <outputDirectory>conf</outputDirectory>
+      <directory>src/main/conf</directory>
+      <fileMode>0644</fileMode>
+      <excludes>
+        <exclude>*~</exclude>
+        <exclude>*.swp</exclude>
+      </excludes>
+      <filtered>true</filtered>
+    </fileSet>
+    <fileSet>
+      <!-- java api documentation -->
+      <useDefaultExcludes>false</useDefaultExcludes>
+      <outputDirectory>docs/apidocs</outputDirectory>
+      <directory>target/apidocs</directory>
+      <fileMode>0644</fileMode>
+      <excludes>
+        <exclude>options</exclude>
+      </excludes>
+    </fileSet>
+  </fileSets>
+
+  <dependencySets>
+    <dependencySet>
+      <outputDirectory>lib</outputDirectory>
+      <scope>runtime</scope>
+      <useTransitiveFiltering>true</useTransitiveFiltering>
+      <fileMode>0644</fileMode>
+      <excludes>
+        <exclude>org.apache.hadoop</exclude>
+        <exclude>org.apache.hbase</exclude>
+      </excludes>
+    </dependencySet>
+  </dependencySets>
+
+</assembly>

@@ -39,4 +39,7 @@
 
   <!-- Don't worry about checkstyle on protocol buffer code. -->
   <suppress checks=".*" files="src/test/java/org/kiji/proto/"/>
+
+  <!-- Don't do any checks on the NullOutputStream code -->
+  <suppress checks=".*" files="src/main/java/com/google/common/io/"/>
 </suppressions>
