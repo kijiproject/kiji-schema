@@ -18,659 +18,752 @@
  */
 package org.kiji.schema.impl.hbase;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NavigableMap;
-import java.util.Set;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSortedMap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-import junit.framework.Assert;
+import com.google.common.collect.Maps;
 import org.apache.avro.util.Utf8;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.EntityId;
-import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.KijiResult;
-import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.KijiResult.Helpers;
+import org.kiji.schema.filter.KijiColumnRangeFilter;
+import org.kiji.schema.filter.KijiFirstKeyOnlyColumnFilter;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
+import org.kiji.schema.util.InstanceBuilder.FamilyBuilder;
+import org.kiji.schema.util.InstanceBuilder.QualifierBuilder;
+import org.kiji.schema.util.InstanceBuilder.RowBuilder;
+import org.kiji.schema.util.InstanceBuilder.TableBuilder;
 
 public class TestHBaseKijiResult extends KijiClientTest {
-  private static final Logger LOG = LoggerFactory.getLogger(TestHBaseKijiResult.class);
-  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
-      COMPLETE_MAP = ImmutableSortedMap
-          .<String, NavigableMap<String, NavigableMap<Long, Object>>>naturalOrder()
-              .put(
-                  "primitive",
-                  ImmutableSortedMap.<String, NavigableMap<Long, Object>>naturalOrder()
-                      .put("string_column", ImmutableSortedMap.<Long, Object>naturalOrder()
-                          .put(10L, new Utf8("ten"))
-                          .put(5L, new Utf8("five"))
-                          .put(4L, new Utf8("four"))
-                          .put(3L, new Utf8("three"))
-                          .put(2L, new Utf8("two"))
-                          .put(1L, new Utf8("one"))
-                          .build()
-                      )
-                      .put("double_column", ImmutableSortedMap.<Long, Object>naturalOrder()
-                          .put(10L, 10.0)
-                          .put(5L, 5.0)
-                          .put(4L, 4.0)
-                          .put(3L, 3.0)
-                          .put(2L, 2.0)
-                          .put(1L, 1.0)
-                          .build()
-                      )
-                      .build()
-              )
-              .put(
-                  "string_map",
-                  ImmutableSortedMap.<String, NavigableMap<Long, Object>>naturalOrder()
-                      .put("smap_1", ImmutableSortedMap.<Long, Object>naturalOrder()
-                          .put(10L, new Utf8("sm1-ten"))
-                          .put(5L, new Utf8("sm1-five"))
-                          .put(4L, new Utf8("sm1-four"))
-                          .put(3L, new Utf8("sm1-three"))
-                          .put(2L, new Utf8("sm1-two"))
-                          .put(1L, new Utf8("sm1-one"))
-                          .build()
-                      )
-                      .put("smap_2", ImmutableSortedMap.<Long, Object>naturalOrder()
-                          .put(10L, new Utf8("sm2-ten"))
-                          .put(5L, new Utf8("sm2-five"))
-                          .put(4L, new Utf8("sm2-four"))
-                          .put(3L, new Utf8("sm2-three"))
-                          .put(2L, new Utf8("sm2-two"))
-                          .put(1L, new Utf8("sm2-one"))
-                          .build()
-                      )
-                      .build()
-              )
-              .build();
 
-  private static final KijiDataRequest REQUEST = KijiDataRequest.builder().addColumns(
-      ColumnsDef.create()
-          .withMaxVersions(10)
-          .add("primitive", "string_column")
-          .add("primitive", "double_column")
-  ).build();
-  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
-      EXPECTED_REQUEST_MAP = COMPLETE_MAP.subMap("primitive", true, "primitive", true);
-
-  private static final KijiDataRequest PAGED_REQUEST = KijiDataRequest.builder().addColumns(
-      ColumnsDef.create()
-          .withPageSize(2)
-          .withMaxVersions(10)
-          .add("primitive", "string_column")
-          .add("primitive", "double_column")
-  ).build();
-  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
-      EXPECTED_PAGED_REQUEST_MAP = EXPECTED_REQUEST_MAP;
-
-  private static final KijiDataRequest MAP_REQUEST = KijiDataRequest.builder().addColumns(
-      ColumnsDef.create().withMaxVersions(10).add("string_map", null)).build();
-  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
-      EXPECTED_MAP_REQUEST_MAP = COMPLETE_MAP.subMap("string_map", true, "string_map", true);
-
-  private static final KijiDataRequest PAGED_MAP_REQUEST = KijiDataRequest.builder().addColumns(
-      ColumnsDef.create().withPageSize(1).withMaxVersions(10).add("string_map", null)).build();
-  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
-      EXPECTED_PAGED_MAP_REQUEST_MAP = EXPECTED_MAP_REQUEST_MAP;
-
-  private static final KijiDataRequest COMPLETE_REQUEST = KijiDataRequest.builder().addColumns(
-      ColumnsDef.create()
-          .withMaxVersions(10)
-          .add("string_map", null)
-          .add("primitive", "string_column")
-          .add("primitive", "double_column")
-  ).build();
-  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
-      EXPECTED_COMPLETE_REQUEST_MAP = COMPLETE_MAP;
-
-  private static final KijiDataRequest PAGED_COMPLETE_REQUEST = KijiDataRequest.builder()
-      .addColumns(ColumnsDef.create()
-          .withPageSize(2)
-          .withMaxVersions(10)
-          .add("string_map", null)
-          .add("primitive", "string_column")
-          .add("primitive", "double_column")
-      ).build();
-  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
-      EXPECTED_PAGED_COMPLETE_REQUEST_MAP = EXPECTED_COMPLETE_REQUEST_MAP;
-
-  private static final KijiDataRequest MAX_VERSIONS_REQUEST = KijiDataRequest.builder()
-      .addColumns(ColumnsDef.create()
-          .withMaxVersions(3)
-          .add("string_map", null)
-          .add("primitive", "string_column"))
-      .addColumns(ColumnsDef.create()
-          .withMaxVersions(10)
-          .add("primitive", "double_column"))
-      .build();
-  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
-      EXPECTED_MAX_VERSIONS_REQUEST_MAP =
-      ImmutableSortedMap.<String, NavigableMap<String, NavigableMap<Long, Object>>>naturalOrder()
-          .put("primitive", ImmutableSortedMap.<String, NavigableMap<Long, Object>>naturalOrder()
-              .put("string_column", ImmutableSortedMap.<Long, Object>naturalOrder()
-                  .put(10L, new Utf8("ten"))
-                  .put(5L, new Utf8("five"))
-                  .put(4L, new Utf8("four"))
-                  .build()
-              )
-              .put("double_column", ImmutableSortedMap.<Long, Object>naturalOrder()
-                  .put(10L, 10.0)
-                  .put(5L, 5.0)
-                  .put(4L, 4.0)
-                  .put(3L, 3.0)
-                  .put(2L, 2.0)
-                  .put(1L, 1.0)
-                  .build()
-              )
-              .build()
-          )
-          .put("string_map", ImmutableSortedMap.<String, NavigableMap<Long, Object>>naturalOrder()
-              .put("smap_1", ImmutableSortedMap.<Long, Object>naturalOrder()
-                  .put(10L, new Utf8("sm1-ten"))
-                  .put(5L, new Utf8("sm1-five"))
-                  .put(4L, new Utf8("sm1-four"))
-                  .build()
-              )
-              .put("smap_2", ImmutableSortedMap.<Long, Object>naturalOrder()
-                  .put(10L, new Utf8("sm2-ten"))
-                  .put(5L, new Utf8("sm2-five"))
-                  .put(4L, new Utf8("sm2-four"))
-                  .build()
-              )
-              .build()
-          )
-          .build();
-
-  private static final KijiDataRequest PAGED_MAX_VERSIONS_REQUEST = KijiDataRequest.builder()
-      .addColumns(ColumnsDef.create()
-          .withPageSize(2)
-          .withMaxVersions(3)
-          .add("string_map", null)
-          .add("primitive", "string_column"))
-      .addColumns(ColumnsDef.create()
-          .withPageSize(2)
-          .withMaxVersions(10)
-          .add("primitive", "double_column"))
-      .build();
-  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
-      EXPECTED_PAGED_MAX_VERSIONS_REQUEST_MAP = EXPECTED_MAX_VERSIONS_REQUEST_MAP;
-
-  private static final KijiDataRequest EMPTY_COLUMN_REQUEST = KijiDataRequest.builder()
-      .addColumns(ColumnsDef.create()
-          .withMaxVersions(3)
-          .add("primitive", "string_column")
-          .add("primitive", "boolean_column"))
-      .build();
-  private static final NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>
-      EXPECTED_EMPTY_COLUMN_REQUEST_MAP =
-      ImmutableSortedMap.<String, NavigableMap<String, NavigableMap<Long, Object>>>naturalOrder()
-          .put("primitive", ImmutableSortedMap.<String, NavigableMap<Long, Object>>naturalOrder()
-              .put("string_column", ImmutableSortedMap.<Long, Object>naturalOrder()
-                  .put(10L, new Utf8("ten"))
-                  .put(5L, new Utf8("five"))
-                  .put(4L, new Utf8("four"))
-                  .build()
-              )
-              .build()
-          )
-          .build();
+  private static final String PRIMITIVE_FAMILY = "primitive";
+  private static final String STRING_MAP_FAMILY = "string_map";
 
   private static final KijiColumnName PRIMITIVE_STRING =
-      KijiColumnName.create("primitive", "string_column");
+      KijiColumnName.create(PRIMITIVE_FAMILY, "string_column");
   private static final KijiColumnName PRIMITIVE_DOUBLE =
-      KijiColumnName.create("primitive", "double_column");
-  private static final KijiColumnName PRIMITIVE_BOOLEAN =
-      KijiColumnName.create("primitive", "boolean_column");
-  private static final KijiColumnName STRING_MAP = KijiColumnName.create("string_map", null);
+      KijiColumnName.create(PRIMITIVE_FAMILY, "double_column");
+  private static final KijiColumnName PRIMITIVE_LONG =
+      KijiColumnName.create(PRIMITIVE_FAMILY, "long_column");
   private static final KijiColumnName STRING_MAP_1 =
-      KijiColumnName.create("string_map", "smap_1");
+      KijiColumnName.create(STRING_MAP_FAMILY, "smap_1");
   private static final KijiColumnName STRING_MAP_2 =
-      KijiColumnName.create("string_map", "smap_2");
+      KijiColumnName.create(STRING_MAP_FAMILY, "smap_2");
 
-  private static final String EXPECTED_PAGED_GET_EXCEPTION_PREFIX =
-      "Cannot get a cell from a paged column. Found column: ";
-  private static final String EXPECTED_PAGED_MOST_RECENT_EXCEPTION_PREFIX =
-      "Cannot get the most recent version of a paged column. Found column: ";
-  private static final String EXPECTED_NO_REQUEST_EXCEPTION_PREFIX =
-      "No request for column: ";
+  private static final Integer ROW = 1;
 
-  // The reader is not used it tests, but it may not be closed until @After.
-  private HBaseKijiTableReader mReader = null;
-  private KijiResult mResult = null;
-  private KijiResult mPagedResult = null;
-  private KijiResult mMapResult = null;
-  private KijiResult mPagedMapResult = null;
-  private KijiResult mCompleteResult = null;
-  private KijiResult mPagedCompleteResult = null;
-  private KijiResult mMaxVersionsResult = null;
-  private KijiResult mPagedMaxVersionsResult = null;
-  private KijiResult mEmptyColumnResult = null;
+  private static final NavigableMap<KijiColumnName, NavigableMap<Long, ?>>
+      ROW_DATA = ImmutableSortedMap.<KijiColumnName, NavigableMap<Long, ?>>naturalOrder()
+          .put(PRIMITIVE_STRING, ImmutableSortedMap.<Long, Utf8>reverseOrder()
+              .put(10L, new Utf8("ten"))
+              .put(5L, new Utf8("five"))
+              .put(4L, new Utf8("four"))
+              .put(3L, new Utf8("three"))
+              .put(2L, new Utf8("two"))
+              .put(1L, new Utf8("one"))
+              .build())
+          .put(PRIMITIVE_DOUBLE, ImmutableSortedMap.<Long, Double>reverseOrder()
+              .put(10L, 10.0)
+              .put(5L, 5.0)
+              .put(4L, 4.0)
+              .put(3L, 3.0)
+              .put(2L, 2.0)
+              .put(1L, 1.0)
+              .build())
+          .put(KijiColumnName.create(PRIMITIVE_FAMILY, "long_column"),
+                  ImmutableSortedMap.<Long, Double>reverseOrder()
+              .build())
+          .put(STRING_MAP_1, ImmutableSortedMap.<Long, Utf8>reverseOrder()
+              .put(10L, new Utf8("sm1-ten"))
+              .put(5L, new Utf8("sm1-five"))
+              .put(4L, new Utf8("sm1-four"))
+              .put(3L, new Utf8("sm1-three"))
+              .put(2L, new Utf8("sm1-two"))
+              .put(1L, new Utf8("sm1-one"))
+              .build())
+          .put(STRING_MAP_2, ImmutableSortedMap.<Long, Utf8>reverseOrder()
+              .put(10L, new Utf8("sm2-ten"))
+              .put(5L, new Utf8("sm2-five"))
+              .put(4L, new Utf8("sm2-four"))
+              .put(3L, new Utf8("sm2-three"))
+              .put(2L, new Utf8("sm2-two"))
+              .put(1L, new Utf8("sm2-one"))
+              .build())
+          .build();
+
+  private HBaseKijiTable mTable;
+  private HBaseKijiTableReader mReader;
 
   @Before
   public void setupTestHBaseKijiResult() throws IOException {
-    new InstanceBuilder(getKiji())
-        .withTable(KijiTableLayouts.getLayout("org/kiji/schema/layout/all-types-schema.json"))
-            .withRow(1)
-                .withFamily("primitive")
-                    .withQualifier("string_column")
-                        .withValue(10, "ten")
-                        .withValue(5, "five")
-                        .withValue(4, "four")
-                        .withValue(3, "three")
-                        .withValue(2, "two")
-                        .withValue(1, "one")
-                    .withQualifier("double_column")
-                        .withValue(10, 10.0)
-                        .withValue(5, 5.0)
-                        .withValue(4, 4.0)
-                        .withValue(3, 3.0)
-                        .withValue(2, 2.0)
-                        .withValue(1, 1.0)
-                .withFamily("string_map")
-                    .withQualifier("smap_1")
-                        .withValue(10, "sm1-ten")
-                        .withValue(5, "sm1-five")
-                        .withValue(4, "sm1-four")
-                        .withValue(3, "sm1-three")
-                        .withValue(2, "sm1-two")
-                        .withValue(1, "sm1-one")
-                    .withQualifier("smap_2")
-                        .withValue(10, "sm2-ten")
-                        .withValue(5, "sm2-five")
-                        .withValue(4, "sm2-four")
-                        .withValue(3, "sm2-three")
-                        .withValue(2, "sm2-two")
-                        .withValue(1, "sm2-one")
-        .build();
-    final HBaseKijiTable table = HBaseKijiTable.downcast(getKiji().openTable("all_types_table"));
-    try {
-      final EntityId eid = table.getEntityId(1);
-      mReader = (HBaseKijiTableReader) table.openTableReader();
-      mResult = mReader.getResult(eid, REQUEST);
-      mPagedResult = mReader.getResult(eid, PAGED_REQUEST);
-      mMapResult = mReader.getResult(eid, MAP_REQUEST);
-      mPagedMapResult = mReader.getResult(eid, PAGED_MAP_REQUEST);
-      mCompleteResult = mReader.getResult(eid, COMPLETE_REQUEST);
-      mPagedCompleteResult = mReader.getResult(eid, PAGED_COMPLETE_REQUEST);
-      mMaxVersionsResult = mReader.getResult(eid, MAX_VERSIONS_REQUEST);
-      mPagedMaxVersionsResult = mReader.getResult(eid, PAGED_MAX_VERSIONS_REQUEST);
-      mEmptyColumnResult = mReader.getResult(eid, EMPTY_COLUMN_REQUEST);
-    } finally {
-      table.release();
+
+    // Deconstruct map of column name => version => value
+    // to family => qualifier => versions => value
+    NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>> families =
+        Maps.newTreeMap();
+    for (Entry<KijiColumnName, NavigableMap<Long, ?>> columnEntry : ROW_DATA.entrySet()) {
+      final KijiColumnName column = columnEntry.getKey();
+      NavigableMap<String, NavigableMap<Long, Object>> qualifiers =
+          families.get(column.getFamily());
+      if (qualifiers == null) {
+        qualifiers = Maps.newTreeMap();
+        families.put(column.getFamily(), qualifiers);
+      }
+      NavigableMap<Long, Object> cells = qualifiers.get(column.getQualifier());
+      if (cells == null) {
+        cells = Maps.newTreeMap();
+        qualifiers.put(column.getQualifier(), cells);
+      }
+      for (Entry<Long, ?> cellEntry : columnEntry.getValue().entrySet()) {
+        cells.put(cellEntry.getKey(), cellEntry.getValue());
+      }
     }
+
+    final TableBuilder tableBuilder =
+        new InstanceBuilder(getKiji())
+            .withTable(KijiTableLayouts.getLayout("org/kiji/schema/layout/all-types-schema.json"));
+
+    final RowBuilder rowBuilder = tableBuilder.withRow(ROW);
+
+    for (Entry<String, NavigableMap<String, NavigableMap<Long, Object>>> familyEntry
+        : families.entrySet()) {
+      final FamilyBuilder familyBuilder = rowBuilder.withFamily(familyEntry.getKey());
+
+      for (Entry<String, NavigableMap<Long, Object>> columnEntry
+          : familyEntry.getValue().entrySet()) {
+        final QualifierBuilder qualifierBuilder =
+            familyBuilder.withQualifier(columnEntry.getKey());
+
+        for (Entry<Long, Object> cellEntry : columnEntry.getValue().entrySet()) {
+          qualifierBuilder.withValue(cellEntry.getKey(), cellEntry.getValue());
+        }
+      }
+    }
+    tableBuilder.build();
+
+
+    mTable = HBaseKijiTable.downcast(getKiji().openTable("all_types_table"));
+    mReader = (HBaseKijiTableReader) mTable.openTableReader();
   }
 
   @After
-  public void cleanupTestHBaseKijiResult() throws IOException {
+  public void cleanupTestHBaseKijiRowView() throws IOException {
+    mTable.release();
     mReader.close();
   }
 
-  @Test
-  public void testBuildMap() throws Exception {
-    final Map<KijiResult, NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>>
-        testMaps =
-            ImmutableMap.<KijiResult,
-                NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>>builder()
-                    .put(mResult, EXPECTED_REQUEST_MAP)
-                    .put(mPagedResult, EXPECTED_PAGED_REQUEST_MAP)
-                    .put(mMapResult, EXPECTED_MAP_REQUEST_MAP)
-                    .put(mPagedMapResult, EXPECTED_PAGED_MAP_REQUEST_MAP)
-                    .put(mCompleteResult, EXPECTED_COMPLETE_REQUEST_MAP)
-                    .put(mPagedCompleteResult, EXPECTED_PAGED_COMPLETE_REQUEST_MAP)
-                    .put(mMaxVersionsResult, EXPECTED_MAX_VERSIONS_REQUEST_MAP)
-                    .put(mPagedMaxVersionsResult, EXPECTED_PAGED_MAX_VERSIONS_REQUEST_MAP)
-                    .put(mEmptyColumnResult, EXPECTED_EMPTY_COLUMN_REQUEST_MAP)
-                    .build();
+  public void testViewGet(
+      final KijiResult<?> view,
+      final Iterable<? extends Entry<Long, ?>> expected
+  ) {
+    final List<Long> versions = Lists.newArrayList();
+    final List<Object> values = Lists.newArrayList();
 
-    for (
-        Map.Entry<
-            KijiResult,
-            NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>>> entry
-        : testMaps.entrySet()
-    ) {
-      KijiResult testResult = entry.getKey();
-      NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>> actualMap =
-          HBaseKijiResult.buildMap(testResult);
-      NavigableMap<String, NavigableMap<String, NavigableMap<Long, Object>>> predictedMap =
-          entry.getValue();
-      Assert.assertEquals(predictedMap, actualMap);
+    for (Entry<Long, ?> cell : expected) {
+      versions.add(cell.getKey());
+      values.add(cell.getValue());
     }
+
+    assertEquals(versions, ImmutableList.copyOf(Helpers.getVersions(view)));
+    assertEquals(values, ImmutableList.copyOf(Helpers.getValues(view)));
   }
 
-  @Test
-  public void testGets() throws IOException {
-    {
-      final String expected = "ten";
-      final String actual = mResult.getMostRecentCell(PRIMITIVE_STRING).getData().toString();
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final Double expected = 10.0;
-      final Double actual = mResult.<Double>getMostRecentCell(PRIMITIVE_DOUBLE).getData();
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final String expected = "three";
-      final String actual = mResult.getCell(PRIMITIVE_STRING, 3).getData().toString();
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final Double expected = 3.0;
-      final Double actual = mResult.<Double>getCell(PRIMITIVE_DOUBLE, 3).getData();
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      try {
-        mPagedResult.getMostRecentCell(PRIMITIVE_STRING);
-        Assert.fail();
-      } catch (IllegalArgumentException iae) {
-        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_MOST_RECENT_EXCEPTION_PREFIX));
-      }
-      try {
-        mPagedResult.getMostRecentCell(PRIMITIVE_DOUBLE);
-        Assert.fail();
-      } catch (IllegalArgumentException iae) {
-        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_MOST_RECENT_EXCEPTION_PREFIX));
-      }
-    }
-    {
-      try {
-        mPagedResult.getCell(PRIMITIVE_STRING, 3);
-        Assert.fail();
-      } catch (IllegalArgumentException iae) {
-        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_GET_EXCEPTION_PREFIX));
-      }
-      try {
-        mPagedResult.getCell(PRIMITIVE_DOUBLE, 3);
-        Assert.fail();
-      } catch (IllegalArgumentException iae) {
-        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_GET_EXCEPTION_PREFIX));
-      }
-    }
-  }
-
-  @Test
-  public void testIterator() throws NoSuchColumnException {
-    {
-      final List<String> expected =
-          Lists.newArrayList("ten", "five", "four", "three", "two", "one");
-      final List<String> actual = Lists.newArrayList();
-      final Iterator<KijiCell<Utf8>> nameIterator = mResult.iterator(PRIMITIVE_STRING);
-      while (nameIterator.hasNext()) {
-        actual.add(nameIterator.next().getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final List<Double> expected = Lists.newArrayList(10.0, 5.0, 4.0, 3.0, 2.0, 1.0);
-      final List<Double> actual = Lists.newArrayList();
-      final Iterator<KijiCell<Double>> nameIterator = mResult.iterator(PRIMITIVE_DOUBLE);
-      while (nameIterator.hasNext()) {
-        actual.add(nameIterator.next().getData());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final List<String> expected =
-          Lists.newArrayList("ten", "five", "four", "three", "two", "one");
-      final List<String> actual = Lists.newArrayList();
-      final Iterator<KijiCell<Utf8>> nameIterator = mPagedResult.iterator(PRIMITIVE_STRING);
-      while (nameIterator.hasNext()) {
-        actual.add(nameIterator.next().getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final List<Double> expected = Lists.newArrayList(10.0, 5.0, 4.0, 3.0, 2.0, 1.0);
-      final List<Double> actual = Lists.newArrayList();
-      final Iterator<KijiCell<Double>> nameIterator = mPagedResult.iterator(PRIMITIVE_DOUBLE);
-      while (nameIterator.hasNext()) {
-        actual.add(nameIterator.next().getData());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-  }
-
-  @Test
-  public void testMapGets() throws IOException {
-    {
-      final String expected = "sm1-ten";
-      final String actual = mMapResult.getMostRecentCell(STRING_MAP_1).getData().toString();
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final String expected = "sm2-three";
-      final String actual = mMapResult.getCell(STRING_MAP_2, 3).getData().toString();
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      try {
-        mPagedMapResult.getMostRecentCell(STRING_MAP_1);
-        Assert.fail();
-      } catch (IllegalArgumentException iae) {
-        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_MOST_RECENT_EXCEPTION_PREFIX));
-      }
-    }
-    {
-      try {
-        mPagedMapResult.getCell(STRING_MAP_2, 3);
-        Assert.fail();
-      } catch (IllegalArgumentException iae) {
-        Assert.assertTrue(iae.getMessage().startsWith(EXPECTED_PAGED_GET_EXCEPTION_PREFIX));
-      }
-    }
-  }
-
-  @Test
-  public void testMapIterator() throws NoSuchColumnException {
-    {
-      final List<String> expected = Lists.newArrayList(
-          "sm1-ten", "sm1-five", "sm1-four", "sm1-three", "sm1-two", "sm1-one");
-      final List<String> actual = Lists.newArrayList();
-      final Iterator<KijiCell<Utf8>> it = mMapResult.iterator(STRING_MAP_1);
-      while (it.hasNext()) {
-        actual.add(it.next().getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final List<String> expected = Lists.newArrayList(
-          "sm1-ten", "sm1-five", "sm1-four", "sm1-three", "sm1-two", "sm1-one",
-          "sm2-ten", "sm2-five", "sm2-four", "sm2-three", "sm2-two", "sm2-one");
-      final List<String> actual = Lists.newArrayList();
-      final Iterator<KijiCell<Utf8>> it = mMapResult.iterator(STRING_MAP);
-      while (it.hasNext()) {
-        actual.add(it.next().getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final List<String> expected = Lists.newArrayList(
-          "sm1-ten", "sm1-five", "sm1-four", "sm1-three", "sm1-two", "sm1-one");
-      final List<String> actual = Lists.newArrayList();
-      final Iterator<KijiCell<Utf8>> it = mPagedMapResult.iterator(STRING_MAP_1);
-      while (it.hasNext()) {
-        actual.add(it.next().getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final List<String> expected = Lists.newArrayList(
-          "sm1-ten", "sm1-five", "sm1-four", "sm1-three", "sm1-two", "sm1-one",
-          "sm2-ten", "sm2-five", "sm2-four", "sm2-three", "sm2-two", "sm2-one");
-      final List<String> actual = Lists.newArrayList();
-      final Iterator<KijiCell<Utf8>> it = mPagedMapResult.iterator(STRING_MAP);
-      while (it.hasNext()) {
-        actual.add(it.next().getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-  }
-
-  @Test
-  public void testIterable() {
-    {
-      final Set<String> expected = Sets.newHashSet(
-          "sm1-ten", "sm1-five", "sm1-four", "sm1-three", "sm1-two", "sm1-one",
-          "sm2-ten", "sm2-five", "sm2-four", "sm2-three", "sm2-two", "sm2-one",
-          "10.0", "5.0", "4.0", "3.0", "2.0", "1.0",
-          "ten", "five", "four", "three", "two", "one");
-      final Set<String> actual = Sets.newHashSet();
-      for (KijiCell<?> cell : mCompleteResult) {
-        actual.add(cell.getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final Set<String> expected = Sets.newHashSet(
-          "sm1-ten", "sm1-five", "sm1-four", "sm1-three", "sm1-two", "sm1-one",
-          "sm2-ten", "sm2-five", "sm2-four", "sm2-three", "sm2-two", "sm2-one",
-          "10.0", "5.0", "4.0", "3.0", "2.0", "1.0",
-          "ten", "five", "four", "three", "two", "one");
-      final Set<String> actual = Sets.newHashSet();
-      for (KijiCell<?> cell : mPagedCompleteResult) {
-        actual.add(cell.getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-  }
-
-  @Test
-  public void testMaxVersions() {
-    {
-      final Set<String> expected = Sets.newHashSet(
-          "10.0", "5.0", "4.0", "3.0", "2.0", "1.0",
-          "sm1-ten", "sm1-five", "sm1-four",
-          "sm2-ten", "sm2-five", "sm2-four",
-          "ten", "five", "four");
-      final Set<String> actual = Sets.newHashSet();
-      for (KijiCell<?> cell : mMaxVersionsResult) {
-        actual.add(cell.getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final Set<String> expected = Sets.newHashSet(
-          "sm1-ten", "sm1-five", "sm1-four");
-      final Set<String> actual = Sets.newHashSet();
-      final Iterator<KijiCell<Utf8>> it = mMaxVersionsResult.iterator(STRING_MAP_1);
-      while (it.hasNext()) {
-        actual.add(it.next().getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final Set<String> expected = Sets.newHashSet(
-          "sm1-ten", "sm1-five", "sm1-four",
-          "sm2-ten", "sm2-five", "sm2-four");
-      final Set<String> actual = Sets.newHashSet();
-      final Iterator<KijiCell<Utf8>> it = mMaxVersionsResult.iterator(STRING_MAP);
-      while (it.hasNext()) {
-        actual.add(it.next().getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final Set<String> expected = Sets.newHashSet(
-          "10.0", "5.0", "4.0", "3.0", "2.0", "1.0",
-          "sm1-ten", "sm1-five", "sm1-four",
-          "sm2-ten", "sm2-five", "sm2-four",
-          "ten", "five", "four");
-      final Set<String> actual = Sets.newHashSet();
-      for (KijiCell<?> cell : mPagedMaxVersionsResult) {
-        actual.add(cell.getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final Set<String> expected = Sets.newHashSet(
-          "sm1-ten", "sm1-five", "sm1-four");
-      final Set<String> actual = Sets.newHashSet();
-      final Iterator<KijiCell<Utf8>> it = mPagedMaxVersionsResult.iterator(STRING_MAP_1);
-      while (it.hasNext()) {
-        actual.add(it.next().getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final Set<String> expected = Sets.newHashSet(
-          "sm1-ten", "sm1-five", "sm1-four",
-          "sm2-ten", "sm2-five", "sm2-four");
-      final Set<String> actual = Sets.newHashSet();
-      final Iterator<KijiCell<Utf8>> it = mPagedMaxVersionsResult.iterator(STRING_MAP);
-      while (it.hasNext()) {
-        actual.add(it.next().getData().toString());
-      }
-      Assert.assertEquals(expected, actual);
-    }
-
-    Assert.assertNull(mMaxVersionsResult.getCell(STRING_MAP_1, 2));
-  }
-
-  @Test
-  public void testUnrequestedColumns() {
-    final KijiColumnName bogusColumn = KijiColumnName.create("bogus", "bogus");
-    final KijiColumnName bogusFamily = KijiColumnName.create("bogus", null);
-
+  public void testViewGet(
+      final KijiDataRequest request,
+      final Iterable<? extends Entry<Long, ?>> expected
+  ) throws Exception {
+    final EntityId eid = mTable.getEntityId(ROW);
+    final KijiResult<Object> view = mReader.getResult(eid, request);
     try {
-      mCompleteResult.getMostRecentCell(bogusColumn);
-      Assert.fail();
-    } catch (NullPointerException npe) {
-      Assert.assertTrue(npe.getMessage().startsWith(EXPECTED_NO_REQUEST_EXCEPTION_PREFIX));
-    }
-    try {
-      mCompleteResult.getCell(bogusColumn, 5);
-      Assert.fail();
-    } catch (NullPointerException npe) {
-      Assert.assertTrue(npe.getMessage().startsWith(EXPECTED_NO_REQUEST_EXCEPTION_PREFIX));
-    }
-    try {
-      mCompleteResult.iterator(bogusColumn);
-      Assert.fail();
-    } catch (NullPointerException npe) {
-      Assert.assertTrue(npe.getMessage().startsWith(EXPECTED_NO_REQUEST_EXCEPTION_PREFIX));
-    }
-    try {
-      mCompleteResult.iterator(bogusFamily);
-      Assert.fail();
-    } catch (NullPointerException npe) {
-      Assert.assertTrue(npe.getMessage().startsWith(EXPECTED_NO_REQUEST_EXCEPTION_PREFIX));
+      testViewGet(view, expected);
+    } finally {
+      view.close();
     }
   }
 
   @Test
-  public void testEmptyColumn() {
-    {
-      final KijiCell<Boolean> expected = null;
-      final KijiCell<Boolean> actual = mEmptyColumnResult.getMostRecentCell(PRIMITIVE_BOOLEAN);
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final KijiCell<Boolean> expected = null;
-      final KijiCell<Boolean> actual = mEmptyColumnResult.getCell(PRIMITIVE_BOOLEAN, 10);
-      Assert.assertEquals(expected, actual);
-    }
-    {
-      final boolean expected = false;
-      final boolean actual = mEmptyColumnResult.iterator(PRIMITIVE_BOOLEAN).hasNext();
-      Assert.assertEquals(expected, actual);
+  public void testGetFullyQualifiedColumn() throws Exception {
+    for (KijiColumnName column : ImmutableList.of(PRIMITIVE_STRING, STRING_MAP_1)) {
+      for (int pageSize : ImmutableList.of(0, 1, 2, 10)) {
+        { // Single version | no timerange
+          final KijiDataRequest request = KijiDataRequest
+              .builder()
+              .addColumns(
+                  ColumnsDef.create()
+                      .withPageSize(pageSize)
+                      .add(column.getFamily(), column.getQualifier()))
+              .build();
+
+          testViewGet(request, Iterables.limit(ROW_DATA.get(column).entrySet(), 1));
+        }
+
+        { // Single version | timerange
+          final KijiDataRequest request = KijiDataRequest
+              .builder()
+              .addColumns(
+                  ColumnsDef.create()
+                      .withPageSize(pageSize)
+                      .add(column.getFamily(), column.getQualifier()))
+              .withTimeRange(4, 6)
+              .build();
+
+          testViewGet(
+              request,
+              Iterables.limit(ROW_DATA.get(column).subMap(6L, false, 4L, true).entrySet(), 1));
+        }
+
+        { // Multiple versions | no timerange
+          final KijiDataRequest request = KijiDataRequest
+              .builder()
+              .addColumns(
+                  ColumnsDef.create()
+                      .withPageSize(pageSize)
+                      .withMaxVersions(100)
+                      .add(column.getFamily(), column.getQualifier()))
+              .build();
+
+          testViewGet(
+              request,
+              ROW_DATA.get(column).entrySet());
+        }
+
+        { // Multiple versions | timerange
+          final KijiDataRequest request = KijiDataRequest
+              .builder()
+              .addColumns(
+                  ColumnsDef.create()
+                      .withPageSize(pageSize)
+                      .withMaxVersions(100)
+                      .add(column.getFamily(), column.getQualifier()))
+              .withTimeRange(4, 6)
+              .build();
+
+          testViewGet(
+              request,
+              ROW_DATA.get(column).subMap(6L, false, 4L, true).entrySet());
+        }
+      }
     }
   }
+
+  @Test
+  public void testGetMultipleFullyQualifiedColumns() throws Exception {
+    final KijiColumnName column1 = PRIMITIVE_STRING;
+    final KijiColumnName column2 = STRING_MAP_1;
+
+    for (int pageSize : ImmutableList.of(0, 1, 2, 10)) {
+
+      { // Single version | no timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .add(column1.getFamily(), column1.getQualifier())
+                    .add(column2.getFamily(), column2.getQualifier()))
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            Iterables.limit(ROW_DATA.get(column1).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            Iterables.limit(ROW_DATA.get(column2).entrySet(), 1);
+
+        testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+      }
+
+      { // Single version | timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .add(column1.getFamily(), column1.getQualifier())
+                    .add(column2.getFamily(), column2.getQualifier()))
+            .withTimeRange(4, 6)
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            Iterables.limit(ROW_DATA.get(column1).subMap(6L, false, 4L, true).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            Iterables.limit(ROW_DATA.get(column2).subMap(6L, false, 4L, true).entrySet(), 1);
+
+        testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+      }
+
+      { // Multiple versions | no timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .withMaxVersions(100)
+                    .add(column1.getFamily(), column1.getQualifier())
+                    .add(column2.getFamily(), column2.getQualifier()))
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries = ROW_DATA.get(column1).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column2Entries = ROW_DATA.get(column2).entrySet();
+
+        testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+      }
+
+      { // Multiple versions | timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .withMaxVersions(100)
+                    .add(column1.getFamily(), column1.getQualifier())
+                    .add(column2.getFamily(), column2.getQualifier()))
+            .withTimeRange(4, 6)
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            ROW_DATA.get(column1).subMap(6L, false, 4L, true).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            ROW_DATA.get(column2).subMap(6L, false, 4L, true).entrySet();
+
+        testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+      }
+
+      { // Mixed versions | timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .withMaxVersions(100)
+                    .add(column1.getFamily(), column1.getQualifier()))
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .withMaxVersions(1)
+                    .add(column2.getFamily(), column2.getQualifier()))
+            .withTimeRange(4, 6)
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            ROW_DATA.get(column1).subMap(6L, false, 4L, true).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            Iterables.limit(ROW_DATA.get(column2).subMap(6L, false, 4L, true).entrySet(), 1);
+
+        testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+      }
+
+      { // Mixed versions | no timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .withMaxVersions(1)
+                    .add(column1.getFamily(), column1.getQualifier()))
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .withMaxVersions(100)
+                    .add(column2.getFamily(), column2.getQualifier()))
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            Iterables.limit(ROW_DATA.get(column1).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            ROW_DATA.get(column2).entrySet();
+
+        testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+      }
+    }
+  }
+
+  @Test
+  public void testGetFamilyColumn() throws Exception {
+    final Map<String, ? extends List<KijiColumnName>> families =
+        ImmutableMap.of(
+            PRIMITIVE_FAMILY, ImmutableList.of(PRIMITIVE_DOUBLE, PRIMITIVE_STRING),
+            STRING_MAP_FAMILY, ImmutableList.of(STRING_MAP_1, STRING_MAP_2));
+
+    for (Entry<String, ? extends List<KijiColumnName>> family : families.entrySet()) {
+      for (int pageSize : ImmutableList.of(0, 1, 2, 10)) {
+
+        final KijiColumnName familyColumn = KijiColumnName.create(family.getKey(), null);
+        final KijiColumnName column1 = family.getValue().get(0);
+        final KijiColumnName column2 = family.getValue().get(1);
+
+        { // Single version | no timerange
+          final KijiDataRequest request = KijiDataRequest
+              .builder()
+              .addColumns(ColumnsDef.create().withPageSize(pageSize).add(familyColumn))
+              .build();
+
+          final Iterable<? extends Entry<Long, ?>> column1Entries =
+              Iterables.limit(ROW_DATA.get(column1).entrySet(), 1);
+          final Iterable<? extends Entry<Long, ?>> column2Entries =
+              Iterables.limit(ROW_DATA.get(column2).entrySet(), 1);
+
+          testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+        }
+
+        { // Single version | timerange
+          final KijiDataRequest request = KijiDataRequest
+              .builder()
+              .addColumns(ColumnsDef.create().withPageSize(pageSize).add(familyColumn))
+              .withTimeRange(4, 6)
+              .build();
+
+          final Iterable<? extends Entry<Long, ?>> column1Entries =
+              Iterables.limit(ROW_DATA.get(column1).subMap(6L, false, 4L, true).entrySet(), 1);
+          final Iterable<? extends Entry<Long, ?>> column2Entries =
+              Iterables.limit(ROW_DATA.get(column2).subMap(6L, false, 4L, true).entrySet(), 1);
+
+          testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+        }
+
+        { // Multiple versions | no timerange
+          final KijiDataRequest request = KijiDataRequest
+              .builder()
+              .addColumns(
+                  ColumnsDef
+                      .create()
+                      .withPageSize(pageSize)
+                      .withMaxVersions(100)
+                      .add(familyColumn))
+              .build();
+
+          final Iterable<? extends Entry<Long, ?>> column1Entries =
+              ROW_DATA.get(column1).entrySet();
+          final Iterable<? extends Entry<Long, ?>> column2Entries =
+              ROW_DATA.get(column2).entrySet();
+
+          testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+        }
+
+        { // Multiple versions | timerange
+          final KijiDataRequest request = KijiDataRequest
+              .builder()
+              .addColumns(
+                  ColumnsDef
+                      .create()
+                      .withPageSize(pageSize)
+                      .withMaxVersions(100)
+                      .add(familyColumn))
+              .withTimeRange(4, 6)
+              .build();
+
+          final Iterable<? extends Entry<Long, ?>> column1Entries =
+              ROW_DATA.get(column1).subMap(6L, false, 4L, true).entrySet();
+          final Iterable<? extends Entry<Long, ?>> column2Entries =
+              ROW_DATA.get(column2).subMap(6L, false, 4L, true).entrySet();
+
+          testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testGetMultipleFamilyColumns() throws Exception {
+    final KijiColumnName familyColumn1 = KijiColumnName.create(PRIMITIVE_FAMILY, null);
+    final KijiColumnName familyColumn2 = KijiColumnName.create(STRING_MAP_FAMILY, null);
+
+    final KijiColumnName column1 = PRIMITIVE_DOUBLE;
+    final KijiColumnName column2 = PRIMITIVE_STRING;
+    final KijiColumnName column3 = STRING_MAP_1;
+    final KijiColumnName column4 = STRING_MAP_2;
+
+    for (int pageSize : ImmutableList.of(0, 1, 2, 10)) {
+
+      { // Single version | no timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(ColumnsDef.create().add(familyColumn1))
+            .addColumns(ColumnsDef.create().add(familyColumn2))
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            Iterables.limit(ROW_DATA.get(column1).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            Iterables.limit(ROW_DATA.get(column2).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column3Entries =
+            Iterables.limit(ROW_DATA.get(column3).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column4Entries =
+            Iterables.limit(ROW_DATA.get(column4).entrySet(), 1);
+
+        testViewGet(
+            request,
+            Iterables.concat(column1Entries, column2Entries, column3Entries, column4Entries));
+      }
+
+      { // Single version | timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(ColumnsDef.create().withPageSize(pageSize).add(familyColumn1))
+            .addColumns(ColumnsDef.create().withPageSize(pageSize).add(familyColumn2))
+            .withTimeRange(4, 6)
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            Iterables.limit(ROW_DATA.get(column1).subMap(6L, false, 4L, true).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            Iterables.limit(ROW_DATA.get(column2).subMap(6L, false, 4L, true).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column3Entries =
+            Iterables.limit(ROW_DATA.get(column3).subMap(6L, false, 4L, true).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column4Entries =
+            Iterables.limit(ROW_DATA.get(column4).subMap(6L, false, 4L, true).entrySet(), 1);
+
+        testViewGet(
+            request,
+            Iterables.concat(column1Entries, column2Entries, column3Entries, column4Entries));
+      }
+
+      { // Multiple versions | no timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create().withPageSize(pageSize).withMaxVersions(100).add(familyColumn1))
+            .addColumns(
+                ColumnsDef.create().withPageSize(pageSize).withMaxVersions(100).add(familyColumn2))
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries = ROW_DATA.get(column1).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column2Entries = ROW_DATA.get(column2).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column3Entries = ROW_DATA.get(column3).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column4Entries = ROW_DATA.get(column4).entrySet();
+
+        testViewGet(
+            request,
+            Iterables.concat(column1Entries, column2Entries, column3Entries, column4Entries));
+      }
+
+      { // Multiple versions | timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create().withPageSize(pageSize).withMaxVersions(100).add(familyColumn1))
+            .addColumns(
+                ColumnsDef.create().withPageSize(pageSize).withMaxVersions(100).add(familyColumn2))
+            .withTimeRange(4, 6)
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            ROW_DATA.get(column1).subMap(6L, false, 4L, true).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            ROW_DATA.get(column2).subMap(6L, false, 4L, true).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column3Entries =
+            ROW_DATA.get(column3).subMap(6L, false, 4L, true).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column4Entries =
+            ROW_DATA.get(column4).subMap(6L, false, 4L, true).entrySet();
+
+        testViewGet(
+            request,
+            Iterables.concat(column1Entries, column2Entries, column3Entries, column4Entries));
+      }
+
+      { // Mixed versions | no timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create().withPageSize(pageSize).withMaxVersions(2).add(familyColumn1))
+            .addColumns(
+                ColumnsDef.create().withPageSize(pageSize).withMaxVersions(100).add(familyColumn2))
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            Iterables.limit(ROW_DATA.get(column1).entrySet(), 2);
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            Iterables.limit(ROW_DATA.get(column2).entrySet(), 2);
+        final Iterable<? extends Entry<Long, ?>> column3Entries = ROW_DATA.get(column3).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column4Entries = ROW_DATA.get(column4).entrySet();
+
+        testViewGet(
+            request,
+            Iterables.concat(column1Entries, column2Entries, column3Entries, column4Entries));
+      }
+
+      { // Multiple versions | timerange
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create().withPageSize(pageSize).withMaxVersions(100).add(familyColumn1))
+            .addColumns(
+                ColumnsDef.create().withPageSize(pageSize).withMaxVersions(1).add(familyColumn2))
+            .withTimeRange(4, 6)
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            ROW_DATA.get(column1).subMap(6L, false, 4L, true).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            ROW_DATA.get(column2).subMap(6L, false, 4L, true).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column3Entries =
+            Iterables.limit(ROW_DATA.get(column3).subMap(6L, false, 4L, true).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column4Entries =
+            Iterables.limit(ROW_DATA.get(column4).subMap(6L, false, 4L, true).entrySet(), 1);
+
+        testViewGet(
+            request,
+            Iterables.concat(column1Entries, column2Entries, column3Entries, column4Entries));
+      }
+    }
+  }
+
+  @Test
+  public void testNarrowView() throws Exception {
+    final KijiColumnName familyColumn1 = KijiColumnName.create(PRIMITIVE_FAMILY, null);
+    final KijiColumnName familyColumn2 = KijiColumnName.create(STRING_MAP_FAMILY, null);
+
+    final KijiColumnName column1 = PRIMITIVE_DOUBLE;
+    final KijiColumnName column2 = PRIMITIVE_STRING;
+    final KijiColumnName column3 = STRING_MAP_1;
+    final KijiColumnName column4 = STRING_MAP_2;
+
+    for (int pageSize : ImmutableList.of(0)) {
+
+      final KijiDataRequest request = KijiDataRequest
+          .builder()
+          .addColumns(
+              ColumnsDef.create().withPageSize(pageSize).withMaxVersions(100).add(familyColumn1))
+          .addColumns(
+              ColumnsDef.create().withPageSize(pageSize).withMaxVersions(100).add(column3))
+          .addColumns(ColumnsDef.create().withPageSize(pageSize).add(column4))
+          .withTimeRange(2, 10)
+          .build();
+
+      final KijiResult<Object> view = mReader.getResult(mTable.getEntityId(ROW), request);
+      try {
+        testViewGet(view.narrowView(PRIMITIVE_LONG), ImmutableList.<Entry<Long, ?>>of());
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            ROW_DATA.get(column1).subMap(10L, false, 2L, true).entrySet();
+        testViewGet(view.narrowView(column1), column1Entries);
+
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            ROW_DATA.get(column2).subMap(10L, false, 2L, true).entrySet();
+        testViewGet(view.narrowView(column2), column2Entries);
+
+        testViewGet(view.narrowView(familyColumn1),
+            Iterables.concat(column1Entries, column2Entries));
+
+        final Iterable<? extends Entry<Long, ?>> column3Entries =
+            ROW_DATA.get(column3).subMap(10L, false, 2L, true).entrySet();
+        testViewGet(view.narrowView(column3), column3Entries);
+
+        final Iterable<? extends Entry<Long, ?>> column4Entries =
+            Iterables.limit(ROW_DATA.get(column4).subMap(10L, false, 2L, true).entrySet(), 1);
+        testViewGet(view.narrowView(column4), column4Entries);
+
+        testViewGet(view.narrowView(familyColumn2),
+            Iterables.concat(column3Entries, column4Entries));
+      } finally {
+        view.close();
+      }
+    }
+  }
+
+  @Test
+  public void testGetWithFilters() throws Exception {
+    final KijiColumnName column1 = PRIMITIVE_STRING;
+    final KijiColumnName column2 = STRING_MAP_1;
+
+    for (int pageSize : ImmutableList.of(0, 1, 2, 10)) {
+
+      { // single column | FKOF
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .withFilter(new KijiFirstKeyOnlyColumnFilter())
+                    .withMaxVersions(10)
+                    .add(column1.getFamily(), column1.getQualifier()))
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            Iterables.limit(ROW_DATA.get(column1).entrySet(), 1);
+
+        testViewGet(request, column1Entries);
+      }
+
+      { // multiple columns | FKOF
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .withFilter(new KijiFirstKeyOnlyColumnFilter())
+                    .withMaxVersions(10)
+                    .add(column1.getFamily(), column1.getQualifier())
+                    .add(column2.getFamily(), column2.getQualifier()))
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            Iterables.limit(ROW_DATA.get(column1).entrySet(), 1);
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            Iterables.limit(ROW_DATA.get(column2).entrySet(), 1);
+
+        testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+      }
+
+      { // Mixed columns | FKOF
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create()
+                    .withMaxVersions(10)
+                    .add(column1.getFamily(), column1.getQualifier()))
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .withMaxVersions(10)
+                    .withFilter(new KijiFirstKeyOnlyColumnFilter())
+                    .add(column2.getFamily(), column2.getQualifier()))
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries =
+            ROW_DATA.get(column1).entrySet();
+        final Iterable<? extends Entry<Long, ?>> column2Entries =
+            Iterables.limit(ROW_DATA.get(column2).entrySet(), 1);
+
+        testViewGet(request, Iterables.concat(column1Entries, column2Entries));
+      }
+
+      { // single column | CRF
+        final KijiDataRequest request = KijiDataRequest
+            .builder()
+            .addColumns(
+                ColumnsDef.create()
+                    .withPageSize(pageSize)
+                    .withFilter(
+                        new KijiColumnRangeFilter(
+                            STRING_MAP_1.getQualifier(), true,
+                            STRING_MAP_2.getQualifier(), false))
+                    .withMaxVersions(10)
+                    .add(column2.getFamily(), null))
+            .build();
+
+        final Iterable<? extends Entry<Long, ?>> column1Entries = ROW_DATA.get(column2).entrySet();
+
+        testViewGet(request, column1Entries);
+      }
+    }
+  }
+
 }

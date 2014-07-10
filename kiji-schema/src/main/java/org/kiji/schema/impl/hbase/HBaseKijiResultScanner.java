@@ -36,12 +36,20 @@ import org.slf4j.LoggerFactory;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiIOException;
+import org.kiji.schema.KijiResult;
 import org.kiji.schema.KijiResultScanner;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
+import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
 
-/** Scanner across rows of a KijiTable which returns a KijiResult per row. */
-public class HBaseKijiResultScanner implements KijiResultScanner {
+/**
+ * {@inheritDoc}
+ *
+ * HBase implementation of {@code KijiResultScanner}.
+ *
+ * @param <T> type of {@code KijiCell} value returned by scanned {@code KijiResult}s.
+ */
+public class HBaseKijiResultScanner<T> implements KijiResultScanner<T> {
   private static final Logger LOG = LoggerFactory.getLogger(HBaseKijiResultScanner.class);
 
   private static final int MAX_RETRIES_ON_TIMEOUT = 3;
@@ -67,6 +75,7 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
   private final KijiDataRequest mRequest;
   private final HBaseKijiTable mTable;
   private final Scan mScan;
+  private final KijiTableLayout mLayout;
   private final CellDecoderProvider mDecoderProvider;
   private final HBaseColumnNameTranslator mColumnNameTranslator;
   private final EntityIdFactory mEidFactory;
@@ -83,6 +92,7 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
    * @param request data request which will be applied to each row by this scanner.
    * @param table Kiji table from which to scan rows.
    * @param scan HBase Scan object with which defines the actual data to retrieve from HBase.
+   * @param layout of Kiji table.
    * @param decoderProvider Provider for cell decoders with which to decode data from HBase.
    * @param columnNameTranslator Translator for Kiji columns with which to decode data from HBase.
    * @param reopenScannerOnTimeout Whether to reopen the underlying scanner if it times out.
@@ -92,6 +102,7 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
       final KijiDataRequest request,
       final HBaseKijiTable table,
       final Scan scan,
+      final KijiTableLayout layout,
       final CellDecoderProvider decoderProvider,
       final HBaseColumnNameTranslator columnNameTranslator,
       final boolean reopenScannerOnTimeout
@@ -99,6 +110,7 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
     mRequest = request;
     mTable = table;
     mScan = scan;
+    mLayout = layout;
     mDecoderProvider = decoderProvider;
     mColumnNameTranslator = columnNameTranslator;
     mReopenScannerOnTimeout = reopenScannerOnTimeout;
@@ -171,7 +183,7 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
 
   /** {@inheritDoc} */
   @Override
-  public HBaseKijiResult next() {
+  public KijiResult<T> next() {
     final State oldState = mState.get();
     Preconditions.checkState(oldState == State.OPEN,
         "Cannot get element from KijiResultScanner in state %s.", oldState);
@@ -180,13 +192,18 @@ public class HBaseKijiResultScanner implements KijiResultScanner {
       throw new NoSuchElementException();
     }
     mNextResult = getNextResult();
-    return new HBaseKijiResult(
-        mEidFactory.getEntityIdFromHBaseRowKey(next.getRow()),
-        mRequest,
-        next,
-        mColumnNameTranslator,
-        mDecoderProvider,
-        mTable);
+    try {
+      return HBaseKijiResult.create(
+          mEidFactory.getEntityIdFromHBaseRowKey(next.getRow()),
+          mRequest,
+          next,
+          mTable,
+          mLayout,
+          mColumnNameTranslator,
+          mDecoderProvider);
+    } catch (IOException e) {
+      throw new KijiIOException(e);
+    }
   }
 
   /** {@inheritDoc} */

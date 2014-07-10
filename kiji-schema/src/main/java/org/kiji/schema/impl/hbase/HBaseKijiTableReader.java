@@ -389,12 +389,21 @@ public final class HBaseKijiTableReader implements KijiTableReader {
   /**
    * Get a KijiResult for the given EntityId and data request.
    *
+   * <p>
+   *   This method allows the caller to specify a type-bound on the values of the {@code KijiCell}s
+   *   of the returned {@code KijiResult}. The caller should be careful to only specify an
+   *   appropriate type. If the type is too specific (or wrong), a runtime
+   *   {@link java.lang.ClassCastException} will be thrown when the returned {@code KijiResult} is
+   *   used. See the 'Type Safety' section of {@link KijiResult}'s documentation for more details.
+   * </p>
+   *
    * @param entityId EntityId of the row from which to get data.
    * @param dataRequest Specification of the data to get from the given row.
+   * @param <T> type {@code KijiCell} value returned by the {@code KijiResult}.
    * @return a new KijiResult for the given EntityId and data request.
    * @throws IOException in case of an error getting the data.
    */
-  public KijiResult getResult(
+  public <T> KijiResult<T> getResult(
       final EntityId entityId,
       final KijiDataRequest dataRequest
   ) throws IOException {
@@ -408,13 +417,14 @@ public final class HBaseKijiTableReader implements KijiTableReader {
         new HBaseDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
     final Get get = hbaseDataRequestAdapter.toGet(entityId, tableLayout);
     final Result result = get.hasFamilies() ? doHBaseGet(get) : new Result();
-    return new HBaseKijiResult(
+    return HBaseKijiResult.create(
         entityId,
         dataRequest,
         result,
+        mTable,
+        capsule.getLayout(),
         capsule.getColumnNameTranslator(),
-        capsule.getCellDecoderProvider(),
-        mTable);
+        capsule.getCellDecoderProvider());
   }
 
   /** {@inheritDoc} */
@@ -507,12 +517,21 @@ public final class HBaseKijiTableReader implements KijiTableReader {
   /**
    * Get a KijiResultScanner for the given data request and scan options.
    *
+   * <p>
+   *   This method allows the caller to specify a type-bound on the values of the {@code KijiCell}s
+   *   of the returned {@code KijiResult}s. The caller should be careful to only specify an
+   *   appropriate type. If the type is too specific (or wrong), a runtime
+   *   {@link java.lang.ClassCastException} will be thrown when the returned {@code KijiResult} is
+   *   used. See the 'Type Safety' section of {@code KijiResult}'s documentation for more details.
+   * </p>
+   *
    * @param request Data request defining the data to retrieve from each row.
    * @param scannerOptions Options to control the operation of the scanner.
+   * @param <T> type {@code KijiCell} value returned by the {@code KijiResult}.
    * @return A new KijiResultScanner.
    * @throws IOException in case of an error creating the scanner.
    */
-  public HBaseKijiResultScanner getKijiResultScanner(
+  public <T> HBaseKijiResultScanner<T> getKijiResultScanner(
       final KijiDataRequest request,
       final KijiScannerOptions scannerOptions
   ) throws IOException {
@@ -540,10 +559,11 @@ public final class HBaseKijiTableReader implements KijiTableReader {
       applicator.applyTo(scan);
     }
 
-    return new HBaseKijiResultScanner(
+    return new HBaseKijiResultScanner<T>(
         request,
         mTable,
         scan,
+        capsule.getLayout(),
         capsule.getCellDecoderProvider(),
         capsule.getColumnNameTranslator(),
         scannerOptions.getReopenScannerOnTimeout());

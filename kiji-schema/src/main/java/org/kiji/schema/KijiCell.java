@@ -19,8 +19,11 @@
 
 package org.kiji.schema;
 
+import java.util.Comparator;
+
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ComparisonChain;
 import org.apache.avro.Schema;
 
 import org.kiji.annotations.ApiAudience;
@@ -41,6 +44,7 @@ import org.kiji.annotations.ApiStability;
 @ApiAudience.Framework
 @ApiStability.Evolving
 public final class KijiCell<T> {
+  private static final Comparator<KijiCell<?>> KEY_COMPARATOR = new KeyComparator();
 
   /**
    * Create a new KijiCell from the given coordinates and decoded value.
@@ -218,5 +222,38 @@ public final class KijiCell<T> {
         .add("encoding", getType())
         .add("content", getData())
         .toString();
+  }
+
+  /**
+   * Get a comparator for {@link KijiCell}s which compares on the column and timestamp of cells.
+   *
+   * <p>
+   *   Because the entity id is not included in {@code KijiCell}s, the comparator should not be
+   *   used for comparing cells from different rows.
+   * </p>
+   *
+   * @return a comparator for {@code KijiCell}s on column and timestamp.
+   */
+  public static Comparator<KijiCell<?>> getKeyComparator() {
+    return KEY_COMPARATOR;
+  }
+
+  /**
+   * A comparator for {@link KijiCell}s which compares on the column and timestamp.
+   *
+   * <p>
+   *   Because the entity Id is not included in {@code KijiCell}s, this comparator should not be
+   *   used for comparing cells from different rows.
+   * </p>
+   */
+  private static class KeyComparator implements Comparator<KijiCell<?>> {
+    /** {@inheritDoc} */
+    @Override
+    public int compare(final KijiCell<?> o1, final KijiCell<?> o2) {
+      return ComparisonChain.start()
+          .compare(o1.getColumn(), o2.getColumn())
+          .compare(o2.getTimestamp(), o1.getTimestamp())
+          .result();
+    }
   }
 }

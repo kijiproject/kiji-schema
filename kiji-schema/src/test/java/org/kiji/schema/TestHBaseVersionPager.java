@@ -41,7 +41,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
-import org.kiji.schema.impl.hbase.HBaseVersionPager;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.ResourceUtils;
 
@@ -97,7 +96,7 @@ public class TestHBaseVersionPager extends KijiClientTest {
         .build();
     assertTrue(!dataRequest.isEmpty());
     assertTrue(!dataRequest.isPagingEnabled());
-    final EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
+    final EntityId meId = mTable.getEntityId(new Object[] { Bytes.toBytes("me") });
     final KijiRowData myRowData = mReader.get(meId, dataRequest);
     try {
       myRowData.getPager("info", "name");
@@ -124,7 +123,6 @@ public class TestHBaseVersionPager extends KijiClientTest {
 
     final KijiRowData row = mReader.get(eid, dataRequest);
     final KijiPager pager = row.getPager("info", "name");
-    assertTrue(pager instanceof HBaseVersionPager);
 
     try {
       assertTrue(pager.hasNext());
@@ -180,7 +178,6 @@ public class TestHBaseVersionPager extends KijiClientTest {
 
     final KijiRowData row = mReader.get(eid, dataRequest);
     final KijiPager pager = row.getPager("info", "name");
-    assertTrue(pager instanceof HBaseVersionPager);
 
     try {
       assertTrue(pager.hasNext());
@@ -237,7 +234,6 @@ public class TestHBaseVersionPager extends KijiClientTest {
 
     final KijiRowData row = mReader.get(eid, dataRequest);
     final KijiPager pager = row.getPager("info", "name");
-    assertTrue(pager instanceof HBaseVersionPager);
 
     try {
       assertTrue(pager.hasNext());
@@ -331,7 +327,7 @@ public class TestHBaseVersionPager extends KijiClientTest {
     assertTrue(!dataRequest.isEmpty());
     assertTrue(dataRequest.isPagingEnabled());
     assertTrue(dataRequest.getColumn("info", "name").isPagingEnabled());
-    EntityId meId = mTable.getEntityId(Bytes.toBytes("me"));
+    EntityId meId = mTable.getEntityId(new Object[] { Bytes.toBytes("me") });
     KijiRowData myRowData = mReader.get(meId, dataRequest);
     KijiPager pager = myRowData.getPager("info", "name");
     try {
@@ -363,7 +359,7 @@ public class TestHBaseVersionPager extends KijiClientTest {
             .withPageSize(2)
             .addFamily("jobs"))
         .build();
-    final EntityId eid = mTable.getEntityId(Bytes.toBytes("me"));
+    final EntityId eid = mTable.getEntityId(new Object[] {Bytes.toBytes("me")});
     final KijiRowData row = mReader.get(eid, dataRequest);
     for (String qualifier : ImmutableList.of("j1", "j3")) {
       LOG.info("Testing with qualifier: {}", qualifier);

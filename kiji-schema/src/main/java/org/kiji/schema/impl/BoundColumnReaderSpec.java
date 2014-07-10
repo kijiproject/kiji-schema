@@ -23,7 +23,6 @@ import com.google.common.base.Objects;
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.layout.ColumnReaderSpec;
 
 /**
@@ -42,12 +41,11 @@ public final class BoundColumnReaderSpec {
    *
    * @param columnReaderSpec the ColumnReaderSpec to bind.
    * @param column column to which to bind the ColumnReaderSpec.
-   * @throws NoSuchColumnException in case the given column does not exist in the given layout.
    */
   private BoundColumnReaderSpec(
       final ColumnReaderSpec columnReaderSpec,
       final KijiColumnName column
-  ) throws NoSuchColumnException {
+  ) {
     mColumnReaderSpec = columnReaderSpec;
     mColumn = column;
   }
@@ -59,12 +57,11 @@ public final class BoundColumnReaderSpec {
    * @param columnReaderSpec the ColumnReaderSpec to bind.
    * @param column column to which to bind the ColumnReaderSpec.
    * @return a new BoundColumnReaderSpec.
-   * @throws NoSuchColumnException in case the given column does not exist in the layout.
    */
   public static BoundColumnReaderSpec create(
       final ColumnReaderSpec columnReaderSpec,
       final KijiColumnName column
-  ) throws NoSuchColumnException {
+  ) {
     return new BoundColumnReaderSpec(columnReaderSpec, column);
   }
 

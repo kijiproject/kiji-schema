@@ -137,9 +137,12 @@ public class TestHBaseMapFamilyPager extends KijiClientTest {
     final KijiRowData row = mReader.get(eid, dataRequest);
     final KijiPager pager = row.getPager("jobs");
     try {
-      assertTrue(pager.hasNext());
-      assertTrue(pager.next().getQualifiers("jobs").isEmpty());
-      assertFalse(pager.hasNext());
+      // The kiji pager API specifies that the pager may return true, in which case the resulting
+      // KijiRowData must be empty.
+      if (pager.hasNext()) {
+        assertTrue(pager.next().getQualifiers("jobs").isEmpty());
+        assertFalse(pager.hasNext());
+      }
       try {
         pager.next();
         Assert.fail("next() should throw NoSuchElementException");

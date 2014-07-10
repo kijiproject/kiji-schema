@@ -403,7 +403,7 @@ public final class HBaseDataRequestAdapter {
    * A Context for KijiColumnFilters that translates column names to their HBase
    * representation.
    */
-  private static final class NameTranslatingFilterContext extends KijiColumnFilter.Context {
+  public static final class NameTranslatingFilterContext extends KijiColumnFilter.Context {
     /** The translator to use. */
     private final HBaseColumnNameTranslator mTranslator;
 
@@ -412,7 +412,7 @@ public final class HBaseDataRequestAdapter {
      *
      * @param translator the translator to use.
      */
-    private NameTranslatingFilterContext(final HBaseColumnNameTranslator translator) {
+    public NameTranslatingFilterContext(final HBaseColumnNameTranslator translator) {
       mTranslator = translator;
     }
 

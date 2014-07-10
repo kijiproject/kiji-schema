@@ -19,9 +19,11 @@
 package org.kiji.schema.impl.hbase;
 
 import java.io.IOException;
-import java.util.Iterator;
 import java.util.List;
 
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import junit.framework.Assert;
 import org.apache.avro.util.Utf8;
@@ -29,7 +31,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
@@ -76,7 +77,7 @@ public class TestHBaseKijiResultScanner extends KijiClientTest {
                         .withValue(13, "thirteen")
                         .withValue(12, "twelve")
                         .withValue(11, "eleven")
-        .withRow(3)
+            .withRow(3)
                 .withFamily("primitive")
                     .withQualifier("string_column")
                         .withValue(30, "thirty")
@@ -96,47 +97,52 @@ public class TestHBaseKijiResultScanner extends KijiClientTest {
     mTable.release();
   }
 
+  /**
+   * Simple function to convert an object to a String.
+   */
+  private static final class ToString<T> implements Function<T, String> {
+    @Override
+    public String apply(final T input) {
+      return input.toString();
+    }
+  }
+
   @Test
   public void test() throws IOException {
-    final HBaseKijiResultScanner scanner = mReader.getKijiResultScanner(REQUEST, OPTIONS);
+    final HBaseKijiResultScanner<Utf8> scanner = mReader.getKijiResultScanner(REQUEST, OPTIONS);
+    final Function<Utf8, String> toString = new ToString<Utf8>();
     try {
       int rowCount = 0;
       while (scanner.hasNext()) {
-        final KijiResult result = scanner.next();
+        final KijiResult<Utf8> result = scanner.next();
+        final List<String> values;
+        try {
+          values = ImmutableList.copyOf(
+              Iterables.transform(
+                  KijiResult.Helpers.getValues(result),
+                  toString));
+        } finally {
+          result.close();
+        }
+
         rowCount++;
         final Long entity = result.getEntityId().getComponentByIndex(0);
         // Hashing may scramble the order of the rows, so we have to check which row we're on to
         // test them individually.
+        final List<String> expected;
         if (entity == 1) {
-          final List<String> expected =
-              Lists.newArrayList("ten", "five", "four", "three", "two", "one");
-          final List<String> actual = Lists.newArrayList();
-          final Iterator<KijiCell<Utf8>> it = result.iterator(PRIMITIVE_STRING);
-          while (it.hasNext()) {
-            actual.add(it.next().getData().toString());
-          }
-          Assert.assertEquals(expected, actual);
+          expected = Lists.newArrayList("ten", "five", "four", "three", "two", "one");
         } else if (entity == 2) {
-          final List<String> expected =
+          expected =
               Lists.newArrayList("twenty", "fifteen", "fourteen", "thirteen", "twelve", "eleven");
-          final List<String> actual = Lists.newArrayList();
-          final Iterator<KijiCell<Utf8>> it = result.iterator(PRIMITIVE_STRING);
-          while (it.hasNext()) {
-            actual.add(it.next().getData().toString());
-          }
-          Assert.assertEquals(expected, actual);
         } else if (entity == 3) {
-          final List<String> expected = Lists.newArrayList(
+          expected = Lists.newArrayList(
               "thirty", "twenty five", "twenty four", "twenty three", "twenty two", "twenty one");
-          final List<String> actual = Lists.newArrayList();
-          final Iterator<KijiCell<Utf8>> it = result.iterator(PRIMITIVE_STRING);
-          while (it.hasNext()) {
-            actual.add(it.next().getData().toString());
-          }
-          Assert.assertEquals(expected, actual);
         } else {
+          expected = null;
           Assert.fail("should only find entities 1, 2, 3");
         }
+        Assert.assertEquals(expected, values);
       }
       Assert.assertEquals(3, rowCount);
     } finally {

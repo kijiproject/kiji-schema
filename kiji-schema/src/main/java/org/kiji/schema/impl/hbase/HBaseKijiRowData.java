@@ -51,6 +51,7 @@ import org.kiji.schema.KijiColumnPagingNotEnabledException;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiPager;
+import org.kiji.schema.KijiResult;
 import org.kiji.schema.KijiRowData;
 import org.kiji.schema.KijiTableReaderBuilder;
 import org.kiji.schema.NoSuchColumnException;
@@ -866,16 +867,27 @@ public final class HBaseKijiRowData implements KijiRowData {
   /**
    * Get a KijiResult corresponding to the same data as this KjiRowData.
    *
+   * <p>
+   *   This method allows the caller to specify a type-bound on the values of the {@code KijiCell}s
+   *   of the returned {@code KijiResult}. The caller should be careful to only specify an
+   *   appropriate type. If the type is too specific (or wrong), a runtime
+   *   {@link java.lang.ClassCastException} will be thrown when the returned {@code KijiResult} is
+   *   used. See the 'Type Safety' section of {@link KijiResult}'s documentation for more details.
+   * </p>
+   *
    * @return a KijiResult corresponding to the same data as this KijiRowData.
+   * @param <T> type {@code KijiCell} value returned by the {@code KijiResult}.
+   * @throws IOException if error while decoding cells.
    */
-  public HBaseKijiResult asKijiResult() {
-    return new HBaseKijiResult(
+  public <T> KijiResult<T> asKijiResult() throws IOException {
+    return HBaseKijiResult.create(
         mEntityId,
         mDataRequest,
         mResult,
-        mTable.getColumnNameTranslator(),
-        mDecoderProvider,
-        mTable);
+        mTable,
+        mTableLayout,
+        HBaseColumnNameTranslator.from(mTableLayout),
+        mDecoderProvider);
   }
 
   /** {@inheritDoc} */

@@ -140,6 +140,10 @@
       <Class name="org.kiji.schema.layout.SchemaTableAvroResolver" />
       <Class name="org.kiji.schema.layout.AvroSchemaIdResolver" />
       <Class name="org.kiji.schema.zookeeper.ZooKeeperUtils$1" />
+      <Class name="org.kiji.schema.impl.hbase.HBasePagedKijiResult$PagedColumnIterable$1" />
+      <Class name="org.kiji.schema.impl.hbase.ResultDecoders$GroupFamilyDecoder" />
+      <Class name="org.kiji.schema.impl.hbase.ResultDecoders$MapFamilyDecoder" />
+      <Class name="org.kiji.schema.impl.hbase.ResultDecoders$QualifiedColumnDecoder" />
     </Or>
     <Bug pattern="NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE" />
   </Match>

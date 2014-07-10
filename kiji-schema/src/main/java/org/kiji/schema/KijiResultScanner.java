@@ -25,8 +25,13 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
-/** Scanner over rows in a KijiTable which returns a KijiResult for each row. */
+/**
+ * A scanner over rows in a KijiTable. Rows are returned as {@link KijiResult}s.
+ * {@code KijiResultScanner} must be closed when it will no longer be used.
+ *
+ * @param <T> type of {@code KijiCell} value returned by scanned {@code KijiResult}s.
+ */
 @ApiAudience.Framework
 @ApiStability.Experimental
 @Inheritance.Sealed
-public interface KijiResultScanner extends Closeable, Iterator<KijiResult> { }
+public interface KijiResultScanner<T> extends Closeable, Iterator<KijiResult<T>> { }

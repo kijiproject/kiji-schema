@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.NavigableMap;
@@ -87,11 +86,14 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
      assertTrue("Row does not contain column [family:column2].",
          mRow1.containsColumn("family", "column2"));
      try {
-     final NavigableMap<String, NavigableMap<Long, CharSequence>> stringGet = mRow1.getValues(
-         "family");
-     final NavigableMap<String, NavigableMap<Long, Integer>> intGet = mRow1.getValues("family");
-     assertEquals("I am not a string! () for the stringGet.", "I am a String",
-         stringGet.get("column1").get(1L).toString());
+       final NavigableMap<String, NavigableMap<Long, CharSequence>> stringGet =
+           mRow1.getValues("family");
+       final NavigableMap<String, NavigableMap<Long, Integer>> intGet =
+           mRow1.getValues("family");
+       assertEquals(
+           "I am not a string! () for the stringGet.",
+           "I am a String",
+           stringGet.get("column1").get(1L).toString());
        intGet.get("column1").get(1L);
        fail("Didn't throw an exception!");
      } catch (IllegalStateException ex) {

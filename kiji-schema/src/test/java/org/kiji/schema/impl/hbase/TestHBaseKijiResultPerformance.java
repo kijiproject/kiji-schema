@@ -20,8 +20,6 @@ package org.kiji.schema.impl.hbase;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.NavigableMap;
-import java.util.Random;
 
 import junit.framework.Assert;
 import org.apache.hadoop.hbase.client.Get;
@@ -70,11 +68,19 @@ public class TestHBaseKijiResultPerformance extends KijiClientTest {
     for (KijiCell<Integer> cell : warmupRowData.<Integer>asIterable("map")) {
       cell.getData();
     }
-    final KijiResult warmupResult = reader.getResult(table.getEntityId("foo"), request);
-    final Iterator<KijiCell<Integer>> warmupIt =
-        warmupResult.iterator(KijiColumnName.create("map"));
-    while (warmupIt.hasNext()) {
-      warmupIt.next().getData();
+    final KijiResult<Object> warmupResult = reader.getResult(table.getEntityId("foo"), request);
+    try {
+      final KijiResult<Integer> columnResult =
+          warmupResult.narrowView(KijiColumnName.create("map"));
+      try {
+        for (final KijiCell<Integer> integerKijiCell : columnResult) {
+          integerKijiCell.getData();
+        }
+      } finally {
+        columnResult.close();
+      }
+    } finally {
+      warmupResult.close();
     }
   }
 
@@ -130,20 +136,27 @@ public class TestHBaseKijiResultPerformance extends KijiClientTest {
     }
     {
       final long resultStartTime = System.nanoTime();
-      final KijiResult testResult = reader.getResult(table.getEntityId("foo"), request);
-      LOG.info("built result in {} milliseconds",
-          (double) (System.nanoTime() - resultStartTime) / 1000000);
-      final long itstart = System.nanoTime();
-      final Iterator<KijiCell<Integer>> it = testResult.iterator(KijiColumnName.create("map"));
-      LOG.info("built iterator in {} milliseconds",
-          (double) (System.nanoTime() - itstart) / 1000000);
-      int seen = 0;
-      while (it.hasNext()) {
-        Object v = it.next().getData();
-        seen++;
+      final KijiResult<Integer> testResult = reader.getResult(table.getEntityId("foo"), request);
+      try {
+        LOG.info(
+            "built result in {} milliseconds",
+            (double) (System.nanoTime() - resultStartTime) / 1000000);
+        final long itstart = System.nanoTime();
+        final Iterator<KijiCell<Integer>> it = testResult.iterator();
+        LOG.info(
+            "built iterator in {} milliseconds",
+            (double) (System.nanoTime() - itstart) / 1000000);
+        int seen = 0;
+        while (it.hasNext()) {
+          Object v = it.next().getData();
+          seen++;
+        }
+        LOG.info(
+            "result all map family time (saw {} cells) = {} milliseconds",
+            seen, (double) (System.nanoTime() - resultStartTime) / 1000000);
+      } finally {
+        testResult.close();
       }
-      LOG.info("result all map family time (saw {} cells) = {} milliseconds",
-          seen, (double) (System.nanoTime() - resultStartTime) / 1000000);
     }
   }
 
@@ -161,55 +174,17 @@ public class TestHBaseKijiResultPerformance extends KijiClientTest {
           (double) (System.nanoTime() - rowDataStartTime) / 1000000);
 
       final long resultStartTime = System.nanoTime();
-      final KijiResult testResult =
+      final KijiResult<Integer> testResult =
           reader.getResult(table.getEntityId("foo"), singletonRequest);
-      final Integer value2 =
-          (Integer) testResult.getMostRecentCell(KijiColumnName.create("map", "10")).getData();
-      LOG.info("result single value time = {} nanoseconds",
-          (double) (System.nanoTime() - resultStartTime) / 1000000);
+      try {
+        final Integer value2 = KijiResult.Helpers.getFirstValue(testResult);
+        LOG.info("result single value time = {} nanoseconds",
+            (double) (System.nanoTime() - resultStartTime) / 1000000);
 
-      Assert.assertEquals(value, value2);
-    }
-  }
-
-  private void randomAccessMapFamily(
-      final HBaseKijiTableReader reader,
-      final EntityId eid,
-      final KijiDataRequest request
-  ) throws IOException {
-    {
-      final Random rand = new Random();
-      final long rowDataStartTime = System.nanoTime();
-      final KijiRowData testRowData = reader.get(eid, request);
-      for (int i = 0; i < 10000; i++) {
-        final String qualifier = String.valueOf(rand.nextInt(100));
-        final long timestamp = 1L + rand.nextInt(1000);
-        Object v = testRowData.getCell("map", qualifier, timestamp);
+        Assert.assertEquals(value, value2);
+      } finally {
+        testResult.close();
       }
-      LOG.info("row data random access time = {} nanoseconds",
-          (double) (System.nanoTime() - rowDataStartTime) / 1000000);
-
-      final long mapStartTime = System.nanoTime();
-      final KijiRowData mapRowData = reader.get(eid, request);
-      NavigableMap<String, NavigableMap<Long, KijiCell<Integer>>> map =
-          mapRowData.getCells("map");
-      for (int i = 0; i < 10000; i++) {
-        final String qualifier = String.valueOf(rand.nextInt(100));
-        final long timestamp = 1L + rand.nextInt(1000);
-        map.get(qualifier).get(timestamp).getData();
-      }
-      LOG.info("map random access time = {} nanoseconds",
-          (double) (System.nanoTime() - mapStartTime) / 1000000);
-
-      final long resultStartTime = System.nanoTime();
-      final KijiResult testResult = reader.getResult(eid, request);
-      for (int i = 0; i < 10000; i++) {
-        final String qualifier = String.valueOf(rand.nextInt(100));
-        final long timestamp = 1L + rand.nextInt(1000);
-        Object v = testResult.getCell(KijiColumnName.create("map", qualifier), timestamp);
-      }
-      LOG.info("result random access time = {} nanoseconds",
-          (double) (System.nanoTime() - resultStartTime) / 1000000);
     }
   }
 
@@ -224,27 +199,36 @@ public class TestHBaseKijiResultPerformance extends KijiClientTest {
       for (KijiCell<Integer> cell : warmupRowData.<Integer>asIterable("map")) {
         cell.getData();
       }
-      final KijiResult warmupResult = reader.getResult(eid, pagedRequest);
-      for (KijiCell<?> cell : warmupResult) {
-        cell.getData();
+      final KijiResult<Object> warmupResult = reader.getResult(eid, pagedRequest);
+      try {
+        for (KijiCell<Object> cell : warmupResult) {
+          cell.getData();
+        }
+      } finally {
+        warmupResult.close();
       }
       {
         final long resultStartTime = System.nanoTime();
-        final KijiResult testResult = reader.getResult(eid, pagedRequest);
-        final Iterator<KijiCell<Integer>> it = testResult.iterator(KijiColumnName.create("map"));
-        int seen = 0;
-        while (it.hasNext()) {
-          Object v = it.next().getData();
-          seen++;
+        final KijiResult<Integer> testResult = reader.getResult(eid, pagedRequest);
+        try {
+          final Iterator<KijiCell<Integer>> it = testResult.iterator();
+          int seen = 0;
+          while (it.hasNext()) {
+            Integer v = it.next().getData();
+            seen++;
+          }
+          LOG.info(
+              "paged result all map family time ({} cells) = {} nanoseconds",
+              seen, System.nanoTime() - resultStartTime);
+        } finally {
+          testResult.close();
         }
-        LOG.info("paged result all map family time ({} cells) = {} nanoseconds",
-            seen, System.nanoTime() - resultStartTime);
       }
     }
   }
 
   // Disabled by default.
-//  @Test
+  //@Test
   public void performanceTest() throws IOException {
     setupPerformanceTest();
 
@@ -262,8 +246,6 @@ public class TestHBaseKijiResultPerformance extends KijiClientTest {
         allValuesMapFamily(table, reader, request);
 
         singleValue(table, reader);
-
-        randomAccessMapFamily(reader, table.getEntityId("foo"), request);
 
         paged(reader, table.getEntityId("foo"));
       } finally {

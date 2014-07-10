@@ -298,7 +298,7 @@ public final class CellDecoderProvider {
    * @param spec specification of column read properties from which to get a decoder.
    * @param <T> the type of the value encoded in the cell.
    * @return a new or cached cell decoder corresponding to the given specification.
-   * @throws IOException in case of an error creating a new decoder.
+   * @throws IOException in case of an error create a new decoder.
    */
   @SuppressWarnings("unchecked")
   private <T> KijiCellDecoder<T> getDecoder(BoundColumnReaderSpec spec) throws IOException {
