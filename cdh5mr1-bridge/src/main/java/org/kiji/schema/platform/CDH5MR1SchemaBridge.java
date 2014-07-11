@@ -21,6 +21,7 @@ package org.kiji.schema.platform;
 
 import java.io.IOException;
 
+import com.google.common.base.Charsets;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -33,10 +34,13 @@ import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
+import org.apache.hadoop.hbase.filter.RegexStringComparator;
+import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.regionserver.BloomType;
+import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.mapred.JobConf;
 
@@ -128,6 +132,32 @@ public final class CDH5MR1SchemaBridge extends SchemaPlatformBridge {
   @Override
   public QualifierFilter createQualifierFilter(CompareFilter.CompareOp op, byte[] qualifier) {
     return new QualifierFilter(op, new BinaryComparator(qualifier));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public QualifierFilter createQualifierFilterFromRegex(
+      CompareFilter.CompareOp op,
+      String regexString
+  ) {
+    return new QualifierFilter(op, new RegexStringComparator(regexString));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public RowFilter createRowFilterFromRegex(CompareFilter.CompareOp op, String regexString) {
+    final RegexStringComparator comparator = new RegexStringComparator(regexString);
+    comparator.setCharset(Charsets.ISO_8859_1);
+    return new RowFilter(op, comparator);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public String[] debugStringsForCompareFilter(CompareFilter cfilter) {
+    return new String[] {
+        cfilter.getOperator().toString(),
+        Bytes.toStringBinary(cfilter.getComparator().getValue()),
+    };
   }
 
   /** {@inheritDoc} */

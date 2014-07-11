@@ -25,13 +25,12 @@ import java.util.regex.Pattern;
 import com.google.common.base.Objects;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.Filter;
-import org.apache.hadoop.hbase.filter.QualifierFilter;
-import org.apache.hadoop.hbase.filter.RegexStringComparator;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /**
  * A KijiColumnFilter that only allows qualifiers that match a given regular expression.
@@ -61,8 +60,8 @@ public final class RegexQualifierColumnFilter extends KijiColumnFilter {
   @Override
   public Filter toHBaseFilter(KijiColumnName kijiColumnName, Context context) throws IOException {
     HBaseColumnName columnName = context.getHBaseColumnName(kijiColumnName);
-    return new QualifierFilter(CompareFilter.CompareOp.EQUAL,
-        new RegexStringComparator(columnName.getQualifierAsString() + mRegularExpression));
+    return SchemaPlatformBridge.get().createQualifierFilterFromRegex(CompareFilter.CompareOp.EQUAL,
+        columnName.getQualifierAsString() + mRegularExpression);
   }
 
   /** {@inheritDoc} */

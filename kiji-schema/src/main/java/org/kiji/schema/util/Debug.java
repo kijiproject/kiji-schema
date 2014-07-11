@@ -39,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /** Debugging utilities. */
 @ApiAudience.Private
@@ -84,7 +85,7 @@ public final class Debug {
     } else if (filter instanceof FamilyFilter) {
       final FamilyFilter ffilter = (FamilyFilter) filter;
       return String.format("(HFamily %s %s)",
-          ffilter.getOperator(), Bytes.toStringBinary(ffilter.getComparator().getValue()));
+          SchemaPlatformBridge.get().debugStringsForCompareFilter(ffilter));
     } else if (filter instanceof ColumnPrefixFilter) {
       final ColumnPrefixFilter cpfilter = (ColumnPrefixFilter) filter;
       return String.format("(HColumn starts with %s)", Bytes.toStringBinary(cpfilter.getPrefix()));

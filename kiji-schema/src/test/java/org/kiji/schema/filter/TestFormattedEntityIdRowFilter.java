@@ -38,8 +38,6 @@ import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
-import org.apache.hadoop.hbase.filter.RowFilter;
-import org.apache.hadoop.hbase.filter.WritableByteArrayComparable;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.junit.Test;
 
@@ -476,20 +474,13 @@ public class TestFormattedEntityIdRowFilter {
       List<Filter> filters = ((FilterList) filter).getFilters();
       return String.format("[%s] AND [%s]",
           prefixFilterToString((PrefixFilter) filters.get(0)),
-          rowFilterToString((RowFilter) filters.get(1)));
+          filter.toString());
     } else {
-      return rowFilterToString((RowFilter) filter);
+      return filter.toString();
     }
   }
 
   private String prefixFilterToString(PrefixFilter prefixFilter) throws Exception {
     return toBinaryString(prefixFilter.getPrefix());
-  }
-
-  private String rowFilterToString(RowFilter rowFilter) throws Exception {
-    WritableByteArrayComparable comparator = rowFilter.getComparator();
-    Field patternField = comparator.getClass().getDeclaredField("pattern");
-    patternField.setAccessible(true);
-    return String.format("Regex: %s", patternField.get(comparator));
   }
 }

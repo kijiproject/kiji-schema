@@ -30,14 +30,11 @@ import org.apache.avro.util.Utf8;
 import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.ColumnPaginationFilter;
 import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
 import org.apache.hadoop.hbase.filter.CompareFilter;
-import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
-import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -59,6 +56,7 @@ import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.InstanceBuilder;
 
 public class TestHBaseDataRequestAdapter extends KijiClientTest {
@@ -113,17 +111,20 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
     // These are joined together with a request-level OR(...) filter; so in effect every
     // cell included must pass all the filters associated with one of the columns requested.
     FilterList infoNameFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-    Filter infoLgFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
-        new BinaryComparator(hbaseColumn.getFamily()));
+    Filter infoLgFilter = SchemaPlatformBridge.get().createFamilyFilter(
+        CompareFilter.CompareOp.EQUAL,
+        hbaseColumn.getFamily());
     infoNameFilter.addFilter(infoLgFilter);
-    Filter infoNameQualifierFilter = new QualifierFilter(CompareFilter.CompareOp.EQUAL,
-        new BinaryComparator(hbaseColumn.getQualifier()));
+    Filter infoNameQualifierFilter = SchemaPlatformBridge.get().createQualifierFilter(
+        CompareFilter.CompareOp.EQUAL,
+        hbaseColumn.getQualifier());
     infoNameFilter.addFilter(infoNameQualifierFilter);
     infoNameFilter.addFilter(new ColumnPaginationFilter(1, 0));
 
     FilterList purchasesFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-    Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
-        new BinaryComparator(hPurchasesColumn.getFamily()));
+    Filter familyFilter = SchemaPlatformBridge.get().createFamilyFilter(
+        CompareFilter.CompareOp.EQUAL,
+        hPurchasesColumn.getFamily());
     Filter mapPrefixFilter = new ColumnPrefixFilter(hPurchasesColumn.getQualifier());
     purchasesFilter.addFilter(familyFilter);
     purchasesFilter.addFilter(mapPrefixFilter);
@@ -168,17 +169,20 @@ public class TestHBaseDataRequestAdapter extends KijiClientTest {
     FilterList filterList = new FilterList(FilterList.Operator.MUST_PASS_ONE);
 
     FilterList infoNameFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-    Filter infoLgFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
-        new BinaryComparator(hbaseColumn.getFamily()));
+    Filter infoLgFilter = SchemaPlatformBridge.get().createFamilyFilter(
+        CompareFilter.CompareOp.EQUAL,
+        hbaseColumn.getFamily());
     infoNameFilter.addFilter(infoLgFilter);
-    Filter infoNameQualifierFilter = new QualifierFilter(CompareFilter.CompareOp.EQUAL,
-        new BinaryComparator(hbaseColumn.getQualifier()));
+    Filter infoNameQualifierFilter = SchemaPlatformBridge.get().createQualifierFilter(
+        CompareFilter.CompareOp.EQUAL,
+        hbaseColumn.getQualifier());
     infoNameFilter.addFilter(infoNameQualifierFilter);
     infoNameFilter.addFilter(new ColumnPaginationFilter(1, 0));
 
     FilterList purchasesFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-    Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
-        new BinaryComparator(hPurchasesColumn.getFamily()));
+    Filter familyFilter = SchemaPlatformBridge.get().createFamilyFilter(
+        CompareFilter.CompareOp.EQUAL,
+        hPurchasesColumn.getFamily());
     Filter mapPrefixFilter = new ColumnPrefixFilter(hPurchasesColumn.getQualifier());
     purchasesFilter.addFilter(familyFilter);
     purchasesFilter.addFilter(mapPrefixFilter);

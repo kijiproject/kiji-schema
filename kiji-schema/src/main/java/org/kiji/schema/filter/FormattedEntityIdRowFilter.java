@@ -33,7 +33,6 @@ import org.apache.hadoop.hbase.filter.CompareFilter.CompareOp;
 import org.apache.hadoop.hbase.filter.Filter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.PrefixFilter;
-import org.apache.hadoop.hbase.filter.RegexStringComparator;
 import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.codehaus.jackson.JsonNode;
@@ -47,6 +46,7 @@ import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.avro.RowKeyEncoding;
 import org.kiji.schema.avro.RowKeyFormat2;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.FromJson;
 import org.kiji.schema.util.Hasher;
 import org.kiji.schema.util.ToJson;
@@ -85,8 +85,8 @@ import org.kiji.schema.util.ToJson;
  * </table>
  *
  * <p>The filter functionality is accomplished using a {@link
- * RegexStringComparator} in combination with a {@link RowFilter}. The regular
- * expression is constructed using the same component conversion rules used to
+ * org.apache.hadoop.hbase.filter.RegexStringComparator} in combination with a {@link RowFilter}.
+ * The regular expression is constructed using the same component conversion rules used to
  * create a FormattedEntityId.
  */
 @ApiAudience.Public
@@ -277,13 +277,12 @@ public final class FormattedEntityIdRowFilter extends KijiRowFilter {
     }
     regex.append("$"); // $ matches the end of the string
 
-    final RegexStringComparator comparator = new RegexStringComparator(regex.toString());
-    comparator.setCharset(Charsets.ISO_8859_1);
+    final RowFilter regexRowFilter =
+        SchemaPlatformBridge.get().createRowFilterFromRegex(CompareOp.EQUAL, regex.toString());
     if (addPrefixFilter) {
-      return new FilterList(new PrefixFilter(prefixBytes.toByteArray()),
-          new RowFilter(CompareOp.EQUAL, comparator));
+      return new FilterList(new PrefixFilter(prefixBytes.toByteArray()), regexRowFilter);
     }
-    return new RowFilter(CompareOp.EQUAL, comparator);
+    return regexRowFilter;
   }
 
   /**
