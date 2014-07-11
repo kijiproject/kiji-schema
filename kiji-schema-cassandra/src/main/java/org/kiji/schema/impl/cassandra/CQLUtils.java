@@ -137,7 +137,9 @@ public final class CQLUtils {
       }
       case FORMATTED: {
         for (RowKeyComponent component : keyFormat.getComponents()) {
-          map.put(component.getName(), getCQLType(component.getType()));
+          map.put(
+              translateEntityIDComponentNameToColumnName(component.getName()),
+              getCQLType(component.getType()));
         }
         break;
       }
@@ -290,6 +292,21 @@ public final class CQLUtils {
   }
 
   /**
+   * Given the name of an entity ID component, returns the corresponding Cassandra column name.
+   *
+   * Inserts a prefix to make sure that the column names for entity ID components don't conflict
+   * with CQL reserved words or with other column names in Kiji Cassandra tables.
+   *
+   * @param entityIDComponentName The name of the entity ID component.
+   * @return the name of the Cassandra column for this component.
+   */
+  public static String translateEntityIDComponentNameToColumnName(
+      final String entityIDComponentName
+  ) {
+    return "eid_" + entityIDComponentName;
+  }
+
+  /**
    * Extract the Entity ID components from a row for a given table layout.
    *
    * @param layout of the table.
@@ -311,17 +328,18 @@ public final class CQLUtils {
 
         for (int i = 0; i < formatComponents.size(); i++) {
           RowKeyComponent component = formatComponents.get(i);
+          final String columnName = translateEntityIDComponentNameToColumnName(component.getName());
           switch (component.getType()) {
             case STRING: {
-              components[i] = row.getString(component.getName());
+              components[i] = row.getString(columnName);
               break;
             }
             case INTEGER: {
-              components[i] = row.getInt(component.getName());
+              components[i] = row.getInt(columnName);
               break;
             }
             case LONG: {
-              components[i] = row.getLong(component.getName());
+              components[i] = row.getLong(columnName);
               break;
             }
             default: throw new IllegalArgumentException("Unknown row key component type.");
@@ -345,7 +363,7 @@ public final class CQLUtils {
   private static List<String> transformToColumns(List<RowKeyComponent> components) {
     List<String> list = Lists.newArrayList();
     for (RowKeyComponent component : components) {
-      list.add(component.getName());
+      list.add(translateEntityIDComponentNameToColumnName(component.getName()));
     }
     return list;
   }
