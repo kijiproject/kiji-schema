@@ -19,19 +19,19 @@
 package org.kiji.schema.util;
 
 import java.io.Closeable;
-import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.slf4j.Logger;
@@ -42,30 +42,17 @@ import org.kiji.annotations.ApiStability;
 import org.kiji.schema.InternalKijiError;
 
 /**
- * Tracks resources which should be cleaned up before JVM shutdown.
+ * Tracks stateful resources which require manual cleanup.
  *
  * <p>
- *   The behavior of this tracker can be controlled using the system property
- *   "org.kiji.schema.util.DebugResourceTracker.tracking_level" which may be set to any value of
- *   enum {@link DebugResourceTracker.TrackingLevel}. Tracking levels include:
- *   <ul>
- *     <li>NONE - No tracking.</li>
- *     <li>
- *       COUNTER - A count of the open resources is maintained globally. If the count is not 0 at
- *           shutdown, logs an error.
- *     </li>
- *     <li>
- *       REFERENCES - All open resources are individually tracked. Logs a debug message for each
- *           open resource at shutdown. Also enables features of COUNTER.
- *     </li>
- *   </ul>
- * </p>
- *
- * <p>
- *   Resources which should be closed before shutdown may register themselves with this tracker by
- *   calling {@link #registerResource} and unregister by calling {@link #unregisterResource}.
- *   If any resources are tracked at JVM shutdown, this tracker will print log messages based on the
- *   value of {@link #TRACKING_LEVEL}.
+ *   Resources which require explicit cleanup before being garbage collected may register themselves
+ *   with this tracker by calling {@link #registerResource} and unregister by calling
+ *   {@link #unregisterResource}. If registered resources are not unregistered before garbage
+ *   collection or JVM shutdown the tracker will print log messages to the cleanup log. Note that
+ *   the tracker will not cleanup the leaked resources, it will only log the failure to do so.
+ *   The granularity of tracking and type of logging is defined by the {@link TrackingLevel} of the
+ *   {@code DebugResourceTracker}, which is configured by the {@value #TRACKING_LEVEL_PROPERTY}
+ *   system property.
  * </p>
  */
 @ApiAudience.Framework
@@ -99,18 +86,49 @@ public final class DebugResourceTracker {
   }
 
   /**
-   * Options for tracking granularity.
-   * <ul>
-   *   <li>NONE - No tracking.</li>
-   *   <li>
-   *     COUNTER - A count of the open resources is maintained globally. If the count is not 0 at
-   *         shutdown, logs an error.
-   *   </li>
-   *   <li>
-   *     REFERENCES - All open resources are individually tracked. Logs a debug message for each
-   *         open resource at shutdown. Also enables features of COUNTER.
-   *   </li>
-   * </ul>
+   * Options for resource tracking granularity.
+   *
+   * <p>
+   *   The {@code TrackingLevel} determines how the {@code DebugResourceTracker} handles leaked
+   *   resources (resources which are registered and never unregistered).
+   * </p>
+   *
+   * <h3>{@code NONE}</h3>
+   *
+   * <p>
+   *   No tracking is performed. This tracking level imposes no performance overhead.
+   * </p>
+   *
+   * <h3>{@code COUNTER}</h3>
+   *
+   * <p>
+   *   The total count of registered resources is tracked. This is the recommended tracking level
+   *   to use in production. The total registered resource count is logged at shutdown if the count
+   *   is greater than zero.
+   * </p>
+   *
+   * <p>
+   *   {@code COUNTER} level tracking imposes minimal performance overhead: a global atomic counter
+   *   must be incremented or decremented during each resource registration or deregistration.
+   *   Additionally, a JVM shutdown hook is registered when {@code COUNTER} level tracking is used.
+   * </p>
+   *
+   * <h3>{@code REFERENCES}</h3>
+   *
+   * <p>
+   *   Individual registered resources are tracked. This is the recommended tracking level
+   *   while developing and debugging. Leaked resources are logged along with an associated message
+   *   and the stack trace at the point of their registration.
+   * </p>
+   *
+   * <p>
+   *   {@code REFERENCES} level tracking imposes some performance overhead. Registering and
+   *   deregistering resources is globally synchronized.  The message and associated stack trace for
+   *   currently registered resources use memory.  Weak references are held to currently registered
+   *   resources, which may affect garbage collector performance, especially for leaked resources.
+   *   Additionally, a JVM shutdown hook is registered when {@code REFERENCES} level tracking is
+   *   used.
+   * </p>
    */
   public enum TrackingLevel {
     NONE, COUNTER, REFERENCES
@@ -305,20 +323,16 @@ public final class DebugResourceTracker {
                 .setNameFormat("DebugResourceTracker.ReferenceTracker")
                 .build());
 
-    /**
-     * Create a {@code ReferenceTracker} instance.
-     */
+    /** Create a {@code ReferenceTracker} instance. */
     private ReferenceTracker() {
       mExecutorService.execute(new ReferenceLogger());
     }
 
-    /** Ref queue for showable phantom references. */
-    private final ReferenceQueue<Object> mReferenceQueue =
-        new ReferenceQueue<Object>();
+    /** Ref queue for resource references. */
+    private final ReferenceQueue<Object> mReferenceQueue = new ReferenceQueue<Object>();
 
-    /** Map of identity hash code of registered referent to reference. Synchronized. */
-    private final BiMap<Integer, ShowablePhantomReference>  mReferences =
-        Maps.synchronizedBiMap(HashBiMap.<Integer, ShowablePhantomReference>create());
+    /** Map of identity hash of registered resource to reference. Access must be synchronized. */
+    private final ListMultimap<Integer, ResourceReference> mReferences = ArrayListMultimap.create();
 
     /**
      * Register a resource to be tracked.
@@ -333,13 +347,10 @@ public final class DebugResourceTracker {
         final String stackTrace
     ) {
       LOG.debug("Registering resource {}.", resource);
-      final ShowablePhantomReference previous = mReferences.put(
-          System.identityHashCode(resource),
-          new ShowablePhantomReference(mReferenceQueue, resource, message, stackTrace));
-      if (previous != null) {
-        CLEANUP_LOG.warn(
-            "Double registration detected: {}\n{}\nPrevious registration: {}\n{}",
-            message, stackTrace, previous.getMessage(), previous.getStackTrace());
+      final ResourceReference ref =
+          new ResourceReference(mReferenceQueue, resource, message, stackTrace);
+      synchronized (mReferences) {
+        mReferences.put(ref.getIdentityHash(), ref);
       }
     }
 
@@ -350,10 +361,18 @@ public final class DebugResourceTracker {
      */
     public void unregisterResource(final Object resource) {
       LOG.debug("Unregistering resource {}.", resource);
-      final Object removed = mReferences.remove(System.identityHashCode(resource));
-      if (removed == null) {
-        CLEANUP_LOG.warn("Attempted to unregister an untracked resource: {}.", resource);
+      synchronized (mReferences) {
+        final List<ResourceReference> refs = mReferences.get(System.identityHashCode(resource));
+        for (int i = 0; i < refs.size(); i++) {
+          final ResourceReference ref = refs.get(i);
+          // The referent is guaranteed to be present, because the argument is a strong reference
+          if (resource == ref.get()) {
+            refs.remove(i);
+            return;
+          }
+        }
       }
+      CLEANUP_LOG.info("Attempted to unregister an untracked resource: {}.", resource);
     }
 
     /**
@@ -363,8 +382,9 @@ public final class DebugResourceTracker {
     public void close() {
       mExecutorService.shutdownNow();
       synchronized (mReferences) {
-        for (ShowablePhantomReference reference : mReferences.values()) {
+        for (ResourceReference reference : mReferences.values()) {
           logReference(reference);
+          reference.clear(); // Prevent the reference from being enqueued
         }
         mReferences.clear();
       }
@@ -375,29 +395,27 @@ public final class DebugResourceTracker {
      *
      * @param reference to log.
      */
-    private static void logReference(ShowablePhantomReference reference) {
+    private static void logReference(ResourceReference reference) {
       CLEANUP_LOG.error("Leaked resource detected: {}\n{}",
           reference.getMessage(),
           reference.getStackTrace());
     }
 
-    /**
-     * Task which waits for ShowablePhantomRef instances to be enqueued to the reference queue, and
-     * logs them.
-     */
+    /** Task which waits for {@code ResourceReference} instances to be enqueued, and logs them. */
     private class ReferenceLogger implements Runnable {
       /** {@inheritDoc} */
       @Override
       public void run() {
         try {
           while (true) {
-            ShowablePhantomReference reference =
-                (ShowablePhantomReference) mReferenceQueue.remove();
-            if (mReferences.inverse().remove(reference) != null) {
-              // Log reference if it is still registered
-              logReference(reference);
+            ResourceReference ref = (ResourceReference) mReferenceQueue.remove();
+            synchronized (mReferences) {
+              // Remove multiple times in case of multiple registrations
+              while (mReferences.remove(ref.getIdentityHash(), ref)) {
+                logReference(ref);
+              }
             }
-            reference.clear(); // allows referent to be claimed by the GC.
+            ref.clear(); // Clear the reference to indicate we are finished with it
           }
         } catch (InterruptedException e) {
           // If this thread is interrupted, then die. This happens normally when
@@ -410,47 +428,59 @@ public final class DebugResourceTracker {
     }
 
     /**
-     * A {@link PhantomReference} which holds the {@code #toString} of its referent and a message.
+     * A {@link WeakReference} to a resource which holds an identity hash code, message, and
+     * stacktrace for the resource.
      */
     @ApiAudience.Private
-    private static final class ShowablePhantomReference extends PhantomReference<Object> {
+    private static final class ResourceReference extends WeakReference<Object> {
 
-      /** Message associated with the referent. */
+      /** The identity hash code of the resource. */
+      private final int mIdentityHash;
+
+      /** Message associated with the resource. */
       private final String mMessage;
 
-      /** Stack trace asscociated with the referent. */
+      /** Stack trace associated with the resource. */
       private final String mStackTrace;
 
       /**
-       * Create a {@code ShowablePhantomReference} for the provided queue, referent, message, and
+       * Create a {@code ResourceReference} with the provided queue, resource, message, and
        * stack trace.
        *
        * @param refQueue to which this reference will be enqueued when the JVM determines the
-       *    referent is no longer reachable.
-       * @param referent of this phantom reference.
-       * @param message associated with this reference.
-       * @param stackTrace associated with this reference.
+       *    resource is no longer reachable.
+       * @param resource to reference.
+       * @param message associated with the resource.
+       * @param stackTrace associated with the resource.
        */
-      public ShowablePhantomReference(
+      public ResourceReference(
           final ReferenceQueue<Object> refQueue,
-          final Object referent,
+          final Object resource,
           final String message,
           final String stackTrace
       ) {
-        super(referent, refQueue);
+        super(resource, refQueue);
+        mIdentityHash = System.identityHashCode(resource);
         mMessage = message;
         mStackTrace = stackTrace;
       }
 
       /**
-       * @return the message associated with the referent.
+       * @return the identity hash code of the resource.
+       */
+      public int getIdentityHash() {
+        return mIdentityHash;
+      }
+
+      /**
+       * @return the message associated with the resource.
        */
       public String getMessage() {
         return mMessage;
       }
 
       /**
-       * @return the stack trace associated with the referent.
+       * @return the stack trace associated with the resource.
        */
       public String getStackTrace() {
         return mStackTrace;
@@ -461,6 +491,7 @@ public final class DebugResourceTracker {
       public String toString() {
         return Objects
             .toStringHelper(this.getClass())
+            .add("identity hash", mIdentityHash)
             .add("message", mMessage)
             .add("stack trace", mStackTrace)
             .toString();
