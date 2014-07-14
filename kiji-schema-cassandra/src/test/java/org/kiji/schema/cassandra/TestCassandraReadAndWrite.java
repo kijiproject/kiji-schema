@@ -75,6 +75,8 @@ public class TestCassandraReadAndWrite {
     CLIENT_TEST_DELEGATE.setupKijiTest();
     mKiji = CLIENT_TEST_DELEGATE.getKiji();
     mKiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE_FORMATTED_EID));
+    mKiji.createTable(KijiTableLayouts.getLayout(
+           KijiTableLayouts.SIMPLE_FORMATTED_EID_TWO_COMPONENTS));
     mKiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.SIMPLE_MAP_TYPE));
     mTable = mKiji.openTable("table");
   }
@@ -599,6 +601,66 @@ public class TestCassandraReadAndWrite {
 
     assertTrue(currentTime > storedTimestamp);
     assertTrue(currentTime - storedTimestamp < TimeUnit.MINUTES.toMillis(5));
+  }
+
+  /**
+   * Test using a row scanner in a table a multi-component entity ID.
+   */
+  @Test
+  public void testRowScannerWithMultiEntityIDTable() throws Exception {
+    final KijiTable table = mKiji.openTable("table_two_components");
+    try {
+      // Reuse these entity IDs for puts and for gets.
+      final EntityId alice = table.getEntityId("A", "Alice");
+      final EntityId bob = table.getEntityId("B", "Bob");
+      final EntityId cathy = table.getEntityId("C", "Cathy");
+      final EntityId david = table.getEntityId("D", "David");
+
+      final String family = "family";
+      final String column = "column";
+
+      final String cat = "cat";
+      final String dog = "dog";
+      final String fish = "fish";
+      final String bird = "bird";
+
+      final KijiTableWriter writer = table.openTableWriter();
+      try {
+        // Insert some data into the table.  Give various users different pets.
+        writer.put(alice, family, column, 0L, cat);
+        writer.put(bob, family, column, 0L, dog);
+        writer.put(cathy, family, column, 0L, fish);
+        writer.put(david, family, column, 0L, bird);
+      } finally {
+        writer.close();
+      }
+
+      final KijiDataRequest dataRequest = KijiDataRequest.create(family, column);
+      final KijiTableReader myreader = table.openTableReader();
+      assert myreader instanceof CassandraKijiTableReader;
+      final CassandraKijiTableReader reader = (CassandraKijiTableReader) myreader;
+
+      try {
+        // Fire up a row scanner!
+        final KijiRowScanner scanner = reader.getScanner(dataRequest);
+        try {
+          HashMap<EntityId, KijiRowData> allData = new HashMap<EntityId, KijiRowData>();
+
+          for (KijiRowData row : scanner) {
+            EntityId eid = row.getEntityId();
+            assert (!allData.containsKey(eid));
+            allData.put(eid, row);
+          }
+          assertEquals(4, allData.size());
+        } finally {
+          scanner.close();
+        }
+      } finally {
+        reader.close();
+      }
+    } finally {
+      table.release();
+    }
   }
 }
 

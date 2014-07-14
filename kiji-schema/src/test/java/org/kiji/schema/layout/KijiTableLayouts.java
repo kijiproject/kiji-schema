@@ -129,6 +129,10 @@ public final class KijiTableLayouts {
   public static final String SIMPLE_FORMATTED_EID =
       "org/kiji/schema/layout/simple-formatted-eid.json";
 
+  /** A simple layout file example with two columns - entity ID has two components. */
+  public static final String SIMPLE_FORMATTED_EID_TWO_COMPONENTS =
+      "org/kiji/schema/layout/simple-formatted-eid-two-components.json";
+
   /** A layout file which uses several primitive types as schemas for the columns. */
   public static final String PRIMITIVE_TYPES =
       "org/kiji/schema/layout/primitive-types.json";
