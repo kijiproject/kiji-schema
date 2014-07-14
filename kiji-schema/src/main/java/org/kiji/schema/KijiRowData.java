@@ -174,7 +174,7 @@ public interface KijiRowData {
    * @param <T> Type of the data stored at the specified coordinates.
    * @return Data contained in the specified column with the specified timestamp, or null
    *     if the column or timestamp does not exist in this row. Note: this method does not
-   *     distinguish between Avro encoded nulls and non-existant cells. Use
+   *     distinguish between Avro encoded nulls and non-existent cells. Use
    *     {@link #containsColumn(String, String)} to distinguish between these scenarios.
    * @throws IOException If there is an error.
    */
@@ -189,7 +189,7 @@ public interface KijiRowData {
    * @param <T> Type of the data stored at the specified coordinates.
    * @return Data contained in the specified column with the latest timestamp, or null
    *     if the column does not exist in this row. Note: this method does not distinguish
-   *     between Avro encoded nulls and non-existant cells. Use
+   *     between Avro encoded nulls and non-existent cells. Use
    *     {@link #containsColumn(String, String)} to distinguish between these scenarios.
    * @throws IOException If there is an error.
    */
@@ -204,7 +204,7 @@ public interface KijiRowData {
    * @param <T> Type of the data stored at the specified coordinates.
    * @return Data contained in the specified column family flattened to contain only the
    *     data with the latest timestamps in each column. Note: this method does not distinguish
-   *     between Avro encoded nulls and non-existant cells. Use
+   *     between Avro encoded nulls and non-existent cells. Use
    *     {@link #containsColumn(String, String)} to distinguish between these scenarios.
    * @throws IOException If there is an error.
    */
