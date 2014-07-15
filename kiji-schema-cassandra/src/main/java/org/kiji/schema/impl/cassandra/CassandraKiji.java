@@ -745,10 +745,10 @@ public final class CassandraKiji implements Kiji {
     mAdmin.createTable(tableName, CQLUtils.getCreateTableStatement(tableName, layout));
 
     // Add a secondary index on the locality group (needed for row scans - SCHEMA-846).
-    mAdmin.execute(CQLUtils.getCreateIndexStatement(tableName, CQLUtils.LOCALITY_GROUP_COL));
+    mAdmin.createIndex(tableName, CQLUtils.LOCALITY_GROUP_COL);
 
     // Add a secondary index on the version.
-    mAdmin.execute(CQLUtils.getCreateIndexStatement(tableName, CQLUtils.VERSION_COL));
+    mAdmin.createIndex(tableName, CQLUtils.VERSION_COL);
 
     // Also create a second table, which we can use for counters.
     // Create a C* table name for this Kiji table.
