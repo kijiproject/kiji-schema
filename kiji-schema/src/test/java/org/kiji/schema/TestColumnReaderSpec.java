@@ -108,8 +108,8 @@ public class TestColumnReaderSpec extends KijiClientTest {
       final KijiTableReader reader = table.getReaderFactory().readerBuilder()
           .withOnDecoderCacheMiss(OnDecoderCacheMiss.FAIL).buildAndOpen();
       try {
-        final KijiRowData data = reader.get(table.getEntityId("row"), request);
         try {
+          final KijiRowData data = reader.get(table.getEntityId("row"), request);
           final TestRecord1 record1 = data.getMostRecentValue("family", "empty");
           fail("Should have thrown DecoderNotFoundException");
         } catch (DecoderNotFoundException dnfe) {

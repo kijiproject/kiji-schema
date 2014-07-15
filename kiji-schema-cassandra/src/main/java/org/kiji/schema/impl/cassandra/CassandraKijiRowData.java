@@ -54,7 +54,6 @@ import org.kiji.schema.KijiTableReaderBuilder;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.cassandra.CassandraColumnName;
 import org.kiji.schema.impl.BoundColumnReaderSpec;
-import org.kiji.schema.layout.ColumnReaderSpec;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
 import org.kiji.schema.layout.impl.cassandra.ShortColumnNameTranslator;
@@ -98,8 +97,9 @@ public final class CassandraKijiRowData implements KijiRowData {
    * @throws java.io.IOException on I/O error.
    */
   private static CellDecoderProvider createCellProvider(
-      CassandraKijiTable table) throws IOException {
-    return new CellDecoderProvider(
+      final CassandraKijiTable table
+  ) throws IOException {
+    return CellDecoderProvider.create(
         table.getLayout(),
         Maps.<KijiColumnName, BoundColumnReaderSpec>newHashMap(),
         Sets.<BoundColumnReaderSpec>newHashSet(),
@@ -161,7 +161,9 @@ public final class CassandraKijiRowData implements KijiRowData {
     mEntityId = entityId;
     mRows = null;
     mFilteredMap = map;
-    mDecoderProvider = (decoderProvider != null) ? decoderProvider : createCellProvider(table);
+    mDecoderProvider =
+        ((decoderProvider != null) ? decoderProvider : createCellProvider(table))
+          .getDecoderProviderForRequest(dataRequest);
   }
 
   /**
@@ -174,17 +176,7 @@ public final class CassandraKijiRowData implements KijiRowData {
    * @throws java.io.IOException in case of an error getting the cell decoder.
    */
   private <T> KijiCellDecoder<T> getDecoder(KijiColumnName column) throws IOException {
-    final KijiDataRequest.Column requestColumn = mDataRequest.getRequestForColumn(column);
-    if (null != requestColumn) {
-      final ColumnReaderSpec spec = requestColumn.getReaderSpec();
-      if (null != spec) {
-        // If there is a spec override in the data request, use it to get the decoder.
-        return mDecoderProvider.getDecoder(BoundColumnReaderSpec.create(spec, column));
-      }
-    }
-    // If the column is not in the request, or there is no spec override, get the decoder for the
-    // column by name.
-    return mDecoderProvider.getDecoder(column.getFamily(), column.getQualifier());
+    return mDecoderProvider.getDecoder(column);
   }
 
   /** {@inheritDoc} */

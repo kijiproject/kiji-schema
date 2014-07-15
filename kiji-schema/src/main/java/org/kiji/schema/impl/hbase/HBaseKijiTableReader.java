@@ -171,13 +171,13 @@ public final class HBaseKijiTableReader implements KijiTableReader {
       }
       final CellDecoderProvider provider;
       if (null != mCellSpecOverrides) {
-        provider = new CellDecoderProvider(
+        provider = CellDecoderProvider.create(
             layout,
             mTable.getKiji().getSchemaTable(),
             SpecificCellDecoderFactory.get(),
             mCellSpecOverrides);
       } else {
-        provider = new CellDecoderProvider(
+        provider = CellDecoderProvider.create(
             layout,
             mOverrides,
             mAlternatives,
@@ -226,7 +226,9 @@ public final class HBaseKijiTableReader implements KijiTableReader {
    * @param overrides layout overrides to modify read behavior.
    * @return a new HBaseKijiTableReader.
    * @throws IOException in case of an error opening the reader.
+   * @deprecated use {@link #createWithOptions}.
    */
+  @Deprecated
   public static HBaseKijiTableReader createWithCellSpecOverrides(
       final HBaseKijiTable table,
       final Map<KijiColumnName, CellSpec> overrides

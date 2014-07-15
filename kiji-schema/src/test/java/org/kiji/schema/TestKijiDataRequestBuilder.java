@@ -113,8 +113,8 @@ public class TestKijiDataRequestBuilder {
       builder.build();
       fail("An exception should have been thrown.");
     } catch (IllegalStateException ise) {
-      assertEquals("Duplicate definition for column 'Column{name=info:foo, max_versions=1, "
-          + "filter=null, page_size=0, reader_spec=null}'.", ise.getMessage());
+      assertEquals("Duplicate definition for column 'Column{name=info:foo, max_versions=1}'.",
+          ise.getMessage());
     }
   }
 

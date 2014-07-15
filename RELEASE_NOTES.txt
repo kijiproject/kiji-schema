@@ -1,6 +1,10 @@
 
 
                               KijiSchema Release Notes
+Version 1.6.0
+  * SCHEMA-851. Deprecate CellSpec table reader overrides; fix hashCode & equality
+      of KijiDataRequest; cleanups to CellDecoderProvider.
+  * SCHEMA-695. Rebase and merge all Cassandra code onto master.
 Version 1.5.0
   * SCHEMA-828. Remove finalization in favor of DebugResourceTracker.
   * SCHEMA-826. Make KijiURI, KijiInstaller, and KijiFactory generic to the

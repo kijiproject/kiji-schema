@@ -30,6 +30,8 @@ import java.util.TreeMap;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
@@ -54,7 +56,6 @@ import org.kiji.schema.KijiTableReaderBuilder;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.impl.BoundColumnReaderSpec;
-import org.kiji.schema.layout.ColumnReaderSpec;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
@@ -100,10 +101,10 @@ public final class HBaseKijiRowData implements KijiRowData {
   private static CellDecoderProvider createCellProvider(
       final HBaseKijiTable table
   ) throws IOException {
-    return new CellDecoderProvider(
+    return CellDecoderProvider.create(
         table.getLayout(),
-        Maps.<KijiColumnName, BoundColumnReaderSpec>newHashMap(),
-        Sets.<BoundColumnReaderSpec>newHashSet(),
+        ImmutableMap.<KijiColumnName, BoundColumnReaderSpec>of(),
+        ImmutableList.<BoundColumnReaderSpec>of(),
         KijiTableReaderBuilder.DEFAULT_CACHE_MISS);
   }
 
@@ -137,29 +138,8 @@ public final class HBaseKijiRowData implements KijiRowData {
     mDataRequest = dataRequest;
     mEntityId = entityId;
     mResult = result;
-    mDecoderProvider = (decoderProvider != null) ? decoderProvider : createCellProvider(table);
-  }
-
-  /**
-   * Get the decoder for the given column from the {@link CellDecoderProvider}.
-   *
-   * @param column column for which to get a cell decoder.
-   * @param <T> the type of the value encoded in the cell.
-   * @return a cell decoder which can read the given column.
-   * @throws IOException in case of an error getting the cell decoder.
-   */
-  private <T> KijiCellDecoder<T> getDecoder(final KijiColumnName column) throws IOException {
-    final KijiDataRequest.Column requestColumn = mDataRequest.getRequestForColumn(column);
-    if (null != requestColumn) {
-      final ColumnReaderSpec spec = requestColumn.getReaderSpec();
-      if (null != spec) {
-        // If there is a spec override in the data request, use it to get the decoder.
-        return mDecoderProvider.getDecoder(BoundColumnReaderSpec.create(spec, column));
-      }
-    }
-    // If the column is not in the request, or there is no spec override, get the decoder for the
-    // column by name.
-    return mDecoderProvider.getDecoder(column.getFamily(), column.getQualifier());
+    mDecoderProvider = ((decoderProvider != null) ? decoderProvider : createCellProvider(table))
+        .getDecoderProviderForRequest(dataRequest);
   }
 
   /**
@@ -206,7 +186,7 @@ public final class HBaseKijiRowData implements KijiRowData {
       // Initialize column name translator.
       mColumnNameTranslator = Preconditions.checkNotNull(columnNameTranslator);
       // Get cell decoder.
-      mDecoder = rowdata.getDecoder(mColumn);
+      mDecoder = rowdata.mDecoderProvider.getDecoder(mColumn);
       // Get info about the data request for this column.
       KijiDataRequest.Column columnRequest = rowdata.mDataRequest.getRequestForColumn(mColumn);
       mMaxVersions = columnRequest.getMaxVersions();
@@ -659,7 +639,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> T getValue(String family, String qualifier, long timestamp) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
+    final KijiCellDecoder<T> decoder =
+        mDecoderProvider.getDecoder(KijiColumnName.create(family, qualifier));
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     return decoder.decodeValue(bytes);
   }
@@ -668,7 +649,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> KijiCell<T> getCell(String family, String qualifier, long timestamp)
       throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
+    final KijiCellDecoder<T> decoder =
+        mDecoderProvider.getDecoder(KijiColumnName.create(family, qualifier));
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     return KijiCell.create(
         KijiColumnName.create(family, qualifier),
@@ -679,7 +661,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> T getMostRecentValue(String family, String qualifier) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
+    final KijiCellDecoder<T> decoder =
+        mDecoderProvider.getDecoder(KijiColumnName.create(family, qualifier));
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
     if (null == tmap) {
       return null;
@@ -735,7 +718,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> KijiCell<T> getMostRecentCell(String family, String qualifier) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
+    final KijiCellDecoder<T> decoder =
+        mDecoderProvider.getDecoder(KijiColumnName.create(family, qualifier));
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
     if (null == tmap) {
       return null;
@@ -769,7 +753,8 @@ public final class HBaseKijiRowData implements KijiRowData {
   @Override
   public <T> NavigableMap<Long, KijiCell<T>> getCells(String family, String qualifier)
       throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(KijiColumnName.create(family, qualifier));
+    final KijiCellDecoder<T> decoder =
+        mDecoderProvider.getDecoder(KijiColumnName.create(family, qualifier));
 
     final NavigableMap<Long, KijiCell<T>> result = Maps.newTreeMap(TimestampComparator.INSTANCE);
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);

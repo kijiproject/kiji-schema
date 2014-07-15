@@ -173,7 +173,9 @@ public interface KijiReaderFactory {
    * @param overrides Map of column specifications overriding the actual table layout.
    * @return a new KijiTableReader.
    * @throws IOException on I/O error.
+   * @deprecated use {@link #readerBuilder}.
    */
+  @Deprecated
   KijiTableReader openTableReader(Map<KijiColumnName, CellSpec> overrides) throws IOException;
 
   /**

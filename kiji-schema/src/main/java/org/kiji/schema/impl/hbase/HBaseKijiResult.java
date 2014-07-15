@@ -56,8 +56,6 @@ import org.kiji.schema.KijiResult;
 import org.kiji.schema.KijiResultIterator;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.impl.BoundColumnReaderSpec;
-import org.kiji.schema.layout.ColumnReaderSpec;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
 
@@ -82,8 +80,9 @@ public final class HBaseKijiResult implements KijiResult {
         new TreeMap<String, NavigableMap<String, NavigableMap<Long, Object>>>();
 
     for (KijiCell cell : result) {
+      final KijiColumnName column = cell.getColumn();
       final NavigableMap<String, NavigableMap<Long, Object>> qualifierMap;
-      final String family = cell.getFamily();
+      final String family = column.getFamily();
       if (familyMap.containsKey(family)) {
         qualifierMap = familyMap.get(family);
       } else {
@@ -91,7 +90,7 @@ public final class HBaseKijiResult implements KijiResult {
       }
 
       final NavigableMap<Long, Object> timestampMap;
-      final String qualifier = cell.getQualifier();
+      final String qualifier = column.getQualifier();
       if (qualifierMap.containsKey(qualifier)) {
         timestampMap = qualifierMap.get(qualifier);
       } else {
@@ -426,28 +425,6 @@ public final class HBaseKijiResult implements KijiResult {
   }
 
   /**
-   * Get the cell decoder for the given column.
-   *
-   * @param column Kiji column for which to get a decoder.
-   * @param <T> type of the value returned by the decoder.
-   * @return the cell decoder for the given column.
-   */
-  private <T> KijiCellDecoder<T> getDecoder(
-      final KijiColumnName column
-  ) {
-    final ColumnReaderSpec readerSpec = mDataRequest.getRequestForColumn(column).getReaderSpec();
-    try {
-      if (null != readerSpec) {
-        return mCellDecoderProvider.getDecoder(BoundColumnReaderSpec.create(readerSpec, column));
-      } else {
-        return mCellDecoderProvider.getDecoder(column.getFamily(), column.getQualifier());
-      }
-    } catch (IOException ioe) {
-      throw new KijiIOException(ioe);
-    }
-  }
-
-  /**
    * Get the largest max versions from the data request which defines this KijiResult.
    *
    * @return the largest max versions from the data request which defines this KijiResult.
@@ -663,7 +640,7 @@ public final class HBaseKijiResult implements KijiResult {
     final KijiColumnName column = kcnFromKeyValue(kv);
     final DecodedCell<T> decodedCell;
     try {
-      final KijiCellDecoder<T> decoder = getDecoder(column);
+      final KijiCellDecoder<T> decoder = mCellDecoderProvider.getDecoder(column);
       Preconditions.checkNotNull(decoder);
       decodedCell = decoder.decodeCell(kv.getValue());
     } catch (IOException ioe) {
@@ -778,7 +755,7 @@ public final class HBaseKijiResult implements KijiResult {
     Preconditions.checkArgument(column.isFullyQualified()
         || mTable.getLayout().getFamilyMap().get(column.getFamily()).isMapType(),
         "May only iterate over a fully qualified column or a map-type family.");
-    final KijiCellDecoder<T> decoder = getDecoder(column);
+    final KijiCellDecoder<T> decoder = mCellDecoderProvider.getDecoder(column);
     if (columnRequest.isPagingEnabled()) {
       final HBaseQualifierIterator optionalQualifierIterator;
       try {

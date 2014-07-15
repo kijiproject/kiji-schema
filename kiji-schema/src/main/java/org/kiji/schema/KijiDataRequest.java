@@ -30,7 +30,6 @@ import java.util.Set;
 import com.google.common.base.Objects;
 import com.google.common.base.Objects.ToStringHelper;
 import com.google.common.collect.ImmutableMap;
-import org.apache.commons.lang.builder.EqualsBuilder;
 import org.apache.hadoop.hbase.HConstants;
 
 import org.kiji.annotations.ApiAudience;
@@ -238,44 +237,45 @@ public final class KijiDataRequest implements Serializable {
 
     /** {@inheritDoc} */
     @Override
-    public boolean equals(Object object) {
-      if (!(object instanceof Column)) {
-        return false;
-      }
-      final Column that = (Column) object;
-      // TODO: figure out why mFilter is ignored here!
-      return new EqualsBuilder()
-          .append(this.mFamily, that.mFamily)
-          .append(this.mQualifier, that.mQualifier)
-          .append(this.mMaxVersions, that.mMaxVersions)
-          .append(this.mPageSize, that.mPageSize)
-          .append(this.mReaderSpec, that.mReaderSpec)
-          .isEquals();
+    public int hashCode() {
+      return Objects.hashCode(mFamily, mQualifier, mMaxVersions, mFilter, mPageSize, mReaderSpec);
     }
 
     /** {@inheritDoc} */
     @Override
-    public int hashCode() {
-      return Objects.hashCode(
-          mFamily,
-          mQualifier,
-          mMaxVersions,
-          mFilter,
-          mPageSize,
-          mReaderSpec
-      );
+    public boolean equals(final Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null || getClass() != obj.getClass()) {
+        return false;
+      }
+      final Column other = (Column) obj;
+      return Objects.equal(this.mFamily, other.mFamily)
+          && Objects.equal(this.mQualifier, other.mQualifier)
+          && Objects.equal(this.mMaxVersions, other.mMaxVersions)
+          && Objects.equal(this.mFilter, other.mFilter)
+          && Objects.equal(this.mPageSize, other.mPageSize)
+          && Objects.equal(this.mReaderSpec, other.mReaderSpec);
     }
 
     /** {@inheritDoc} */
     @Override
     public String toString() {
-      return Objects.toStringHelper(Column.class)
-          .add("name", getName())
-          .add("max_versions", mMaxVersions)
-          .add("filter", mFilter)
-          .add("page_size", mPageSize)
-          .add("reader_spec", mReaderSpec)
-          .toString();
+      final ToStringHelper helper = Objects.toStringHelper(this).add("name", getColumnName());
+      if (mMaxVersions != 0) {
+        helper.add("max_versions", mMaxVersions);
+      }
+      if (mFilter != null) {
+        helper.add("filter", mFilter);
+      }
+      if (mPageSize != PAGING_DISABLED) {
+        helper.add("page_size", mPageSize);
+      }
+      if (mReaderSpec != null) {
+        helper.add("reader_spec", mReaderSpec);
+      }
+      return helper.toString();
     }
   }
 
@@ -285,16 +285,16 @@ public final class KijiDataRequest implements Serializable {
    * Constructor. Package-private; invoked by {@link KijiDataRequestBuilder#build()}
    * and create().
    *
-   * @param columns the columns to include in this data request.
+   * @param columnRequests the columns to include in this data request.
    * @param minTs the inclusive lower-bound on timestamps to request.
    * @param maxTs the exclusive upper-bound on timestamps to request.
    */
-  KijiDataRequest(Collection<Column> columns, long minTs, long maxTs) {
+  KijiDataRequest(Collection<Column> columnRequests, long minTs, long maxTs) {
     mMinTimestamp = minTs;
     mMaxTimestamp = maxTs;
 
     final ImmutableMap.Builder<String, Column> builder = ImmutableMap.builder();
-    for (Column col : columns) {
+    for (Column col : columnRequests) {
       builder.put(col.getName(), col);
     }
     mColumns = builder.build();
@@ -386,7 +386,7 @@ public final class KijiDataRequest implements Serializable {
       readerSpec = col1.getReaderSpec();
     } else {
       throw new IllegalStateException(String.format(
-          "Cannot merge reader specifications {} with {} for column '{}:{}'",
+          "Cannot merge reader specifications %s with %s for column '%s:%s'",
           col1.getReaderSpec(), col2.getReaderSpec(), family, qualifier));
     }
 
@@ -488,10 +488,8 @@ public final class KijiDataRequest implements Serializable {
         if (null == myCol) {
           // We don't have a request for otherColumn, so add it.
           outCols.add(otherCol);
-          continue;
         } else {
-          outCols.add(mergeColumn(myCol.getFamily(), myCol.getQualifier(),
-              myCol, otherCol));
+          outCols.add(mergeColumn(myCol.getFamily(), myCol.getQualifier(), myCol, otherCol));
         }
       }
     }
@@ -647,44 +645,32 @@ public final class KijiDataRequest implements Serializable {
 
   /** {@inheritDoc} */
   @Override
-  public boolean equals(Object other) {
-    if (!(other instanceof KijiDataRequest)) {
-      return false;
-    }
-
-    final KijiDataRequest otherReq = (KijiDataRequest) other;
-    if (mColumns.size() != otherReq.mColumns.size()) {
-      return false;
-    }
-    for (String columnName : mColumns.keySet()) {
-      if (!otherReq.mColumns.containsKey(columnName)) {
-        return false;
-      }
-      if (!mColumns.get(columnName).equals(otherReq.mColumns.get(columnName))) {
-        return false;
-      }
-    }
-
-    return otherReq.mMinTimestamp == mMinTimestamp
-        && otherReq.mMaxTimestamp == mMaxTimestamp;
+  public int hashCode() {
+    return Objects.hashCode(mColumns, mMinTimestamp, mMaxTimestamp);
   }
 
   /** {@inheritDoc} */
   @Override
-  public int hashCode() {
-    return toString().hashCode();
+  public boolean equals(final Object obj) {
+    if (this == obj) {
+      return true;
+    }
+    if (obj == null || getClass() != obj.getClass()) {
+      return false;
+    }
+    final KijiDataRequest other = (KijiDataRequest) obj;
+    return Objects.equal(this.mColumns, other.mColumns)
+        && Objects.equal(this.mMinTimestamp, other.mMinTimestamp)
+        && Objects.equal(this.mMaxTimestamp, other.mMaxTimestamp);
   }
 
   /** {@inheritDoc} */
   @Override
   public String toString() {
-    final ToStringHelper helper = Objects.toStringHelper(KijiDataRequest.class);
-    // TODO: For style points, sort the columns by name before we emit this list.
-    for (Map.Entry<String, Column> entry : mColumns.entrySet()) {
-      helper.add(String.format("column[%s]", entry.getKey()), entry.getValue());
-    }
-    return helper
-        .add("timeRange", String.format("%s,%s", getMinTimestamp(), getMaxTimestamp()))
+    return Objects.toStringHelper(this)
+        .add("columns", mColumns)
+        .add("min_timestamp", mMinTimestamp)
+        .add("max_timestamp", mMaxTimestamp)
         .toString();
   }
 
