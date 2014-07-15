@@ -364,24 +364,22 @@
       <version>${project.version}</version>
       <scope>runtime</scope>
     </dependency>
-      <dependency>
-          <groupId>com.datastax.cassandra</groupId>
-          <artifactId>cassandra-driver-core</artifactId>
-          <version>2.0.1</version>
-      </dependency>
-      <dependency>
-          <groupId>org.xerial.snappy</groupId>
-          <artifactId>snappy-java</artifactId>
-          <version>1.0.5</version>
-      </dependency>
-      <!-- Somehow I am getting an old version of org.apache.commons.codec... -->
-      <dependency>
-          <groupId>commons-codec</groupId>
-          <artifactId>commons-codec</artifactId>
-          <version>1.7</version>
-      </dependency>
-
-
+    <dependency>
+        <groupId>com.datastax.cassandra</groupId>
+        <artifactId>cassandra-driver-core</artifactId>
+        <version>2.0.3</version>
+    </dependency>
+    <dependency>
+        <groupId>org.xerial.snappy</groupId>
+        <artifactId>snappy-java</artifactId>
+        <version>1.0.5</version>
+    </dependency>
+    <!-- Somehow I am getting an old version of org.apache.commons.codec... -->
+    <dependency>
+        <groupId>commons-codec</groupId>
+        <artifactId>commons-codec</artifactId>
+        <version>1.7</version>
+    </dependency>
   </dependencies>
 
     <reporting>
