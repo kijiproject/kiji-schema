@@ -22,6 +22,7 @@ package org.kiji.schema.impl.async;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -29,6 +30,7 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.zookeeper.KeeperException;
 import org.hbase.async.HBaseClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,10 +44,16 @@ import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiURI;
+import org.kiji.schema.avro.ColumnDesc;
+import org.kiji.schema.avro.FamilyDesc;
+import org.kiji.schema.avro.LocalityGroupDesc;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.impl.Versions;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
+import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
+import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.InstanceMonitor;
 import org.kiji.schema.security.KijiSecurityManager;
 import org.kiji.schema.util.Debug;
@@ -285,7 +293,8 @@ public final class AsyncKiji implements Kiji {
    * */
   @Override
   public Configuration getConf() {
-    throw new UnsupportedOperationException("AsyncKiji instances do not support Hadoop configuration");
+    throw new UnsupportedOperationException(
+        "AsyncKiji instances do not support Hadoop configuration");
   }
 
   /** {@inheritDoc} */
@@ -482,18 +491,17 @@ public final class AsyncKiji implements Kiji {
     return modifyTableLayout(update, dryRun, printStream);
   }
 
-  // CSOFF: MethodLength
-  /** {@inheritDoc} */
+  /** {@inheritDoc}
+   *
+   *  <p>Note: AsyncKiji only supports updates to the {@code KijiTableLayout} that
+   *  do not require adding or removing any locality groups, families, or columns.</p>
+   * */
   @Override
   public KijiTableLayout modifyTableLayout(
       TableLayoutDesc update,
       boolean dryRun,
       PrintStream printStream)
       throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot modify table layout in Kiji instance %s in state %s.", this, state);
@@ -516,18 +524,50 @@ public final class AsyncKiji implements Kiji {
 
     KijiTableLayout newLayout = null;
 
+    // Check to see if update requires adding or removing something
+    final List<KijiTableLayout> currentLayouts = metaTable.getTableLayoutVersions(tableName, 1);
+    final KijiTableLayout currentLayout = currentLayouts.isEmpty() ? null : currentLayouts.get(0);
+    final Map<String, LocalityGroupLayout> currentLocalityGroupMap =
+        currentLayout.getLocalityGroupMap();
+    for (LocalityGroupDesc locGroupDesc : update.getLocalityGroups()) {
+      if (!currentLocalityGroupMap.containsKey(locGroupDesc.getName())
+          || locGroupDesc.getDelete()) {
+        throw new UnsupportedOperationException("AsyncKiji cannot add or remove locality groups");
+      }
+      else {
+        final Map<String, FamilyLayout> currentFamilyLayoutMap =
+            currentLocalityGroupMap.get(locGroupDesc.getName()).getFamilyMap();
+        for (FamilyDesc familyDesc : locGroupDesc.getFamilies()) {
+          if (!currentFamilyLayoutMap.containsKey(familyDesc.getName())
+              || familyDesc.getDelete()) {
+            throw new UnsupportedOperationException("AsyncKiji cannot add or remove families");
+          }
+          else {
+            final Map<String, ColumnLayout> currentColumnLayout =
+                currentFamilyLayoutMap.get(familyDesc.getName()).getColumnMap();
+            for (ColumnDesc columnDesc : familyDesc.getColumns()) {
+              if (!currentColumnLayout.containsKey(columnDesc.getName())
+                  || columnDesc.getDelete()) {
+                throw new UnsupportedOperationException("AsyncKiji cannot add or remove columns");
+              }
+            }
+          }
+
+        }
+      }
+
+    }
+
     if (dryRun) {
       // Process column ids and perform validation, but don't actually update the meta table.
-      final List<KijiTableLayout> layouts = metaTable.getTableLayoutVersions(tableName, 1);
-      final KijiTableLayout currentLayout = layouts.isEmpty() ? null : layouts.get(0);
       newLayout = KijiTableLayout.createUpdatedLayout(update, currentLayout);
     } else {
       // Actually set it.
       if (mSystemVersion.compareTo(Versions.SYSTEM_2_0) >= 0) {
         try {
           // Use ZooKeeper to inform all watchers that a new table layout is available.
-          final HBaseTableLayoutUpdater updater =
-              new HBaseTableLayoutUpdater(this, tableURI, update);
+          final AsyncTableLayoutUpdater updater =
+              new AsyncTableLayoutUpdater(this, tableURI, update);
           try {
             updater.update();
             newLayout = updater.getNewLayout();
@@ -548,105 +588,8 @@ public final class AsyncKiji implements Kiji {
     if (dryRun) {
       printStream.println("This table layout is valid.");
     }
-
-    LOG.debug("Computing new HBase schema");
-    final HTableSchemaTranslator translator = new HTableSchemaTranslator();
-    final HTableDescriptor newTableDescriptor =
-        translator.toHTableDescriptor(mURI.getInstance(), newLayout);
-
-    LOG.debug("Reading existing HBase schema");
-    final KijiManagedHBaseTableName hbaseTableName =
-        KijiManagedHBaseTableName.getKijiTableName(mURI.getInstance(), tableName);
-    HTableDescriptor currentTableDescriptor = null;
-    byte[] tableNameAsBytes = hbaseTableName.toBytes();
-    try {
-      currentTableDescriptor = getHBaseAdmin().getTableDescriptor(tableNameAsBytes);
-    } catch (TableNotFoundException tnfe) {
-      if (!dryRun) {
-        throw tnfe; // Not in dry-run mode; table needs to exist. Rethrow exception.
-      }
-    }
-    if (currentTableDescriptor == null) {
-      if (dryRun) {
-        printStream.println("Would create new table: " + tableName);
-        currentTableDescriptor = HTableDescriptorComparator.makeEmptyTableDescriptor(
-            hbaseTableName);
-      } else {
-        throw new RuntimeException("Table " + hbaseTableName.getKijiTableName()
-            + " does not exist");
-      }
-    }
-    LOG.debug("Existing table descriptor: {}", currentTableDescriptor);
-    LOG.debug("New table descriptor: {}", newTableDescriptor);
-
-    LOG.debug("Checking for differences between the new HBase schema and the existing one");
-    final HTableDescriptorComparator comparator = new HTableDescriptorComparator();
-    if (0 == comparator.compare(currentTableDescriptor, newTableDescriptor)) {
-      LOG.debug("HBase schemas are the same.  No need to change HBase schema");
-      if (dryRun) {
-        printStream.println("This layout does not require any physical table schema changes.");
-      }
-    } else {
-      LOG.debug("HBase schema must be changed, but no columns will be deleted");
-
-      if (dryRun) {
-        printStream.println("Changes caused by this table layout:");
-      } else {
-        LOG.debug("Disabling HBase table");
-        getHBaseAdmin().disableTable(hbaseTableName.toString());
-      }
-
-      for (HColumnDescriptor newColumnDescriptor : newTableDescriptor.getFamilies()) {
-        final String columnName = Bytes.toString(newColumnDescriptor.getName());
-        final ColumnId columnId = ColumnId.fromString(columnName);
-        final String lgName = newLayout.getLocalityGroupIdNameMap().get(columnId);
-        final HColumnDescriptor currentColumnDescriptor =
-            currentTableDescriptor.getFamily(newColumnDescriptor.getName());
-        if (null == currentColumnDescriptor) {
-          if (dryRun) {
-            printStream.println("  Creating new locality group: " + lgName);
-          } else {
-            LOG.debug("Creating new column " + columnName);
-            getHBaseAdmin().addColumn(hbaseTableName.toString(), newColumnDescriptor);
-          }
-        } else if (!newColumnDescriptor.equals(currentColumnDescriptor)) {
-          if (dryRun) {
-            printStream.println("  Modifying locality group: " + lgName);
-          } else {
-            LOG.debug("Modifying column " + columnName);
-            getHBaseAdmin().modifyColumn(hbaseTableName.toString(), newColumnDescriptor);
-          }
-        } else {
-          LOG.debug("No changes needed for column " + columnName);
-        }
-      }
-
-      if (dryRun) {
-        if (newTableDescriptor.getMaxFileSize() != currentTableDescriptor.getMaxFileSize()) {
-          printStream.printf("  Changing max_filesize from %d to %d: %n",
-            currentTableDescriptor.getMaxFileSize(),
-            newTableDescriptor.getMaxFileSize());
-        }
-        if (newTableDescriptor.getMaxFileSize() != currentTableDescriptor.getMaxFileSize()) {
-          printStream.printf("  Changing memstore_flushsize from %d to %d: %n",
-            currentTableDescriptor.getMemStoreFlushSize(),
-            newTableDescriptor.getMemStoreFlushSize());
-        }
-      } else {
-        LOG.debug("Modifying table descriptor");
-        getHBaseAdmin().modifyTable(tableNameAsBytes, newTableDescriptor);
-      }
-
-      if (!dryRun) {
-        LOG.debug("Re-enabling HBase table");
-        getHBaseAdmin().enableTable(hbaseTableName.toString());
-      }
-    }
-
     return newLayout;
-    */
   }
-  // CSON: MethodLength
 
   /**
    * {@inheritDoc}
