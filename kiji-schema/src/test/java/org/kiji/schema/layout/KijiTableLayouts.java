@@ -117,9 +117,25 @@ public final class KijiTableLayouts {
   public static final String SIMPLE_UPDATE_NEW_COLUMN =
       "org/kiji/schema/layout/simple-update-new-column.json";
 
+  /** A simple layout file example that deletes 'column'. */
+  public static final String SIMPLE_UPDATE_DELETE_COLUMN =
+      "org/kiji/schema/layout/simple-update-delete-column.json";
+
+  /** A simple layout file example with an extra family called 'new'. */
+  public static final String SIMPLE_UPDATE_NEW_FAMILY =
+      "org/kiji/schema/layout/simple-update-new-family.json";
+
+  /** A simple layout file example that deletes 'locality'. */
+  public static final String SIMPLE_UPDATE_DELETE_FAMILY =
+      "org/kiji/schema/layout/simple-update-delete-family.json";
+
   /** A simple layout file example with an extra locality group called 'new'. */
   public static final String SIMPLE_UPDATE_NEW_LOCALITY_GROUP =
       "org/kiji/schema/layout/simple-update-new-locality-group.json";
+
+  /** A simple layout file example that deletes 'locality'. */
+  public static final String SIMPLE_UPDATE_DELETE_LOCALITY_GROUP =
+      "org/kiji/schema/layout/simple-update-delete-locality-group.json";
 
   /** A simple layout file example with two columns. */
   public static final String SIMPLE_TWO_COLUMNS =
