@@ -51,7 +51,7 @@ import org.kiji.schema.util.InstanceBuilder;
 
 public class TestCassandraColumnReaderSpec extends CassandraKijiClientTest {
 
-  private static final KijiColumnName EMPTY = new KijiColumnName("family", "empty");
+  private static final KijiColumnName EMPTY = KijiColumnName.create("family", "empty");
 
   @Before
   public void setup() throws IOException {
@@ -115,8 +115,8 @@ public class TestCassandraColumnReaderSpec extends CassandraKijiClientTest {
       final KijiTableReader reader = table.getReaderFactory().readerBuilder()
           .withOnDecoderCacheMiss(OnDecoderCacheMiss.FAIL).buildAndOpen();
       try {
-        final KijiRowData data = reader.get(table.getEntityId("row"), request);
         try {
+          final KijiRowData data = reader.get(table.getEntityId("row"), request);
           final TestRecord1 record1 = data.getMostRecentValue("family", "empty");
           fail("Should have thrown DecoderNotFoundException");
         } catch (DecoderNotFoundException dnfe) {

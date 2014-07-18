@@ -136,7 +136,8 @@ public final class CassandraKijiRowData implements KijiRowData {
     mDataRequest = dataRequest;
     mEntityId = entityId;
     mRows = rows;
-    mDecoderProvider = (decoderProvider != null) ? decoderProvider : createCellProvider(table);
+    mDecoderProvider = ((decoderProvider != null) ? decoderProvider : createCellProvider(table))
+        .getDecoderProviderForRequest(dataRequest);
   }
 
   /**
@@ -161,22 +162,8 @@ public final class CassandraKijiRowData implements KijiRowData {
     mEntityId = entityId;
     mRows = null;
     mFilteredMap = map;
-    mDecoderProvider =
-        ((decoderProvider != null) ? decoderProvider : createCellProvider(table))
-          .getDecoderProviderForRequest(dataRequest);
-  }
-
-  /**
-   * Get the decoder for the given column from the {@link
-   * org.kiji.schema.layout.impl.CellDecoderProvider}.
-   *
-   * @param column column for which to get a cell decoder.
-   * @param <T> the type of the value encoded in the cell.
-   * @return a cell decoder which can read the given column.
-   * @throws java.io.IOException in case of an error getting the cell decoder.
-   */
-  private <T> KijiCellDecoder<T> getDecoder(KijiColumnName column) throws IOException {
-    return mDecoderProvider.getDecoder(column);
+    mDecoderProvider = ((decoderProvider != null) ? decoderProvider : createCellProvider(table))
+        .getDecoderProviderForRequest(dataRequest);
   }
 
   /** {@inheritDoc} */
@@ -526,7 +513,8 @@ public final class CassandraKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> T getValue(String family, String qualifier, long timestamp) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(new KijiColumnName(family, qualifier));
+    final KijiCellDecoder<T> decoder =
+        mDecoderProvider.getDecoder(KijiColumnName.create(family, qualifier));
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     if (null == bytes) {
       return null;
@@ -538,7 +526,8 @@ public final class CassandraKijiRowData implements KijiRowData {
   @Override
   public <T> KijiCell<T> getCell(String family, String qualifier, long timestamp)
       throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(new KijiColumnName(family, qualifier));
+    final KijiCellDecoder<T> decoder =
+        mDecoderProvider.getDecoder(KijiColumnName.create(family, qualifier));
     final byte[] bytes = getRawCell(family, qualifier, timestamp);
     return new KijiCell<T>(family, qualifier, timestamp, decoder.decodeCell(bytes));
   }
@@ -546,7 +535,8 @@ public final class CassandraKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> T getMostRecentValue(String family, String qualifier) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(new KijiColumnName(family, qualifier));
+    final KijiCellDecoder<T> decoder =
+        mDecoderProvider.getDecoder(KijiColumnName.create(family, qualifier));
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
     if (null == tmap) {
       return null;
@@ -602,7 +592,8 @@ public final class CassandraKijiRowData implements KijiRowData {
   /** {@inheritDoc} */
   @Override
   public <T> KijiCell<T> getMostRecentCell(String family, String qualifier) throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(new KijiColumnName(family, qualifier));
+    final KijiCellDecoder<T> decoder =
+        mDecoderProvider.getDecoder(KijiColumnName.create(family, qualifier));
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
     if (null == tmap) {
       return null;
@@ -633,7 +624,8 @@ public final class CassandraKijiRowData implements KijiRowData {
   @Override
   public <T> NavigableMap<Long, KijiCell<T>> getCells(String family, String qualifier)
       throws IOException {
-    final KijiCellDecoder<T> decoder = getDecoder(new KijiColumnName(family, qualifier));
+    final KijiCellDecoder<T> decoder =
+        mDecoderProvider.getDecoder(KijiColumnName.create(family, qualifier));
 
     final NavigableMap<Long, KijiCell<T>> result = Maps.newTreeMap(TimestampComparator.INSTANCE);
     final NavigableMap<Long, byte[]> tmap = getRawTimestampMap(family, qualifier);
@@ -801,7 +793,7 @@ public final class CassandraKijiRowData implements KijiRowData {
       //KijiDataRequest.Column columnRequest = rowdata.mDataRequest.getRequestForColumn(mColumn);
       //mMaxVersions = columnRequest.getMaxVersions();
       mNumVersions = 0;
-      mDecoder = rowdata.getDecoder(columnName);
+      mDecoder = rowdata.mDecoderProvider.getDecoder(mColumn);
 
       mNextCell = null;
 

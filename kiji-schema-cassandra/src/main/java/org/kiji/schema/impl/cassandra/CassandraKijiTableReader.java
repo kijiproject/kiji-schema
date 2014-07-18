@@ -162,13 +162,17 @@ public final class CassandraKijiTableReader implements KijiTableReader {
     public void update(KijiTableLayout layout) throws IOException {
       final CellDecoderProvider provider;
       if (null != mCellSpecOverrides) {
-        provider = new CellDecoderProvider(
+        provider = CellDecoderProvider.create(
             layout,
             mTable.getKiji().getSchemaTable(),
             SpecificCellDecoderFactory.get(),
             mCellSpecOverrides);
       } else {
-        provider = new CellDecoderProvider(layout, mOverrides, mAlternatives, mOnDecoderCacheMiss);
+        provider = CellDecoderProvider.create(
+            layout,
+            mOverrides,
+            mAlternatives,
+            mOnDecoderCacheMiss);
       }
       if (mReaderLayoutCapsule != null) {
         LOG.debug(
