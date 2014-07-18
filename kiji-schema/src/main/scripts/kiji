@@ -400,14 +400,18 @@ fi
 # we're running in a Kiji BentoBox if the timestamp generation script exists.
 usage_timestamp_script="${kiji_bin}/record-usage-timestamp.sh"
 if [[ -f "${usage_timestamp_script}" && -x "${usage_timestamp_script}" ]]; then
-  "${usage_timestamp_script}"
+  if ! "${usage_timestamp_script}"; then
+    : # Ignore error
+  fi
 fi
 
 # If we're running in a Kiji BentoBox, inform the user of any BentoBox upgrades
 # that are available.
 upgrade_informer_script="${kiji_bin}/upgrade-informer.sh"
 if [[ -f "${upgrade_informer_script}" && -x "${upgrade_informer_script}" ]]; then
-  "${upgrade_informer_script}"
+  if ! "${upgrade_informer_script}"; then
+    : # Ignore error
+  fi
 fi
 
 # ------------------------------------------------------------------------------
