@@ -365,8 +365,13 @@ kiji_cp="${kiji_cp}:${KIJI_CLASSPATH}"  # KIJI_CLASSPATH overrides
 kiji_cp="${kiji_cp}:${kiji_conf}"
 kiji_cp="${kiji_cp}:${kijimr_cp}"
 kiji_cp="${kiji_cp}:${kijis_cp}"
-kiji_cp="${kiji_cp}:${hbase_cp}"
+
+# SCHEMA-860: Hadoop jars must appear before HBase jars or else you will see errors of the
+# following form:
+# Exception in thread "main" java.io.IOException: Cannot initialize Cluster. Please check your
+# configuration for mapreduce.framework.name and the correspond server addresses.
 kiji_cp="${kiji_cp}:${hadoop_cp}"
+kiji_cp="${kiji_cp}:${hbase_cp}"
 
 # ------------------------------------------------------------------------------
 # Determine location of Hadoop native libraries and set java.library.path
