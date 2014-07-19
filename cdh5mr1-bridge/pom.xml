@@ -107,12 +107,10 @@
     <dependency>
       <groupId>org.kiji.delegation</groupId>
       <artifactId>kiji-delegation</artifactId>
-      <version>${kiji-delegation.version}</version>
     </dependency>
     <dependency>
       <groupId>org.kiji.annotations</groupId>
       <artifactId>annotations</artifactId>
-      <version>${annotations.version}</version>
     </dependency>
   </dependencies>
 </project>
