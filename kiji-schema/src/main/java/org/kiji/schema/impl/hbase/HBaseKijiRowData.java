@@ -875,8 +875,8 @@ public final class HBaseKijiRowData implements KijiRowData {
    *   used. See the 'Type Safety' section of {@link KijiResult}'s documentation for more details.
    * </p>
    *
-   * @return a KijiResult corresponding to the same data as this KijiRowData.
-   * @param <T> type {@code KijiCell} value returned by the {@code KijiResult}.
+   * @return A KijiResult corresponding to the same data as this KijiRowData.
+   * @param <T> The type of {@code KijiCell} values in the returned {@code KijiResult}.
    * @throws IOException if error while decoding cells.
    */
   public <T> KijiResult<T> asKijiResult() throws IOException {

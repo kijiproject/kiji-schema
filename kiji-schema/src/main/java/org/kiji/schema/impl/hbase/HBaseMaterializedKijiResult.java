@@ -174,12 +174,28 @@ public final class HBaseMaterializedKijiResult<T> implements KijiResult<T> {
     for (Column columnRequest : narrowRequest.getColumns()) {
       final KijiColumnName requestColumnName = columnRequest.getColumnName();
 
+      // We get here IF
+
+      // `column` is a family, and `mDataRequest` contains a column request for the entire family.
+
+      // OR
+
+      // `column` is a family, and `mDataRequest` contains a column request for a qualified column
+      // in the family.
+
+      // OR
+
+      // `column` is a qualified-column, and `mDataRequest` contains a request for the qualified
+      // column.
+
       final List<KeyValue> exactColumn = mColumnResults.get(requestColumnName);
       if (exactColumn != null) {
         narrowedResults.put(requestColumnName, exactColumn);
       } else {
-        // The column request is fully qualified, and the original view contains a request for the
-        // column's entire family.
+
+        // `column` is a qualified-column, and `mDataRequest` contains a column request for the
+        // column's family.
+
         final List<KeyValue> familyResults =
             mColumnResults.get(KijiColumnName.create(requestColumnName.getFamily(), null));
         final List<KeyValue> qualifiedColumnResults =
