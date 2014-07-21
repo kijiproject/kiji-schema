@@ -36,7 +36,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.apache.avro.Schema;
-import org.apache.cassandra.utils.ByteBufferUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -255,7 +254,7 @@ public final class CassandraKijiRowData implements KijiRowData {
       } catch (InvalidTypeException e) {
         if (e.getMessage().equals("Column value is of type counter")) {
           long counter =  row.getLong(CQLUtils.VALUE_COL);
-          value = ByteBufferUtil.bytes(counter);
+          value = ByteBuffer.allocate(Long.SIZE / 8).putLong(0, counter);
         } else {
           throw new KijiIOException(e);
         }
