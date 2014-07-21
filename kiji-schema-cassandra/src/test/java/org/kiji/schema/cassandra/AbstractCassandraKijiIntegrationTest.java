@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.google.common.base.Preconditions;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
@@ -168,6 +169,7 @@ public abstract class AbstractCassandraKijiIntegrationTest {
     }
 
     mKiji = Kiji.Factory.open(mKijiUri);
+    Preconditions.checkNotNull(mKiji);
 
     LOG.info("Setup summary for {}", getClass().getName());
     Debug.logConfiguration(mConf);
@@ -183,8 +185,10 @@ public abstract class AbstractCassandraKijiIntegrationTest {
 
   @After
   public final void teardownKijiIntegrationTest() throws Exception {
-    mKiji.release();
-
+    if (null != mKiji) {
+      mKiji.release();
+    }
+    mKiji = null;
     mHelper = null;
     mKijiUri = null;
     mConf = null;
