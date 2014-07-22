@@ -45,7 +45,6 @@ import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.KijiResult;
 import org.kiji.schema.KijiResult.Helpers;
 import org.kiji.schema.filter.KijiColumnRangeFilter;
-import org.kiji.schema.filter.KijiFirstKeyOnlyColumnFilter;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
 import org.kiji.schema.util.InstanceBuilder.FamilyBuilder;
@@ -684,67 +683,6 @@ public class TestHBaseKijiResult extends KijiClientTest {
     final KijiColumnName column2 = STRING_MAP_1;
 
     for (int pageSize : ImmutableList.of(0, 1, 2, 10)) {
-
-      { // single column | FKOF
-        final KijiDataRequest request = KijiDataRequest
-            .builder()
-            .addColumns(
-                ColumnsDef.create()
-                    .withPageSize(pageSize)
-                    .withFilter(new KijiFirstKeyOnlyColumnFilter())
-                    .withMaxVersions(10)
-                    .add(column1.getFamily(), column1.getQualifier()))
-            .build();
-
-        final Iterable<? extends Entry<Long, ?>> column1Entries =
-            Iterables.limit(ROW_DATA.get(column1).entrySet(), 1);
-
-        testViewGet(request, column1Entries);
-      }
-
-      { // multiple columns | FKOF
-        final KijiDataRequest request = KijiDataRequest
-            .builder()
-            .addColumns(
-                ColumnsDef.create()
-                    .withPageSize(pageSize)
-                    .withFilter(new KijiFirstKeyOnlyColumnFilter())
-                    .withMaxVersions(10)
-                    .add(column1.getFamily(), column1.getQualifier())
-                    .add(column2.getFamily(), column2.getQualifier()))
-            .build();
-
-        final Iterable<? extends Entry<Long, ?>> column1Entries =
-            Iterables.limit(ROW_DATA.get(column1).entrySet(), 1);
-        final Iterable<? extends Entry<Long, ?>> column2Entries =
-            Iterables.limit(ROW_DATA.get(column2).entrySet(), 1);
-
-        testViewGet(request, Iterables.concat(column1Entries, column2Entries));
-      }
-
-      { // Mixed columns | FKOF
-        final KijiDataRequest request = KijiDataRequest
-            .builder()
-            .addColumns(
-                ColumnsDef.create()
-                    .withMaxVersions(10)
-                    .add(column1.getFamily(), column1.getQualifier()))
-            .addColumns(
-                ColumnsDef.create()
-                    .withPageSize(pageSize)
-                    .withMaxVersions(10)
-                    .withFilter(new KijiFirstKeyOnlyColumnFilter())
-                    .add(column2.getFamily(), column2.getQualifier()))
-            .build();
-
-        final Iterable<? extends Entry<Long, ?>> column1Entries =
-            ROW_DATA.get(column1).entrySet();
-        final Iterable<? extends Entry<Long, ?>> column2Entries =
-            Iterables.limit(ROW_DATA.get(column2).entrySet(), 1);
-
-        testViewGet(request, Iterables.concat(column1Entries, column2Entries));
-      }
-
       { // single column | CRF
         final KijiDataRequest request = KijiDataRequest
             .builder()

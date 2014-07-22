@@ -35,9 +35,11 @@ import org.kiji.schema.KijiColumnName;
  *
  * <p> This filter restricts the number of cells returned for the column it applies to to 1. </p>
  * <p> Wraps the HBase {@link org.apache.hadoop.hbase.filter.FirstKeyOnlyFilter}. </p>
+ * @deprecated Instead of using this filter, set the column's max values to 1.
  */
 @ApiAudience.Public
 @ApiStability.Experimental
+@Deprecated
 public final class KijiFirstKeyOnlyColumnFilter extends KijiColumnFilter {
 
   private static final long serialVersionUID = 1L;
