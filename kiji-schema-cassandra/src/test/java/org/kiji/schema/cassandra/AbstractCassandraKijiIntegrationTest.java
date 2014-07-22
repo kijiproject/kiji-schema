@@ -143,7 +143,7 @@ public abstract class AbstractCassandraKijiIntegrationTest {
       // Create a Kiji instance.
       mBaseUri = KijiURI.newBuilder(String.format(
           // Note that the .10 matches what is in the Cassandra maven plugin in the POM.
-          "kiji-cassandra://%s:%s/127.0.0.10/9042",
+          "kiji-cassandra://%s:%s/127.0.0.10:9042",
           conf.get(HConstants.ZOOKEEPER_QUORUM),
           conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT)
       )).build();
