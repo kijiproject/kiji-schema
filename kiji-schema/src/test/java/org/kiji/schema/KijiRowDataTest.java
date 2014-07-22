@@ -465,6 +465,40 @@ public abstract class KijiRowDataTest extends KijiClientTest {
   }
 
   @Test
+  public void testCellIterator() throws IOException {
+    final EntityId eid = mTable.getEntityId("eid");
+
+    mWriter.put(eid, FAMILY, QUALIFIER_0, 3L, "value3");
+    mWriter.put(eid, FAMILY, QUALIFIER_0, 2L, "value2");
+    mWriter.put(eid, FAMILY, QUALIFIER_0, 1L, "value1");
+
+    final KijiDataRequest request = KijiDataRequest.create(FAMILY);
+    final KijiRowData data = getRowData(mTable, mReader, eid, request);
+
+    final Iterator<KijiCell<String>> iter = data.iterator(FAMILY, QUALIFIER_1);
+    // FAMILY:QUALIFIER_1 should be empty. Prior to SCHEMA-838 the iterator would return all values
+    // from FAMILY:QUALIFIER_0
+    assertFalse(iter.hasNext());
+  }
+
+  @Test
+  public void testCellIteratorReversed() throws IOException {
+    final EntityId eid = mTable.getEntityId("eid");
+
+    mWriter.put(eid, FAMILY, QUALIFIER_1, 3L, "value3");
+    mWriter.put(eid, FAMILY, QUALIFIER_1, 2L, "value2");
+    mWriter.put(eid, FAMILY, QUALIFIER_1, 1L, "value1");
+
+    final KijiDataRequest request = KijiDataRequest.create(FAMILY);
+    final KijiRowData data = getRowData(mTable, mReader, eid, request);
+
+    final Iterator<KijiCell<String>> iter = data.iterator(FAMILY, QUALIFIER_0);
+    // FAMILY:QUALIFIER_0 should be empty. Prior to SCHEMA-838 the iterator would return all values
+    // from FAMILY:QUALIFIER_1
+    assertFalse(iter.hasNext());
+  }
+
+  @Test
   public void testIteratorMapFamilyTypes() throws IOException {
     final EntityId eid = mTable.getEntityId("eid");
 
