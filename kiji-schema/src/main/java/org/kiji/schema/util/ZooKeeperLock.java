@@ -173,15 +173,15 @@ public final class ZooKeeperLock implements Lock, Closeable {
             LOG.debug("{}: waiting for preceding node {} to disappear", this, preceding);
             if (mZKClient.exists(preceding, mLockWatcher) != null) {
               if (absoluteDeadline > 0.0) {
-                final double timeLeft = absoluteDeadline - Time.now();
-                if (timeLeft <= 0) {
+                final long timeLeftMS = (long) ((absoluteDeadline - Time.now()) * 1000);
+                if (timeLeftMS <= 0) {
                   LOG.debug("{}: out of time while acquiring lock, deleting {}",
                       this, mCreatedPath);
                   mZKClient.delete(mCreatedPath, -1); // -1 means any version
                   mCreatedPath = null;
                   return false;
                 }
-                this.wait((long)(timeLeft * 1000.0));
+                this.wait(timeLeftMS);
               } else {
                 this.wait();
               }
