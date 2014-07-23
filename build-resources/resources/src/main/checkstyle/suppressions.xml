@@ -31,6 +31,9 @@
   <!-- Nested blocks used to structure tests. -->
   <suppress checks="AvoidNestedBlocks" files="src/test/java/"/>
 
+  <!-- Javadoc contains example POM code. -->
+  <suppress checks="JavadocStyle" files="src/test/java/org/kiji/schema/cassandra/AbstractCassandraKijiIntegrationTest.java"/>
+
   <!-- Don't worry about checkstyle on apache foundation code. -->
   <suppress checks=".*" files="src/main/java/org/apache/"/>
 

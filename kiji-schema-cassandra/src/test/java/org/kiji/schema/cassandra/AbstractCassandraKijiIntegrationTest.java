@@ -24,10 +24,12 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -46,8 +48,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.impl.cassandra.CassandraKijiInstaller;
+import org.kiji.schema.testutil.AbstractKijiIntegrationTest;
 import org.kiji.schema.testutil.IntegrationHelper;
 import org.kiji.schema.testutil.ToolResult;
 import org.kiji.schema.tools.BaseTool;
@@ -57,22 +61,62 @@ import org.kiji.schema.util.ResourceUtils;
 /**
  * A base class for all Cassandra Kiji integration tests.
  *
- * <p>
- *   This class sets up a Kiji instance before each test and tears it down afterwards.
- *   It assumes there is a Cassandra cluster running already, and its configuration is on the
- *   classpath.
- * </p>
+ * This class sets up a Kiji instance before each test and tears it down afterwards.
+ * It assumes there is a Cassandra cluster running already, and that there is a file
+ * `cassandra-maven-plugin.properties` on the classpath.  `AbstractCassandraKijiIntegrationTest`
+ * extracts from this properties file an IP address and native transport port for the Cassandra
+ * cluster, which it uses to form a {@link org.kiji.schema.cassandra.CassandraKijiURI}.  The
+ * properties are `cassandra.initialIp` and `cassandra.nativePort`.
  *
- * <p>
- *   To avoid stepping on other Kiji instances, the name of the instance created is
- *   a random unique identifier.
- * </p>
+ * A user can specify the values for these properties manually to match whatever Cassandra cluster
+ * is running in the background, or can assign them properties in a POM file and use the Maven
+ * resources plugin to filter those properties into the properties value.  In such a situation,
+ * the POM file might look something like:
+ *
+ * {@literal
+ * <properties>
+ *   <cassandra.initialIp>127.0.0.1</cassandra.initialIp>
+ *   <cassandra.nativePort>9042</cassandra.nativePort>
+ * </properties>
+ * ...
+ * <testResources>
+ *   <testResource>
+ *     <directory>src/test/resources</directory>
+ *     <includes><include>cassandra-maven-plugin.properties</include></includes>
+ *     <filtering>true</filtering>
+ *   </testResource>
+ * </testResources>
+ *   <testResource>
+ *     <directory>src/test/resources</directory>
+ *     <excludes><exclude>cassandra-maven-plugin.properties</exclude></excludes>
+ *     <filtering>false</filtering>
+ *   </testResource>
+ * </testResources>
+ *<testResources>
+ * }
+ * The `src/test/resources/cassandra-maven-plugin.properties` file would then look like:
+ * {@literal
+ * cassandra.initialIp=${cassandra.initialIp}
+ * cassandra.nativePort=${cassandra.nativePort}}
+ *
+ * After Maven running `mvn clean verify`, the file
+ * `target/test-classes/cassandra-maven-plugin.properties` would then look like:
+ * {@literal
+ * cassandra.initialIp=127.0.0.1
+ * cassandra.nativePort=9042}
+ *
+ * Instead of assigning these values directly in the POM, the user could also use the Maven
+ * build helper plugin to find unused ports.
+ *
+ * To avoid stepping on other Kiji instances, the name of the instance created is
+ * a random unique identifier.
  *
  * This class is abstract because it has a lot of boilerplate for setting up integration
  * tests but doesn't actually test anything.
  *
  * The STANDALONE variable controls whether the test creates an embedded HBase and M/R mini-cluster
  * for itself. This allows run a single test in a debugger without external setup.
+ *
  */
 public abstract class AbstractCassandraKijiIntegrationTest {
   private static final Logger LOG =
@@ -140,13 +184,33 @@ public abstract class AbstractCassandraKijiIntegrationTest {
     if (System.getProperty(BASE_TEST_URI_PROPERTY) != null) {
       mBaseUri = KijiURI.newBuilder(System.getProperty(BASE_TEST_URI_PROPERTY)).build();
     } else {
+      Properties properties = new Properties();
+      try {
+        // Read the IP address and port from a filtered .properties file.
+        InputStream input = AbstractKijiIntegrationTest.class
+            .getClassLoader()
+            .getResourceAsStream("cassandra-maven-plugin.properties");
+        properties.load(input);
+        input.close();
+        LOG.info(
+            "Successfully loaded Cassandra Maven plugin properties from file: ",
+            properties.toString()
+        );
+      } catch (IOException ioe) {
+        throw new KijiIOException(
+            "Problem loading cassandra-maven-plugin.properties file from the classpath.");
+      }
+
       // Create a Kiji instance.
       mBaseUri = KijiURI.newBuilder(String.format(
           // Note that the .10 matches what is in the Cassandra maven plugin in the POM.
-          "kiji-cassandra://%s:%s/127.0.0.10:9042",
+          "kiji-cassandra://%s:%s/%s:%s/",
           conf.get(HConstants.ZOOKEEPER_QUORUM),
-          conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT)
+          conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT),
+          properties.getProperty("cassandra.initialIp"),
+          properties.getProperty("cassandra.nativePort")
       )).build();
+      LOG.info("Base URI for Cassandra integration tests = ", mBaseUri.toString());
     }
   }
 

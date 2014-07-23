@@ -39,6 +39,10 @@
     <!-- Protocol library version must match the version Hadoop/HBase rely on. -->
     <protobuf.version>2.4.0a</protobuf.version>
     <commons-pool.version>1.6</commons-pool.version>
+    <!--Set the IP address for the first node in the Cassandra ring used for integration tests.
+    This property is used by the Cassandra Maven plugin and also gets applied to
+    src/test/resources/cassandra-maven-plugin.properties.-->
+    <cassandra.initialIp>127.0.0.10</cassandra.initialIp>
   </properties>
 
   <build>
@@ -55,6 +59,24 @@
         <excludes><exclude>org/kiji/schema/kiji-schema.properties</exclude></excludes>
       </resource>
     </resources>
+
+    <!--Fill in the reserved ports and the initial IP address for the Cassandra Maven plugin.-->
+    <testResources>
+      <testResource>
+        <directory>src/test/resources</directory>
+        <filtering>true</filtering>
+        <includes>
+          <include>**/cassandra-maven-plugin.properties</include>
+        </includes>
+      </testResource>
+      <testResource>
+        <directory>src/test/resources</directory>
+        <filtering>false</filtering>
+        <excludes>
+          <exclude>**/cassandra-maven-plugin.properties</exclude>
+        </excludes>
+      </testResource>
+    </testResources>
 
     <plugins>
         <plugin>
@@ -88,6 +110,33 @@
         <artifactId>hbase-maven-plugin</artifactId>
       </plugin>
 
+      <!--Reserve ports for Cassandra integration tests.-->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>1.9</version>
+        <executions>
+          <execution>
+            <id>reserve-network-port</id>
+            <goals>
+              <goal>reserve-network-port</goal>
+            </goals>
+            <!--Note that this has to happen during the process-resources phase, not
+            process-test-resources, because we have to do this before filtering the test
+            resources.-->
+            <phase>process-resources</phase>
+            <configuration>
+              <portNames>
+                <portName>cassandra.nativePort</portName>
+                <portName>cassandra.rpcPort</portName>
+                <portName>cassandra.storagePort</portName>
+                <portName>cassandra.sslStoragePort</portName>
+              </portNames>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
       <plugin>
         <groupId>org.kiji.maven.plugins</groupId>
         <artifactId>cassandra-maven-plugin</artifactId>
@@ -102,10 +151,8 @@
         </executions>
         <configuration>
           <numnodes>2</numnodes>
-          <initial.ip>127.0.0.10</initial.ip>
         </configuration>
       </plugin>
-
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
