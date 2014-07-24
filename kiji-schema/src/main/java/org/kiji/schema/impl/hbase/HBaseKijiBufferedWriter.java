@@ -33,7 +33,6 @@ import org.apache.hadoop.hbase.client.Get;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
-import org.apache.hadoop.hbase.client.RowLock;
 import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
 import org.apache.hadoop.hbase.filter.FilterList;
 import org.apache.hadoop.hbase.filter.KeyOnlyFilter;
@@ -363,7 +362,7 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
    * Deletes all cells from a map-type family with a timestamp less than or equal to a
    * specified timestamp.
    *
-   * <p>This call requires an HBase row lock, so it should be used with care.</p>
+   * <p>No longer uses a rowlock, so it may miss new columns which are written as it runs.</p>
    *
    * @param entityId The entity (row) to delete from.
    * @param familyLayout A family layout.
@@ -378,43 +377,38 @@ public final class HBaseKijiBufferedWriter implements KijiBufferedWriter {
     // 1. Send a get() to retrieve the names of all HBase qualifiers within the HBase
     //    family that belong to the Kiji column family.
     // 2. Send a delete() for each of the HBase qualifiers found in the previous step.
+    //
+    // If an insert occurs during these steps, it could be missed by the delete process.
 
     final String familyName = familyLayout.getName();
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
         .toHBaseColumnName(KijiColumnName.create(familyName));
     final byte[] hbaseRow = entityId.getHBaseRowKey();
 
-    // Lock the row.
-    final RowLock rowLock = mHTable.lockRow(hbaseRow);
-    try {
-      // Step 1.
-      final Get get = new Get(hbaseRow, rowLock);
-      get.addFamily(hbaseColumnName.getFamily());
+    // Step 1.
+    final Get get = new Get(hbaseRow);
+    get.addFamily(hbaseColumnName.getFamily());
 
-      final FilterList filter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-      filter.addFilter(new KeyOnlyFilter());
-      filter.addFilter(new ColumnPrefixFilter(hbaseColumnName.getQualifier()));
-      get.setFilter(filter);
+    final FilterList filter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
+    filter.addFilter(new KeyOnlyFilter());
+    filter.addFilter(new ColumnPrefixFilter(hbaseColumnName.getQualifier()));
+    get.setFilter(filter);
 
-      final Result result = mHTable.get(get);
+    final Result result = mHTable.get(get);
 
-      // Step 2.
-      if (result.isEmpty()) {
-        LOG.debug("No qualifiers to delete in map family: " + familyName);
-      } else {
-        final Delete delete = SchemaPlatformBridge.get()
-            .createDelete(hbaseRow, HConstants.LATEST_TIMESTAMP);
-        for (byte[] hbaseQualifier
-                 : result.getFamilyMap(hbaseColumnName.getFamily()).keySet()) {
-          LOG.debug("Deleting HBase column " + hbaseColumnName.getFamilyAsString()
-              + ":" + Bytes.toString(hbaseQualifier));
-          delete.deleteColumns(hbaseColumnName.getFamily(), hbaseQualifier, upToTimestamp);
-        }
-        updateBuffer(delete);
+    // Step 2.
+    if (result.isEmpty()) {
+      LOG.debug("No qualifiers to delete in map family: " + familyName);
+    } else {
+      final Delete delete = SchemaPlatformBridge.get()
+          .createDelete(hbaseRow, HConstants.LATEST_TIMESTAMP);
+      for (byte[] hbaseQualifier
+               : result.getFamilyMap(hbaseColumnName.getFamily()).keySet()) {
+        LOG.debug("Deleting HBase column " + hbaseColumnName.getFamilyAsString()
+            + ":" + Bytes.toString(hbaseQualifier));
+        delete.deleteColumns(hbaseColumnName.getFamily(), hbaseQualifier, upToTimestamp);
       }
-    } finally {
-      // Make sure to unlock the row!
-      mHTable.unlockRow(rowLock);
+      updateBuffer(delete);
     }
   }
 

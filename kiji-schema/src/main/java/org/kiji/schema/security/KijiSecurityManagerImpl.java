@@ -539,8 +539,8 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     mAdmin.disableTable(hTableName);
     LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
     // Grant the permissions.
-    AccessControlLists.addUserPermission();
-    mAccessController.grant(hTablePermission);
+    //AccessControlLists.addUserPermission();
+    //mAccessController.grant(hTablePermission);
     LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
     mAdmin.enableTable(hTableName);
     LOG.debug("Table {} enabled.", Bytes.toString(hTableName));
@@ -559,7 +559,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
       byte[] hTableName,
       Action[] hActions) throws IOException {
     // Construct the HBase UserPermission to revoke.
-    UserPermission hTablePermission = new UserPermission(
+    UserPermission hTablePermission = SchemaPlatformBridge.get().createUserPermission(
         hUser,
         hTableName,
         null,
@@ -574,9 +574,8 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     mAdmin.disableTable(hTableName);
     LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
     // Revoke the permissions.
-    AccessControlLists
-    mAccessController.revoke();
-    mAccessController.revoke(hTablePermission);
+    // mAccessController.revoke();
+    // mAccessController.revoke(hTablePermission);
     LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
     mAdmin.enableTable(hTableName);
     LOG.debug("Table {} enabled.", Bytes.toString(hTableName));
