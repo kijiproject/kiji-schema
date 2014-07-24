@@ -54,8 +54,8 @@
     -->
     <cdh4-hadoop.version>${hadoop.version}</cdh4-hadoop.version>
     <cdh4-hbase.version>${hbase.version}</cdh4-hbase.version>
-    <cdh5-hadoop.version>2.3.0-cdh5.0.0</cdh5-hadoop.version>
-    <cdh5-hbase.version>0.96.1.1-cdh5.0.0</cdh5-hbase.version>
+    <cdh5-hadoop.version>2.3.0-cdh5.0.3</cdh5-hadoop.version>
+    <cdh5-hbase.version>0.96.1.1-cdh5.0.3</cdh5-hbase.version>
   </properties>
 
   <modules>

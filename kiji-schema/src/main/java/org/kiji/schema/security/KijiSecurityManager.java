@@ -54,7 +54,7 @@ public interface KijiSecurityManager extends Closeable {
      * <p>KijiSecurityManagers should be closed when not used anymore, using {@link #close()}</p>
      *
      * <p>If you have a Kiji instance, you can get a new KijiSecurityManager using
-     * {@link org.kiji.schema.Kiji#getKijiSecurityManager}.</p>
+     * {@link org.kiji.schema.Kiji#getSecurityManager()}.</p>
      *
      * @param instanceUri is the URI of the instance this KijiSecurityManager will manage.
      * @param conf is the Hadoop configuration to use.

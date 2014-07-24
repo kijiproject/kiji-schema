@@ -34,7 +34,7 @@ import org.apache.hadoop.hbase.HConstants;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.security.access.AccessControlLists;
-import org.apache.hadoop.hbase.security.access.AccessControllerProtocol;
+import org.apache.hadoop.hbase.security.access.AccessController;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -79,7 +79,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   private final KijiSystemTable mSystemTable;
 
   /** The HBase ACL (Access Control List) table to use. */
-  private final AccessControllerProtocol mAccessController;
+  //private final AccessController mAccessController;
 
   /** ZooKeeper client connection responsible for creating instance locks. */
   private final CuratorFramework mZKClient;
@@ -123,12 +123,12 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
     mAdmin = ((HBaseKiji) mKiji).getHBaseAdmin();
 
-    // Get the access controller.
-    HTableInterface accessControlTable = tableFactory
-        .create(conf, new String(AccessControlLists.ACL_TABLE_NAME, Charsets.UTF_8));
-    mAccessController = accessControlTable.coprocessorProxy(
-        AccessControllerProtocol.class,
-        HConstants.EMPTY_START_ROW);
+//    // Get the access controller.
+//    HTableInterface accessControlTable = tableFactory
+//        .create(conf, new String(AccessControlLists.ACL_TABLE_NAME, Charsets.UTF_8));
+//    mAccessController = accessControlTable.coprocessorProxy(
+//        AccessControllerProtocol.class,
+//        HConstants.EMPTY_START_ROW);
 
     mZKClient = ZooKeeperUtils.getZooKeeperClient(mInstanceUri);
     mLock = new ZooKeeperLock(mZKClient, ZooKeeperUtils.getInstancePermissionsLock(instanceUri));
@@ -538,6 +538,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     mAdmin.disableTable(hTableName);
     LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
     // Grant the permissions.
+    AccessControlLists.addUserPermission();
     mAccessController.grant(hTablePermission);
     LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
     mAdmin.enableTable(hTableName);
@@ -572,6 +573,8 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     mAdmin.disableTable(hTableName);
     LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
     // Revoke the permissions.
+    AccessControlLists
+    mAccessController.revoke();
     mAccessController.revoke(hTablePermission);
     LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
     mAdmin.enableTable(hTableName);
