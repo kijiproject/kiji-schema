@@ -3,6 +3,8 @@
                               KijiSchema Release Notes
 
 Version 1.6.0
+  * SCHEMA-874. Bumps root pom version and our slf4j dependencies. Removes
+      KijiSchema's implementation of slf4j's LoggerFactory.
   * SCHEMA-875. Revert binary incompatibility introduced in SCHEMA-826.
   * POM-40. Require JDK 7 to compile Kiji projects.
   * SCHEMA-851. Deprecate CellSpec table reader overrides; fix hashCode & equality
