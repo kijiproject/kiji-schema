@@ -500,8 +500,7 @@ public final class AsyncKiji implements Kiji {
   public KijiTableLayout modifyTableLayout(
       TableLayoutDesc update,
       boolean dryRun,
-      PrintStream printStream)
-      throws IOException {
+      PrintStream printStream) throws IOException {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot modify table layout in Kiji instance %s in state %s.", this, state);
@@ -524,9 +523,9 @@ public final class AsyncKiji implements Kiji {
 
     KijiTableLayout newLayout = null;
 
-    // Check to see if update requires adding or removing something
+    // Check to see if update requires adding or removing a locality group, family, or column
     final List<KijiTableLayout> currentLayouts = metaTable.getTableLayoutVersions(tableName, 1);
-    final KijiTableLayout currentLayout = currentLayouts.isEmpty() ? null : currentLayouts.get(0);
+    final KijiTableLayout currentLayout = metaTable.getTableLayout(tableName);//currentLayouts.isEmpty() ? null : currentLayouts.get(0);
     final Map<String, LocalityGroupLayout> currentLocalityGroupMap =
         currentLayout.getLocalityGroupMap();
     for (LocalityGroupDesc locGroupDesc : update.getLocalityGroups()) {
@@ -552,10 +551,8 @@ public final class AsyncKiji implements Kiji {
               }
             }
           }
-
         }
       }
-
     }
 
     if (dryRun) {
@@ -564,18 +561,14 @@ public final class AsyncKiji implements Kiji {
     } else {
       // Actually set it.
       if (mSystemVersion.compareTo(Versions.SYSTEM_2_0) >= 0) {
+        // Use ZooKeeper to inform all watchers that a new table layout is available.
+        final AsyncTableLayoutUpdater updater =
+            new AsyncTableLayoutUpdater(this, tableURI, update);
         try {
-          // Use ZooKeeper to inform all watchers that a new table layout is available.
-          final AsyncTableLayoutUpdater updater =
-              new AsyncTableLayoutUpdater(this, tableURI, update);
-          try {
-            updater.update();
-            newLayout = updater.getNewLayout();
-          } finally {
-            updater.close();
-          }
-        } catch (KeeperException ke) {
-          throw new IOException(ke);
+          updater.update();
+          newLayout = updater.getNewLayout();
+        } finally {
+          updater.close();
         }
       } else {
         // System versions before system-2.0 do not enforce table layout update consistency or

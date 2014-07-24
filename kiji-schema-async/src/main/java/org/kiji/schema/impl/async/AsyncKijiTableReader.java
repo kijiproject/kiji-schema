@@ -159,13 +159,13 @@ public final class AsyncKijiTableReader implements KijiTableReader {
       }
       final CellDecoderProvider provider;
       if (null != mCellSpecOverrides) {
-        provider = new CellDecoderProvider(
+        provider = CellDecoderProvider.create(
             layout,
             mTable.getKiji().getSchemaTable(),
             SpecificCellDecoderFactory.get(),
             mCellSpecOverrides);
       } else {
-        provider = new CellDecoderProvider(
+        provider = CellDecoderProvider.create(
             layout,
             mOverrides,
             mAlternatives,
@@ -523,6 +523,7 @@ public final class AsyncKijiTableReader implements KijiTableReader {
    * @return A new KijiResultScanner.
    * @throws IOException in case of an error creating the scanner.
    */
+  /*
   public AsyncKijiResultScanner getKijiResultScanner(
       final KijiDataRequest request,
       final KijiScannerOptions scannerOptions
@@ -563,8 +564,8 @@ public final class AsyncKijiTableReader implements KijiTableReader {
         capsule.getCellDecoderProvider(),
         capsule.getColumnNameTranslator(),
         scannerOptions.getReopenScannerOnTimeout());
-    */
-  }
+
+  } */
 
   /** {@inheritDoc} */
   @Override

@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2013 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -30,7 +30,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Multimap;
 import org.apache.curator.framework.CuratorFramework;
-import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +50,7 @@ import org.kiji.schema.zookeeper.UsersUpdateHandler;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
- * Updates the layout of an HBase Kiji table.
+ * Updates the layout of an AsyncHBase Kiji table.
  *
  * <p>
  *   The parameters of the updater include a function to compute a layout update given the
@@ -70,7 +69,7 @@ public class AsyncTableLayoutUpdater {
   private final UpdaterUsersUpdateHandler mUsersUpdateHandler = new UpdaterUsersUpdateHandler();
   private final UpdaterLayoutUpdateHandler mLayoutUpdateHandler = new UpdaterLayoutUpdateHandler();
 
-  /**  */
+  /** Function to generate the layout update descriptor */
   private final Function<KijiTableLayout, TableLayoutDesc> mLayoutUpdate;
 
   /** New table layout, set after the layout update completed. */
@@ -188,7 +187,7 @@ public class AsyncTableLayoutUpdater {
           try {
             mLock.wait();
           } catch (InterruptedException ie) {
-            throw new RuntimeInterruptedException(ie);
+            Thread.currentThread().interrupt();
           }
         }
       }
@@ -204,15 +203,13 @@ public class AsyncTableLayoutUpdater {
    * @param tableURI Update the layout of this table.
    * @param layoutUpdate Function to generate the layout update descriptor based on the current
    *     layout of the table.
-   * @throws java.io.IOException on I/O error.
-   * @throws org.apache.zookeeper.KeeperException on ZooKeeper error.
+   * @throws IOException on I/O error.
    */
   public AsyncTableLayoutUpdater(
       final AsyncKiji kiji,
       final KijiURI tableURI,
       final Function<KijiTableLayout, TableLayoutDesc> layoutUpdate
-  )
-      throws IOException, KeeperException {
+  ) throws IOException {
     mKiji = kiji;
     mKiji.retain();
     mTableURI = tableURI;
@@ -226,15 +223,13 @@ public class AsyncTableLayoutUpdater {
    * @param kiji Opened Kiji instance the table belongs to.
    * @param tableURI Update the layout of this table.
    * @param layoutUpdate Static layout update descriptor to update the table with.
-   * @throws java.io.IOException on I/O error.
-   * @throws org.apache.zookeeper.KeeperException on ZooKeeper error.
+   * @throws IOException on I/O error.
    */
   public AsyncTableLayoutUpdater(
       final AsyncKiji kiji,
       final KijiURI tableURI,
       final TableLayoutDesc layoutUpdate
-  )
-      throws IOException, KeeperException {
+  ) throws IOException {
     this(kiji, tableURI, new Function<KijiTableLayout, TableLayoutDesc>() {
       /** {@inheritDoc} */
       @Override
@@ -247,7 +242,7 @@ public class AsyncTableLayoutUpdater {
   /**
    * Releases the resources maintained by this updater.
    *
-   * @throws java.io.IOException on I/O error.
+   * @throws IOException on I/O error.
    */
   public void close() throws IOException {
     mKiji.release();
@@ -256,10 +251,9 @@ public class AsyncTableLayoutUpdater {
   /**
    * Performs the specified table layout update.
    *
-   * @throws java.io.IOException on I/O error.
-   * @throws org.apache.zookeeper.KeeperException on ZooKeeper error.
+   * @throws IOException on I/O error.
    */
-  public void update() throws IOException, KeeperException {
+  public void update() throws IOException {
     final KijiMetaTable metaTable = mKiji.getMetaTable();
 
     final Lock lock = ZooKeeperUtils.newTableLayoutLock(mZKClient, mTableURI);
@@ -346,7 +340,7 @@ public class AsyncTableLayoutUpdater {
    * Waits for all clients of the table to have a consistent view on the table layout.
    *
    * @return the layout ID being used consistently by all users, or null if no users.
-   * @throws java.io.IOException on I/O error.
+   * @throws IOException on I/O error.
    */
   private String waitForConsistentView() throws IOException {
     return mUsersUpdateHandler.waitForConsistentView();
@@ -356,7 +350,7 @@ public class AsyncTableLayoutUpdater {
    * Writes the new table layout to the meta-table.
    *
    * @param update Layout update to write to the meta-table.
-   * @throws java.io.IOException on I/O error.
+   * @throws IOException on I/O error.
    */
   private void writeMetaTable(TableLayoutDesc update) throws IOException {
     LOG.info("Updating layout for table {} from layout ID {} to layout ID {} in meta-table.",
@@ -372,10 +366,9 @@ public class AsyncTableLayoutUpdater {
    *
    * @param update Layout update to push to ZooKeeper.
    *
-   * @throws java.io.IOException on I/O error.
-   * @throws org.apache.zookeeper.KeeperException on ZooKeeper error.
+   * @throws IOException on I/O error.
    */
-  private void writeZooKeeper(TableLayoutDesc update) throws IOException, KeeperException {
+  private void writeZooKeeper(TableLayoutDesc update) throws IOException {
     LOG.info("Updating layout for table {} from layout ID {} to layout ID {} in ZooKeeper.",
         mTableURI, update.getReferenceLayout(), update.getLayoutId());
     ZooKeeperUtils.setTableLayout(mZKClient, mTableURI, update.getLayoutId());
