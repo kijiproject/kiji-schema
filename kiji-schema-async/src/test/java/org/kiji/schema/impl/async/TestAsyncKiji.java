@@ -23,6 +23,7 @@ import java.io.IOException;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.avro.Schema;
+import org.hbase.async.TableNotFoundException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -32,7 +33,6 @@ import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableNotFoundException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.impl.TestStrictValidation;
@@ -66,17 +66,15 @@ public class TestAsyncKiji extends KijiClientTest {
   /** Tests Kiji.openTable() on a table that doesn't exist. */
   @Test
   public void testOpenUnknownTable() throws Exception {
-    final Kiji kiji = new AsyncKiji(createTestURI());
-
     try {
-      final KijiTable table = kiji.openTable("unknown");
+      final Kiji kiji = new AsyncKiji(createTestURI());
       Assert.fail("Should not be able to open a table that does not exist!");
-    } catch (KijiTableNotFoundException ktnfe) {
+    } catch(TableNotFoundException tnfe) {
       // Expected!
-      LOG.debug("Expected error: {}", ktnfe);
-      Assert.assertEquals("unknown", ktnfe.getTableURI().getTable());
-    } finally {
-      kiji.release();
+      LOG.debug("Expected error: {}", tnfe);
+      Assert.assertEquals(
+          "\"kiji.TestAsyncKiji_testOpenUnknownTable_0.system\"",
+          tnfe.getMessage());
     }
   }
 
