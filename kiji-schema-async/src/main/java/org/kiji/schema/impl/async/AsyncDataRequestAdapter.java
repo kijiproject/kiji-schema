@@ -24,52 +24,52 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import org.apache.hadoop.hbase.util.Bytes.ByteArrayComparator;
 import org.hbase.async.BinaryComparator;
-import org.hbase.async.Bytes;
 import org.hbase.async.ColumnPaginationFilter;
 import org.hbase.async.ColumnPrefixFilter;
+import org.hbase.async.ColumnRangeFilter;
 import org.hbase.async.CompareFilter.CompareOp;
+import org.hbase.async.FamilyFilter;
+import org.hbase.async.FilterList;
 import org.hbase.async.FilterList.Operator;
-import org.hbase.async.GetRequest;
+import org.hbase.async.FirstKeyOnlyFilter;
 import org.hbase.async.HBaseClient;
 import org.hbase.async.QualifierFilter;
 import org.hbase.async.ScanFilter;
 import org.hbase.async.Scanner;
-import org.hbase.async.FilterList;
-import org.hbase.async.FamilyFilter;
-import org.hbase.async.FirstKeyOnlyFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.EntityId;
 import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.NoSuchColumnException;
+import org.kiji.schema.filter.AndColumnFilter;
 import org.kiji.schema.filter.KijiColumnFilter;
+import org.kiji.schema.filter.KijiColumnFilter.Context;
+import org.kiji.schema.filter.KijiColumnRangeFilter;
+import org.kiji.schema.filter.KijiFirstKeyOnlyColumnFilter;
+import org.kiji.schema.filter.OrColumnFilter;
+import org.kiji.schema.filter.RegexQualifierColumnFilter;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.hbase.HBaseScanOptions;
+import org.kiji.schema.impl.KijiPaginationFilter;
+import org.kiji.schema.impl.hbase.HBaseDataRequestAdapter.NameTranslatingFilterContext;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 
 /**
  * Wraps a KijiDataRequest to expose methods that generate meaningful objects in HBase
- * land, like {@link org.apache.hadoop.hbase.client.Put}s and {@link
- * org.apache.hadoop.hbase.client.Get}s.
+ * land, like {@link org.hbase.async.Scanner}s.
  */
 @ApiAudience.Private
 public final class AsyncDataRequestAdapter {
-  private static final Logger LOG = LoggerFactory.getLogger(AsyncDataRequestAdapter.class);
 
   /** The wrapped KijiDataRequest. */
   private final KijiDataRequest mKijiDataRequest;
@@ -84,13 +84,33 @@ public final class AsyncDataRequestAdapter {
    * Creates a new AsyncDataRequestAdapter for a given data request using a given
    * KijiColumnNameTranslator.
    *
-   * @param kijiDataRequest the data request to adapt for HBase.
-   * @param translator the name translator for getting HBase column names.
+   * @param kijiDataRequest The data request to adapt for HBase.
+   * @param translator The name translator for getting HBase column names.
+   * @param hbClient The HBaseClient that will be used to communicate with HBase.
+   * @param tableName The name of the table that the request is for.
    */
-  public AsyncDataRequestAdapter(
-      KijiDataRequest kijiDataRequest,
-      HBaseColumnNameTranslator translator,
-      HBaseClient hbClient,
+  public static AsyncDataRequestAdapter create(
+      final KijiDataRequest kijiDataRequest,
+      final HBaseColumnNameTranslator translator,
+      final HBaseClient hbClient,
+      byte[] tableName
+  ) {
+    return new AsyncDataRequestAdapter(kijiDataRequest, translator, hbClient, tableName);
+  }
+
+  /**
+   * Creates a new AsyncDataRequestAdapter for a given data request using a given
+   * KijiColumnNameTranslator.
+   *
+   * @param kijiDataRequest The data request to adapt for HBase.
+   * @param translator The name translator for getting HBase column names.
+   * @param hbClient The HBaseClient that will be used to communicate with HBase.
+   * @param tableName The name of the table that the request is for.
+   */
+  private AsyncDataRequestAdapter(
+      final KijiDataRequest kijiDataRequest,
+      final HBaseColumnNameTranslator translator,
+      final HBaseClient hbClient,
       byte[] tableName
   ) {
     mKijiDataRequest = kijiDataRequest;
@@ -100,14 +120,14 @@ public final class AsyncDataRequestAdapter {
   }
 
   /**
-   * Constructs an HBase Scan that describes the data requested in the KijiDataRequest.
+   * Constructs an AsyncHBase Scanner that describes the data requested in the KijiDataRequest.
    *
    * @param tableLayout The layout of the Kiji table to read from.  This is required for
    *     determining the mapping between Kiji columns and HBase columns.
-   * @return An HBase Scan descriptor.
+   * @return An AsyncHBase Scanner descriptor.
    * @throws IOException If there is an error.
    */
-  public Scanner toScanner(KijiTableLayout tableLayout) throws IOException {
+  public Scanner toScanner(final KijiTableLayout tableLayout) throws IOException {
     return toScanner(tableLayout, new HBaseScanOptions());
   }
 
@@ -120,68 +140,12 @@ public final class AsyncDataRequestAdapter {
    * @return An HBase Scan descriptor.
    * @throws IOException If there is an error.
    */
-  public Scanner toScanner(KijiTableLayout tableLayout, HBaseScanOptions scanOptions) throws IOException {
+  public Scanner toScanner(final KijiTableLayout tableLayout, final HBaseScanOptions scanOptions)
+      throws IOException {
     final Scanner scanner = mHBClient.newScanner(mTableName);
     setupFilters(scanner, tableLayout);
     configureScanner(scanner, scanOptions);
     return scanner;
-  }
-
-  /**
-   * Like toScanner(), but mutates a given Scanner object to include everything in the data
-   * request instead of returning a new one.
-   *
-   * <p>Any existing request settings in the Scan object will be preserved.</p>
-   *
-   * @param scanner The existing scanner object to apply the data request to.
-   * @param tableLayout The layout of the Kiji table the scan will read from.
-   * @throws IOException If there is an error.
-   */
-  public void applyToScan(Scanner scanner, KijiTableLayout tableLayout) throws IOException {
-    // Currently AsyncHBase's Scanner does not have any 'add' methods, nor does it have 'get'
-    // methods for families, columns, etc. If either of those is implemented in the future
-    // this method can become supported
-    throw new UnsupportedOperationException("applyToScan is not yet supported with asyncHBase");
-    /*
-    final Scanner newScanner = toScanner(tableLayout);
-
-    // It's okay to put columns into the Scan that are already there.
-    for (Map.Entry<byte[], NavigableSet<byte[]>> columnRequest
-             : newScanner.getFamilyMap().entrySet()) {
-      byte[] family = columnRequest.getKey();
-      if (null == columnRequest.getValue()) {
-        // Request all columns in the family.
-        scan.addFamily(family);
-      } else {
-        // Calls to Scan.addColumn() will invalidate any previous calls to Scan.addFamily(),
-        // so we only do it if:
-        //   1. No data from the family has been added to the request yet, OR
-        //   2. Only specific columns from the family have been requested so far.
-        if (!scan.getFamilyMap().containsKey(family)
-            || null != scan.getFamilyMap().get(family)) {
-          for (byte[] qualifier : columnRequest.getValue()) {
-            scan.addColumn(family, qualifier);
-          }
-        }
-      }
-    } */
-  }
-
-  /**
-   * Constructs an HBase Get that describes the data requested in the KijiDataRequest for
-   * a particular entity/row.
-   *
-   * @param entityId The row to build an HBase Get request for.
-   * @param tableLayout The layout of the Kiji table to read from.  This is required for
-   *     determining the mapping between Kiji columns and HBase columns.
-   * @return An HBase Get descriptor.
-   * @throws IOException If there is an error.
-   */
-  public GetRequest toGetRequest(EntityId entityId, KijiTableLayout tableLayout)
-      throws IOException {
-    // TODO: AsyncHBase's GetRequest does not yet support filters. Once they do,
-    // implement toGetRequest
-    throw new UnsupportedOperationException("toGetRequest is not yet supported for Async Kiji");
   }
 
   /**
@@ -193,17 +157,15 @@ public final class AsyncDataRequestAdapter {
    *     determining the mapping between Kiji columns and HBase columns.
    * @throws IOException If there is an error.
    */
-  private void setupFilters(Scanner scanner, KijiTableLayout tableLayout)
+  private void setupFilters(final Scanner scanner, final KijiTableLayout tableLayout)
       throws IOException {
 
-    // Context to translate user Kiji filters into HBase filters:
+    // Context to translate user Kiji filters into AsyncHBase scan filters:
     final KijiColumnFilter.Context filterContext =
         new NameTranslatingFilterContext(mColumnNameTranslator);
 
-    // Get request we are building and returning:
-    /**final Get get = new Get(entityId.getHBaseRowKey());*/
-    final Map<byte [], NavigableSet<byte []>> familyMap =
-        new TreeMap<byte [], NavigableSet<byte []>>(new ByteArrayComparator());
+    final Map<byte[], NavigableSet<byte[]>> familyMap =
+        new TreeMap<byte[], NavigableSet<byte[]>>(new ByteArrayComparator());
     final List<ScanFilter> scanFilters = Lists.newArrayList();
 
     // There's a shortcoming in the HBase API that doesn't allow us to specify per-column
@@ -218,7 +180,7 @@ public final class AsyncDataRequestAdapter {
 
     // Fortunately, although we may retrieve more versions per column than we need from HBase, we
     // can still honor the user's requested maxVersions when returning the versions in
-    // HBaseKijiRowData.
+    // AsyncKijiRowData.
 
     // Largest of the max-versions from all the requested columns.
     // Columns with paging are excluded (max-versions does not make sense when paging):
@@ -226,7 +188,7 @@ public final class AsyncDataRequestAdapter {
 
     // If every column is paged, we should add a keyonly filter to a single column, so we can have
     // access to entityIds in our KijiRowData that is constructed.
-    boolean completelyPaged = mKijiDataRequest.isPagingEnabled() ? true : false;
+    boolean completelyPaged = mKijiDataRequest.isPagingEnabled();
 
     for (KijiDataRequest.Column columnRequest : mKijiDataRequest.getColumns()) {
       final KijiColumnName kijiColumnName = columnRequest.getColumnName();
@@ -249,7 +211,7 @@ public final class AsyncDataRequestAdapter {
         // locality group is also requested.
 
         addColumnIfNecessary(familyMap, hbaseColumnName);
-        scanFilters.add(toFilter(columnRequest, hbaseColumnName, filterContext, scanner));
+        scanFilters.add(toFilter(columnRequest, hbaseColumnName, filterContext));
 
       } else {
         final FamilyLayout fLayout = tableLayout.getFamilyMap().get(kijiColumnName.getFamily());
@@ -262,7 +224,7 @@ public final class AsyncDataRequestAdapter {
             final HBaseColumnName fqHBaseColumnName =
                 mColumnNameTranslator.toHBaseColumnName(fqKijiColumnName);
             addColumnIfNecessary(familyMap, fqHBaseColumnName);
-            scanFilters.add(toFilter(columnRequest, fqHBaseColumnName, filterContext, scanner));
+            scanFilters.add(toFilter(columnRequest, fqHBaseColumnName, filterContext));
           }
 
         } else if (fLayout.isMapType()) {
@@ -271,7 +233,7 @@ public final class AsyncDataRequestAdapter {
           // and add a column prefix-filter to select only the columns from that Kiji family:
           familyMap.remove(hbaseColumnName.getFamily());
           familyMap.put(hbaseColumnName.getFamily(), null);
-          scanFilters.add(toFilter(columnRequest, hbaseColumnName, filterContext, scanner));
+          scanFilters.add(toFilter(columnRequest, hbaseColumnName, filterContext));
 
         } else {
           throw new InternalKijiError("Family is neither group-type nor map-type");
@@ -286,13 +248,13 @@ public final class AsyncDataRequestAdapter {
 
       // We just need to know whether a row has data in at least one of the requested columns.
       // Stop at the first valid key using AND(columnFilters, FirstKeyOnlyFilter):
-      scanFilters.add(new FirstKeyOnlyFilter());
-      filterList = new FilterList(scanFilters, Operator.MUST_PASS_ONE); //TODO: Also add FirstKeyOnlyFilter?
+      List<ScanFilter> newFilterList = Lists.newArrayList();
+      newFilterList.add(new FilterList(scanFilters, Operator.MUST_PASS_ONE));
+      newFilterList.add(new FirstKeyOnlyFilter());
+      filterList = new FilterList(newFilterList, Operator.MUST_PASS_ALL);
       scanner.setFilter(filterList);
-      /**get.setFilter(new FilterList(
-          FilterList.Operator.MUST_PASS_ALL, columnFilters, new FirstKeyOnlyFilter()));*/
     } else if (!scanFilters.isEmpty()) {
-      filterList = new FilterList(scanFilters, Operator.MUST_PASS_ONE); //TODO:is this right? double chekc
+      filterList = new FilterList(scanFilters, Operator.MUST_PASS_ONE);
       scanner.setFilter(filterList);
     }
 
@@ -302,75 +264,19 @@ public final class AsyncDataRequestAdapter {
     scanner.setMaxVersions(largestMaxVersions);
   }
 
-
-  public static String familiesToString(byte[][] families, byte[][][] qualifiers) {
-    String s = "";
-    for (int i = 0; i < families.length; i++) {
-      s += Bytes.pretty(families[i]);
-      if (qualifiers[i] != null) {
-        for (int j = 0; j < qualifiers[i].length; j++) {
-          s += Bytes.pretty(qualifiers[i][j]);
-        }
-      }
-    }
-    return s;
-  }
-
-  public static String convertMaptoByteArrays(
-      Map<byte [], NavigableSet<byte []>> familyMap
-  ) {
-    byte[][] families = new byte[familyMap.keySet().size()][];
-    ArrayList<byte[]> familiesWithColumns = Lists.newArrayList();
-    ArrayList<byte[]> familiesWithoutColumns = Lists.newArrayList();
-    int x = 0;
-    // First split the families into those with specified columns and those without
-    for (byte[] key : familyMap.keySet()) {
-      NavigableSet value = familyMap.get(key);
-      if (value == null) {
-        familiesWithoutColumns.add(key);
-      }
-      else {
-        familiesWithColumns.add(key);
-        families[x] = key;
-        x++;
-      }
-    }
-
-    // Now we can create associated qualifiers only for families that specify columns
-    byte[][][] qualifiers = new byte[familyMap.keySet().size()][][];
-    for(int i = 0; i < familiesWithColumns.size(); i++) {
-      NavigableSet<byte []> value = familyMap.get(familiesWithColumns.get(i));
-      int j = 0;
-      qualifiers[i] = new byte [value.size()][];
-      for (byte[] col : value) {
-        qualifiers[i][j] = col;
-        j++;
-      }
-    }
-
-    // Finally fill in the rest of the families with no columns. This will allow Scanner to know
-    // get the entire family for these values.
-    for (int i = 0; i < familiesWithoutColumns.size(); i++) {
-      families[i+familiesWithColumns.size()] = familiesWithoutColumns.get(i);
-    }
-
-    return AsyncDataRequestAdapter.familiesToString(families, qualifiers);
-
-  }
   /**
    * Converts the Map of families and columns to a 2d byte array for families,
    * with families with specified columns first and families with no specified
    * columns last, and a 3d byte array for qualifiers in order of the families
    * with specified columns. These arrays are then passed to scanner.setFamilies().
    *
-   * @param scanner
-   * @param familyMap
+   * @param scanner The scanner to which the familiy map will be set.
+   * @param familyMap The map of families and columns.
    */
   public static void setFamiliesForScanner(
-      Scanner scanner,
-      Map<byte [], NavigableSet<byte []>> familyMap
+      final Scanner scanner,
+      final Map<byte[], NavigableSet<byte[]>> familyMap
   ) {
-
     byte[][] families = new byte[familyMap.keySet().size()][];
     ArrayList<byte[]> familiesWithColumns = Lists.newArrayList();
     ArrayList<byte[]> familiesWithoutColumns = Lists.newArrayList();
@@ -391,7 +297,7 @@ public final class AsyncDataRequestAdapter {
     // Now we can create associated qualifiers only for families that specify columns
     byte[][][] qualifiers = new byte[familyMap.keySet().size()][][];
     for(int i = 0; i < familiesWithColumns.size(); i++) {
-      NavigableSet<byte []> value = familyMap.get(familiesWithColumns.get(i));
+      NavigableSet<byte[]> value = familyMap.get(familiesWithColumns.get(i));
       int j = 0;
       qualifiers[i] = new byte [value.size()][];
       for (byte[] col : value) {
@@ -406,8 +312,9 @@ public final class AsyncDataRequestAdapter {
       families[i+familiesWithColumns.size()] = familiesWithoutColumns.get(i);
     }
 
-
-    scanner.setFamilies(families, qualifiers);
+    if (families.length > 0) {
+      scanner.setFamilies(families, qualifiers);
+    }
   }
 
   /**
@@ -418,15 +325,18 @@ public final class AsyncDataRequestAdapter {
    * @param family The family to add to the familyMap.
    * @param qualifier The qualifier to add to the familyMap.
    */
-  private static void addColumn(
-      Map<byte [], NavigableSet<byte []>> familyMap,
-      byte [] family,
-      byte [] qualifier) {
-    NavigableSet<byte []> set = familyMap.get(family);
+  public static void addColumnOrFamily(
+      final Map<byte[], NavigableSet<byte[]>> familyMap,
+      final byte[] family,
+      final byte[] qualifier
+  ) {
+    NavigableSet<byte[]> set = familyMap.get(family);
     if(set == null) {
-      set = new TreeSet<byte []>(new ByteArrayComparator());
+      set = new TreeSet<byte[]>(new ByteArrayComparator());
     }
-    set.add(qualifier);
+    if (qualifier != null) {
+      set.add(qualifier);
+    }
     familyMap.put(family, set);
   }
 
@@ -441,8 +351,9 @@ public final class AsyncDataRequestAdapter {
    * @param column Fully-qualified HBase column to add to the familyMap.
    */
   private static void addColumnIfNecessary(
-      Map<byte [], NavigableSet<byte []>> familyMap,
-      HBaseColumnName column) {
+      final Map<byte[], NavigableSet<byte[]>> familyMap,
+      final HBaseColumnName column
+  ) {
     // Calls to Get.addColumn() invalidate previous calls to Get.addFamily(),
     // so we only do it if:
     //   1. No data from the family has been added to the request yet,
@@ -451,30 +362,89 @@ public final class AsyncDataRequestAdapter {
     // Note: the Get family-map uses null values to indicate requests for an entire HBase family.
     if (!familyMap.keySet().contains(column.getFamily())
         || (familyMap.get(column.getFamily()) != null)) {
-      addColumn(familyMap, column.getFamily(), column.getQualifier());
+      addColumnOrFamily(familyMap, column.getFamily(), column.getQualifier());
     }
+  }
+
+  /**
+   * Converts a KijiColumnFilter to an AsyncHBase ScanFilter. This is necessary because
+   * calling {@link org.kiji.schema.filter.KijiColumnFilter#toHBaseFilter(
+   * org.kiji.schema.KijiColumnName, org.kiji.schema.filter.KijiColumnFilter.Context)
+   * toHBaseFilter()} returns a {@link org.apache.hadoop.hbase.filter.Filter Filter} and not a
+   * {@link org.hbase.async.ScanFilter}.
+   * @param kijiFilter The KijiColumnFilter to convert.
+   * @param kijiColumnName The  KijiColumnName for the filter.
+   * @param context The Context for the filter.
+   * @return The ScanFilter that represents the specified KijiColumnFilter.
+   * @throws IOException
+   */
+  public static ScanFilter toScanFilter(
+      final KijiColumnFilter kijiFilter,
+      final KijiColumnName kijiColumnName,
+      final Context context
+  ) throws IOException {
+    if (kijiFilter instanceof KijiColumnRangeFilter) {
+      final String family = kijiColumnName.getFamily();
+      KijiColumnRangeFilter colFilter = (KijiColumnRangeFilter) kijiFilter;
+      return new ColumnRangeFilter(
+          toHBaseQualifierBytesOrNull(context, family, colFilter.getMinQualifier()),
+          colFilter.isIncludeMin(),
+          toHBaseQualifierBytesOrNull(context, family, colFilter.getMaxQualifier()),
+          colFilter.isIncludeMax());
+    } else if (kijiFilter instanceof KijiFirstKeyOnlyColumnFilter) {
+      return new FirstKeyOnlyFilter();
+      // Cannot support these filters since they don't have the necessary accessor methods.
+    }  else if (kijiFilter instanceof KijiPaginationFilter) {
+      throw new UnsupportedOperationException(
+          "KijiPaginationFilter is not supported by AsyncKiji");
+    } else if (kijiFilter instanceof  AndColumnFilter) {
+      throw new UnsupportedOperationException(
+          "AndColumnFilter is not supported by AsyncKiji");
+    } else if (kijiFilter instanceof OrColumnFilter) {
+      throw new UnsupportedOperationException(
+          "OrColumnFilter is not supported by AsyncKiji");
+    } else if (kijiFilter instanceof RegexQualifierColumnFilter) {
+      throw new UnsupportedOperationException(
+          "RegexQualifierColumnFilter is not supported by AsyncKiji");
+    }
+    return null;
+  }
+
+
+  /**
+   * Gets the UTF-8 encoded byte representation of a Kiji column qualifier, potentially null.
+   *
+   * @param context Column filter context.
+   * @param family Kiji column family.
+   * @param qualifier Kiji column qualifier, potentially null.
+   * @return The HBase qualifier for the specified Kiji column, or null.
+   * @throws org.kiji.schema.NoSuchColumnException if there is no such column.
+   */
+  private static byte[] toHBaseQualifierBytesOrNull(
+      Context context, String family, String qualifier) throws NoSuchColumnException {
+    if (qualifier == null) {
+      return null;
+    }
+    return context.getHBaseColumnName(KijiColumnName.create(family, qualifier)).getQualifier();
   }
 
 
   /**
    * Configures a Scan with the options specified on HBaseScanOptions.
    * Whenever an option is not specified on <code>scanOptions</code>,
-   * the hbase default will be used instead.
+   * the asynchbase default will be used instead.
    *
    * @param scanner The Scan to configure.
    * @param scanOptions The options to configure this Scan with.
    */
-  private void configureScanner(Scanner scanner, HBaseScanOptions scanOptions) {
-    // TODO(gabe): Fix these
+  private void configureScanner(final Scanner scanner, final HBaseScanOptions scanOptions) {
     if (null != scanOptions.getClientBufferSize()) {
       scanner.setMaxNumKeyValues(scanOptions.getClientBufferSize());
     }
-    // TODO(gabe): Ask Asynchbase list about this?
     if (null != scanOptions.getServerPrefetchSize()) {
       scanner.setMaxNumRows(scanOptions.getServerPrefetchSize());
     }
     if (null != scanOptions.getCacheBlocks()) {
-      //scan.setCacheBlocks(scanOptions.getCacheBlocks());
       scanner.setServerBlockCache(scanOptions.getCacheBlocks());
     }
   }
@@ -486,20 +456,18 @@ public final class AsyncDataRequestAdapter {
    * @param columnRequest A kiji column request.
    * @param hbaseColumnName HBase column name.
    * @param filterContext Context to translate Kiji column filters to AsyncHBase scan filters.
-   * @param scanner AsyncHBase Scanner that is having the filters applied.
    * @return An AsyncHBase scan filter that retrieves only the data for the column request.
    * @throws IOException If there is an error.
    */
   private static FilterList toFilter(
-      KijiDataRequest.Column columnRequest,
-      HBaseColumnName hbaseColumnName,
-      KijiColumnFilter.Context filterContext,
-      Scanner scanner)
-      throws IOException {
+      final KijiDataRequest.Column columnRequest,
+      final HBaseColumnName hbaseColumnName,
+      final KijiColumnFilter.Context filterContext
+  ) throws IOException {
 
     final KijiColumnName kijiColumnName = columnRequest.getColumnName();
 
-    // Builds an HBase filter for the specified column:
+    // Builds a ScanFilter for the specified column:
     //     (HBase-family = Kiji-locality-group)
     // AND (HBase-qualifier = Kiji-family:qualifier / prefixed by Kiji-family:)
     // AND (ColumnPaginationFilter(limit=1))  // when paging or if max-versions is 1
@@ -532,7 +500,7 @@ public final class AsyncDataRequestAdapter {
       // For fully qualified columns where maxVersions = 1, we can use the
       // ColumnPaginationFilter to restrict the number of versions returned to at most 1.
       //
-      // Other columns' maxVersions will be filtered client-side in HBaseKijiRowData.
+      // Other columns' maxVersions will be filtered client-side in AsyncKijiRowData.
       //
       // Prior to HBase 0.94, we could use this optimization for all fully qualified
       // columns' maxVersions requests, due to different behavior in the
@@ -546,12 +514,9 @@ public final class AsyncDataRequestAdapter {
     }
 
     // Add the optional user-specified column filter, if specified:
-    // TODO: Implement toHBaseFilter
-    /*
     if (columnRequest.getFilter() != null) {
-      filter.addFilter(
-          columnRequest.getFilter().toHBaseFilter(kijiColumnName, filterContext));
-    } */
+      scanFilters.add(toScanFilter(columnRequest.getFilter(), kijiColumnName, filterContext));
+    }
 
     // If column has paging enabled, we just want to know about the existence of a cell:
     if (columnRequest.isPagingEnabled()) {
@@ -565,31 +530,5 @@ public final class AsyncDataRequestAdapter {
     }
 
     return new FilterList(scanFilters, Operator.MUST_PASS_ALL);
-  }
-
-  /**
-   * A Context for KijiColumnFilters that translates column names to their HBase
-   * representation.
-   */
-  private static final class NameTranslatingFilterContext extends KijiColumnFilter.Context {
-    /** The translator to use. */
-    private final HBaseColumnNameTranslator mTranslator;
-
-    /**
-     * Initialize this context with the specified column name translator.
-     *
-     * @param translator the translator to use.
-     */
-    private NameTranslatingFilterContext(final HBaseColumnNameTranslator translator) {
-      mTranslator = translator;
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public HBaseColumnName getHBaseColumnName(
-        final KijiColumnName kijiColumnName
-    ) throws NoSuchColumnException {
-      return mTranslator.toHBaseColumnName(kijiColumnName);
-    }
   }
 }

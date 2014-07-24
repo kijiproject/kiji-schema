@@ -34,7 +34,7 @@ import org.kiji.schema.KijiFactory;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.HBaseFactory;
 
-/** Factory for constructing instances of HBaseKiji. */
+/** Factory for constructing instances of AsyncKiji. */
 @ApiAudience.Private
 public final class AsyncKijiFactory implements KijiFactory {
   /** {@inheritDoc} */
