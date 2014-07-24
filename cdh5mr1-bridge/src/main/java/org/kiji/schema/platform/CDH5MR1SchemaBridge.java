@@ -27,6 +27,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
@@ -40,6 +41,8 @@ import org.apache.hadoop.hbase.io.compress.Compression;
 import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.regionserver.BloomType;
+import org.apache.hadoop.hbase.security.access.Permission.Action;
+import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.mapred.JobConf;
@@ -176,6 +179,17 @@ public final class CDH5MR1SchemaBridge extends SchemaPlatformBridge {
   @Override
   public int compareCompression(HColumnDescriptor col1, HColumnDescriptor col2) {
     return col1.getCompressionType().toString().compareTo(col2.getCompressionType().toString());
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public UserPermission createUserPermission(
+      byte[] user,
+      byte[] tableName,
+      byte[] family,
+      Action... actions
+  ) {
+    return new UserPermission(user, TableName.valueOf(tableName), family, actions);
   }
 
   /**

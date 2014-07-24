@@ -34,6 +34,8 @@ import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
 import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.io.hfile.HFile;
+import org.apache.hadoop.hbase.security.access.Permission.Action;
+import org.apache.hadoop.hbase.security.access.UserPermission;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Lookups;
@@ -210,6 +212,26 @@ public abstract class SchemaPlatformBridge {
    * @return 0 if the compression settings are the same. Non-zero otherwise.
    */
   public abstract int compareCompression(HColumnDescriptor col1, HColumnDescriptor col2);
+
+  /**
+   * Creates a UserPermission. This is necessary because due to changes in the type
+   * of the hTableName parameter.
+   *
+   * @param user The user.
+   * @param tableName The table.
+   * @param family The family. May be null in which case the action is granted across the table.
+   * @param actions The actions to grant.
+   * @return A constructed UserPermission object.
+   */
+  public UserPermission createUserPermission(
+      byte[] user,
+      byte[] tableName,
+      byte[] family,
+      Action... actions
+  ) {
+    throw new UnsupportedOperationException(
+        "Active SchemaPlatformBridge implementation does not support security operations.");
+  }
 
   /**
    * An interface for HColumnDescriptors, implemented by the bridges.

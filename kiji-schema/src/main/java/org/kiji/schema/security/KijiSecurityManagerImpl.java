@@ -49,6 +49,7 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.Versions;
 import org.kiji.schema.impl.hbase.HBaseKiji;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.zookeeper.ZooKeeperLock;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
@@ -523,7 +524,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
       byte[] hTableName,
       Action[] hActions) throws IOException {
     // Construct the HBase UserPermission to grant.
-    UserPermission hTablePermission = new UserPermission(
+    UserPermission hTablePermission = SchemaPlatformBridge.get().createUserPermission(
         hUser,
         hTableName,
         null,

@@ -40,6 +40,8 @@ import org.apache.hadoop.hbase.io.hfile.CacheConfig;
 import org.apache.hadoop.hbase.io.hfile.Compression;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.regionserver.StoreFile;
+import org.apache.hadoop.hbase.security.access.Permission.Action;
+import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hdfs.HdfsConfiguration;
 import org.apache.hadoop.mapred.JobConf;
@@ -169,6 +171,17 @@ public final class CDH41MR1SchemaBridge extends SchemaPlatformBridge {
   @Override
   public int compareCompression(HColumnDescriptor col1, HColumnDescriptor col2) {
     return col1.getCompressionType().toString().compareTo(col2.getCompressionType().toString());
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public UserPermission createUserPermission(
+      byte[] user,
+      byte[] tableName,
+      byte[] family,
+      Action... actions
+  ) {
+    return new UserPermission(user, tableName, family, actions);
   }
 
   /**
