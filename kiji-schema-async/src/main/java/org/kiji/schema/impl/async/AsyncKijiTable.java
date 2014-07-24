@@ -281,10 +281,6 @@ public final class AsyncKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public KijiTableReader openTableReader() {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot open a table reader on a KijiTable in state %s.", state);
@@ -293,7 +289,6 @@ public final class AsyncKijiTable implements KijiTable {
     } catch (IOException ioe) {
       throw new KijiIOException(ioe);
     }
-    */
   }
 
   /** {@inheritDoc} */
