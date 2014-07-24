@@ -3,6 +3,7 @@
                               KijiSchema Release Notes
 
 Version 1.6.0
+  * SCHEMA-875. Revert binary incompatibility introduced in SCHEMA-826.
   * POM-40. Require JDK 7 to compile Kiji projects.
   * SCHEMA-851. Deprecate CellSpec table reader overrides; fix hashCode & equality
       of KijiDataRequest; cleanups to CellDecoderProvider.

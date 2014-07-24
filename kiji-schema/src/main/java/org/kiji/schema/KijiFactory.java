@@ -20,7 +20,6 @@
 package org.kiji.schema;
 
 import java.io.IOException;
-import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -29,11 +28,19 @@ import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 import org.kiji.delegation.PriorityProvider;
 
-/** Factory for Kiji instances. */
+/**
+ * Factory for Kiji instances.
+ *
+ * <p>
+ *   <em>Note:</em> the {@link #getPriority} method inherited from {@link PriorityProvider} should
+ *   not be used. This method is considered deprecated. Instead, use
+ *   {@link org.kiji.schema.KijiURI#getKijiFactory()}.
+ * </p>
+ */
 @ApiAudience.Public
 @ApiStability.Evolving
 @Inheritance.Sealed
-public interface KijiFactory extends PriorityProvider {
+public interface KijiFactory extends /* @Deprecated */ PriorityProvider {
   /**
    * Opens a Kiji instance by URI.
    *
@@ -52,13 +59,4 @@ public interface KijiFactory extends PriorityProvider {
    * @throws IOException on I/O error.
    */
   Kiji open(KijiURI uri, Configuration conf) throws IOException;
-
-  /**
-   * {@inheritDoc}
-   *
-   * @deprecated use {@link org.kiji.schema.Kiji.Factory#get(KijiURI)}.
-   */
-  @Override
-  @Deprecated
-  int getPriority(Map<String, String> runtimeHints);
 }
