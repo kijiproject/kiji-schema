@@ -392,7 +392,8 @@ public final class HBaseTableLayoutDatabase implements KijiTableLayoutDatabase {
   public TableLayoutsBackup layoutsToBackup(String table) throws IOException {
     Get get = new Get(Bytes.toBytes(table));
     get.addColumn(mFamilyBytes, QUALIFIER_UPDATE_BYTES)
-        .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES);
+       .addColumn(mFamilyBytes, QUALIFIER_LAYOUT_BYTES)
+       .setMaxVersions();
     Result result = mTable.get(get);
        if (result.isEmpty()) {
          LOG.info(String.format("There is no row in the MetaTable named '%s'.", table));
