@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2012 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -34,10 +34,20 @@ import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
 import org.kiji.schema.util.ResourceUtils;
 
-public class TestKijiRowScanner extends KijiClientTest {
+/**
+ * Test of {@link org.kiji.schema.KijiRowData} for HBase Kiji scans.
+ */
+public abstract class KijiRowScannerTest extends KijiClientTest {
+
   private Kiji mKiji;
   private KijiTable mTable;
   private KijiTableReader mReader;
+
+  public abstract KijiRowScanner getRowScanner(
+      final KijiTable table,
+      final KijiTableReader reader,
+      final KijiDataRequest dataRequest
+  ) throws IOException;
 
   @Before
   public final void setupEnvironment() throws Exception {
@@ -48,12 +58,12 @@ public class TestKijiRowScanner extends KijiClientTest {
     // Populate the environment.
     mKiji = new InstanceBuilder(getKiji())
         .withTable("user", layout)
-            .withRow("foo")
-                .withFamily("info")
-                    .withQualifier("name").withValue(1L, "foo-val")
-            .withRow("bar")
-                .withFamily("info")
-                    .withQualifier("name").withValue(1L, "bar-val")
+        .withRow("foo")
+        .withFamily("info")
+        .withQualifier("name").withValue(1L, "foo-val")
+        .withRow("bar")
+        .withFamily("info")
+        .withQualifier("name").withValue(1L, "bar-val")
         .build();
 
     // Fill local variables.
@@ -70,7 +80,7 @@ public class TestKijiRowScanner extends KijiClientTest {
   @Test
   public void testScanner() throws Exception {
     final KijiDataRequest request = KijiDataRequest.create("info", "name");
-    final KijiRowScanner scanner = mReader.getScanner(request);
+    final KijiRowScanner scanner = getRowScanner(mTable, mReader, request);
     final Iterator<KijiRowData> iterator = scanner.iterator();
 
     final String actual1 = iterator.next().getValue("info", "name", 1L).toString();
