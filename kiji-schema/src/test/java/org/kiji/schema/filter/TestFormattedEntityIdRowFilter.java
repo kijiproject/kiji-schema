@@ -19,6 +19,7 @@
 
 package org.kiji.schema.filter;
 
+import org.apache.hadoop.hbase.filter.RowFilter;
 import static org.junit.Assert.assertEquals;
 
 import static org.kiji.schema.avro.ComponentType.INTEGER;
@@ -348,7 +349,7 @@ public class TestFormattedEntityIdRowFilter {
     byte[] serializedFilter = filter.toHBaseFilter(null).toByteArray();
 
     // Deserialize the filter.
-    Filter deserializedFilter = Filter.parseFrom(serializedFilter);
+    Filter deserializedFilter = FilterList.parseFrom(serializedFilter);
 
     // Filter an entity with the deserialized filter.
     EntityId entityId = factory.getEntityId(10, 10L);
