@@ -37,19 +37,18 @@ import org.kiji.schema.layout.ColumnReaderSpec;
 import org.kiji.schema.layout.KijiTableLayouts;
 import org.kiji.schema.util.InstanceBuilder;
 
-public class TestKijiTableReaderPool {
+public class TestKijiTableReaderPool extends KijiClientTest {
 
   private static final String FOO_NAME = "foo-name";
   private static final String FOO_EMAIL = "foo@email.com";
   private static final KijiDataRequest INFO_NAME = KijiDataRequest.create("info", "name");
 
-  private Kiji mKiji;
   private KijiTable mTable;
   private EntityId mEID;
 
   @Before
   public void setup() throws IOException {
-    mKiji = new InstanceBuilder()
+    new InstanceBuilder(getKiji())
         .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.USER_TABLE))
             .withRow("foo")
                 .withFamily("info")
@@ -58,14 +57,13 @@ public class TestKijiTableReaderPool {
                     .withQualifier("email")
                         .withValue(1, FOO_EMAIL)
         .build();
-    mTable = mKiji.openTable("user");
+    mTable = getKiji().openTable("user");
     mEID = mTable.getEntityId("foo");
   }
 
   @After
   public void cleanup() throws IOException {
     mTable.release();
-    mKiji.release();
   }
 
   @Test
@@ -152,7 +150,7 @@ public class TestKijiTableReaderPool {
 
   @Test
   public void testRetainsTable() throws Exception {
-    final KijiTable table = mKiji.openTable("user");
+    final KijiTable table = getKiji().openTable("user");
     final KijiTableReaderPool pool = KijiTableReaderPool.Builder.create()
         .withReaderFactory(table.getReaderFactory())
         .build();

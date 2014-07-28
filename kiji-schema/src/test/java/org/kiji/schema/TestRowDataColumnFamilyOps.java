@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.NavigableMap;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -43,7 +42,6 @@ import org.kiji.schema.util.InstanceBuilder;
  */
 public class TestRowDataColumnFamilyOps extends KijiClientTest {
   private static final Logger LOG = LoggerFactory.getLogger(TestRowDataColumnFamilyOps.class);
-  private Kiji mKiji;
   private KijiRowData mRow1;
 
   @Before
@@ -51,7 +49,7 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
    final KijiTableLayout layout =
       KijiTableLayout.newLayout(KijiTableLayouts.getLayout(
           KijiTableLayouts.TWO_COLUMN_DIFFERENT_TYPES));
-   mKiji = new InstanceBuilder()
+   new InstanceBuilder(getKiji())
         .withTable("table", layout)
             .withRow("row1")
                .withFamily("family")
@@ -59,7 +57,7 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
                     .withValue(1L, "I am a String")
                   .withQualifier("column2").withValue(1L, 1)
         .build();
-     final KijiTable table = mKiji.openTable("table");
+     final KijiTable table = getKiji().openTable("table");
      try {
        final KijiTableReader reader = table.openTableReader();
        try {
@@ -71,11 +69,6 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
      } finally {
        table.release();
      }
-  }
-
-  @After
-  public void teardownInstance() throws Exception {
-    mKiji.release();
   }
 
   @Test
@@ -193,7 +186,7 @@ public class TestRowDataColumnFamilyOps extends KijiClientTest {
 
   @Test
   public void testGetPager() throws IOException {
-    final KijiTable table = mKiji.openTable("table");
+    final KijiTable table = getKiji().openTable("table");
     try {
       final KijiTableReader reader = table.openTableReader();
       try {
