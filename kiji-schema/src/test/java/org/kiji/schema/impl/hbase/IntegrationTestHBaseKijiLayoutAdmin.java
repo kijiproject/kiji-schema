@@ -25,14 +25,13 @@ import java.io.IOException;
 import com.google.common.collect.Lists;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
-import org.apache.hadoop.hbase.regionserver.StoreFile;
+import org.apache.hadoop.hbase.regionserver.BloomType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiColumnName;
-import org.kiji.schema.avro.BloomType;
 import org.kiji.schema.avro.LocalityGroupDesc;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.hbase.HBaseColumnName;
@@ -110,10 +109,10 @@ public class IntegrationTestHBaseKijiLayoutAdmin extends AbstractKijiIntegration
     assertEquals(message, EXPECTED_BLOCKSIZE, actualBlockSize);
 
     // Check the bloom type value
-    StoreFile.BloomType actualBloomFilterType = columnDescriptor.getBloomFilterType();
+    BloomType actualBloomFilterType = columnDescriptor.getBloomFilterType();
     message = String.format("bloom_type should match the value %s defined in %s",
-      BloomType.ROW, KijiTableLayouts.FULL_FEATURED);
-    assertEquals(message, StoreFile.BloomType.ROW, actualBloomFilterType);
+        org.kiji.schema.avro.BloomType.ROW, KijiTableLayouts.FULL_FEATURED);
+    assertEquals(message, BloomType.ROW, actualBloomFilterType);
   }
 
   /**
@@ -140,7 +139,7 @@ public class IntegrationTestHBaseKijiLayoutAdmin extends AbstractKijiIntegration
         LocalityGroupDesc.newBuilder(
           fullFeaturedLayout.getLocalityGroups().get(0))
           .setBlockSize(1024)
-          .setBloomType(BloomType.ROWCOL)
+          .setBloomType(org.kiji.schema.avro.BloomType.ROWCOL)
           .build(),
         fullFeaturedLayout.getLocalityGroups().get(1)))
       .build();
@@ -169,8 +168,8 @@ public class IntegrationTestHBaseKijiLayoutAdmin extends AbstractKijiIntegration
     assertEquals(1024, actualBlockSize);
 
     // Check the bloom type value
-    StoreFile.BloomType actualBloomFilterType = columnDescriptor.getBloomFilterType();
-    assertEquals(StoreFile.BloomType.ROWCOL, actualBloomFilterType);
+    BloomType actualBloomFilterType = columnDescriptor.getBloomFilterType();
+    assertEquals(BloomType.ROWCOL, actualBloomFilterType);
   }
 
   /**
@@ -201,7 +200,7 @@ public class IntegrationTestHBaseKijiLayoutAdmin extends AbstractKijiIntegration
         LocalityGroupDesc.newBuilder(
           simpleLayout.getLocalityGroups().get(0))
           .setBlockSize(updatedBlocksize)
-          .setBloomType(BloomType.ROW)
+          .setBloomType(org.kiji.schema.avro.BloomType.ROW)
           .build()))
       .build();
     mKiji.modifyTableLayout(updatedLayout);
@@ -229,8 +228,8 @@ public class IntegrationTestHBaseKijiLayoutAdmin extends AbstractKijiIntegration
     assertEquals(updatedBlocksize, actualBlockSize);
 
     // Check the bloom type value
-    StoreFile.BloomType actualBloomFilterType = columnDescriptor.getBloomFilterType();
-    assertEquals(StoreFile.BloomType.ROW, actualBloomFilterType);
+    BloomType actualBloomFilterType = columnDescriptor.getBloomFilterType();
+    assertEquals(BloomType.ROW, actualBloomFilterType);
   }
 
   private HTableDescriptor getHbaseTableDescriptor(String kijiTableName) throws IOException {

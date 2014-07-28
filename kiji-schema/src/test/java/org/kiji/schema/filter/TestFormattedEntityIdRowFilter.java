@@ -343,19 +343,14 @@ public class TestFormattedEntityIdRowFilter {
     RowKeyFormat2 rowKeyFormat = createRowKeyFormat(1, INTEGER, LONG);
     EntityIdFactory factory = EntityIdFactory.getFactory(rowKeyFormat);
 
-    // Create and serialize a filter
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    DataOutputStream dos = new DataOutputStream(baos);
+    // Create and serialize a filter.
     FormattedEntityIdRowFilter filter = createFilter(rowKeyFormat, 10);
-    filter.toHBaseFilter(null).write(dos);
+    byte[] serializedFilter = filter.toHBaseFilter(null).toByteArray();
 
-    // Deserialize the filter
-    ByteArrayInputStream bais = new ByteArrayInputStream(baos.toByteArray());
-    DataInputStream dis = new DataInputStream(bais);
-    Filter deserializedFilter = new FilterList();
-    deserializedFilter.readFields(dis);
+    // Deserialize the filter.
+    Filter deserializedFilter = Filter.parseFrom(serializedFilter);
 
-    // Filter an entity with the deserialized filter
+    // Filter an entity with the deserialized filter.
     EntityId entityId = factory.getEntityId(10, 10L);
     byte[] hbaseKey = entityId.getHBaseRowKey();
     boolean filtered = deserializedFilter.filterRowKey(hbaseKey, 0, hbaseKey.length);
