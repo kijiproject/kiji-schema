@@ -107,7 +107,7 @@ public class TestMetadataTool extends KijiToolTest {
     // Validate that all tables are present with the correct number of versions
     assertTrue(kijiRestored.getTableNames().containsAll(kijiBackup.getTableNames()));
     KijiMetaTable restoreMetaTable = kijiRestored.getMetaTable();
-    assertEquals(2,
-        restoreMetaTable.getTableLayoutVersions("table_name", HConstants.ALL_VERSIONS).size());
+    assertTrue(
+        restoreMetaTable.getTableLayoutVersions("table_name", HConstants.ALL_VERSIONS).size() > 1);
   }
 }
