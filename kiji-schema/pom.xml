@@ -343,45 +343,45 @@
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-common</artifactId>
+          <version>${cdh5-hadoop.version}</version>
           <scope>compile</scope>
           <optional>true</optional>
-          <version>${cdh5-hadoop.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-yarn-client</artifactId>
+          <version>${cdh5-hadoop.version}</version>
           <scope>compile</scope>
           <optional>true</optional>
-          <version>${cdh5-hadoop.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-yarn-server-tests</artifactId>
+          <version>${cdh5-hadoop.version}</version>
           <scope>test</scope>
           <optional>true</optional>
-          <version>${cdh5-hadoop.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hbase</groupId>
           <artifactId>hbase-client</artifactId>
+          <version>${cdh5-hbase.version}</version>
           <scope>compile</scope>
           <optional>true</optional>
-          <version>${cdh5-hbase.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hbase</groupId>
           <artifactId>hbase-server</artifactId>
+          <version>${cdh5-hbase.version}</version>
           <scope>compile</scope>
           <optional>true</optional>
-          <version>${cdh5-hbase.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hbase</groupId>
           <artifactId>hbase-testing-util</artifactId>
+          <version>${cdh5-hbase.version}</version>
           <type>test-jar</type>
           <scope>test</scope>
           <optional>true</optional>
-          <version>${cdh5-hbase.version}</version>
         </dependency>
         <!-- Exclude hbase and hadoop from fake-hbase to avoid path issues. -->
         <dependency>

@@ -36,9 +36,9 @@ import org.apache.hadoop.hbase.HRegionLocation;
 import org.apache.hadoop.hbase.TableNotFoundException;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HConnectionManager;
 import org.apache.hadoop.hbase.client.HTable;
 import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTablePool;
 import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,7 +131,7 @@ public final class HBaseKijiTable implements KijiTable {
   /** Reader factory for this table. */
   private final KijiReaderFactory mReaderFactory;
 
-  /** HConnection used for creating lightweight tables. Should not be closed by us. */
+  /** HConnection used for creating lightweight tables. Should be closed by us. */
   private final HConnection mHConnection;
 
   /** Name of the HBase table backing this Kiji table. */
@@ -183,7 +183,7 @@ public final class HBaseKijiTable implements KijiTable {
     mLayoutMonitor = layoutMonitor;
     mEntityIdFactory = createEntityIdFactory(mLayoutMonitor.getLayout());
 
-    mHConnection = mKiji.getHBaseAdmin().getConnection();
+    mHConnection = HConnectionManager.createConnection(mKiji.getConf());
 
     // Table is now open and must be released properly:
     mRetainCount.set(1);
@@ -418,6 +418,7 @@ public final class HBaseKijiTable implements KijiTable {
         "Cannot close KijiTable instance %s in state %s.", this, oldState);
     LOG.debug("Closing HBaseKijiTable '{}'.", this);
 
+    ResourceUtils.closeOrLog(mHConnection);
     ResourceUtils.closeOrLog(mLayoutMonitor);
     ResourceUtils.releaseOrLog(mKiji);
     if (oldState != State.UNINITIALIZED) {
