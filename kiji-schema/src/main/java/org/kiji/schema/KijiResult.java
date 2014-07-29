@@ -21,14 +21,19 @@ package org.kiji.schema;
 
 import java.io.Closeable;
 import java.util.Iterator;
+import java.util.List;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.LinkedHashMultiset;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
+import org.kiji.schema.KijiDataRequest.Column;
 
 /**
  * A view of a row in a Kiji table.
@@ -341,6 +346,34 @@ public interface KijiResult<T> extends Iterable<KijiCell<T>>, Closeable {
         set.add(cell.getColumn());
       }
       return set;
+    }
+
+    /**
+     * Returns a {@code SortedMap} of {@code KijiColumnName} to list of {@code KijiCell} of the
+     * provided {@code KijiResult}.
+     *<p>
+     *   Should not be used with PagedKijiResults
+     *</p>
+     *
+     * @param result {@code KijiResult} for which to get materialized result
+     * @param <T> the type of values in the {@code KijiResult}
+     * @return A {@code SortedMap} of each {@code KijiColumnName} to list of {@code KijiCell}
+     * the contents of the materialized result
+     */
+    public static <T> SortedMap<KijiColumnName, List<KijiCell<T>>>
+        getMaterializedContents(final KijiResult<T> result) {
+      SortedMap<KijiColumnName, List<KijiCell<T>>> materializedResult =
+          new TreeMap<KijiColumnName, List<KijiCell<T>>>();
+      for (Column column: result.getDataRequest().getColumns()) {
+        if (column.isPagingEnabled()) {
+          throw new IllegalArgumentException(
+              "Columns should not be paged when using MaterializedResult");
+        }
+        KijiColumnName columnName = column.getColumnName();
+        List<KijiCell<T>> cells = ImmutableList.copyOf(result.narrowView(columnName).iterator());
+        materializedResult.put(columnName, cells);
+      }
+      return materializedResult;
     }
 
     /** Private constructor for utility class. */

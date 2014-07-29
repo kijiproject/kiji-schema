@@ -19,12 +19,15 @@
 package org.kiji.schema.impl.hbase;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
+import java.util.SortedMap;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -38,9 +41,11 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.EntityId;
+import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
+import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
 import org.kiji.schema.KijiResult;
 import org.kiji.schema.KijiResult.Helpers;
@@ -702,6 +707,28 @@ public class TestHBaseKijiResult extends KijiClientTest {
         testViewGet(request, column1Entries);
       }
     }
+  }
+
+  @Test
+  public void testGetMatContents() throws Exception {
+    KijiDataRequestBuilder builder = KijiDataRequest.builder().addColumns(ColumnsDef.create()
+        .withMaxVersions(10)
+        .add(PRIMITIVE_STRING, null)
+            .add(STRING_MAP_1, null));
+    KijiDataRequest request = builder.build();
+    final EntityId eid = mTable.getEntityId(ROW);
+    KijiResult<Object> view = mReader.getResult(eid, request);
+    SortedMap<KijiColumnName, List<KijiCell<Object>>> map =
+        KijiResult.Helpers.getMaterializedContents(view);
+    for (KijiColumnName col: map.keySet()) {
+      KijiResult<Object> newResult = view.narrowView(col);
+      Iterator<KijiCell<Object>> it = newResult.iterator();
+      for (KijiCell<Object> cell: map.get(col)) {
+        assertEquals(cell, it.next());
+      }
+      assertTrue(!it.hasNext());
+    }
+
   }
 
 }
