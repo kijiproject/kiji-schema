@@ -180,6 +180,51 @@ public class TestAsyncKijiBufferedWriter extends KijiClientTest {
   }
 
   @Test
+  public void testFamilyDelete() throws Exception {
+
+    // Populate the environment.
+    final String tableName = "mapInputTest";
+    final String familyName = "mapFamily";
+    final KijiTableLayout layout =KijiTableLayout.newLayout(
+        KijiTableLayouts.getLayout(KijiTableLayouts.SQOOP_EXPORT_MAP_TEST));
+    Kiji kiji = new InstanceBuilder(mKiji)
+        .withTable(tableName, layout)
+        .withRow("foo")
+        .withFamily(familyName)
+        .withQualifier("barney").withValue(1L, "doggy1")
+        .withQualifier("clance").withValue(1L, "doggy2")
+        .build();
+
+    AsyncKiji asyncKiji = new AsyncKiji(kiji.getURI());
+
+    // For the tests, set the flushInterval to a very
+    // long interval to make sure that operations are
+    // buffered and are only added once flush() is called.
+    asyncKiji.setFlushInterval(Short.MAX_VALUE);
+
+    // Fill local variables.
+    KijiTable table = kiji.openTable(tableName);
+    KijiTable asyncTable = asyncKiji.openTable(tableName);
+    KijiBufferedWriter bufferedWriter = asyncTable.getWriterFactory().openBufferedWriter();
+    KijiTableReader reader = table.openTableReader();
+
+    final EntityId eid = table.getEntityId("foo");
+    final KijiDataRequest request = KijiDataRequest.create(familyName);
+    bufferedWriter.deleteFamily(eid, familyName);
+    // Should not yet be deleted.
+    assertTrue(reader.get(eid, request).containsColumn(familyName));
+    // After the call to flush, the family should be deleted.
+    bufferedWriter.flush();
+    assertFalse(reader.get(eid, request).containsColumn(familyName));
+
+    bufferedWriter.close();
+    reader.close();
+    asyncTable.release();
+    table.release();
+    asyncKiji.release();
+  }
+
+  @Test
   public void testBufferPutWithDelete() throws Exception {
     final EntityId oldEntityId = mTable.getEntityId("foo");
     final EntityId newEntityId = mTable.getEntityId("blope");
