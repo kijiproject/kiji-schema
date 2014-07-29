@@ -27,6 +27,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import org.kiji.schema.Kiji;
+import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiTable;
@@ -44,18 +45,17 @@ import org.kiji.schema.util.ResourceUtils.WithKijiTable;
 import org.kiji.schema.util.ResourceUtils.WithKijiTableReader;
 import org.kiji.schema.util.ResourceUtils.WithKijiTableWriter;
 
-public class TestResourceUtils {
+public class TestResourceUtils extends KijiClientTest {
   private static final String TABLE_NAME = "row_data_test_table";
   private static final KijiDataRequest FAMILY_QUAL0_R = KijiDataRequest.create("family", "qual0");
 
-  private Kiji mKiji = null;
   private KijiTable mTable = null;
 
   @Before
   public void setupTestResourceUtils() throws IOException {
     final KijiTableLayout layout = KijiTableLayout.newLayout(
         KijiTableLayouts.getLayout(KijiTableLayouts.ROW_DATA_TEST));
-    mKiji = new InstanceBuilder()
+    new InstanceBuilder(getKiji())
         .withTable("row_data_test_table", layout)
             .withRow("foo")
                 .withFamily("family")
@@ -70,13 +70,12 @@ public class TestResourceUtils {
                     .withQualifier("qual0").withValue(5L, "bar-val")
                     .withQualifier("qual2").withValue(5L, "bar@val.com")
         .build();
-    mTable = mKiji.openTable(TABLE_NAME);
+    mTable = getKiji().openTable(TABLE_NAME);
   }
 
   @After
   public void cleanupTestResourceUtils() throws IOException {
     mTable.release();
-    mKiji.release();
   }
 
   @Test
@@ -164,7 +163,7 @@ public class TestResourceUtils {
       }
     }.eval());
 
-    Assert.assertEquals(TABLE_NAME, new WithKijiTable<String>(mKiji, TABLE_NAME) {
+    Assert.assertEquals(TABLE_NAME, new WithKijiTable<String>(getKiji(), TABLE_NAME) {
       @Override
       public String run(final KijiTable kijiTable) throws Exception {
         return kijiTable.getName();
@@ -174,7 +173,7 @@ public class TestResourceUtils {
 
   @Test
   public void testWithKiji() throws Exception {
-    Assert.assertEquals(mKiji.getURI(), new WithKiji<KijiURI>(mKiji.getURI()) {
+    Assert.assertEquals(getKiji().getURI(), new WithKiji<KijiURI>(getKiji().getURI()) {
       @Override
       public KijiURI run(final Kiji kiji) throws Exception {
         return kiji.getURI();
@@ -209,7 +208,7 @@ public class TestResourceUtils {
     Assert.assertEquals(TABLE_NAME, new DoAndRelease<KijiTable, String>() {
       @Override
       public KijiTable openResource() throws Exception {
-        return mKiji.openTable(TABLE_NAME);
+        return getKiji().openTable(TABLE_NAME);
       }
 
       @Override

@@ -51,7 +51,7 @@ import org.kiji.schema.util.TestingFileUtils;
  *   For example, to use an HBase mini-cluster running on <code>localhost:2181</code>, you may use:
  *   <pre>
  *     mvn clean test \
- *         -DargLine="-Dorg.kiji.schema.KijiClientTest.HBASE_ADDRESS=localhost:2181"
+ *         -Dorg.kiji.schema.KijiClientTest.HBASE_ADDRESS=localhost:2181
  *   </pre>
  *   If you specify the HBASE_ADDRESS property, you may specify both the quorum hosts and the
  *   port to connect on.  If you don't specify the port, it defaults to 2181 (via the semantics

@@ -28,19 +28,21 @@ import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.junit.Test;
 
-import org.kiji.schema.KijiURI;
+import org.kiji.schema.KijiClientTest;
+import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.util.ProtocolVersion;
 import org.kiji.testing.fakehtable.FakeHTable;
 
-public class TestHBaseSystemTable {
+public class TestHBaseSystemTable extends KijiClientTest {
   @Test
   public void testSetDataVersion() throws IOException {
     final Configuration conf = HBaseConfiguration.create();
     final HTableDescriptor desc = new HTableDescriptor();
     final FakeHTable table = new FakeHTable("system", desc, conf, false, 0, true, true);
 
-    final KijiURI uri = KijiURI.newBuilder("kiji://test/instance").build();
-    final HBaseSystemTable systemTable = new HBaseSystemTable(uri, table);
+    final HBaseSystemTable systemTable = new HBaseSystemTable(getKiji().getURI(),
+        getKiji().getConf(),
+        DefaultHTableInterfaceFactory.get());
     systemTable.setDataVersion(ProtocolVersion.parse("kiji-100"));
     assertEquals(ProtocolVersion.parse("kiji-100"), systemTable.getDataVersion());
     systemTable.close();

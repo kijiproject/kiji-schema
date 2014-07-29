@@ -41,7 +41,7 @@ public class TestHBaseKijiInstaller extends KijiClientTest {
   @Test
   public void testInstallThenUninstall() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
-    final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji-installer/test").build();
+    final KijiURI uri = KijiURI.newBuilder(createTestHBaseURI()).withInstanceName("test").build();
     KijiInstaller.get().install(uri, conf);
     KijiInstaller.get().uninstall(uri, conf);
   }
@@ -49,13 +49,13 @@ public class TestHBaseKijiInstaller extends KijiClientTest {
   @Test
   public void testInstallNullInstance() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
-    final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji-installer/").build();
+    final KijiURI uri = createTestHBaseURI();
     try {
       KijiInstaller.get().install(uri, conf);
       fail("An exception should have been thrown.");
     } catch (KijiInvalidNameException kine) {
       assertEquals(
-          "Kiji URI 'kiji://.fake.kiji-installer:2181/' does not specify a Kiji instance name",
+          String.format("Kiji URI '%s' does not specify a Kiji instance name", uri.toString()),
           kine.getMessage());
     }
   }
@@ -69,7 +69,7 @@ public class TestHBaseKijiInstaller extends KijiClientTest {
       fail("An exception should have been thrown.");
     } catch (KijiInvalidNameException kine) {
       assertEquals(
-          "Kiji URI 'kiji://.fake.kiji-installer:2181/' does not specify a Kiji instance name",
+          String.format("Kiji URI '%s' does not specify a Kiji instance name", uri.toString()),
           kine.getMessage());
     }
   }
@@ -77,8 +77,9 @@ public class TestHBaseKijiInstaller extends KijiClientTest {
   @Test
   public void testUninstallMissingInstance() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
-    final KijiURI uri =
-        KijiURI.newBuilder("kiji://.fake.kiji-installer/anInstanceThatNeverExisted").build();
+    final KijiURI uri = KijiURI.newBuilder(createTestHBaseURI())
+        .withInstanceName("anInstanceThatNeverExisted")
+        .build();
     try {
       KijiInstaller.get().uninstall(uri, conf);
       fail("An exception should have been thrown.");
@@ -92,7 +93,7 @@ public class TestHBaseKijiInstaller extends KijiClientTest {
   @Test
   public void testUninstallingInstanceWithUsersDoesNotFail() throws Exception {
     final Configuration conf = HBaseConfiguration.create();
-    final KijiURI uri = KijiURI.newBuilder("kiji://.fake.kiji-installer/test").build();
+    final KijiURI uri = KijiURI.newBuilder(createTestHBaseURI()).withInstanceName("test").build();
     final KijiInstaller installer = KijiInstaller.get();
     installer.install(uri, conf);
     Kiji kiji = Kiji.Factory.get().open(uri);

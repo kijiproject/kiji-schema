@@ -111,40 +111,36 @@ public class TestKijiTableReaderPool extends KijiClientTest {
 
   @Test
   public void testColumnReaderSpecOptions() throws Exception {
-    final Kiji kiji = new InstanceBuilder()
+    new InstanceBuilder(getKiji())
         .withTable(KijiTableLayouts.getLayout(KijiTableLayouts.READER_SCHEMA_TEST))
             .withRow("row")
                 .withFamily("family")
                     .withQualifier("empty")
                         .withValue(5, EmptyRecord.newBuilder().build())
         .build();
+    final KijiTable table = getKiji().openTable("table");
     try {
-      final KijiTable table = kiji.openTable("table");
+      final KijiTableReaderPool pool = KijiTableReaderPool.Builder.create()
+          .withReaderFactory(table.getReaderFactory())
+          .withColumnReaderSpecOverrides(ImmutableMap.of(
+              KijiColumnName.create("family", "empty"),
+              ColumnReaderSpec.avroReaderSchemaSpecific(TestRecord1.class))
+          ).build();
       try {
-        final KijiTableReaderPool pool = KijiTableReaderPool.Builder.create()
-            .withReaderFactory(table.getReaderFactory())
-            .withColumnReaderSpecOverrides(ImmutableMap.of(
-                KijiColumnName.create("family", "empty"),
-                ColumnReaderSpec.avroReaderSchemaSpecific(TestRecord1.class))
-            ).build();
+        final KijiTableReader reader = pool.borrowObject();
         try {
-          final KijiTableReader reader = pool.borrowObject();
-          try {
-            final KijiDataRequest request = KijiDataRequest.create("family", "empty");
-            final TestRecord1 record1 =
-                reader.get(table.getEntityId("row"), request).getMostRecentValue("family", "empty");
-            assertEquals(Integer.valueOf(-1), record1.getInteger());
-          } finally {
-            reader.close();
-          }
+          final KijiDataRequest request = KijiDataRequest.create("family", "empty");
+          final TestRecord1 record1 =
+              reader.get(table.getEntityId("row"), request).getMostRecentValue("family", "empty");
+          assertEquals(Integer.valueOf(-1), record1.getInteger());
         } finally {
-          pool.close();
+          reader.close();
         }
       } finally {
-        table.release();
+        pool.close();
       }
     } finally {
-      kiji.release();
+      table.release();
     }
   }
 
