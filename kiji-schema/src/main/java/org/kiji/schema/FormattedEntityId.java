@@ -116,7 +116,7 @@ import org.kiji.schema.util.Hasher;
  * </code>
  */
 @ApiAudience.Private
-final class FormattedEntityId extends EntityId {
+public final class FormattedEntityId extends EntityId {
   // HBase row key bytes. The encoded components of the row key
   // potentially including a hash prefix, as specified in the row key format.
   private byte[] mHBaseRowKey;

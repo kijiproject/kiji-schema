@@ -34,7 +34,7 @@ import org.kiji.schema.util.Hasher;
 
 /** Implements the hashed row key format. */
 @ApiAudience.Private
-final class HashedEntityId extends EntityId {
+public final class HashedEntityId extends EntityId {
   /** Kiji row key bytes. May be null if we only know the HBase row key. */
   private final byte[] mKijiRowKey;
 
