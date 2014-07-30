@@ -37,8 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.checkin.CheckinUtils;
-import org.kiji.schema.impl.async.AsyncKiji;
-import org.kiji.schema.impl.async.AsyncKijiFactory;
+import org.kiji.schema.impl.async.AsyncHBaseKijiFactory;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.TestingFileUtils;
 
@@ -212,7 +211,7 @@ public class KijiClientTest {
         mKijiInstanceCounter.getAndIncrement());
     final KijiURI uri = KijiURI.newBuilder(clusterURI).withInstanceName(instanceName).build();
     KijiInstaller.get().install(uri, mConf);
-    final Kiji kiji = new AsyncKijiFactory().open(uri);
+    final Kiji kiji = new AsyncHBaseKijiFactory().open(uri);
 
     mKijis.add(kiji);
     return kiji;
