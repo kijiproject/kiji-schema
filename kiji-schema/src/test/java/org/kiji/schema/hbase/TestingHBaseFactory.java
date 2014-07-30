@@ -26,6 +26,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.client.HConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +39,7 @@ import org.kiji.schema.layout.impl.ZooKeeperClient;
 import org.kiji.schema.util.LockFactory;
 import org.kiji.schema.zookeeper.TestingZooKeeperFactory;
 import org.kiji.testing.fakehtable.FakeHBase;
+import org.kiji.testing.fakehtable.FakeHConnection;
 
 /** Factory for HBase instances based on URIs. */
 public final class TestingHBaseFactory implements HBaseFactory {
@@ -95,6 +97,12 @@ public final class TestingHBaseFactory implements HBaseFactory {
       return fake.getAdminFactory();
     }
     return DELEGATE.getHBaseAdminFactory(uri);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public HConnection getHConnection(Configuration conf) {
+    return new FakeHConnection();
   }
 
   /** {@inheritDoc} */

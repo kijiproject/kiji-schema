@@ -60,6 +60,7 @@ import org.kiji.schema.KijiURI;
 import org.kiji.schema.KijiWriterFactory;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
+import org.kiji.schema.hbase.HBaseFactory;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.LayoutConsumer;
@@ -183,7 +184,7 @@ public final class HBaseKijiTable implements KijiTable {
     mLayoutMonitor = layoutMonitor;
     mEntityIdFactory = createEntityIdFactory(mLayoutMonitor.getLayout());
 
-    mHConnection = HConnectionManager.createConnection(mKiji.getConf());
+    mHConnection = HBaseFactory.Provider.get().getHConnection(mKiji.getConf());
 
     // Table is now open and must be released properly:
     mRetainCount.set(1);

@@ -1,21 +1,21 @@
 ///**
-// * (c) Copyright 2013 WibiData, Inc.
-// *
-// * See the NOTICE file distributed with this work for additional
-// * information regarding copyright ownership.
-// *
-// * Licensed under the Apache License, Version 2.0 (the "License");
-// * you may not use this file except in compliance with the License.
-// * You may obtain a copy of the License at
-// *
-// *     http://www.apache.org/licenses/LICENSE-2.0
-// *
-// * Unless required by applicable law or agreed to in writing, software
-// * distributed under the License is distributed on an "AS IS" BASIS,
-// * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// * See the License for the specific language governing permissions and
-// * limitations under the License.
-// */
+//* (c) Copyright 2013 WibiData, Inc.
+//*
+//* See the NOTICE file distributed with this work for additional
+//* information regarding copyright ownership.
+//*
+//* Licensed under the Apache License, Version 2.0 (the "License");
+//* you may not use this file except in compliance with the License.
+//* You may obtain a copy of the License at
+//*
+//*     http://www.apache.org/licenses/LICENSE-2.0
+//*
+//* Unless required by applicable law or agreed to in writing, software
+//* distributed under the License is distributed on an "AS IS" BASIS,
+//* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//* See the License for the specific language governing permissions and
+//* limitations under the License.
+//*/
 //
 //package org.kiji.schema.impl.hbase;
 //
@@ -54,30 +54,30 @@
 //import org.kiji.schema.util.DebugResourceTracker;
 //
 ///**
-// * This private class is designed to serve as a replacement for HTablePool, to get around the
-// * following HBase issues in the face of master failures:
-// *
-// * <ul>
-// *   <li>https://issues.apache.org/jira/browse/HBASE-6580</li>
-// *   <li>https://issues.apache.org/jira/browse/HBASE-6956</li>
-// *   <li>https://issues.apache.org/jira/browse/HBASE-4805</li>
-// * </ul>
-// *
-// * We accomplish this by creating a simple pool and a Pooled implementation of HTableInterface,
-// * similar to how HTablePool works. Unlike HTablePool, however, we verify the underlying connection
-// * before returning an instance from this pool. This implementation is also tied to a particular
-// * table name.
-// *
-// * You may construct a KijiHTablePool using the constructor
-// * {@link KijiHTablePool(String, org.kiji.schema.impl.HTableInterfaceFactory). Note that the
-// * provided HTableInterfaceFactory <i>must</i> return HTables rather than another implementation of
-// * HTableInterface.  We rely on this to test connectivity.
-// *
-// * Once created, use {@link #getTable()} to generate HTableInterface instances. They will be
-// * returned to the pool automatically when closed.
-// *
-// * When you are finished with the pool, it should be closed to destroy any outstanding connections.
-// */
+//* This private class is designed to serve as a replacement for HTablePool, to get around the
+//* following HBase issues in the face of master failures:
+//*
+//* <ul>
+//*   <li>https://issues.apache.org/jira/browse/HBASE-6580</li>
+//*   <li>https://issues.apache.org/jira/browse/HBASE-6956</li>
+//*   <li>https://issues.apache.org/jira/browse/HBASE-4805</li>
+//* </ul>
+//*
+//* We accomplish this by creating a simple pool and a Pooled implementation of HTableInterface,
+//* similar to how HTablePool works. Unlike HTablePool, however, we verify the underlying connection
+//* before returning an instance from this pool. This implementation is also tied to a particular
+//* table name.
+//*
+//* You may construct a KijiHTablePool using the constructor
+//* {@link KijiHTablePool(String, org.kiji.schema.impl.HTableInterfaceFactory). Note that the
+//* provided HTableInterfaceFactory <i>must</i> return HTables rather than another implementation of
+//* HTableInterface.  We rely on this to test connectivity.
+//*
+//* Once created, use {@link #getTable()} to generate HTableInterface instances. They will be
+//* returned to the pool automatically when closed.
+//*
+//* When you are finished with the pool, it should be closed to destroy any outstanding connections.
+//*/
 //@ApiAudience.Private
 //public final class KijiHTablePool implements Closeable {
 //  // TODO(SCHEMA-622): This functionality is rather large to fit into a bridge, but it should be
