@@ -22,6 +22,7 @@ package org.kiji.schema.impl.hbase;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.AsyncKijiBufferedWriter;
 import org.kiji.schema.AtomicKijiPutter;
 import org.kiji.schema.KijiBufferedWriter;
 import org.kiji.schema.KijiTableWriter;
@@ -59,5 +60,12 @@ public final class HBaseKijiWriterFactory implements KijiWriterFactory {
   @Override
   public KijiBufferedWriter openBufferedWriter() throws IOException {
     return new HBaseKijiBufferedWriter(mTable);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public AsyncKijiBufferedWriter openAsyncBufferedWriter() throws IOException {
+    throw new UnsupportedOperationException(
+        "HBaseKijiWriterFactory does not support opening an AsyncKijiBufferedWriter.");
   }
 }
