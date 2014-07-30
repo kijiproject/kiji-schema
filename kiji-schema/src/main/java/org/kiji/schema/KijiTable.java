@@ -138,6 +138,24 @@ public interface KijiTable extends ReferenceCountable<KijiTable> {
   KijiTableReader openTableReader();
 
   /**
+   * Opens an AsyncKijiTableReader for this table.
+   *
+   * <p>
+   *   This method is equivalent to <code>getAsyncReaderFactory().readerBuilder().build()</code>.
+   *   It sets all options to their default values.
+   * </p>
+   *
+   * <p> The caller of this method is responsible for closing the returned reader. </p>
+   * <p> The reader returned by this method does not provide any isolation guarantee.
+   *     In particular, you should assume that the underlying resources (connections, buffers, etc)
+   *     are used concurrently for other purposes. </p>
+   *
+   * @return An AsyncKijiTableReader for this table.
+   * @throws KijiIOException Future implementations may throw unchecked KijiIOException.
+   */
+  AsyncKijiTableReader openAsyncTableReader();
+
+  /**
    * Gets a KijiReaderFactory for this table.
    *
    * <p> The returned reader factory is valid as long as the caller retains the table. </p>
@@ -163,6 +181,21 @@ public interface KijiTable extends ReferenceCountable<KijiTable> {
   KijiTableWriter openTableWriter();
 
   /**
+   * Opens an AsyncKijiTableWriter for this table.
+   *
+   * <p> The caller of this method is responsible for closing the returned writer.
+   * <p> The writer returned by this method does not provide any isolation guarantee.
+   *     In particular, you should assume that the underlying resources (connections, buffers, etc)
+   *     are used concurrently for other purposes.
+   * <p> If you have specific resource requirements, such as buffering, timeouts, dedicated
+   *     connection, etc, use {@link #getWriterFactory()}.
+   *
+   * @return An AsyncKijiTableWriter for this table.
+   * @throws KijiIOException Future implementations may throw unchecked KijiIOException.
+   */
+  AsyncKijiTableWriter openAsyncTableWriter();
+
+  /**
    * Gets a KijiWriterFactory for this table.
    *
    * <p> The returned writer factory is valid as long as the caller retains the table. </p>
@@ -171,6 +204,16 @@ public interface KijiTable extends ReferenceCountable<KijiTable> {
    * @return A KijiWriterFactory.
    */
   KijiWriterFactory getWriterFactory() throws IOException;
+
+  /**
+   * Gets an AsyncKijiWriterFactory for this table.
+   *
+   * <p> The returned writer factory is valid as long as the caller retains the table. </p>
+   *
+   * @throws IOException in case of an error.
+   * @return An AsyncKijiWriterFactory.
+   */
+  AsyncKijiWriterFactory getAsyncWriterFactory() throws IOException;
 
   /**
    * Return the regions in this table as an ordered list.
