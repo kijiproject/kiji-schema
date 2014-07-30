@@ -80,6 +80,13 @@ public final class AsyncKijiReaderFactory implements KijiReaderFactory {
 
   /** {@inheritDoc} */
   @Override
+  public org.kiji.schema.AsyncKijiTableReader openAsyncTableReader() throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public HBaseKijiTableReaderBuilder readerBuilder() {
     // TODO(gabe): Replace this with asynchbase
     throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");

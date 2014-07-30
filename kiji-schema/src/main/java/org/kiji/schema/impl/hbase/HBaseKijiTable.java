@@ -42,6 +42,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.AsyncKijiTableReader;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
@@ -554,5 +555,11 @@ public final class HBaseKijiTable implements KijiTable {
     } catch (TableNotFoundException tnfe) {
       throw new InternalKijiError(tnfe);
     }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public AsyncKijiTableReader openAsyncTableReader() {
+    throw new UnsupportedOperationException();
   }
 }

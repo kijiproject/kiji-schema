@@ -26,8 +26,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
-import com.stumbleupon.async.Deferred;
-import org.apache.hadoop.conf.Configuration;
 import org.hbase.async.HBaseClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +51,6 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.impl.LayoutConsumer.Registration;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
-import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.TableLayoutMonitor;
 import org.kiji.schema.util.Debug;
@@ -151,8 +148,8 @@ public final class AsyncKijiTable implements KijiTable {
       AsyncKiji kiji,
       String name,
       HBaseClient hbClient,
-      TableLayoutMonitor layoutMonitor)
-      throws IOException {
+      TableLayoutMonitor layoutMonitor
+  ) throws IOException {
     mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
         ? Debug.getStackTrace()
         : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
@@ -293,6 +290,12 @@ public final class AsyncKijiTable implements KijiTable {
 
   /** {@inheritDoc} */
   @Override
+  public org.kiji.schema.AsyncKijiTableReader openAsyncTableReader() {
+    throw new UnsupportedOperationException();
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public KijiTableWriter openTableWriter() {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
@@ -353,14 +356,14 @@ public final class AsyncKijiTable implements KijiTable {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN || oldState == State.UNINITIALIZED,
         "Cannot close KijiTable instance %s in state %s.", this, oldState);
-    LOG.debug("Closing AsyncHBaseKijiTable '{}'.", this);
+    LOG.debug("Closing AsyncKijiTable '{}'.", this);
 
     ResourceUtils.releaseOrLog(mKiji);
     if (oldState != State.UNINITIALIZED) {
       DebugResourceTracker.get().unregisterResource(this);
     }
 
-    LOG.debug("AsyncHBaseKijiTable '{}' closed.", mTableURI);
+    LOG.debug("AsyncKijiTable '{}' closed.", mTableURI);
   }
 
   /** {@inheritDoc} */
