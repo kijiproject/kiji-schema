@@ -597,6 +597,12 @@ public final class KijiTablePool implements Closeable {
     public KijiTableAnnotator openTableAnnotator() throws IOException {
       return mTable.openTableAnnotator();
     }
+
+    /** {@inheritDoc} */
+    @Override
+    public AsyncKijiTableReader openAsyncTableReader() {
+      return mTable.openAsyncTableReader();
+    }
   }
 
   /**

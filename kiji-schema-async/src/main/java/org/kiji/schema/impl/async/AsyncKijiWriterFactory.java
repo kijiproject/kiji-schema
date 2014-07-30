@@ -60,4 +60,11 @@ public final class AsyncKijiWriterFactory implements KijiWriterFactory {
   public KijiBufferedWriter openBufferedWriter() throws IOException {
     return new AsyncKijiBufferedWriter(mTable);
   }
+
+  /** {@inheritDoc} */
+  @Override
+  public org.kiji.schema.AsyncKijiBufferedWriter openAsyncBufferedWriter() throws IOException {
+    // TODO(gabe): Replace this with asynchbase
+    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
+  }
 }

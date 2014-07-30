@@ -65,6 +65,21 @@ public interface KijiReaderFactory {
   KijiTableReader openTableReader() throws IOException;
 
   /**
+   * Opens a new asynchronous reader for the KijiTable associated with this reader factory.
+   *
+   * <p> The caller of this method is responsible for closing the reader. </p>
+   * <p>
+   *   The reader returned by this method does not provide any isolation guarantee.
+   *   In particular, you should assume that the underlying resources (connections, buffers, etc)
+   *   are used concurrently for other purposes.
+   * </p>
+   *
+   * @return a new KijiTableReader.
+   * @throws IOException on I/O error.
+   */
+  AsyncKijiTableReader openAsyncTableReader() throws IOException;
+
+  /**
    * Opens a new reader for the KijiTable associated with this reader factory.
    *
    * <p>
