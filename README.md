@@ -44,3 +44,14 @@ For commandline tool usage, issue the command:
 
 Further documentation is available at the Kiji project
 [Documentation Portal](http://docs.kiji.org)
+
+Known CDH5 Issues
+-----------------
+
+Below are some known issues with the CDH5 port, incompatibilities, etc. Remove
+this section when this is done.
+
+* Code depends on HConnectionManager.createConnection() which doesn't exist
+  HBase < 0.94.11
+* Needs an implementation of table pool.
+* Security is disabled.
