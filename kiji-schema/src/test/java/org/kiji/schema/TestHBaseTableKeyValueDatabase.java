@@ -31,7 +31,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -74,20 +73,16 @@ public class TestHBaseTableKeyValueDatabase extends KijiClientTest {
 
   @Before
   public final void setupHBaseTable() throws IOException {
-    final String fakeHBaseID = getTestId();
-    final KijiURI hbaseURI = KijiURI
-        .newBuilder(String.format("kiji://.fake.%s", fakeHBaseID))
-        .build();
     final HBaseFactory factory = HBaseFactory.Provider.get();
 
-    mConf = HBaseConfiguration.create();
-    mHBaseAdmin = factory.getHBaseAdminFactory(hbaseURI).create(mConf);
+    mConf = super.getConf();
+    mHBaseAdmin = factory.getHBaseAdminFactory(getKiji().getURI()).create(mConf);
     // Create an HBase table.
     HTableDescriptor tableDescriptor = new HTableDescriptor(TABLE_NAME);
     tableDescriptor.addFamily(new HColumnDescriptor(FAMILY_NAME));
     mHBaseAdmin.createTable(tableDescriptor);
 
-    mTable = factory.getHTableInterfaceFactory(hbaseURI).create(mConf, TABLE_NAME);
+    mTable = factory.getHTableInterfaceFactory(getKiji().getURI()).create(mConf, TABLE_NAME);
 
     // Fill it with some data.
     mDb = new HBaseTableKeyValueDatabase(mTable, FAMILY_NAME);

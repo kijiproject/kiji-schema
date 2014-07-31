@@ -53,6 +53,8 @@ import org.kiji.schema.util.TestingFileUtils;
  *     mvn clean test \
  *         -DargLine="-Dorg.kiji.schema.KijiClientTest.HBASE_ADDRESS=localhost:2181"
  *   </pre>
+ *   If you specify the HBASE_ADDRESS property, you must specify both the quorum hosts AND the
+ *   port to connect on.
  * </p>
  */
 public class KijiClientTest {
@@ -120,6 +122,16 @@ public class KijiClientTest {
     mConf = HBaseConfiguration.create();
     mConf.set("fs.defaultFS", "file://" + mLocalTempDir);
     mConf.set("mapred.job.tracker", "local");
+    // If HBASE_ADDRESS was specified, that should be in the conf for all methods of this test.
+    // Otherwise don't specify hbase.zookeeper.quorum; it will be a different fake-hbase instance
+    // for each method.
+    if (null != HBASE_ADDRESS) {
+      KijiURI zkURI = KijiURI.newBuilder("kiji://" + HBASE_ADDRESS).build();
+      String quorum = zkURI.getZooKeeperEnsemble();
+      String port = Integer.toString(zkURI.getZookeeperClientPort());
+      mConf.set("hbase.zookeeper.quorum", quorum);
+      mConf.set("hbase.zookeeper.property.clientPort", port);
+    }
     mKiji = null;  // lazily initialized
     // Disable logging of commands to the upgrade server by accident.
     System.setProperty(CheckinUtils.DISABLE_CHECKIN_PROP, "true");
