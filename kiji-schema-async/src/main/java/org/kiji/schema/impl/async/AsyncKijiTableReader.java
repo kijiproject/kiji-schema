@@ -55,6 +55,8 @@ import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.SpecificCellDecoderFactory;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.BoundColumnReaderSpec;
+import org.kiji.schema.impl.KijiResultRowData;
+import org.kiji.schema.impl.KijiResultRowScanner;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.ColumnReaderSpec;
@@ -222,7 +224,7 @@ public final class AsyncKijiTableReader implements KijiTableReader {
   }
 
   /**
-   * Creates a new <code>HbaseKijiTableReader</code> instance that sends read requests directly to
+   * Creates a new <code>AsyncKijiTableReader</code> instance that sends read requests directly to
    * HBase.
    *
    * @param table Kiji table from which to read.
@@ -369,35 +371,7 @@ public final class AsyncKijiTableReader implements KijiTableReader {
   @Override
   public KijiRowData get(EntityId entityId, KijiDataRequest dataRequest)
       throws IOException {
-    // TODO(gabe): Implement with AsyncHBase
-    throw new UnsupportedOperationException("Not yet supported by AsyncKiji");
-    /*final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot get row from KijiTableReader instance %s in state %s.", this, state);
-
-    final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
-    // Make sure the request validates against the layout of the table.
-    final KijiTableLayout tableLayout = capsule.getLayout();
-    validateRequestAgainstLayout(dataRequest, tableLayout);
-
-    // Construct an HBase Get to send to the HTable.
-    AsyncDataRequestAdapter hbaseRequestAdapter =
-        new AsyncDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
-    Scanner hbaseGet;
-    try {
-      hbaseGet = hbaseRequestAdapter.toGet(entityId, tableLayout);
-    } catch (InvalidLayoutException e) {
-      // The table layout should never be invalid at this point, since we got it from a valid
-      // opened table.  If it is, there's something seriously wrong.
-      throw new InternalKijiError(e);
-    }
-    // Send the HTable Get.
-    final Result result = hbaseGet.hasFamilies() ? doHBaseGet(hbaseGet) : new Result();
-
-    // Parse the result.
-    return new AsyncKijiRowData(
-        mTable, dataRequest, entityId, result, capsule.getCellDecoderProvider());
-    */
+    return new KijiResultRowData(mTable.getLayout(), getResult(entityId, dataRequest));
   }
 
   /**
@@ -434,7 +408,8 @@ public final class AsyncKijiTableReader implements KijiTableReader {
         mTableName);
     final Scanner scanner = asyncDataRequestAdapter.toScanner(tableLayout);
     scanner.setStartKey(entityId.getHBaseRowKey());
-    scanner.setStopKey(Arrays.copyOf(entityId.getHBaseRowKey(), entityId.getHBaseRowKey().length + 1));
+    scanner.setStopKey(
+        Arrays.copyOf(entityId.getHBaseRowKey(), entityId.getHBaseRowKey().length + 1));
     ArrayList<KeyValue> result = Lists.newArrayList();
     try {
       final ArrayList<ArrayList<KeyValue>> fullResults = scanner.nextRows(1).join();
@@ -458,35 +433,8 @@ public final class AsyncKijiTableReader implements KijiTableReader {
   @Override
   public List<KijiRowData> bulkGet(List<EntityId> entityIds, KijiDataRequest dataRequest)
       throws IOException {
-    // TODO(gabe): Implement with AsyncHBase
+    // TODO: Implement with AsyncHBase
     throw new UnsupportedOperationException("Not yet supported by AsyncKiji");
-    /*
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot get rows from KijiTableReader instance %s in state %s.", this, state);
-
-    // Bulk gets have some overhead associated with them,
-    // so delegate work to get(EntityId, KijiDataRequest) if possible.
-    if (entityIds.size() == 1) {
-      return Collections.singletonList(this.get(entityIds.get(0), dataRequest));
-    }
-    final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
-    final KijiTableLayout tableLayout = capsule.getLayout();
-    validateRequestAgainstLayout(dataRequest, tableLayout);
-    final AsyncDataRequestAdapter hbaseRequestAdapter =
-        new AsyncDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
-
-    // Construct a list of hbase Gets to send to the HTable.
-    final List<Get> hbaseGetList = makeGetList(entityIds, tableLayout, hbaseRequestAdapter);
-
-    // Send the HTable Gets.
-    final Result[] results = doHBaseGet(hbaseGetList);
-    Preconditions.checkState(entityIds.size() == results.length);
-
-    // Parse the results.  If a Result is null, then the corresponding KijiRowData should also
-    // be null.  This indicates that there was an error retrieving this row.
-    return parseResults(results, entityIds, dataRequest);
-    */
   }
 
   /** {@inheritDoc} */
@@ -501,52 +449,9 @@ public final class AsyncKijiTableReader implements KijiTableReader {
       KijiDataRequest dataRequest,
       KijiScannerOptions kijiScannerOptions)
       throws IOException {
-    // TODO(gabe): Implement with AsyncHBase
-    throw new UnsupportedOperationException("Not yet supported by AsyncKiji");
-    /*
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot get scanner from KijiTableReader instance %s in state %s.", this, state);
-
-    try {
-      EntityId startRow = kijiScannerOptions.getStartRow();
-      EntityId stopRow = kijiScannerOptions.getStopRow();
-      KijiRowFilter rowFilter = kijiScannerOptions.getKijiRowFilter();
-      HBaseScanOptions scanOptions = kijiScannerOptions.getHBaseScanOptions();
-
-      final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
-      final AsyncDataRequestAdapter dataRequestAdapter =
-          new AsyncDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator());
-      final KijiTableLayout tableLayout = capsule.getLayout();
-      validateRequestAgainstLayout(dataRequest, tableLayout);
-      final Scan scan = dataRequestAdapter.toScan(tableLayout, scanOptions);
-
-      if (null != startRow) {
-        scan.setStartRow(startRow.getHBaseRowKey());
-      }
-      if (null != stopRow) {
-        scan.setStopRow(stopRow.getHBaseRowKey());
-      }
-      scan.setCaching(kijiScannerOptions.getRowCaching());
-
-      if (null != rowFilter) {
-        final KijiRowFilterApplicator applicator = KijiRowFilterApplicator.create(
-            rowFilter, tableLayout, mTable.getKiji().getSchemaTable());
-        applicator.applyTo(scan);
-      }
-
-      return new AsyncKijiRowScanner(new AsyncKijiRowScanner.Options()
-          .withDataRequest(dataRequest)
-          .withTable(mTable)
-          .withScan(scan)
-          .withCellDecoderProvider(capsule.getCellDecoderProvider())
-          .withReopenScannerOnTimeout(kijiScannerOptions.getReopenScannerOnTimeout()));
-    } catch (InvalidLayoutException e) {
-      // The table layout should never be invalid at this point, since we got it from a valid
-      // opened table.  If it is, there's something seriously wrong.
-      throw new InternalKijiError(e);
-    }
-    */
+    return new KijiResultRowScanner(
+        mTable.getLayout(),
+        getKijiResultScanner(dataRequest, kijiScannerOptions));
   }
 
   /**
@@ -576,10 +481,10 @@ public final class AsyncKijiTableReader implements KijiTableReader {
 
     final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
     final AsyncDataRequestAdapter adapter = AsyncDataRequestAdapter.create(
-        request,
-        capsule.getColumnNameTranslator(),
-        mHBClient,
-        mTableName);
+            request,
+            capsule.getColumnNameTranslator(),
+            mHBClient,
+            mTableName);
     final KijiTableLayout layout = capsule.getLayout();
     validateRequestAgainstLayout(request, layout);
     final Scanner scanner = adapter.toScanner(layout, scannerOptions.getHBaseScanOptions());
@@ -592,13 +497,11 @@ public final class AsyncKijiTableReader implements KijiTableReader {
     if (scannerOptions.getRowCaching() > 0) {
       scanner.setMaxNumRows(scannerOptions.getRowCaching());
     }
-    // TODO(gabe): Fix this
-    /*
+
+    // TODO(SCHEMA-890): Add ability to use KijiRowFilters with AsyncHBase.
     if (null != scannerOptions.getKijiRowFilter()) {
-      final KijiRowFilterApplicator applicator = KijiRowFilterApplicator.create(
-          scannerOptions.getKijiRowFilter(), layout, mTable.getKiji().getSchemaTable());
-      applicator.applyTo(scanner);
-    }*/
+      throw new UnsupportedOperationException("KijiRowFilters are not supported by AsyncKiji");
+    }
 
     return new AsyncKijiResultScanner<T>(
         request,
