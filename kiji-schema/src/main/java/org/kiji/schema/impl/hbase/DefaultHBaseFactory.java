@@ -28,6 +28,7 @@ import org.apache.hadoop.hbase.client.HConnectionManager;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Priority;
+import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.hbase.HBaseFactory;
@@ -61,9 +62,9 @@ public final class DefaultHBaseFactory implements HBaseFactory {
 
   /** {@inheritDoc} */
   @Override
-  public HConnection getHConnection(Configuration conf) {
+  public HConnection getHConnection(Kiji kiji) {
     try {
-      return HConnectionManager.createConnection(conf);
+      return HConnectionManager.createConnection(kiji.getConf());
     } catch (IOException ioe) {
       throw new KijiIOException("Couldn't create an HConnection.", ioe);
     }

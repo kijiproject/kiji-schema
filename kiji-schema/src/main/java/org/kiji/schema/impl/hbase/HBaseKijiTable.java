@@ -184,7 +184,7 @@ public final class HBaseKijiTable implements KijiTable {
     mLayoutMonitor = layoutMonitor;
     mEntityIdFactory = createEntityIdFactory(mLayoutMonitor.getLayout());
 
-    mHConnection = HBaseFactory.Provider.get().getHConnection(mKiji.getConf());
+    mHConnection = HBaseFactory.Provider.get().getHConnection(mKiji);
 
     // Table is now open and must be released properly:
     mRetainCount.set(1);

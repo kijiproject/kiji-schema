@@ -37,7 +37,7 @@ public class TestHBaseSystemTable {
   public void testSetDataVersion() throws IOException {
     final Configuration conf = HBaseConfiguration.create();
     final HTableDescriptor desc = new HTableDescriptor();
-    final FakeHTable table = new FakeHTable("system", desc, conf, false, 0, true, true);
+    final FakeHTable table = new FakeHTable("system", desc, conf, false, 0, true, true, null);
 
     final KijiURI uri = KijiURI.newBuilder("kiji://test/instance").build();
     final HBaseSystemTable systemTable = new HBaseSystemTable(uri, table);
