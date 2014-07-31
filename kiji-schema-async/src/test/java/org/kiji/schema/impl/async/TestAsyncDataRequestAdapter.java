@@ -24,26 +24,31 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.List;
 
-import com.google.common.collect.ImmutableMap;
+import com.google.common.base.Function;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
+import junit.framework.Assert;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.Scan;
-import org.apache.hadoop.hbase.filter.BinaryComparator;
-import org.apache.hadoop.hbase.filter.ColumnPaginationFilter;
-import org.apache.hadoop.hbase.filter.ColumnPrefixFilter;
-import org.apache.hadoop.hbase.filter.CompareFilter;
-import org.apache.hadoop.hbase.filter.FamilyFilter;
-import org.apache.hadoop.hbase.filter.Filter;
-import org.apache.hadoop.hbase.filter.FilterList;
-import org.apache.hadoop.hbase.filter.QualifierFilter;
+import org.hbase.async.BinaryComparator;
+import org.hbase.async.ColumnPaginationFilter;
+import org.hbase.async.ColumnPrefixFilter;
+import org.hbase.async.CompareFilter.CompareOp;
+import org.hbase.async.FamilyFilter;
+import org.hbase.async.FilterList;
+import org.hbase.async.FilterList.Operator;
+import org.hbase.async.QualifierFilter;
+import org.hbase.async.ScanFilter;
+import org.hbase.async.Scanner;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiClientTest;
@@ -51,12 +56,13 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder;
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
-import org.kiji.schema.KijiRowData;
-import org.kiji.schema.KijiRowScanner;
+import org.kiji.schema.KijiResult;
+import org.kiji.schema.KijiResult.Helpers;
+import org.kiji.schema.KijiResultScanner;
 import org.kiji.schema.KijiTable;
-import org.kiji.schema.KijiTableReader;
+import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.hbase.HBaseColumnName;
-import org.kiji.schema.impl.hbase.HBaseDataRequestAdapter;
+import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayouts;
@@ -68,6 +74,7 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
   private KijiTableLayout mTableLayout;
   private EntityIdFactory mEntityIdFactory;
   private HBaseColumnNameTranslator mColumnNameTranslator;
+  private AsyncKiji mAsyncKiji;
 
   @Before
   public void setupLayout() throws Exception {
@@ -75,28 +82,45 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
         KijiTableLayouts.getTableLayout(KijiTableLayouts.FULL_FEATURED);
     getKiji().createTable(tableLayout.getDesc());
 
-    mTableLayout = getKiji().getMetaTable().getTableLayout("user");
+    mAsyncKiji = new AsyncKiji(getKiji().getURI());
+    mTableLayout = mAsyncKiji.getMetaTable().getTableLayout("user");
     mEntityIdFactory = EntityIdFactory.getFactory(mTableLayout);
     mColumnNameTranslator = HBaseColumnNameTranslator.from(mTableLayout);
   }
 
+  @After
+  public final void cleanupEnvironment() throws IOException{
+    mAsyncKiji.release();
+  }
+
+  private byte[] kijiToTableName(Kiji kiji, String tableName) {
+    return KijiManagedHBaseTableName.getKijiTableName(
+        kiji.getURI().getInstance(),
+        tableName).toBytes();
+  }
+
   @Test
   public void testDataRequestToScan() throws IOException {
+    final byte[] tableName = kijiToTableName(mAsyncKiji, mTableLayout.getName());
     KijiDataRequestBuilder builder = KijiDataRequest.builder();
     builder.newColumnsDef().withMaxVersions(1).add("info", "name");
     builder.newColumnsDef().withMaxVersions(2).addFamily("purchases");
     builder.withTimeRange(1L, 3L);
     KijiDataRequest request = builder.build();
 
-    Scan expectedScan = new Scan();
+    Scanner expectedScan = mAsyncKiji.getHBaseClient().newScanner(tableName);
     HBaseColumnName hbaseColumn = mColumnNameTranslator.toHBaseColumnName(
         KijiColumnName.create("info:name"));
-    expectedScan.addColumn(hbaseColumn.getFamily(), hbaseColumn.getQualifier());
+    byte[][] families = new byte[2][];
+    byte[][][] qualifiers = new byte[2][1][];
+    families[0] = hbaseColumn.getFamily();
+    qualifiers[0][0] = hbaseColumn.getQualifier();
     HBaseColumnName hPurchasesColumn = mColumnNameTranslator.toHBaseColumnName(
         KijiColumnName.create("purchases"));
-    expectedScan.addFamily(hPurchasesColumn.getFamily());
-
-    FilterList filterList = new FilterList(FilterList.Operator.MUST_PASS_ONE);
+    families[1] = hPurchasesColumn.getFamily();
+    qualifiers[1] = null;
+    expectedScan.setFamilies(families, qualifiers);
+    List<ScanFilter> filterList = Lists.newArrayList();
 
     // The Scan object created by HBaseDataRequestAdapter has a filter attached
     // to it which corresponds to the set of filters associated with each input
@@ -113,98 +137,73 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
     //
     // These are joined together with a request-level OR(...) filter; so in effect every
     // cell included must pass all the filters associated with one of the columns requested.
-    FilterList infoNameFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-    Filter infoLgFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
+    List<ScanFilter> infoNameFilterList = Lists.newArrayList();
+    ScanFilter infoLgFilter = new FamilyFilter(CompareOp.EQUAL,
         new BinaryComparator(hbaseColumn.getFamily()));
-    infoNameFilter.addFilter(infoLgFilter);
-    Filter infoNameQualifierFilter = new QualifierFilter(CompareFilter.CompareOp.EQUAL,
+    infoNameFilterList.add(infoLgFilter);
+    ScanFilter infoNameQualifierFilter = new QualifierFilter(CompareOp.EQUAL,
         new BinaryComparator(hbaseColumn.getQualifier()));
-    infoNameFilter.addFilter(infoNameQualifierFilter);
-    infoNameFilter.addFilter(new ColumnPaginationFilter(1, 0));
+    infoNameFilterList.add(infoNameQualifierFilter);
+    infoNameFilterList.add(new ColumnPaginationFilter(1, 0));
 
-    FilterList purchasesFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-    Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
+    List<ScanFilter> purchaseFilterList = Lists.newArrayList();
+
+    ScanFilter familyFilter = new FamilyFilter(CompareOp.EQUAL,
         new BinaryComparator(hPurchasesColumn.getFamily()));
-    Filter mapPrefixFilter = new ColumnPrefixFilter(hPurchasesColumn.getQualifier());
-    purchasesFilter.addFilter(familyFilter);
-    purchasesFilter.addFilter(mapPrefixFilter);
+    ScanFilter mapPrefixFilter = new ColumnPrefixFilter(hPurchasesColumn.getQualifier());
+    purchaseFilterList.add(familyFilter);
+    purchaseFilterList.add(mapPrefixFilter);
 
-    filterList.addFilter(infoNameFilter);
-    filterList.addFilter(purchasesFilter);
-    expectedScan.setFilter(filterList);
+    FilterList infoNameFilter = new FilterList(infoNameFilterList, Operator.MUST_PASS_ALL);
+    FilterList purchasesFilter = new FilterList(purchaseFilterList, Operator.MUST_PASS_ALL);
+    filterList.add(infoNameFilter);
+    filterList.add(purchasesFilter);
+
+    expectedScan.setFilter(new FilterList(filterList, Operator.MUST_PASS_ONE));
     expectedScan.setMaxVersions(2);
     expectedScan.setTimeRange(1L, 3L);
 
-    HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(
-        request, HBaseColumnNameTranslator.from(mTableLayout));
-    assertEquals(expectedScan.toString(), hbaseDataRequest.toScan(mTableLayout).toString());
+    AsyncDataRequestAdapter asyncDataRequest = new AsyncDataRequestAdapter(
+        request,
+        HBaseColumnNameTranslator.from(mTableLayout),
+        mAsyncKiji.getHBaseClient(),
+        tableName);
+    Scanner tempScanner = asyncDataRequest.toScanner(mTableLayout);
+    assertEquals(expectedScan.toString(), tempScanner.toString());
   }
 
   @Test
   public void testDataRequestToScanEmpty() throws IOException {
     KijiDataRequest request = KijiDataRequest.builder().build();
-    HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(
-        request, HBaseColumnNameTranslator.from(mTableLayout));
-    assertFalse(hbaseDataRequest.toScan(mTableLayout).hasFamilies());
+    final byte[] tableName = kijiToTableName(mAsyncKiji, mTableLayout.getName());
+    AsyncDataRequestAdapter asyncDataRequest =
+        new AsyncDataRequestAdapter(
+            request,
+            mColumnNameTranslator,
+            mAsyncKiji.getHBaseClient(),
+            tableName);
+    Scanner expectedScanner = mAsyncKiji.getHBaseClient().newScanner(tableName);
+    assertEquals(expectedScanner.toString(), asyncDataRequest.toScanner(mTableLayout).toString());
   }
 
   @Test
   public void testDataRequestToGet() throws IOException {
-    KijiDataRequestBuilder builder = KijiDataRequest.builder();
-    builder.newColumnsDef().withMaxVersions(1).add("info", "name");
-    builder.newColumnsDef().withMaxVersions(2).addFamily("purchases");
-    builder.withTimeRange(1L, 3L);
-    KijiDataRequest request = builder.build();
-
-    EntityId entityId = mEntityIdFactory.getEntityId("entity");
-    Get expectedGet = new Get(entityId.getHBaseRowKey());
-    HBaseColumnName hbaseColumn = mColumnNameTranslator.toHBaseColumnName(
-        KijiColumnName.create("info:name"));
-    expectedGet.addColumn(hbaseColumn.getFamily(), hbaseColumn.getQualifier());
-    HBaseColumnName hPurchasesColumn = mColumnNameTranslator.toHBaseColumnName(
-        KijiColumnName.create("purchases"));
-    expectedGet.addFamily(hPurchasesColumn.getFamily());
-
-    // See comments in testDataRequestToScan() describing this functionality.
-    FilterList filterList = new FilterList(FilterList.Operator.MUST_PASS_ONE);
-
-    FilterList infoNameFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-    Filter infoLgFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
-        new BinaryComparator(hbaseColumn.getFamily()));
-    infoNameFilter.addFilter(infoLgFilter);
-    Filter infoNameQualifierFilter = new QualifierFilter(CompareFilter.CompareOp.EQUAL,
-        new BinaryComparator(hbaseColumn.getQualifier()));
-    infoNameFilter.addFilter(infoNameQualifierFilter);
-    infoNameFilter.addFilter(new ColumnPaginationFilter(1, 0));
-
-    FilterList purchasesFilter = new FilterList(FilterList.Operator.MUST_PASS_ALL);
-    Filter familyFilter = new FamilyFilter(CompareFilter.CompareOp.EQUAL,
-        new BinaryComparator(hPurchasesColumn.getFamily()));
-    Filter mapPrefixFilter = new ColumnPrefixFilter(hPurchasesColumn.getQualifier());
-    purchasesFilter.addFilter(familyFilter);
-    purchasesFilter.addFilter(mapPrefixFilter);
-
-    filterList.addFilter(infoNameFilter);
-    filterList.addFilter(purchasesFilter);
-    expectedGet.setFilter(filterList);
-
-    expectedGet.setMaxVersions(2);
-    expectedGet.setTimeRange(1L, 3L);
-
-    HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(
-        request, HBaseColumnNameTranslator.from(mTableLayout));
-    assertEquals(expectedGet.toString(),
-        hbaseDataRequest.toGet(entityId, mTableLayout).toString());
-  }
-
-  @Test
-  public void testDataRequestToGetEmpty() throws IOException {
     KijiDataRequest request = KijiDataRequest.builder().build();
-    HBaseDataRequestAdapter hbaseDataRequest = new HBaseDataRequestAdapter(
-        request, HBaseColumnNameTranslator.from(mTableLayout));
-    assertFalse(
-        hbaseDataRequest.toGet(mEntityIdFactory.getEntityId("entity"), mTableLayout).hasFamilies());
+    final byte[] tableName = kijiToTableName(mAsyncKiji, mTableLayout.getName());
+    AsyncDataRequestAdapter asyncDataRequest =
+        new AsyncDataRequestAdapter(
+            request,
+            mColumnNameTranslator,
+            mAsyncKiji.getHBaseClient(),
+            tableName);
+    try {
+      asyncDataRequest.toGetRequest(mEntityIdFactory.getEntityId("entity"), mTableLayout);
+      Assert.fail();
+    } catch (Exception e) {
+      assertEquals("toGetRequest is not yet supported for Async Kiji", e.getMessage());
+    }
   }
+
 
   /**
    * Tests that combining column requests with different max-versions works properly.
@@ -232,10 +231,10 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
                         .withValue(2L, "value-2")
                         .withValue(3L, "value-3")
         .build();
-
-    final KijiTable table = kiji.openTable("row_data_test_table");
+    final AsyncKiji asyncKiji = new AsyncKiji(kiji.getURI());
+    final AsyncKijiTable table = (AsyncKijiTable) asyncKiji.openTable("row_data_test_table");
     try {
-      final KijiTableReader reader = table.openTableReader();
+      final AsyncKijiTableReader reader = (AsyncKijiTableReader) table.openTableReader();
       try {
         final KijiDataRequest dataRequest = KijiDataRequest.builder()
             .addColumns(ColumnsDef.create()
@@ -248,15 +247,19 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
                 .withMaxVersions(3)
                 .add("family", "qual2"))
             .build();
-        final KijiRowData row = reader.get(table.getEntityId("row0"), dataRequest);
-        assertEquals(1, row.getValues("family", "qual0").size());
-        assertEquals(2, row.getValues("family", "qual1").size());
-        assertEquals(3, row.getValues("family", "qual2").size());
+        final KijiResult<Object> row = reader.getResult(table.getEntityId("row0"), dataRequest);
+        final KijiResult<Object> result1 = row.narrowView(KijiColumnName.create("family", "qual0"));
+        final KijiResult<Object> result2 = row.narrowView(KijiColumnName.create("family", "qual1"));
+        final KijiResult<Object> result3 = row.narrowView(KijiColumnName.create("family", "qual2"));
+        assertEquals(1, ImmutableList.copyOf(Helpers.getVersions(result1)).size());
+        assertEquals(2, ImmutableList.copyOf(Helpers.getVersions(result2)).size());
+        assertEquals(3, ImmutableList.copyOf(Helpers.getVersions(result3)).size());
       } finally {
         reader.close();
       }
     } finally {
       table.release();
+      asyncKiji.release();
     }
   }
 
@@ -275,22 +278,36 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
                         .withValue(1L, "value")
         .build();
 
-    final KijiTable table = kiji.openTable("row_data_test_table");
+    final Kiji asyncKiji = new AsyncKijiFactory().open(kiji.getURI());
+    final AsyncKijiTable table = (AsyncKijiTable) asyncKiji.openTable("row_data_test_table");
     try {
-      final KijiTableReader reader = table.openTableReader();
+      final AsyncKijiTableReader reader = (AsyncKijiTableReader) table.openTableReader();
       try {
         final KijiDataRequest dataRequest = KijiDataRequest.builder()
             .addColumns(ColumnsDef.create()
                 .addFamily("family"))
             .build();
-        final KijiRowData row = reader.get(table.getEntityId("row0"), dataRequest);
-        assertEquals(1, row.getValues("family", "qual0").size());
-        assertEquals(1, row.getValues("family", "qual1").size());
+        final KijiResult<Object> row = reader.getResult(table.getEntityId("row0"), dataRequest);
+        final KijiResult<Object> result1 = row.narrowView(KijiColumnName.create("family", "qual0"));
+        final KijiResult<Object> result2 = row.narrowView(KijiColumnName.create("family", "qual1"));
+        assertEquals(1, ImmutableList.copyOf(Helpers.getValues(result1)).size());
+        assertEquals(1, ImmutableList.copyOf(Helpers.getValues(result2)).size());
       } finally {
         reader.close();
       }
     } finally {
       table.release();
+      asyncKiji.release();
+    }
+  }
+
+  /**
+   * Simple function to convert an object to a String.
+   */
+  private static final class ToString<T> implements Function<T, String> {
+    @Override
+    public String apply(final T input) {
+      return input.toString();
     }
   }
 
@@ -332,10 +349,10 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
                     .withQualifier("qual1")
                         .withValue("value1")
         .build();
-
-    final KijiTable table = kiji.openTable("row_data_test_table");
+    final Kiji asyncKiji = new AsyncKijiFactory().open(kiji.getURI());
+    final KijiTable table = asyncKiji.openTable("row_data_test_table");
     try {
-      final KijiTableReader reader = table.openTableReader();
+      final AsyncKijiTableReader reader = (AsyncKijiTableReader) table.openTableReader();
       try {
         final KijiDataRequest dataRequest = KijiDataRequest.builder()
             .addColumns(ColumnsDef.create()
@@ -346,37 +363,50 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
                 .withPageSize(1)
                 .addFamily("map"))
             .build();
-        final KijiRowScanner scanner = reader.getScanner(dataRequest);
+        final KijiResultScanner<Utf8> scanner =
+            reader.getKijiResultScanner(dataRequest, new KijiScannerOptions());
         try {
           int nrows = 0;
           boolean foundRow0 = false;
-          for (KijiRowData row : scanner) {
-            LOG.debug("Scanning row: {}", row);
+          final Function<Utf8, String> toString = new ToString<Utf8>();
+          while(scanner.hasNext()) {
+            final KijiResult<Utf8> result = scanner.next();
+
+            LOG.debug("Scanning row: {}", result);
 
             // All rows but "row3" should be scanned through:
-            assertFalse(row.getEntityId().getComponentByIndex(0).equals("row3"));
+            assertFalse(result.getEntityId().getComponentByIndex(0).equals("row3"));
 
             // Validate "row0", which contains both paged and non-paged cells:
-            if (row.getEntityId().getComponentByIndex(0).equals("row0")) {
+            if (result.getEntityId().getComponentByIndex(0).equals("row0")) {
               foundRow0 = true;
 
+              KijiResult<Utf8> narrowResult1 =
+                  result.narrowView(KijiColumnName.create("family", "qual0"));
               // Make sure we can still read the columns that are not paged:
-              assertEquals(ImmutableMap.builder()
-                  .put(3L, new Utf8("value3"))
-                  .put(2L, new Utf8("value2"))
-                  .put(1L, new Utf8("value1"))
+              assertEquals(ImmutableList.builder()
+                  .add(new Utf8("value3"))
+                  .add(new Utf8("value2"))
+                  .add(new Utf8("value1"))
                   .build(),
-                  row.getValues("family", "qual0"));
+                  ImmutableList.copyOf(Helpers.getValues(narrowResult1)));
 
               // The values for "map:*" should ideally not be retrieved.
               // We cannot use KeyOnlyFilter, but we can use FirstKeyOnlyFilter to limit
               // the number of KeyValues fetched:
-              assertEquals(ImmutableMap.builder()
-                  .put("int1", ImmutableMap.builder()
-                      .put(1L, 11)
-                      .build())
-                  .build(),
-                  row.getValues("map"));
+              KijiResult<Utf8> narrowResult2 =
+                  result.narrowView(KijiColumnName.create("map"));
+              try {
+                assertEquals(
+                    ImmutableList.builder()
+                        .add(11)
+                        .build(),
+                    ImmutableList.builder()
+                        .add(narrowResult2.iterator().next().getData())
+                        .build());
+              } finally {
+                narrowResult2.close();
+              }
             }
 
             nrows += 1;
@@ -391,6 +421,7 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
       }
     } finally {
       table.release();
+      asyncKiji.release();
     }
   }
 
@@ -433,9 +464,10 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
                         .withValue("value1")
         .build();
 
-    final KijiTable table = kiji.openTable("row_data_test_table");
+    final Kiji asyncKiji = new AsyncKijiFactory().open(kiji.getURI());
+    final KijiTable table = asyncKiji.openTable("row_data_test_table");
     try {
-      final KijiTableReader reader = table.openTableReader();
+      final AsyncKijiTableReader reader = (AsyncKijiTableReader) table.openTableReader();
       try {
         final KijiDataRequest dataRequest = KijiDataRequest.builder()
             .addColumns(ColumnsDef.create()
@@ -446,40 +478,47 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
                 .withMaxVersions(HConstants.ALL_VERSIONS)
                 .addFamily("map"))
             .build();
-        final KijiRowScanner scanner = reader.getScanner(dataRequest);
+        final KijiResultScanner<Object> scanner = reader.getKijiResultScanner(
+            dataRequest,
+            new KijiScannerOptions());
         try {
           int nrows = 0;
           boolean foundRow0 = false;
-          for (KijiRowData row : scanner) {
-            LOG.debug("Scanning row: {}", row);
+          while (scanner.hasNext()) {
+            final KijiResult<Object> result = scanner.next();
+            LOG.debug("Scanning row: {}", result);
 
             // All rows but "row3" should be scanned through:
-            assertFalse(row.getEntityId().getComponentByIndex(0).equals("row3"));
+            assertFalse(result.getEntityId().getComponentByIndex(0).equals("row3"));
 
             // Validate "row0", which contains both paged and non-paged cells:
-            if (row.getEntityId().getComponentByIndex(0).equals("row0")) {
+            if (result.getEntityId().getComponentByIndex(0).equals("row0")) {
               foundRow0 = true;
 
               // The values for "family:qual0" should ideally not be retrieved.
               // We cannot use KeyOnlyFilter, but we can use FirstKeyOnlyFilter to limit
               // the number of KeyValues fetched:
-              assertEquals(ImmutableMap.builder()
-                  .put(3L, new Utf8("value3"))
-                  .build(),
-                  row.getValues("family", "qual0"));
-
+              KijiResult<Utf8> narrowResult1 =
+                  result.narrowView(KijiColumnName.create("family", "qual0"));
+              try {
+                assertEquals(
+                    new Utf8("value3"),
+                    narrowResult1.iterator().next().getData());
+              } finally {
+                narrowResult1.close();
+              }
+              KijiResult<Integer> narrowResult2 =
+                  result.narrowView(KijiColumnName.create("map"));
               // Make sure we can still read the columns that are not paged:
-              assertEquals(ImmutableMap.builder()
-                  .put("int1", ImmutableMap.builder()
-                      .put(0L, 10)
-                      .put(1L, 11)
-                      .build())
-                  .put("int2", ImmutableMap.builder()
-                      .put(0L, 20)
-                      .put(1L, 21)
-                      .build())
-                  .build(),
-                  row.getValues("map"));
+              Iterator<Integer> resultsIter = Helpers.getValues(narrowResult2).iterator();
+              try {
+                assertEquals(11, resultsIter.next().intValue());
+                assertEquals(10, resultsIter.next().intValue());
+                assertEquals(21, resultsIter.next().intValue());
+                assertEquals(20, resultsIter.next().intValue());
+              } finally {
+                narrowResult2.close();
+              }
             }
 
             nrows += 1;
@@ -494,6 +533,7 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
       }
     } finally {
       table.release();
+      asyncKiji.release();
     }
   }
 
@@ -520,10 +560,10 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
                     .withQualifier("qual2")
                         .withValue("value2")
         .build();
-
-    final KijiTable table = kiji.openTable("row_data_test_table");
+    final Kiji asyncKiji = new AsyncKijiFactory().open(kiji.getURI());
+    final KijiTable table = asyncKiji.openTable("row_data_test_table");
     try {
-      final KijiTableReader reader = table.openTableReader();
+      final AsyncKijiTableReader reader = (AsyncKijiTableReader) table.openTableReader();
       try {
         final KijiDataRequest dataRequest = KijiDataRequest.builder()
             .addColumns(ColumnsDef.create()
@@ -531,14 +571,16 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
                 .add("family", "qual0")
                 .add("family", "qual1"))
             .build();
-        final KijiRowScanner scanner = reader.getScanner(dataRequest);
+        final KijiResultScanner<Object> scanner =
+            reader.getKijiResultScanner(dataRequest, new KijiScannerOptions());
         try {
           int nrows = 0;
-          for (KijiRowData row : scanner) {
-            LOG.debug("Scanning row: {}", row);
+          while (scanner.hasNext()) {
+            final KijiResult<Object> result = scanner.next();
+            LOG.debug("Scanning row: {}", result);
 
             // All rows but "row2" should be scanned through:
-            assertFalse(row.getEntityId().getComponentByIndex(0).equals("row2"));
+            assertFalse(result.getEntityId().getComponentByIndex(0).equals("row2"));
             nrows += 1;
           }
           assertEquals(2, nrows);
@@ -550,6 +592,7 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
       }
     } finally {
       table.release();
+      asyncKiji.release();
     }
   }
 
@@ -577,23 +620,26 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
                         .withValue("value2")
         .build();
 
-    final KijiTable table = kiji.openTable("row_data_test_table");
+    final Kiji asyncKiji = new AsyncKijiFactory().open(kiji.getURI());
+    final KijiTable table = asyncKiji.openTable("row_data_test_table");
     try {
-      final KijiTableReader reader = table.openTableReader();
+      final AsyncKijiTableReader reader = (AsyncKijiTableReader) table.openTableReader();
       try {
         final KijiDataRequest dataRequest = KijiDataRequest.builder()
             .addColumns(ColumnsDef.create()
                 .withPageSize(1)
                 .addFamily("map"))
             .build();
-        final KijiRowScanner scanner = reader.getScanner(dataRequest);
+        final KijiResultScanner<Object> scanner =
+            reader.getKijiResultScanner(dataRequest, new KijiScannerOptions());
         try {
           int nrows = 0;
-          for (KijiRowData row : scanner) {
-            LOG.debug("Scanning row: {}", row);
+          while (scanner.hasNext()) {
+            final KijiResult<Object> result = scanner.next();
+            LOG.debug("Scanning row: {}", result);
 
             // All rows but "row2" should be scanned through:
-            assertFalse(row.getEntityId().getComponentByIndex(0).equals("row2"));
+            assertFalse(result.getEntityId().getComponentByIndex(0).equals("row2"));
             nrows += 1;
           }
           assertEquals(2, nrows);
@@ -605,6 +651,7 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
       }
     } finally {
       table.release();
+      asyncKiji.release();
     }
   }
 }

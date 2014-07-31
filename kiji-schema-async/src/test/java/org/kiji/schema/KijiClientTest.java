@@ -37,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.checkin.CheckinUtils;
+import org.kiji.schema.impl.async.AsyncKiji;
+import org.kiji.schema.impl.async.AsyncKijiFactory;
 import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.TestingFileUtils;
 
@@ -92,6 +94,9 @@ public class KijiClientTest {
 
   /** Default test Kiji instance. */
   private Kiji mKiji = null;
+
+  /** Default test AsyncKiji instance. */
+  private Kiji mAsyncKiji = null;
 
   /** The configuration object for this kiji instance. */
   private Configuration mConf;
@@ -181,6 +186,39 @@ public class KijiClientTest {
   }
 
   /**
+   * Creates and opens a new unique test AsyncKiji instance in a new fake HBase cluster.  All generated
+   * AsyncKiji instances are automatically cleaned up by KijiClientTest.
+   *
+   * @return a fresh new AsyncKiji instance in a new fake HBase cluster.
+   * @throws Exception on error.
+   */
+  public Kiji createTestAsyncKiji() throws Exception {
+    return createTestAsyncKiji(createTestHBaseURI());
+  }
+
+  /**
+   * Creates and opens a new unique test AsyncKiji instance in the specified cluster.  All generated
+   * AsyncKiji instances are automatically cleaned up by KijiClientTest.
+   *
+   * @param clusterURI of cluster create new instance in.
+   * @return a fresh new AsyncKiji instance in the specified cluster.
+   * @throws Exception on error.
+   */
+  public Kiji createTestAsyncKiji(KijiURI clusterURI) throws Exception {
+    Preconditions.checkNotNull(mConf);
+    final String instanceName = String.format("%s_%s_%d",
+        getClass().getSimpleName(),
+        mTestName.getMethodName(),
+        mKijiInstanceCounter.getAndIncrement());
+    final KijiURI uri = KijiURI.newBuilder(clusterURI).withInstanceName(instanceName).build();
+    KijiInstaller.get().install(uri, mConf);
+    final Kiji kiji = new AsyncKijiFactory().open(uri);
+
+    mKijis.add(kiji);
+    return kiji;
+  }
+
+  /**
    * Deletes a test Kiji instance. The <code>Kiji</code> reference provided to this method will no
    * longer be valid after it returns (it will be closed).  Calling this method on Kiji instances
    * created through KijiClientTest is not necessary, it is provided for testing situations in which
@@ -239,6 +277,27 @@ public class KijiClientTest {
       }
     }
     return mKiji;
+  }
+
+  /**
+   * Gets the default AsyncKiji instance to use for testing.
+   *
+   * @return the default AsyncKiji instance to use for testing.
+   *     Automatically released by KijiClientTest.
+   * @throws IOException on I/O error.  Should be Exception, but breaks too many tests for now.
+   */
+  public synchronized Kiji getAsyncKiji() throws IOException {
+    if (null == mAsyncKiji) {
+      try {
+        mAsyncKiji = createTestAsyncKiji();
+      } catch (IOException ioe) {
+        throw ioe;
+      } catch (Exception exn) {
+        // TODO: Remove wrapping:
+        throw new IOException(exn);
+      }
+    }
+    return mAsyncKiji;
   }
 
   /** @return a valid identifier for the current test. */
