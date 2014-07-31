@@ -42,7 +42,7 @@ import org.kiji.annotations.Inheritance;
  * </pre>
  *
  * This interface is not used alone but is bundled within
- * {@link org.kiji.schema.AsyncKijiTableWriter}.
+ * {@link org.kiji.schema.KijiBufferedWriter}.
  */
 @ApiAudience.Public
 @ApiStability.Evolving
@@ -54,15 +54,13 @@ public interface AsyncKijiIncrementer extends Closeable {
    * <p>Throws an exception if the specified column is not a counter.</p>
    *
    * @param entityId Entity ID of the row containing the counter.
-   * @param family Column family.
-   * @param qualifier Column qualifier.
+   * @param columnName The KijiColumName specifying the column to increment.
    * @param amount Amount to increment the counter (may be negative).
    * @return A {@code KijiFuture} of the new counter value, post increment.
    * @throws java.io.IOException on I/O error.
    */
   KijiFuture<KijiCell<Long>> increment(
       EntityId entityId,
-      String family,
-      String qualifier,
+      KijiColumnName columnName,
       long amount) throws IOException;
 }

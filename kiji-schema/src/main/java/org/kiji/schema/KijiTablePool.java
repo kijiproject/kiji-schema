@@ -588,12 +588,6 @@ public final class KijiTablePool implements Closeable {
 
     /** {@inheritDoc} */
     @Override
-    public AsyncKijiWriterFactory getAsyncWriterFactory() throws IOException {
-      return mTable.getAsyncWriterFactory();
-    }
-
-    /** {@inheritDoc} */
-    @Override
     public List<KijiRegion> getRegions() throws IOException {
       return mTable.getRegions();
     }
@@ -608,12 +602,6 @@ public final class KijiTablePool implements Closeable {
     @Override
     public AsyncKijiTableReader openAsyncTableReader() {
       return mTable.openAsyncTableReader();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public AsyncKijiTableWriter openAsyncTableWriter() {
-      return mTable.openAsyncTableWriter();
     }
   }
 

@@ -43,7 +43,7 @@ import org.kiji.annotations.Inheritance;
  *   deleter.deleteCell(entityId, columnFamily, columnQualifier);
  * </pre>
  *
- * This interface is bundled within the {@link org.kiji.schema.AsyncKijiTableWriter} interface.
+ * This interface is bundled within the {@link org.kiji.schema.AsyncKijiBufferedWriter} interface.
  *
  * Delete operations in long running applications can be dangerous if the table layout may change
  * during the lifetime of the application.  The user must ensure that all writers are closed and
@@ -81,24 +81,27 @@ public interface AsyncKijiDeleter extends Closeable {
       throws IOException;
 
   /**
-   * Deletes all versions of all cells in a family.
+   * Deletes all versions of all cells in a column. If the KijiColumnName is unqualified, then it
+   * will delete all versions of all cells in the specified family.
    *
-   * @param entityId Entity ID of the row to delete data from.
-   * @param family Column family.
+   * @param entityId The entity ID of the row to delete data from.
+   * @param columnName The KijiColumnName specifying the column to delete.
    * @return A {@code KijiFuture} object that indicates the completion of the request. The Object
    * has no special meaning and can be null (think of it as KijiFuture<Void>). But you probably want
    * to attach at least a {@link com.google.common.util.concurrent.FutureCallback}  in order to
    * handle failures.
    * @throws java.io.IOException on I/O error.
    */
-  KijiFuture<Object> deleteFamily(EntityId entityId, String family)
+  KijiFuture<Object> deleteColumn(EntityId entityId, KijiColumnName columnName)
       throws IOException;
 
   /**
-   * Deletes all cells from a family with a timestamp less than or equal to the specified timestamp.
+   * Deletes all cells from a column with a timestamp less than or equal to the specified timestamp.
+   * If the KijiColumnName is unqualified, then it will delete all cells from the specified family
+   * with a timestamp less than or equal to the specified timestamp.
    *
-   * @param entityId Entity ID of the row to delete data from.
-   * @param family Column family.
+   * @param entityId The entity ID of the row to delete data from.
+   * @param columnName The KijiColumnName specifying the column to delete.
    * @param upToTimestamp Delete cells with a timestamp older or equal to this parameter.
    * @return A {@code KijiFuture} object that indicates the completion of the request. The Object
    * has no special meaning and can be null (think of it as KijiFuture<Void>). But you probably want
@@ -106,64 +109,28 @@ public interface AsyncKijiDeleter extends Closeable {
    * handle failures.
    * @throws java.io.IOException on I/O error.
    */
-  KijiFuture<Object> deleteFamily(EntityId entityId, String family, long upToTimestamp)
+  KijiFuture<Object> deleteColumn(EntityId entityId, KijiColumnName columnName, long upToTimestamp)
       throws IOException;
-
-  /**
-   * Deletes all versions of all cells in a column.
-   *
-   * @param entityId Entity ID of the row to delete data from.
-   * @param family Column family.
-   * @param qualifier Column qualifier.
-   * @return A {@code KijiFuture} object that indicates the completion of the request. The Object
-   * has no special meaning and can be null (think of it as KijiFuture<Void>). But you probably want
-   * to attach at least a {@link com.google.common.util.concurrent.FutureCallback}  in order to
-   * handle failures.
-   * @throws java.io.IOException on I/O error.
-   */
-  KijiFuture<Object> deleteColumn(EntityId entityId, String family, String qualifier)
-      throws IOException;
-
-  /**
-   * Deletes all cells with a timestamp less than or equal to the specified timestamp.
-   *
-   * @param entityId Entity ID of the row to delete data from.
-   * @param family Column family.
-   * @param qualifier Column qualifier.
-   * @param upToTimestamp Delete cells with a timestamp older or equal to this parameter.
-   * @return A {@code KijiFuture} object that indicates the completion of the request. The Object
-   * has no special meaning and can be null (think of it as KijiFuture<Void>). But you probably want
-   * to attach at least a {@link com.google.common.util.concurrent.FutureCallback}  in order to
-   * handle failures.
-   * @throws java.io.IOException on I/O error.
-   */
-  KijiFuture<Object> deleteColumn(
-      EntityId entityId,
-      String family,
-      String qualifier,
-      long upToTimestamp) throws IOException;
 
   /**
    * Deletes the most recent version of the cell in a column.
    *
-   * @param entityId Entity ID of the row to delete data from.
-   * @param family Column family.
-   * @param qualifier Column qualifier.
+   * @param entityId The entity ID of the row to delete data from.
+   * @param columnName The KijiColumnName specifying the column to delete.
    * @return A {@code KijiFuture} object that indicates the completion of the request. The Object
    * has no special meaning and can be null (think of it as KijiFuture<Void>). But you probably want
    * to attach at least a {@link com.google.common.util.concurrent.FutureCallback}  in order to
    * handle failures.
    * @throws java.io.IOException on I/O error.
    */
-  KijiFuture<Object> deleteCell(EntityId entityId, String family, String qualifier)
+  KijiFuture<Object> deleteCell(EntityId entityId, KijiColumnName columnName)
       throws IOException;
 
   /**
    * Deletes a single cell with a specified timestamp.
    *
    * @param entityId Entity ID of the row to delete data from.
-   * @param family Column family.
-   * @param qualifier Column qualifier.
+   * @param columnName The KijiColumnName specifying the column to delete.
    * @param timestamp The timestamp of the cell to delete (use HConstants.LATEST_TIMESTAMP
    *     to delete the most recent cell in the column).
    * @return A {@code KijiFuture} object that indicates the completion of the request. The Object
@@ -172,6 +139,6 @@ public interface AsyncKijiDeleter extends Closeable {
    * handle failures.
    * @throws java.io.IOException on I/O error.
    */
-  KijiFuture<Object> deleteCell(EntityId entityId, String family, String qualifier, long timestamp)
+  KijiFuture<Object> deleteCell(EntityId entityId, KijiColumnName columnName, long timestamp)
       throws IOException;
 }

@@ -28,7 +28,7 @@ import org.kiji.annotations.Inheritance;
 import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 
 /**
- * Interface for asyncrhonously reading data from a Kiji table.
+ * Interface for asynchronously reading data from a Kiji table.
  *
  * <p>
  *   Utilizes {@link EntityId} and {@link KijiDataRequest}
@@ -46,20 +46,20 @@ import org.kiji.schema.KijiTableReader.KijiScannerOptions;
  *     .add("foo", "bar");
  *   final KijiDataRequest request = builder.build();
  *
- *   final KijiTableReader reader = myKijiTable.openTableReader();
- *   final KijiResult data = reader.getKijiResult(myEntityId, request);
+ *   final AsyncKijiTableReader reader = myKijiTable.getReaderFactory().openAsyncTableReader();
+ *   final KijiFuture<KijiResult> futureData = reader.getKijiResult(myEntityId, request);
  * }</pre>
  * </p>
  *
  * <p>To get a row scanner across many records using the same column and version restrictions
  * from above:
  * <pre>{@code
- *   final KijiResultScanner scanner = reader.getResultScanner(request);
+ *   final AsyncKijiResultScanner scanner = reader.getResultScanner(request);
  *
  *   final KijiScannerOptions options = new KijiScannerOptions()
  *       .setStartRow(myStartRow)
  *       .setStopRow(myStopRow);
- *   final KijiResultScanner limitedScanner = reader.getResultScanner(request, options);
+ *   final AsyncKijiResultScanner limitedScanner = reader.getResultScanner(request, options);
  * }</pre>
  *
  * If a KijiScannerOptions is not set, the scanner will iterate over all rows in the table
@@ -74,7 +74,8 @@ import org.kiji.schema.KijiTableReader.KijiScannerOptions;
  * {@code hbase.client.scanner.caching}.
  * </p>
  *
- * <p> Instantiated in Kiji Schema via {@link KijiTable#openAsyncTableReader()}. </p>
+ * <p> Instantiated in Kiji Schema via
+ * {@link org.kiji.schema.KijiReaderFactory#openAsyncTableReader()}. </p>
  * <p>
  *   Unless otherwise specified, readers are not thread-safe and must be synchronized externally.
  * </p>
@@ -100,11 +101,12 @@ public interface AsyncKijiTableReader extends Closeable {
    * @return a KijiFuture of a new KijiResult for the given EntityId and data request.
    * @throws IOException in case of an error getting the data.
    */
-  KijiFuture<KijiResult> getResult(EntityId entityId, KijiDataRequest dataRequest)
+  <T> KijiFuture<KijiResult<T>> getResult(EntityId entityId, KijiDataRequest dataRequest)
       throws IOException;
 
   /**
-   * Get a KijiResultScanner of KijiFuture<KijiResult>s for the given data request and scan options.
+   * Get an AsyncKijiResultScanner of {@code KijiFuture<KijiResult>}s for the given data request and
+   * scan options.
    *
    * <p>
    *   This method allows the caller to specify a type-bound on the values of the {@code KijiCell}s
@@ -116,10 +118,10 @@ public interface AsyncKijiTableReader extends Closeable {
    *
    * @param request Data request defining the data to retrieve from each row.
    * @param scannerOptions Options to control the operation of the scanner.
-   * @return A new KijiResultScanner.
+   * @return A new AsyncKijiResultScanner.
    * @throws IOException in case of an error creating the scanner.
    */
-  public KijiResultScanner getKijiResultScanner(
+  public AsyncKijiResultScanner getKijiResultScanner(
       final KijiDataRequest request,
       final KijiScannerOptions scannerOptions
   ) throws IOException;

@@ -149,8 +149,7 @@ public final class AsyncKijiTable implements KijiTable {
       String name,
       HBaseClient hbClient,
       TableLayoutMonitor layoutMonitor
-  )
-      throws IOException {
+  ) throws IOException {
     mConstructorStack = (CLEANUP_LOG.isDebugEnabled())
         ? Debug.getStackTrace()
         : ENABLE_CONSTRUCTOR_STACK_LOGGING_MESSAGE;
@@ -315,12 +314,6 @@ public final class AsyncKijiTable implements KijiTable {
 
   /** {@inheritDoc} */
   @Override
-  public org.kiji.schema.AsyncKijiTableWriter openAsyncTableWriter() {
-    throw new UnsupportedOperationException();
-  }
-
-  /** {@inheritDoc} */
-  @Override
   public KijiReaderFactory getReaderFactory() throws IOException {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
@@ -335,12 +328,6 @@ public final class AsyncKijiTable implements KijiTable {
     Preconditions.checkState(state == State.OPEN,
         "Cannot get the writer factory for a KijiTable in state %s.", state);
     return mWriterFactory;
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public org.kiji.schema.AsyncKijiWriterFactory getAsyncWriterFactory() throws IOException {
-    throw new UnsupportedOperationException();
   }
 
   /**

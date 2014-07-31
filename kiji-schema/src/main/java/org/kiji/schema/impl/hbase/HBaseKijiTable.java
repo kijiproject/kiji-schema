@@ -43,8 +43,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.AsyncKijiTableReader;
-import org.kiji.schema.AsyncKijiTableWriter;
-import org.kiji.schema.AsyncKijiWriterFactory;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.EntityIdFactory;
 import org.kiji.schema.InternalKijiError;
@@ -355,12 +353,6 @@ public final class HBaseKijiTable implements KijiTable {
     return mWriterFactory;
   }
 
-  /** {@inheritDoc} */
-  @Override
-  public AsyncKijiWriterFactory getAsyncWriterFactory() throws IOException {
-    throw new UnsupportedOperationException();
-  }
-
   /**
    * Return the regions in this table as a list.
    *
@@ -568,12 +560,6 @@ public final class HBaseKijiTable implements KijiTable {
   /** {@inheritDoc} */
   @Override
   public AsyncKijiTableReader openAsyncTableReader() {
-    throw new UnsupportedOperationException();
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public AsyncKijiTableWriter openAsyncTableWriter() {
     throw new UnsupportedOperationException();
   }
 }

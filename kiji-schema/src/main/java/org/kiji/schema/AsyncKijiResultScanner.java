@@ -16,28 +16,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.kiji.schema;
+
+import java.io.Closeable;
+import java.util.Iterator;
+import java.util.concurrent.Future;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.annotations.Inheritance;
 
 /**
- * Interface for modifying a Kiji table.
+ * An asynchronous scanner over rows in a KijiTable. Rows are returned as a
+ * {@link org.kiji.schema.KijiFuture}<{@link org.kiji.schema.KijiResult}>s.
+ * {@code AsyncKijiResultScanner} must be closed when it will no longer be used.
  *
- * <p>
- *   Wraps methods from KijiPutter, KijiIncrementer, and KijiDeleter.
- *   To get a KijiTableWriter, use {@link KijiTable#openTableWriter()}
- *   or {@link KijiTable#getWriterFactory()}.
- * </p>
- *
- * <p>
- *   Unless otherwise specified, writers are not thread-safe and must be synchronized externally.
- * </p>
+ * @param <T> type of {@code KijiCell} value returned by scanned {@code KijiFuture<KijiResult>}s.
  */
-@ApiAudience.Public
-@ApiStability.Evolving
+@ApiAudience.Framework
+@ApiStability.Experimental
 @Inheritance.Sealed
-public interface AsyncKijiTableWriter extends AsyncKijiPutter, AsyncKijiIncrementer, KijiDeleter {
-}
+public interface AsyncKijiResultScanner<T> extends Closeable, Iterator<Future<KijiResult<T>>> { }

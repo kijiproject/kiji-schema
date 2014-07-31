@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Map;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.AsyncKijiTableReader;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiReaderFactory;
 import org.kiji.schema.layout.CellSpec;
@@ -60,6 +61,13 @@ public final class HBaseKijiReaderFactory implements KijiReaderFactory {
   public HBaseKijiTableReader openTableReader(Map<KijiColumnName, CellSpec> overrides)
       throws IOException {
     return HBaseKijiTableReader.createWithCellSpecOverrides(mTable, overrides);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public AsyncKijiTableReader openAsyncTableReader() throws IOException {
+    throw new UnsupportedOperationException(
+        "HBaseKijiReaderFactory does not support opening an AsyncKijiTableReader.");
   }
 
   /** {@inheritDoc} */

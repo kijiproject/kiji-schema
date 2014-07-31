@@ -40,7 +40,8 @@ import org.kiji.annotations.Inheritance;
  *   putter.put(entityId, columnFamily, columnQualifier, value);
  * </pre>
  *
- * <p> This interface is not used alone but is bundled within {@link org.kiji.schema.KijiTableWriter}. </p>
+ * <p> This interface is not used alone but is bundled within
+ * {@link org.kiji.schema.KijiTableWriter}. </p>
  * <p>
  *   Unless otherwise specified, putters are not thread-safe and must be synchronized externally.
  * </p>
@@ -53,8 +54,7 @@ public interface AsyncKijiPutter extends Closeable {
    * Puts data into a kiji table.
    *
    * @param entityId The entity (row) to put data into.
-   * @param family A column family.
-   * @param qualifier A column qualifier.
+   * @param columnName The KijiColumName to put data into.
    * @param value The data to write.
    * @param <T> The type of the value being written.
    * @return A {@code KijiFuture} object that indicates the completion of the request. The Object
@@ -63,15 +63,14 @@ public interface AsyncKijiPutter extends Closeable {
    * handle failures.
    * @throws java.io.IOException If there is an IO error.
    */
-  <T> KijiFuture<Object> put(EntityId entityId, String family, String qualifier, T value)
+  <T> KijiFuture<Object> put(EntityId entityId, KijiColumnName columnName, T value)
       throws IOException;
 
   /**
    * Puts data into a kiji table.
    *
    * @param entityId The entity (row) to put data into.
-   * @param family A column family.
-   * @param qualifier A column qualifier.
+   * @param columnName The KijiColumName to put data into.
    * @param timestamp Timestamp, in millisecond since the Epoch.
    * @param value The data to write.
    * @param <T> The type of the value being written.
@@ -81,10 +80,6 @@ public interface AsyncKijiPutter extends Closeable {
    * handle failures.
    * @throws java.io.IOException If there is an IO error.
    */
-  <T> KijiFuture<Object> put(
-      EntityId entityId,
-      String family,
-      String qualifier,
-      long timestamp,
-      T value) throws IOException;
+  <T> KijiFuture<Object> put(EntityId entityId, KijiColumnName columnName, long timestamp, T value)
+      throws IOException;
 }
