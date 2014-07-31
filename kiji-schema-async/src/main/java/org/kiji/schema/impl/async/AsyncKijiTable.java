@@ -296,6 +296,12 @@ public final class AsyncKijiTable implements KijiTable {
 
   /** {@inheritDoc} */
   @Override
+  public org.kiji.schema.AsyncKijiTableReader openAsyncTableReader() {
+    throw new UnsupportedOperationException();
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public KijiTableWriter openTableWriter() {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
