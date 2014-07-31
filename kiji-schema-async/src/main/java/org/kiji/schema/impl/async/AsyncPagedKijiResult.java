@@ -56,6 +56,7 @@ import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.hbase.HBaseDataRequestAdapter.NameTranslatingFilterContext;
+import org.kiji.schema.impl.hbase.HBaseKijiResult;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
@@ -153,7 +154,7 @@ public class AsyncPagedKijiResult<T> implements KijiResult<T> {
   @Override
   @SuppressWarnings("unchecked")
   public <U extends T> AsyncPagedKijiResult<U> narrowView(final KijiColumnName column) {
-    final KijiDataRequest narrowRequest = AsyncKijiResult.narrowRequest(column, mDataRequest);
+    final KijiDataRequest narrowRequest = HBaseKijiResult.narrowRequest(column, mDataRequest);
 
     return new AsyncPagedKijiResult<U>(
         mEntityId,
@@ -188,7 +189,6 @@ public class AsyncPagedKijiResult<T> implements KijiResult<T> {
     private final KijiColumnName mColumn;
     private final Column mColumnRequest;
     private Scanner mScanner;
-    private final Closer mCloser;
     private final byte[] mTableName;
 
     /**
@@ -198,11 +198,20 @@ public class AsyncPagedKijiResult<T> implements KijiResult<T> {
      */
     private PagedColumnIterable(final Column columnRequest) {
       mColumn = columnRequest.getColumnName();
-      mCloser = Closer.create();
       mColumnRequest = columnRequest;
 
       mTableName = KijiManagedHBaseTableName
           .getKijiTableName(mTable.getURI().getInstance(), mTable.getURI().getTable()).toBytes();
+    }
+
+    /**
+     * Closes a {@code Scanner} if it is not null.
+     * @param scanner The scanner to be closed.
+     */
+    private void closeScanner(final Scanner scanner) {
+      if (null != scanner) {
+        scanner.close();
+      }
     }
 
     /**
@@ -224,6 +233,7 @@ public class AsyncPagedKijiResult<T> implements KijiResult<T> {
         }
 
         final byte[] rowkey = mEntityId.getHBaseRowKey();
+        closeScanner(mScanner);
         mScanner = mTable.getHBClient().newScanner(mTableName);
         mScanner.setStartKey(rowkey);
         mScanner.setStopKey(Arrays.copyOf(rowkey, rowkey.length + 1));
@@ -291,8 +301,7 @@ public class AsyncPagedKijiResult<T> implements KijiResult<T> {
     /** {@inheritDoc} */
     @Override
     public void close() throws IOException {
-      mScanner.close();
-      mCloser.close();
+      closeScanner(mScanner);
     }
 
     private class ScannerIterator implements Iterator<ArrayList<KeyValue>> {

@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +42,6 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestValidator;
@@ -55,16 +53,12 @@ import org.kiji.schema.KijiTableReaderBuilder;
 import org.kiji.schema.KijiTableReaderBuilder.OnDecoderCacheMiss;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.SpecificCellDecoderFactory;
-import org.kiji.schema.filter.KijiRowFilter;
-import org.kiji.schema.filter.KijiRowFilterApplicator;
-import org.kiji.schema.hbase.HBaseScanOptions;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.BoundColumnReaderSpec;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.ColumnReaderSpec;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
-import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
 import org.kiji.schema.util.DebugResourceTracker;
@@ -131,7 +125,7 @@ public final class AsyncKijiTableReader implements KijiTableReader {
      * @param cellDecoderProvider the CellDecoderProvider to cache.  This provider should reflect
      *     all overrides appropriate to this reader.
      * @param layout the KijiTableLayout to cache.
-     * @param translator the KijiColumnNameTranslator to cache.
+     * @param translator the HBaseColumnNameTranslator to cache.
      */
     private ReaderLayoutCapsule(
         final CellDecoderProvider cellDecoderProvider,
@@ -433,8 +427,11 @@ public final class AsyncKijiTableReader implements KijiTableReader {
     final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
     final KijiTableLayout tableLayout = capsule.getLayout();
     validateRequestAgainstLayout(dataRequest, tableLayout);
-    final AsyncDataRequestAdapter asyncDataRequestAdapter =
-        new AsyncDataRequestAdapter(dataRequest, capsule.getColumnNameTranslator(), mHBClient, mTableName);
+    final AsyncDataRequestAdapter asyncDataRequestAdapter = AsyncDataRequestAdapter.create(
+        dataRequest,
+        capsule.getColumnNameTranslator(),
+        mHBClient,
+        mTableName);
     final Scanner scanner = asyncDataRequestAdapter.toScanner(tableLayout);
     scanner.setStartKey(entityId.getHBaseRowKey());
     scanner.setStopKey(Arrays.copyOf(entityId.getHBaseRowKey(), entityId.getHBaseRowKey().length + 1));
@@ -578,12 +575,11 @@ public final class AsyncKijiTableReader implements KijiTableReader {
         "Cannot get scanner from KijiTableReader instance %s in state %s.", this, state);
 
     final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
-    final AsyncDataRequestAdapter adapter =
-        new AsyncDataRequestAdapter(
-            request,
-            capsule.getColumnNameTranslator(),
-            mHBClient,
-            mTableName);
+    final AsyncDataRequestAdapter adapter = AsyncDataRequestAdapter.create(
+        request,
+        capsule.getColumnNameTranslator(),
+        mHBClient,
+        mTableName);
     final KijiTableLayout layout = capsule.getLayout();
     validateRequestAgainstLayout(request, layout);
     final Scanner scanner = adapter.toScanner(layout, scannerOptions.getHBaseScanOptions());
@@ -627,66 +623,6 @@ public final class AsyncKijiTableReader implements KijiTableReader {
         .toString();
   }
 
-  /**
-   * Parses an array of hbase Results, returned from a bulk get, to a List of
-   * KijiRowData.
-   *
-   * @param results The results to parse.
-   * @param entityIds The matching set of EntityIds.
-   * @param dataRequest The KijiDataRequest.
-   * @return The list of KijiRowData returned by these results.
-   * @throws IOException If there is an error.
-   */
-  // TODO(gabe): Implement with AsyncHBase
-  /*
-private List<KijiRowData> parseResults(
-    final Result[] results,
-    final List<EntityId> entityIds,
-    final KijiDataRequest dataRequest
-) throws IOException {
-  List<KijiRowData> rowDataList = new ArrayList<KijiRowData>(results.length);
-
-  for (int i = 0; i < results.length; i++) {
-    Result result = results[i];
-    EntityId entityId = entityIds.get(i);
-
-    final AsyncKijiRowData rowData = (null == result)
-        ? null
-        : new AsyncKijiRowData(mTable, dataRequest, entityId, result,
-        mReaderLayoutCapsule.getCellDecoderProvider());
-    rowDataList.add(rowData);
-  }
-  return rowDataList;
-}*/
-
-/**
- * Creates a list of hbase Gets for a set of entityIds.
- *
- * @param entityIds The set of entityIds to collect.
- * @param tableLayout The table layout specifying constraints on what data to return for a row.
- * @param hbaseRequestAdapter The AsyncDataRequestAdapter.
- * @return A list of hbase Gets-- one for each entity id.
- * @throws IOException If there is an error.
- */
-  // TODO(gabe): Implement with AsyncHBase
-  /*
-private static List<Get> makeGetList(List<EntityId> entityIds, KijiTableLayout tableLayout,
-    AsyncDataRequestAdapter hbaseRequestAdapter)
-    throws IOException {
-  List<Get> hbaseGetList = new ArrayList<Get>(entityIds.size());
-  try {
-    for (EntityId entityId : entityIds) {
-      hbaseGetList.add(hbaseRequestAdapter.toGet(entityId, tableLayout));
-    }
-    return hbaseGetList;
-  } catch (InvalidLayoutException ile) {
-    // The table layout should never be invalid at this point, since we got it from a valid
-    // opened table.  If it is, there's something seriously wrong.
-    throw new InternalKijiError(ile);
-  }
-}
-*/
-
 /**
  * Validate a data request against a table layout.
  *
@@ -709,44 +645,4 @@ private static List<Get> makeGetList(List<EntityId> entityIds, KijiTableLayout t
     mLayoutConsumerRegistration.close();
     mTable.release();
   }
-
-  /**
-   * Sends an HBase Get request.
-   *
-   * @param get HBase Get request.
-   * @return the HBase Result.
-   * @throws IOException on I/O error.
-   */
-  // TODO(gabe): Implement with AsyncHBase
-  /*
-private Result doHBaseGet(Get get) throws IOException {
-  final HTableInterface htable = mTable.openHTableConnection();
-  try {
-    LOG.debug("Sending HBase Get: {}", get);
-    return htable.get(get);
-  } finally {
-    htable.close();
-  }
-}
-*/
-
-/**
- * Sends a batch of HBase Get requests.
- *
- * @param get HBase Get requests.
- * @return the HBase Results.
- * @throws IOException on I/O error.
- */
-  // TODO(gabe): Implement with AsyncHBase
-    /*
-  private Result[] doHBaseGet(List<Get> get) throws IOException {
-    final HTableInterface htable = mTable.openHTableConnection();
-    try {
-      LOG.debug("Sending bulk HBase Get: {}", get);
-      return htable.get(get);
-    } finally {
-      htable.close();
-    }
-  }
-  */
 }

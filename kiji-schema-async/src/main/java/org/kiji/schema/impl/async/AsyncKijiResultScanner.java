@@ -216,7 +216,6 @@ public class AsyncKijiResultScanner<T> implements KijiResultScanner<T> {
       mNextResults = getNextResult();
     }
 
-
     try {
       return AsyncKijiResult.create(
           mEidFactory.getEntityIdFromHBaseRowKey(next.get(0).key()),
