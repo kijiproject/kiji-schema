@@ -47,46 +47,26 @@ public final class AsyncKijiReaderFactory implements KijiReaderFactory {
   /** {@inheritDoc} */
   @Override
   public AsyncKijiTable getTable() {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     return mTable;
-    */
   }
 
   /** {@inheritDoc} */
   @Override
   public AsyncKijiTableReader openTableReader() throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     return AsyncKijiTableReader.create(mTable);
-    */
   }
 
   /** {@inheritDoc} */
   @Override
   public AsyncKijiTableReader openTableReader(Map<KijiColumnName, CellSpec> overrides)
       throws IOException {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
     return AsyncKijiTableReader.createWithCellSpecOverrides(mTable, overrides);
-    */
   }
 
   /** {@inheritDoc} */
   @Override
-  public HBaseKijiTableReaderBuilder readerBuilder() {
-    // TODO(gabe): Replace this with asynchbase
-    throw new UnsupportedOperationException("Not yet implemented to work with AsyncHBase");
-
-    /*
+  public AsyncKijiTableReaderBuilder readerBuilder() {
     return AsyncKijiTableReaderBuilder.create(mTable);
-    */
   }
 
 }

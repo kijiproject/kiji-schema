@@ -163,7 +163,7 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
     expectedScan.setMaxVersions(2);
     expectedScan.setTimeRange(1L, 3L);
 
-    AsyncDataRequestAdapter asyncDataRequest = new AsyncDataRequestAdapter(
+    AsyncDataRequestAdapter asyncDataRequest = AsyncDataRequestAdapter.create(
         request,
         HBaseColumnNameTranslator.from(mTableLayout),
         mAsyncKiji.getHBaseClient(),
@@ -177,7 +177,7 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
     KijiDataRequest request = KijiDataRequest.builder().build();
     final byte[] tableName = kijiToTableName(mAsyncKiji, mTableLayout.getName());
     AsyncDataRequestAdapter asyncDataRequest =
-        new AsyncDataRequestAdapter(
+        AsyncDataRequestAdapter.create(
             request,
             mColumnNameTranslator,
             mAsyncKiji.getHBaseClient(),
@@ -185,25 +185,6 @@ public class TestAsyncDataRequestAdapter extends KijiClientTest {
     Scanner expectedScanner = mAsyncKiji.getHBaseClient().newScanner(tableName);
     assertEquals(expectedScanner.toString(), asyncDataRequest.toScanner(mTableLayout).toString());
   }
-
-  @Test
-  public void testDataRequestToGet() throws IOException {
-    KijiDataRequest request = KijiDataRequest.builder().build();
-    final byte[] tableName = kijiToTableName(mAsyncKiji, mTableLayout.getName());
-    AsyncDataRequestAdapter asyncDataRequest =
-        new AsyncDataRequestAdapter(
-            request,
-            mColumnNameTranslator,
-            mAsyncKiji.getHBaseClient(),
-            tableName);
-    try {
-      asyncDataRequest.toGetRequest(mEntityIdFactory.getEntityId("entity"), mTableLayout);
-      Assert.fail();
-    } catch (Exception e) {
-      assertEquals("toGetRequest is not yet supported for Async Kiji", e.getMessage());
-    }
-  }
-
 
   /**
    * Tests that combining column requests with different max-versions works properly.
