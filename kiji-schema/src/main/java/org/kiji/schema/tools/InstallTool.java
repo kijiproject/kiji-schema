@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,6 +89,8 @@ public final class InstallTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
+    Preconditions.checkArgument(nonFlagArgs.isEmpty(),
+        "Unexpected command-line argument: [%s]", Joiner.on(",").join(nonFlagArgs));
     getPrintStream().println("Creating kiji instance: " + mKijiURI);
     getPrintStream().println("Creating meta tables for kiji instance in hbase...");
     final Map<String, String> initialProperties = (null == mPropertiesFile)

@@ -22,6 +22,8 @@ package org.kiji.schema.tools;
 import java.io.IOException;
 import java.util.List;
 
+import com.google.common.base.Joiner;
+
 import com.google.common.base.Preconditions;
 
 import org.kiji.annotations.ApiAudience;
@@ -77,6 +79,8 @@ public final class UninstallTool extends BaseTool {
   /** {@inheritDoc} */
   @Override
   protected int run(List<String> nonFlagArgs) throws Exception {
+    Preconditions.checkArgument(nonFlagArgs.isEmpty(),
+        "Unexpected command-line argument: [%s]", Joiner.on(",").join(nonFlagArgs));
     getPrintStream().println("Deleting kiji instance: " + mKijiURI.toString());
     if (isInteractive())  {
       final Kiji kiji = Kiji.Factory.open(mKijiURI, getConf());
