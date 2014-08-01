@@ -98,6 +98,7 @@ public interface AsyncKijiTableReader extends Closeable {
    *
    * @param entityId EntityId of the row from which to get data.
    * @param dataRequest Specification of the data to get from the given row.
+   * @param <T> type {@code KijiCell} value returned by the {@code KijiResult}.
    * @return a KijiFuture of a new KijiResult for the given EntityId and data request.
    * @throws IOException in case of an error getting the data.
    */
@@ -121,7 +122,7 @@ public interface AsyncKijiTableReader extends Closeable {
    * @return A new AsyncKijiResultScanner.
    * @throws IOException in case of an error creating the scanner.
    */
-  public AsyncKijiResultScanner getKijiResultScanner(
+  <T> AsyncKijiResultScanner<T> getKijiResultScanner(
       final KijiDataRequest request,
       final KijiScannerOptions scannerOptions
   ) throws IOException;

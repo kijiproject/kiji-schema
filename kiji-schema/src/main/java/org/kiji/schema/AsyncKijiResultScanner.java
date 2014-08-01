@@ -31,9 +31,22 @@ import org.kiji.annotations.Inheritance;
  * {@link org.kiji.schema.KijiFuture}<{@link org.kiji.schema.KijiResult}>s.
  * {@code AsyncKijiResultScanner} must be closed when it will no longer be used.
  *
+ * <p><b>NOTE:</b></p> AsyncKijiResultScanner does not support
+ *
  * @param <T> type of {@code KijiCell} value returned by scanned {@code KijiFuture<KijiResult>}s.
  */
 @ApiAudience.Framework
 @ApiStability.Experimental
 @Inheritance.Sealed
-public interface AsyncKijiResultScanner<T> extends Closeable, Iterator<Future<KijiResult<T>>> { }
+public interface AsyncKijiResultScanner<T> extends Closeable {
+
+  /**
+   * Get a KijiFuture that will contain the next KijiResult once it has returned.
+   *
+   * <p>Note that the scanning is complete when the returned KijiFuture contains null. Every
+   * subsequent call to next() will result in a KijiFuture with a value of null.</p>
+   *
+   * @return A KijiFuture that will contain the next KijiResult once it is available.
+   */
+  public KijiFuture<KijiResult<T>> next();
+}

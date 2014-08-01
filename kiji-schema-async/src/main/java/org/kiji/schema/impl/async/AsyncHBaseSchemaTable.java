@@ -36,6 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.stumbleupon.async.Deferred;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.io.DatumReader;
@@ -456,7 +457,9 @@ public final class AsyncHBaseSchemaTable implements KijiSchemaTable {
         longToVarInt64(schemaId));
     final ArrayList<KeyValue> results;
     try {
-      results = mHBClient.get(get).join();
+      Deferred<ArrayList<KeyValue>> defferedResults = mHBClient.get(get);
+      mHBClient.flush().join();
+      results = defferedResults.join(100);
     } catch (Exception e) {
       ZooKeeperUtils.wrapAndRethrow(e);
       throw new InternalKijiError(e);

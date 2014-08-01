@@ -27,6 +27,7 @@ import org.kiji.annotations.ApiAudience;
  * A wrapped ListenableFuture to represent the results of asynchronous calls. Since
  * {@code KijiFuture} extends {@code ListenableFuture}, you can use {@code Futures} with a
  * {@code KijiFuture} to perform transformations and add callbacks.
+ * @param <T> value returned by the {@code KijiFuture}.
  */
 @ApiAudience.Public
 public interface KijiFuture<T> extends ListenableFuture<T> {
