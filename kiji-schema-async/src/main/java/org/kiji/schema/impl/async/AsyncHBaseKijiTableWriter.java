@@ -460,7 +460,7 @@ public final class AsyncHBaseKijiTableWriter implements KijiTableWriter {
     // Step 1.
     // TODO: Reimplement this code with a GetRequest once AsyncHBase has
     // been updated to allow GetRequest's to have the ability to use filters
-    final Scanner scanner = mHBClient.newScanner(mTable.getName());
+    final Scanner scanner = mHBClient.newScanner(mTableName);
 
     scanner.setFilter(new ColumnPrefixFilter(hbaseColumnName.getQualifier()));
     scanner.setStartKey(hbaseRow);
