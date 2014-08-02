@@ -38,8 +38,6 @@
 # - KIJI_MR_HOME : path of the Kiji MapReduce installation. Optional.
 #
 # - KIJI_CLASSPATH : extra classpath entries prepended to the actual classpath.
-# - KIJI_HADOOP_DISTRO_VER : manually select the Hadoop distribution.
-#       Either "hadoop1" or "hadoop2".
 # - KIJI_JAVA_OPTS : extra options passed to the JVM.
 # - JAVA_LIBRARY_PATH : extra paths of directories containing native libraries.
 #
@@ -179,9 +177,6 @@ fi
 # should be set with JAVA_LIBRARY_PATH.
 JAVA_LIBRARY_PATH=${JAVA_LIBRARY_PATH:-""}
 
-# Either "hadoop1" or "hadoop2":
-KIJI_HADOOP_DISTRO_VER=${KIJI_HADOOP_DISTRO_VER:-""}
-
 # ------------------------------------------------------------------------------
 # Locate the JVM.
 
@@ -281,25 +276,6 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-
-# Detect and extract the current Hadoop version number. e.g. "Hadoop 2.x-..." -> "2"
-# You can override this with ${KIJI_HADOOP_DISTRO_VER} (e.g. "hadoop1" or "hadoop2").
-if [[ -z "${KIJI_HADOOP_DISTRO_VER}" ]]; then
-  hadoop_major_version=$("${hadoop_bin_path}" version | head -1 | cut -c 8)
-  if [[ -z "${hadoop_major_version}" ]]; then
-    error "Unknown Hadoop version."
-    error "Please set KIJI_HADOOP_DISTRO_VER manually to 'hadoop1' or 'hadoop2'."
-    exit 1
-  else
-    # If the hadoop version is 0 (i.e. 0.20) then use the hadoop1 bridge
-    if [[ ${hadoop_major_version} -eq 0 ]]; then
-      hadoop_major_version=1
-    fi
-    KIJI_HADOOP_DISTRO_VER="hadoop${hadoop_major_version}"
-  fi
-fi
-
-# ------------------------------------------------------------------------------
 # Compute the Kiji base classpaths:
 
 # Kiji base classpath.
@@ -307,23 +283,10 @@ fi
 # components (including KijiSchema, KijiMR, KijiScoring and their dependencies).
 kijis_cp="${KIJI_HOME}/lib/*"
 
-# We may have Hadoop distribution-specific jars to load in
-# ${KIJI_HOME}/lib/distribution/hadoop${N}, where N is the major digit of the
-# Hadoop version. Only load at most one such set of jars.
-#
-# ${KIJI_HOME}/lib/distribution/hadoop${N} is part of the KijiBento distribution.
-
-if [[ -d "${KIJI_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}" ]]; then
-  kijis_cp="${kijis_cp}:${KIJI_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}/*"
-fi
-
 # Add KijiMR classpath, if bundled separately ie. if KIJI_HOME != KIJI_MR_HOME:
 kijimr_cp=""
 if [[ ! -z "${KIJI_MR_HOME}" && "${KIJI_HOME}" != "${KIJI_MR_HOME}" ]]; then
   kijimr_cp="${KIJI_MR_HOME}/lib/*"
-  if [[ -d "${KIJI_MR_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}" ]]; then
-    kijimr_cp="${kijimr_cp}:${KIJI_MR_HOME}/lib/distribution/${KIJI_HADOOP_DISTRO_VER}/*"
-  fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -482,7 +445,6 @@ function check_environment() {
   info "KIJI_HOME=${KIJI_HOME}"
   info "KIJI_MR_HOME=${KIJI_MR_HOME}"
   info "KIJI_CLASSPATH=${KIJI_CLASSPATH}"
-  info "KIJI_HADOOP_DISTRO_VER=${KIJI_HADOOP_DISTRO_VER}"
   info "KIJI_JAVA_OPTS=${KIJI_JAVA_OPTS}"
   info "JAVA_LIBRARY_PATH=${JAVA_LIBRARY_PATH}"
   if [[ ! -x "${KIJI_HOME}/bin/kiji" ]]; then

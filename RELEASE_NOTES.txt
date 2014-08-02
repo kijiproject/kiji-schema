@@ -3,6 +3,7 @@
                               KijiSchema Release Notes
 
 Version 1.6.0
+  * SCHEMA-892. [Breaking Change] Remove hadoop1 and HBase 0.92 support.
   * SCHEMA-874. Bumps root pom version and our slf4j dependencies. Removes
       KijiSchema's implementation of slf4j's LoggerFactory.
   * SCHEMA-875. Revert binary incompatibility introduced in SCHEMA-826.

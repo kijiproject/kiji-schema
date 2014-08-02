@@ -53,6 +53,13 @@ if [[ ! -f "${KIJI_HOME}/conf/kiji-schema.version" ]]; then
 fi
 kiji_schema_version=$(cat "${KIJI_HOME}/conf/kiji-schema.version")
 
+if [[ ! -f "${KIJI_HOME}/conf/kiji-mapreduce.version" ]]; then
+  error "Invalid KIJI_HOME=${KIJI_HOME}"
+  error "Cannot find \${KIJI_HOME}/conf/kiji-mapreduce.version"
+  exit 1
+fi
+kiji_mr_version=$(cat "${KIJI_HOME}/conf/kiji-mapreduce.version")
+
 if [[ -z "${HADOOP_HOME}" ]]; then
   echo "Please set the HADOOP_HOME environment variable before you enable profiling."
   exit 1
@@ -64,24 +71,11 @@ kiji_profiling_schema_jar_name="kiji-schema-profiling-${kiji_schema_version}.jar
 # Name of the original kiji schema jar
 kiji_schema_jar_name="kiji-schema-${kiji_schema_version}.jar"
 
-# We may have Hadoop distribution-specific jars to load in
-# $KIJI_HOME/lib/distribution/hadoopN, where N is the major digit of the Hadoop
-# version. Only load at most one such set of jars.
+# Name of the profiling version of the kiji mapreduce jar
+kiji_profiling_mr_jar_name="kiji-mapreduce-profiling-${kiji_mr_version}.jar"
 
-# Detect and extract the current Hadoop version number. e.g. "Hadoop 2.x-..." -> "2"
-# You can override this with $KIJI_HADOOP_DISTRO_VER (e.g. "hadoop1" or "hadoop2").
-hadoop_major_version=$($HADOOP_HOME/bin/hadoop version | head -1 | cut -c 8)
-if [[ -z "$hadoop_major_version" && -z "$KIJI_HADOOP_DISTRO_VER" ]]; then
-  echo "Warning: Unknown Hadoop version. May not be able to load all Kiji jars."
-  echo "Set KIJI_HADOOP_DISTRO_VER to 'hadoop1' or 'hadoop2' to load these."
-else
-  KIJI_HADOOP_DISTRO_VER=${KIJI_HADOOP_DISTRO_VER:-"hadoop$hadoop_major_version"}
-fi
-
-distrodir="$KIJI_HOME/lib/distribution/$KIJI_HADOOP_DISTRO_VER"
-
-# This name represents both profiling and non profiling jar for KijiMR
-kiji_mr_jar_prefix="kiji-mapreduce-"
+# Name of the original kiji mapreduce jar
+kiji_mr_jar_name="kiji-mapreduce-${kiji_mr_version}.jar"
 
 # The location to store the original KijiSchema and KijiMR jars during profiling
 # so that they may be restored later.
@@ -116,16 +110,13 @@ else
 fi
 
 # Remove the KijiMR profiling-enabled jar
-if [[ -d "${distrodir}" ]]; then
-  profiling_jar=$(ls "${distrodir}"/"${kiji_mr_jar_prefix}"profiling-*.jar)
-  if [[ -f "${profiling_jar}" ]]; then
-    echo "Remove profile enabled kiji mapreduce jar..."
-    rm -f "${profiling_jar}"
-  else
-    echo "Did not find ${kiji_mr_jar_prefix}profiling-*.jar in ${distrodir}. "
-    echo "Is profiling enabled?"
-    inconsistent_state="true"
-  fi
+if [[ -f "${KIJI_HOME}/lib/${kiji_profiling_mr_jar_name}" ]]; then
+  echo "Removing profile enabled kiji mapreduce jar..."
+  rm -f "${KIJI_HOME}/lib/${kiji_profiling_mr_jar_name}"
+else
+  echo "Did not find ${kiji_profiling_mr_jar_name} in ${KIJI_HOME}/lib. "
+  echo "Is profiling enabled?"
+  inconsistent_state="true"
 fi
 
 # Check if the orig_dir exists and move the schema and mapreduce jars into their
@@ -140,20 +131,18 @@ if [[ -d "${orig_dir}" ]]; then
     mv "${orig_dir}/${kiji_schema_jar_name}" "${KIJI_HOME}/lib/"
   fi
 
-  kijimr_jar=$(ls "${orig_dir}"/"${kiji_mr_jar_prefix}"*.jar)
-  if [[ ! -f "${kijimr_jar}" ]]; then
-    echo "Cannot find the original KijiMR jar in ${orig_dir}. " \
-      "Please move the jar named ${kiji_mr_jar_prefix}*.jar " \
-      "to the ${distrodir} directory."
+  if [[ ! -f "${orig_dir}/${kiji_mr_jar_name}" ]]; then
+    echo "Cannot find original mapreduce jar in ${orig_dir}. " \
+      "Please move the jar ${kiji_mr_jar_name} to ${KIJI_HOME}/lib"
     inconsistent_state="true"
   else
-    echo "Moving ${orig_dir}/${kiji_mr_jar_prefix}-* to ${distrodir}"
-    mv "${orig_dir}"/"${kiji_mr_jar_prefix}"* "${distrodir}"
+    echo "Moving ${orig_dir}/${kiji_mr_jar_name} to ${KIJI_HOME}/lib/ ..."
+    mv "${orig_dir}/${kiji_mr_jar_name}" "${KIJI_HOME}/lib/"
   fi
 else
   echo "Did not find ${orig_dir}. This may be because profiling was not enabled."
-  echo "Ensure that ${KIJI_HOME}/lib/ and ${distrodir} have the files " \
-    "${kiji_schema_jar_name} and ${kiji_mr_jar_prefix}-*.jar respectively."
+  echo "Ensure that ${KIJI_HOME}/lib/ has the " \
+    "${kiji_schema_jar_name} and ${kiji_mr_jar_name} files."
   inconsistent_state="true"
 fi
 
