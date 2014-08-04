@@ -80,7 +80,6 @@ public class TestAsyncHBaseAsyncKijiBufferedWriter extends KijiClientTest {
                 .withFamily("info")
                     .withQualifier("visits").withValue(1L, 100L)
         .build();
-
     mAsyncHBaseKiji = new AsyncHBaseKiji(mKiji.getURI());
 
     // For the tests, set the flushInterval to a very
@@ -104,15 +103,18 @@ public class TestAsyncHBaseAsyncKijiBufferedWriter extends KijiClientTest {
     mAsyncHBaseKiji.release();
   }
 
-  //@Test
+  @Test
   public void testPutWithTimestamp() throws Exception {
     final EntityId entityId = mTable.getEntityId("foo");
     final KijiDataRequest request = KijiDataRequest.create("info", "name");
 
     // Prepare the old value.
     KijiTableWriter writer = mTable.openTableWriter();
-    writer.put(entityId, "info", "name", 123L, "old");
-    writer.close();
+    try {
+      writer.put(entityId, "info", "name", 123L, "old");
+    } finally {
+      writer.close();
+    }
     // Buffer the new value and confirm it has not been written.
     mBufferedWriter.put(entityId, KijiColumnName.create("info", "name"), 123L, "baz");
     final String actual = mReader.get(entityId, request).getValue("info", "name", 123L).toString();
@@ -124,15 +126,18 @@ public class TestAsyncHBaseAsyncKijiBufferedWriter extends KijiClientTest {
     assertEquals("baz", actual2);
   }
 
-  //@Test
+  @Test
   public void testSetCounter() throws Exception {
     final EntityId entityId = mTable.getEntityId("bar");
     final KijiDataRequest request = KijiDataRequest.create("info", "visits");
 
     // Prepare the old value.
     KijiTableWriter writer = mTable.openTableWriter();
-    writer.put(entityId, "info", "visits", 1L);
-    writer.close();
+    try {
+      writer.put(entityId, "info", "visits", 1L);
+    } finally {
+      writer.close();
+    }
 
     // Buffer the new value and confirm it has not been written.
     mBufferedWriter.put(entityId, KijiColumnName.create("info", "visits"), 5L);
@@ -147,15 +152,18 @@ public class TestAsyncHBaseAsyncKijiBufferedWriter extends KijiClientTest {
     assertEquals(5L, actual2);
   }
 
-  //@Test
+  @Test
   public void testDeleteColumn() throws Exception {
     final EntityId entityId = mTable.getEntityId("foo");
     final KijiDataRequest request = KijiDataRequest.create("info", "name");
 
     // Prepare the old value.
     KijiTableWriter writer = mTable.openTableWriter();
-    writer.put(entityId, "info", "name", 123L, "not empty");
-    writer.close();
+    try {
+      writer.put(entityId, "info", "name", 123L, "not empty");
+    } finally {
+      writer.close();
+    }
 
     // Buffer the delete and confirm it has not been written.
     assertTrue(mReader.get(entityId, request).containsCell("info", "name", 123L));
@@ -167,15 +175,18 @@ public class TestAsyncHBaseAsyncKijiBufferedWriter extends KijiClientTest {
     assertFalse(mReader.get(entityId, request).containsCell("info", "name", 123L));
   }
 
-  //@Test
+  @Test
   public void testDeleteCell() throws Exception {
     final EntityId entityId = mTable.getEntityId("foo");
     final KijiDataRequest request = KijiDataRequest.create("info", "name");
 
     // Prepare the old value.
     KijiTableWriter writer = mTable.openTableWriter();
-    writer.put(entityId, "info", "name", 123L, "not empty");
-    writer.close();
+    try {
+      writer.put(entityId, "info", "name", 123L, "not empty");
+    } finally {
+      writer.close();
+    }
 
     // Buffer the delete and confirm it has not been written.
     assertTrue(mReader.get(entityId, request).containsCell("info", "name", 123L));
@@ -188,7 +199,7 @@ public class TestAsyncHBaseAsyncKijiBufferedWriter extends KijiClientTest {
     assertFalse(mReader.get(entityId, request).containsCell("info", "name", 123L));
   }
 
-  //@Test
+  @Test
   public void testBufferPutWithDelete() throws Exception {
     final EntityId oldEntityId = mTable.getEntityId("foo");
     final EntityId newEntityId = mTable.getEntityId("blope");
@@ -206,14 +217,14 @@ public class TestAsyncHBaseAsyncKijiBufferedWriter extends KijiClientTest {
     assertTrue(mReader.get(newEntityId, request).containsColumn("info", "name"));
   }
 
-  //@Test
+  @Test
   public void testFamilyDelete() throws Exception {
 
     // Populate the environment.
     final String tableName = "mapInputTest";
     final String familyName = "mapFamily";
-    final KijiTableLayout layout =
-        KijiTableLayout.newLayout(KijiTableLayouts.getLayout(KijiTableLayouts.SQOOP_EXPORT_MAP_TEST));
+    final KijiTableLayout layout = KijiTableLayout.newLayout(
+        KijiTableLayouts.getLayout(KijiTableLayouts.SQOOP_EXPORT_MAP_TEST));
     Kiji kiji = new InstanceBuilder(mKiji)
         .withTable(tableName, layout)
           .withRow("foo")
@@ -258,15 +269,18 @@ public class TestAsyncHBaseAsyncKijiBufferedWriter extends KijiClientTest {
     final EntityId entityId = mTable.getEntityId("foo");
     final KijiDataRequest request = KijiDataRequest.create("info", "name");
     final CountDownLatch latch = new CountDownLatch(1);
-    final boolean success;
+    final Boolean success;
 
     // Prepare the old value.
     KijiTableWriter writer = mTable.openTableWriter();
-    writer.put(entityId, "info", "name", 123L, "old");
-    writer.close();
+    try {
+      writer.put(entityId, "info", "name", 123L, "old");
+    } finally {
+      writer.close();
+    }
     // Buffer the new value and confirm it has not been written.
-    KijiFuture<Object> future = mBufferedWriter.put(entityId, KijiColumnName.create("info", "name"), 123L, "baz");
-
+    KijiFuture<Object> future =
+        mBufferedWriter.put(entityId, KijiColumnName.create("info", "name"), 123L, "baz");
     Futures.addCallback(future, new FutureCallback<Object>() {
           @Override
           public void onSuccess(@Nullable final Object o) {
@@ -276,17 +290,15 @@ public class TestAsyncHBaseAsyncKijiBufferedWriter extends KijiClientTest {
           @Override
           public void onFailure(final Throwable throwable) {
             Assert.fail("Put should not fail");
-            latch.countDown();
           }
         });
-
     //The put should still be in the buffer.
     final String actual = mReader.get(entityId, request).getValue("info", "name", 123L).toString();
     assertEquals("old", actual);
-
     // Flush the buffer and confirm the new value has been written.
     mBufferedWriter.flush();
-    latch.await(5, TimeUnit.SECONDS);
+    // Assert will fail if onSuccess is not called in the callback
+    assertTrue(latch.await(5, TimeUnit.SECONDS));
     assertEquals("baz", mReader.get(entityId, request).getValue("info", "name", 123L).toString());
   }
 }

@@ -54,17 +54,19 @@ import org.kiji.schema.hbase.HBaseColumnName;
 import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.LayoutConsumer;
+import org.kiji.schema.impl.async.AsyncHBaseKijiTableWriter.WriterLayoutCapsule;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
+import org.kiji.schema.util.DebugResourceTracker;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
  * <p>
  * AsyncHBase implementation of a batch AsyncKijiTableWriter. AsyncHBase's internal
- * time-based buffer is used. To set the flush interval, call <code>setFlushInterva()</code> on the
+ * time-based buffer is used. To set the flush interval, call <code>setFlushInterval()</code> on the
  * AsyncHBaseKiji object.
  * </p>
  *
@@ -75,7 +77,10 @@ import org.kiji.schema.zookeeper.ZooKeeperUtils;
  */
 @ApiAudience.Private
 public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBufferedWriter {
-  private static final Logger LOG = LoggerFactory.getLogger(AsyncHBaseAsyncKijiBufferedWriter.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(AsyncHBaseAsyncKijiBufferedWriter.class);
+  private static final Logger CLEANUP_LOG =
+      LoggerFactory.getLogger("cleanup." + AsyncHBaseAsyncKijiBufferedWriter.class.getName());
 
   /** Shared HBaseClient connection. */
   private final HBaseClient mHBClient;
@@ -122,8 +127,8 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
           return;
         }
         if (mState == State.OPEN) {
-          LOG.info("Flushing buffer from AsyncHBaseKijiBufferedWriter for table: {} in preparation for"
-              + " layout update.", mTable.getURI());
+          LOG.info("Flushing buffer from AsyncHBaseKijiBufferedWriter for table: {} in preparation"
+              + " for layout update.", mTable.getURI());
           flush();
         }
 
@@ -132,7 +137,7 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
             layout,
             mTable.getKiji().getSchemaTable(),
             DefaultKijiCellEncoderFactory.get());
-        // If the capsule is null this is the initial setup and we do not need a log message.
+        // If the capsule is null this is the initial setup otherwise we are updating the layout.
         if (mWriterLayoutCapsule != null) {
           LOG.debug(
               "Updating layout used by AsyncHBaseKijiBufferedWriter: "
@@ -164,7 +169,19 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
    * @throws org.kiji.schema.KijiTableNotFoundException in case of an invalid table parameter
    * @throws java.io.IOException in case of IO errors.
    */
-  public AsyncHBaseAsyncKijiBufferedWriter(AsyncHBaseKijiTable table) throws IOException {
+  public static AsyncHBaseAsyncKijiBufferedWriter create(AsyncHBaseKijiTable table)
+      throws IOException {
+    return new AsyncHBaseAsyncKijiBufferedWriter(table);
+  }
+
+  /**
+   * Creates a buffered kiji table writer that uses AsyncHBase's internal time-based buffer.
+   *
+   * @param table A kiji table.
+   * @throws org.kiji.schema.KijiTableNotFoundException in case of an invalid table parameter
+   * @throws java.io.IOException in case of IO errors.
+   */
+  private AsyncHBaseAsyncKijiBufferedWriter(AsyncHBaseKijiTable table) throws IOException {
     mTable = table;
     mHBClient = table.getHBClient();
     mTableName = KijiManagedHBaseTableName
@@ -188,6 +205,7 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
           "Cannot open AsyncHBaseKijiBufferedWriter instance in state %s.", mState);
       mState = State.OPEN;
     }
+    DebugResourceTracker.get().registerResource(this);
   }
 
   // ----------------------------------------------------------------------------------------------
@@ -272,7 +290,6 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
       final DeleteRequest delete = new DeleteRequest(
           mTableName, entityId.getHBaseRowKey(),
           hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), upToTimestamp);
-      delete.setDeleteAtTimestampOnly(false);
       final Deferred<Object> deferred =  mHBClient.delete(delete);
       return AsyncHBaseKijiFuture.create(deferred);
     } else {
@@ -292,17 +309,17 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
         } else {
           throw new RuntimeException("Internal error: family is neither map-type nor group-type.");
         }
+      } else {
+        // The only data in this HBase family is the one Kiji family, so we can delete everything.
+        final HBaseColumnName hbaseColumnName = capsule.getColumnNameTranslator()
+            .toHBaseColumnName(columnName);
+        final DeleteRequest delete = new DeleteRequest(
+            entityId.getHBaseRowKey(),
+            hbaseColumnName.getFamily(),
+            upToTimestamp);
+        Deferred<Object> deferred = mHBClient.delete(delete);
+        return AsyncHBaseKijiFuture.create(deferred);
       }
-
-      // The only data in this HBase family is the one Kiji family, so we can delete everything.
-      final HBaseColumnName hbaseColumnName = capsule.getColumnNameTranslator()
-          .toHBaseColumnName(columnName);
-      final DeleteRequest delete = new DeleteRequest(
-          entityId.getHBaseRowKey(),
-          hbaseColumnName.getFamily(),
-          upToTimestamp);
-      Deferred<Object> deferred = mHBClient.delete(delete);
-      return AsyncHBaseKijiFuture.create(deferred);
     }
   }
 
@@ -320,7 +337,7 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
       final FamilyLayout familyLayout,
       final long upToTimestamp
   ) throws IOException {
-    final String familyName = Preconditions.checkNotNull(familyLayout.getName());
+    final String familyName = familyLayout.getName();
     final HBaseColumnNameTranslator colNameTranslator =
         mWriterLayoutCapsule.getColumnNameTranslator();
     int i = 0;
@@ -331,7 +348,7 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
       final KijiColumnName column = KijiColumnName.create(familyName, qualifier);
       final HBaseColumnName hbaseColumnName = colNameTranslator.toHBaseColumnName(column);
       qualifiers[i] = hbaseColumnName.getQualifier();
-      i ++;
+      i++;
     }
     final byte[] hbaseFamilyName = mWriterLayoutCapsule.getColumnNameTranslator().
         toHBaseFamilyName(familyLayout.getLocalityGroup());
@@ -367,23 +384,31 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
     // 1. Use a Scanner to retrieve the names of all HBase qualifiers within the HBase
     //    family that belong to the Kiji column family.
     // 2. Send a delete() for each of the HBase qualifiers found in the previous step.
-
+    final WriterLayoutCapsule writerLayoutCapsule = mWriterLayoutCapsule;
     final String familyName = familyLayout.getName();
-    final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
+    final HBaseColumnName hbaseColumnName = writerLayoutCapsule.getColumnNameTranslator()
         .toHBaseColumnName(KijiColumnName.create(familyName));
     final byte[] hbaseRow = entityId.getHBaseRowKey();
     List<Deferred<Object>> workers = Lists.newArrayList();
 
     // Lock the row.
-    // Row locks are no longer supported since HBase 0.96?
+    // Row locks are no longer supported since HBase 0.96
+    // TODO(SCHEMA-899): Remove RowLock from *KijiBufferedWriter#deleteMapFamily
     final RowLock rowLock;
+    Deferred<Object> deferred = null;
     try {
       rowLock = mHBClient.lockRow(new RowLockRequest(mTableName, hbaseRow)).join();
+    } catch (Exception e) {
+      ZooKeeperUtils.wrapAndRethrow(e);
+      throw new InternalKijiError(e);
+    }
+    try {
       // Step 1.
-      // TODO: Reimplement this code with a GetRequest once AsyncHBase has
+      // TODO(SCHEMA-900): Reimplement this code with a GetRequest once AsyncHBase has
       // been updated to allow GetRequest's to have the ability to use filters
       final Scanner scanner = mHBClient.newScanner(mTableName);
       scanner.setFilter(new ColumnPrefixFilter(hbaseColumnName.getQualifier()));
+      scanner.setMaxVersions(1);
       scanner.setStartKey(hbaseRow);
       scanner.setStopKey(hbaseRow);
       final ArrayList<KeyValue> results;
@@ -394,41 +419,32 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
       if (results.isEmpty()) {
         LOG.debug("No qualifiers to delete in map family: " + familyName);
       } else {
-
-
+        int i = 0;
+        final byte[][] qualifiers = new byte[results.size()][];
         for (KeyValue keyValue : results) {
-          final DeleteRequest delete = new DeleteRequest(
-              mTableName,
-              hbaseRow,
-              keyValue.family(),
-              keyValue.qualifier(),
-              upToTimestamp);
+          qualifiers[i] = keyValue.qualifier();
+          i++;
           LOG.debug("Deleting HBase column {}", hbaseColumnName);
-          workers.add(mHBClient.delete(delete));
         }
+        DeleteRequest delete = new DeleteRequest(
+            mTableName,
+            hbaseRow,
+            hbaseColumnName.getFamily(),
+            qualifiers,
+            upToTimestamp);
+        deferred = mHBClient.delete(delete);
       }
     } catch (Exception e) {
       ZooKeeperUtils.wrapAndRethrow(e);
-      throw new InternalKijiError(e);
+    } finally {
+      try {
+        // Make sure to unlock the row!
+        mHBClient.unlockRow(rowLock).join();
+      } catch (Exception e) {
+        ZooKeeperUtils.wrapAndRethrow(e);
+      }
     }
-    try {
-      // Make sure to unlock the row!
-      workers.add(mHBClient.unlockRow(rowLock));
-    } catch (Exception e) {
-      ZooKeeperUtils.wrapAndRethrow(e);
-    }
-    Deferred<Object> groupedDeferred = Deferred.group(workers)
-        .addCallback(new Callback<Object, ArrayList<Object>>() {
-           @Override
-           public Object call(final ArrayList<Object> objects) throws Exception {
-             if (objects != null && !objects.isEmpty()) {
-               return objects.get(objects.size()-1);
-             } else {
-               return new Object();
-             }
-           }
-         });
-    return AsyncHBaseKijiFuture.create(groupedDeferred);
+    return AsyncHBaseKijiFuture.create(deferred);
   }
 
   /** {@inheritDoc} */
@@ -450,8 +466,11 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
     final HBaseColumnName hbaseColumnName = mWriterLayoutCapsule.getColumnNameTranslator()
         .toHBaseColumnName(columnName);
     final DeleteRequest delete = new DeleteRequest(
-        mTableName, entityId.getHBaseRowKey(),
-        hbaseColumnName.getFamily(), hbaseColumnName.getQualifier(), timestamp);
+        mTableName,
+        entityId.getHBaseRowKey(),
+        hbaseColumnName.getFamily(),
+        hbaseColumnName.getQualifier(),
+        timestamp);
     delete.setDeleteAtTimestampOnly(true);
     final Deferred<Object> deferred = mHBClient.delete(delete);
     return AsyncHBaseKijiFuture.create(deferred);
@@ -468,14 +487,8 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
   /** {@inheritDoc} */
   @Override
   public KijiFuture<Object> flush() throws IOException {
-    try {
-      final Deferred<Object> deferred = mHBClient.flush();
-      return AsyncHBaseKijiFuture.create(deferred);
-    } catch (Exception e) {
-      ZooKeeperUtils.wrapAndRethrow(e);
-      final Deferred<Object> error = Deferred.fromError(e);
-      return AsyncHBaseKijiFuture.create(error);
-    }
+    final Deferred<Object> deferred = mHBClient.flush();
+    return AsyncHBaseKijiFuture.create(deferred);
 }
 
   /** {@inheritDoc} */
@@ -486,6 +499,7 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
       Preconditions.checkState(mState == State.OPEN,
           "Cannot close BufferedWriter instance %s in state %s.", this, mState);
       mState = State.CLOSED;
+      DebugResourceTracker.get().unregisterResource(this);
       mLayoutConsumerRegistration.close();
       mTable.release();
     }
@@ -496,7 +510,8 @@ public final class AsyncHBaseAsyncKijiBufferedWriter implements AsyncKijiBuffere
   protected void finalize() throws Throwable {
     try {
       if (mState != State.CLOSED) {
-        LOG.warn("Finalizing unclosed AsyncHBaseKijiBufferedWriter {} in state {}.", this, mState);
+        CLEANUP_LOG.warn(
+            "Finalizing unclosed AsyncHBaseKijiBufferedWriter {} in state {}.", this, mState);
         close();
       }
     } catch (Throwable thr) {

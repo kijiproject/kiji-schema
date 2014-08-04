@@ -22,6 +22,7 @@ package org.kiji.schema.impl.async;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.schema.AsyncKijiBufferedWriter;
 import org.kiji.schema.AtomicKijiPutter;
 import org.kiji.schema.KijiBufferedWriter;
 import org.kiji.schema.KijiTableWriter;
@@ -63,7 +64,7 @@ public final class AsyncHBaseKijiWriterFactory implements KijiWriterFactory {
 
   /** {@inheritDoc} */
   @Override
-  public org.kiji.schema.AsyncKijiBufferedWriter openAsyncBufferedWriter() throws IOException {
-    return new AsyncHBaseAsyncKijiBufferedWriter(mTable);
+  public AsyncKijiBufferedWriter openAsyncBufferedWriter() throws IOException {
+    return AsyncHBaseAsyncKijiBufferedWriter.create(mTable);
   }
 }
