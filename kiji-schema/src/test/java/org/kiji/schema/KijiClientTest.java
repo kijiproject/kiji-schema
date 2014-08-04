@@ -53,8 +53,9 @@ import org.kiji.schema.util.TestingFileUtils;
  *     mvn clean test \
  *         -DargLine="-Dorg.kiji.schema.KijiClientTest.HBASE_ADDRESS=localhost:2181"
  *   </pre>
- *   If you specify the HBASE_ADDRESS property, you must specify both the quorum hosts AND the
- *   port to connect on.
+ *   If you specify the HBASE_ADDRESS property, you may specify both the quorum hosts and the
+ *   port to connect on.  If you don't specify the port, it defaults to 2181 (via the semantics
+ *   of KijiURI).
  * </p>
  */
 public class KijiClientTest {
