@@ -383,21 +383,10 @@
           <scope>test</scope>
           <optional>true</optional>
         </dependency>
-        <!-- Exclude hbase and hadoop from fake-hbase to avoid path issues. -->
         <dependency>
           <groupId>org.kiji.testing</groupId>
           <artifactId>fake-hbase</artifactId>
           <version>${fake-hbase.version}</version>
-          <exclusions>
-            <exclusion>
-              <groupId>org.apache.hadoop</groupId>
-              <artifactId>hadoop-client</artifactId>
-            </exclusion>
-            <exclusion>
-              <groupId>org.apache.hbase</groupId>
-              <artifactId>hbase</artifactId>
-            </exclusion>
-          </exclusions>
         </dependency>
       </dependencies>
     </profile>

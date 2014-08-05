@@ -32,8 +32,6 @@ import org.apache.hadoop.hbase.client.HTableInterface
 import org.apache.hadoop.hbase.client.Put
 import org.apache.hadoop.hbase.client.Scan
 import org.apache.hadoop.hbase.io.hfile.CacheConfig
-import org.apache.hadoop.hbase.io.hfile.Compression
-import org.apache.hadoop.hbase.io.hfile.FixedFileTrailer
 import org.apache.hadoop.hbase.io.hfile.HFile
 import org.apache.hadoop.hbase.io.hfile.HFileScanner
 import org.kiji.common.flags.Flag

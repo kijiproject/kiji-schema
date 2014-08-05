@@ -37,7 +37,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiClientTest;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiTableAnnotator;
@@ -141,7 +140,9 @@ public class TestHBaseKijiTableAnnotator extends KijiClientTest {
     mAnnotator.setTableAnnotation(KEY, VALUE);
     mAnnotator.removeTableAnnotation(KEY);
     try {
-      getKiji().getMetaTable().getValue(mTable.getName(), HBaseKijiTableAnnotator.getMetaTableKey(KEY));
+      getKiji()
+          .getMetaTable()
+          .getValue(mTable.getName(), HBaseKijiTableAnnotator.getMetaTableKey(KEY));
       fail("Should have thrown IOException for missing key.");
     } catch (IOException ioe) {
       assertEquals(String.format("Could not find any values associated with table %s and key %s",
