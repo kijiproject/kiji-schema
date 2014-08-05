@@ -383,11 +383,6 @@
           <scope>test</scope>
           <optional>true</optional>
         </dependency>
-        <dependency>
-          <groupId>org.kiji.testing</groupId>
-          <artifactId>fake-hbase</artifactId>
-          <version>${fake-hbase.version}</version>
-        </dependency>
       </dependencies>
     </profile>
 
