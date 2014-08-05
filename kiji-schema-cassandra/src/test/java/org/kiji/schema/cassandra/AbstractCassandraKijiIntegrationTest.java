@@ -126,9 +126,10 @@ public abstract class AbstractCassandraKijiIntegrationTest {
    * Name of the property to specify an external HBase instance.
    *
    * From Maven, one may specify an external cluster with:
-   *   mvn clean verify -Dkiji.test.cluster.uri=kiji://localhost:2181/cassandrahost/9140
+   *   mvn clean verify \
+   *   -Dkiji.test.cassandra.cluster.uri=kiji-cassandra://localhost:2181/cassandrahost/9140
    */
-  private static final String BASE_TEST_URI_PROPERTY = "kiji.test.cluster.uri";
+  private static final String BASE_TEST_URI_PROPERTY = "kiji.test.cassandra.cluster.uri";
 
   /** An integration helper for installing and removing instances. */
   private IntegrationHelper mHelper;
