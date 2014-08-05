@@ -53,5 +53,5 @@ this section when this is done.
 
 * Code depends on HConnectionManager.createConnection() which doesn't exist
   HBase < 0.94.11
-* Needs an implementation of table pool.
-* Security is disabled.
+* Needs an implementation of table pool. Code is commented out.
+* Security is disabled. Code is commented out.

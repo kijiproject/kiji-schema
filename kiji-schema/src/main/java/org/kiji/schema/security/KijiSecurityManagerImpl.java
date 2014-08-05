@@ -31,7 +31,7 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
-import org.apache.hadoop.hbase.security.access.UserPermission;
+// import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +44,7 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.Versions;
 import org.kiji.schema.impl.hbase.HBaseKiji;
-import org.kiji.schema.platform.SchemaPlatformBridge;
+// import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.zookeeper.ZooKeeperLock;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
@@ -519,11 +519,11 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
       byte[] hTableName,
       Action[] hActions) throws IOException {
     // Construct the HBase UserPermission to grant.
-    UserPermission hTablePermission = SchemaPlatformBridge.get().createUserPermission(
-        hUser,
-        hTableName,
-        null,
-        hActions);
+    //UserPermission hTablePermission = SchemaPlatformBridge.get().createUserPermission(
+    //    hUser,
+    //    hTableName,
+    //    null,
+    //    hActions);
 
     // Grant the permissions.
     LOG.debug("Changing user permissions for user {} on table {} to HBase Actions {}.",
@@ -554,11 +554,11 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
       byte[] hTableName,
       Action[] hActions) throws IOException {
     // Construct the HBase UserPermission to revoke.
-    UserPermission hTablePermission = SchemaPlatformBridge.get().createUserPermission(
-        hUser,
-        hTableName,
-        null,
-        hActions);
+    //UserPermission hTablePermission = SchemaPlatformBridge.get().createUserPermission(
+    //    hUser,
+    //    hTableName,
+    //    null,
+    //    hActions);
 
     // Revoke the permissions.
     LOG.debug("Revoking user permissions for user {} on table {} to HBase Actions {}.",
