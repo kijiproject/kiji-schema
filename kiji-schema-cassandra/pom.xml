@@ -485,14 +485,19 @@
         This profile runs integration tests against a cluster instead of
         hbase-maven-plugin.  It is activated by specifying the kiji.test.cluster.uri
         property as the Kiji URI without an instance name (e.g.,
-        -Dkiji.test.cluster.uri=kiji://localhost:2181/) to connect to for testing.
-        Tests will create Kiji instances within this cluster.
+        -Dkiji.test.cassandra.cluster.uri=kiji-cassandra://localhost:2181/cassandrahost/9140)
+        to connect to for testing.  Tests will create Kiji instances within this cluster.
       -->
 
       <id>skip-hbase-maven-plugin</id>
       <activation>
         <property>
-          <name>kiji.test.cluster.uri</name>
+          <!--
+              Note this is different from the key used in other submodules. This is because the
+              cassandra cluster uses zookeeper from the hbase-maven-plugin, so the
+              hbase-maven-plugin should only be disabled when the cassandra-maven-plugin is.
+          -->
+          <name>kiji.test.cassandra.cluster.uri</name>
         </property>
       </activation>
       <build>
@@ -502,6 +507,13 @@
             <artifactId>hbase-maven-plugin</artifactId>
             <configuration>
               <skip>true</skip>
+            </configuration>
+          </plugin>
+          <plugin>
+            <groupId>org.kiji.maven.plugins</groupId>
+            <artifactId>cassandra-maven-plugin</artifactId>
+            <configuration>
+              <cassandra.skip>true</cassandra.skip>
             </configuration>
           </plugin>
          </plugins>
