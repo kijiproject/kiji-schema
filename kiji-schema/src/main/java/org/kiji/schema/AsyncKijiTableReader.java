@@ -47,7 +47,18 @@ import org.kiji.schema.KijiTableReader.KijiScannerOptions;
  *   final KijiDataRequest request = builder.build();
  *
  *   final AsyncKijiTableReader reader = myKijiTable.getReaderFactory().openAsyncTableReader();
- *   final KijiFuture<KijiResult> futureData = reader.getKijiResult(myEntityId, request);
+ *   final KijiFuture<KijiResult<Object>> futureData = reader.getKijiResult(myEntityId, request);
+ *   Futures.addCallback(futureData, new FutureCallback<KijiResult<Object>>() {
+ *      @Override
+ *      public void onSuccess(@Nullable final KijiResult<Object> result) {
+ *        //Process result here
+ *      }
+ *
+ *      @Override
+ *      public void onFailure(final Throwable t) {
+ *        //Process error here
+ *      }
+ *   };
  * }</pre>
  * </p>
  *
@@ -98,8 +109,8 @@ public interface AsyncKijiTableReader extends Closeable {
    *
    * @param entityId EntityId of the row from which to get data.
    * @param dataRequest Specification of the data to get from the given row.
-   * @param <T> type {@code KijiCell} value returned by the {@code KijiResult}.
-   * @return a KijiFuture of a new KijiResult for the given EntityId and data request.
+   * @param <T> The type {@code KijiCell} value returned by the {@code KijiResult}.
+   * @return A KijiFuture of a new KijiResult for the given EntityId and data request.
    * @throws IOException in case of an error getting the data.
    */
   <T> KijiFuture<KijiResult<T>> getResult(EntityId entityId, KijiDataRequest dataRequest)
@@ -119,6 +130,7 @@ public interface AsyncKijiTableReader extends Closeable {
    *
    * @param request Data request defining the data to retrieve from each row.
    * @param scannerOptions Options to control the operation of the scanner.
+   * @param <T> The type {@code KijiCell} value returned by the {@code KijiResult}.
    * @return A new AsyncKijiResultScanner.
    * @throws IOException in case of an error creating the scanner.
    */

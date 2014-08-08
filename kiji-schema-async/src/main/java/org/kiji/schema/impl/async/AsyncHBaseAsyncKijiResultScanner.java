@@ -21,9 +21,11 @@ package org.kiji.schema.impl.async;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.ThreadSafe;
 
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
@@ -53,11 +55,12 @@ import org.kiji.schema.zookeeper.ZooKeeperUtils;
  *
  * AsyncHBase implementation of {@code AsyncKijiResultScanner}. This scanner internally caches
  * KijiResults up to the maximum number of rows set through
- * {@code KijiScannerOptions#setReopenScannerOnTimeout()}. If no option is set, then it defaults to
+ * {@code KijiScannerOptions#setRowCaching()}. If no option is set, then it defaults to
  * {@link org.hbase.async.Scanner}'s default maximum number of rows.
  *
  * @param <T> type of {@code KijiCell} value returned by scanned {@code KijiResult}s.
  */
+@ThreadSafe
 public class AsyncHBaseAsyncKijiResultScanner<T> implements AsyncKijiResultScanner<T> {
   private static final Logger LOG = LoggerFactory.getLogger(AsyncHBaseAsyncKijiResultScanner.class);
 
@@ -80,18 +83,18 @@ public class AsyncHBaseAsyncKijiResultScanner<T> implements AsyncKijiResultScann
   /** Replaced after the cache index exceeds the maximum number of rows. */
   private KijiFuture<ArrayList<ArrayList<KeyValue>>> mNextDeferredResults;
   private final AtomicBoolean mIsDoneScanning;
-  private int mRowCacheIndex;
-  private int mMaxNumRowCache;
+  private final AtomicInteger mRowCacheIndex;
+  private final int mMaxNumRowCache;
 
   /**
    * Initialize a new AsyncKijiResultScanner.
    *
-   * @param request data request which will be applied to each row by this scanner.
-   * @param table Kiji table from which to scan rows.
-   * @param scanner HBase Scan object with which defines the actual data to retrieve from HBase.
-   * @param layout of Kiji table.
-   * @param decoderProvider Provider for cell decoders with which to decode data from HBase.
-   * @param columnNameTranslator Translator for Kiji columns with which to decode data from HBase.
+   * @param request The data request which will be applied to each row by this scanner.
+   * @param table The kiji table from which to scan rows.
+   * @param scanner The AsyncHBase scanner which will perform the scanning.
+   * @param layout The layout of the Kiji table.
+   * @param decoderProvider The provider for cell decoders with which to decode data from HBase.
+   * @param columnNameTranslator The translator for Kiji columns with which to decode data from HBase.
    * @param reopenScannerOnTimeout Whether to reopen the underlying scanner if it times out.
    * @throws java.io.IOException in case of an error connecting to HBase.
    */
@@ -130,6 +133,7 @@ public class AsyncHBaseAsyncKijiResultScanner<T> implements AsyncKijiResultScann
     } else {
       mMaxNumRowCache = DEFAULT_NUM_ROWS;
     }
+    mRowCacheIndex = new AtomicInteger(0);
     getNextResult();
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
@@ -160,7 +164,7 @@ public class AsyncHBaseAsyncKijiResultScanner<T> implements AsyncKijiResultScann
             throw new KijiIOException(e);
           }
         });
-    mRowCacheIndex = 0;
+    mRowCacheIndex.set(0);
     mNextDeferredResults = AsyncHBaseKijiFuture.create(results);
   }
 
@@ -181,7 +185,7 @@ public class AsyncHBaseAsyncKijiResultScanner<T> implements AsyncKijiResultScann
       final KijiResult<T> nullResult = null;
       return AsyncHBaseKijiFuture.create(Deferred.fromResult(nullResult));
     } else {
-      if (mRowCacheIndex >= mMaxNumRowCache) {
+      if (mRowCacheIndex.get() >= mMaxNumRowCache) {
         if (!mNextDeferredResults.isDone()) {
           // We can't get the next result until the current result is done.
           // So we return a KijiFuture with an error that will result in
@@ -194,7 +198,7 @@ public class AsyncHBaseAsyncKijiResultScanner<T> implements AsyncKijiResultScann
         }
       }
       // Grab the current row cache index and pass it to the transform through a final int
-      final int localCacheIndex = mRowCacheIndex;
+      final int localCacheIndex = mRowCacheIndex.get();
       KijiFuture<KijiResult<T>> futureResult = AsyncHBaseKijiFuture.createFromFuture(
           Futures.transform(
               mNextDeferredResults,
@@ -202,7 +206,8 @@ public class AsyncHBaseAsyncKijiResultScanner<T> implements AsyncKijiResultScann
                 @Nullable
                 @Override
                 public KijiResult<T> apply(
-                    @Nullable final ArrayList<ArrayList<KeyValue>> fullResults) {
+                    @Nullable final ArrayList<ArrayList<KeyValue>> fullResults
+                ) {
                   if (mIsDoneScanning.get() || null == fullResults) {
                       // The Scanner returned null, meaning there are no more results.
                       mIsDoneScanning.set(true);
@@ -238,7 +243,7 @@ public class AsyncHBaseAsyncKijiResultScanner<T> implements AsyncKijiResultScann
                   }
               })
       );
-      mRowCacheIndex += 1;
+      mRowCacheIndex.addAndGet(1);
       return futureResult;
     }
   }

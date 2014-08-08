@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -51,10 +50,6 @@ import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestValidator;
 import org.kiji.schema.KijiFuture;
 import org.kiji.schema.KijiResult;
-import org.kiji.schema.KijiResultScanner;
-import org.kiji.schema.KijiRowData;
-import org.kiji.schema.KijiRowScanner;
-import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableReader.KijiScannerOptions;
 import org.kiji.schema.KijiTableReaderBuilder;
 import org.kiji.schema.KijiTableReaderBuilder.OnDecoderCacheMiss;
@@ -68,10 +63,9 @@ import org.kiji.schema.layout.ColumnReaderSpec;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
-import org.kiji.schema.zookeeper.ZooKeeperUtils;
 
 /**
- * Reads from a kiji table by sending the requests directly to the HBase tables.
+ * Reads from a kiji table asynchronously by sending the requests directly to the HBase tables.
  */
 @ApiAudience.Private
 public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReader {
@@ -89,7 +83,7 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
     CLOSED
   }
 
-  /** Tracks the state of this KijiTableReader instance. */
+  /** Tracks the state of this AsyncKijiTableReader instance. */
   private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
 
   /** Map of overridden CellSpecs to use when reading. Null when mOverrides is not null. */
@@ -175,7 +169,7 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
     @Override
     public void update(KijiTableLayout layout) throws IOException {
       if (mState.get() == State.CLOSED) {
-        LOG.debug("KijiTableReader instance is closed; ignoring layout update.");
+        LOG.debug("AsyncKijiTableReader instance is closed; ignoring layout update.");
         return;
       }
       final CellDecoderProvider provider;
@@ -194,14 +188,14 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
       }
       if (mReaderLayoutCapsule != null) {
         LOG.debug(
-            "Updating layout used by KijiTableReader: {} for table: {} from version: {} to: {}",
+            "Updating layout used by AsyncKijiTableReader: {} for table: {} from version: {} to: {}",
             this,
             mTable.getURI(),
             mReaderLayoutCapsule.getLayout().getDesc().getLayoutId(),
             layout.getDesc().getLayoutId());
       } else {
         // If the capsule is null this is the initial setup and we need a different log message.
-        LOG.debug("Initializing KijiTableReader: {} for table: {} with table layout version: {}",
+        LOG.debug("Initializing AsyncKijiTableReader: {} for table: {} with table layout version: {}",
             this,
             mTable.getURI(),
             layout.getDesc().getLayoutId());
@@ -214,12 +208,12 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
   }
 
   /**
-   * Creates a new <code>HBaseKijiTableReader</code> instance that sends the read requests
+   * Creates a new <code>AsyncHBaseAsyncKijiTableReader</code> instance that sends the read requests
    * directly to HBase.
    *
    * @param table Kiji table from which to read.
    * @throws IOException on I/O error.
-   * @return a new HBaseKijiTableReader.
+   * @return a new AsyncHBaseAsyncKijiTableReader.
    */
   public static AsyncHBaseAsyncKijiTableReader create(
       final AsyncHBaseKijiTable table
@@ -232,12 +226,12 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
   }
 
   /**
-   * Creates a new <code>HbaseKijiTableReader</code> instance that sends read requests directly to
+   * Creates a new <code>AsyncHbaseAsyncKijiTableReader</code> instance that sends read requests directly to
    * HBase.
    *
    * @param table Kiji table from which to read.
    * @param overrides layout overrides to modify read behavior.
-   * @return a new HBaseKijiTableReader.
+   * @return a new AsyncHBaseAsyncKijiTableReader.
    * @throws java.io.IOException in case of an error opening the reader.
    */
   public static AsyncHBaseAsyncKijiTableReader createWithCellSpecOverrides(
@@ -248,7 +242,7 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
   }
 
   /**
-   * Create a new <code>HBaseKijiTableReader</code> instance that sends read requests directly to
+   * Create a new <code>AsyncHBaseAsyncKijiTableReader</code> instance that sends read requests directly to
    * HBase.
    *
    * @param table Kiji table from which to read.
@@ -257,8 +251,8 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
    *     decoders.
    * @param overrides mapping from columns to overriding read behavior for those columns.
    * @param alternatives mapping from columns to reader spec alternatives which the
-   *     KijiTableReader will accept as overrides in data requests.
-   * @return a new HBaseKijiTableReader.
+   *     AsyncKijiTableReader will accept as overrides in data requests.
+   * @return a new AsyncHBaseAsyncKijiTableReader.
    * @throws java.io.IOException in case of an error opening the reader.
    */
   public static AsyncHBaseAsyncKijiTableReader createWithOptions(
@@ -289,7 +283,7 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
 
     mLayoutConsumerRegistration = mTable.registerLayoutConsumer(new InnerLayoutUpdater());
     Preconditions.checkState(mReaderLayoutCapsule != null,
-        "KijiTableReader for table: %s failed to initialize.", mTable.getURI());
+        "AsyncKijiTableReader for table: %s failed to initialize.", mTable.getURI());
 
     mHBClient = table.getHBClient();
     mTableName = KijiManagedHBaseTableName
@@ -299,11 +293,11 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
     mTable.retain();
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
-        "Cannot open KijiTableReader instance in state %s.", oldState);
+        "Cannot open AsyncKijiTableReader instance in state %s.", oldState);
   }
 
   /**
-   * Creates a new <code>HBaseKijiTableReader</code> instance that sends read requests directly to
+   * Creates a new <code>AsyncHBaseAsyncKijiTableReader</code> instance that sends read requests directly to
    * HBase.
    *
    * @param table Kiji table from which to read.
@@ -312,7 +306,7 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
    *     decoders.
    * @param overrides mapping from columns to overriding read behavior for those columns.
    * @param alternatives mapping from columns to reader spec alternatives which the
-   *     KijiTableReader will accept as overrides in data requests.
+   *     AsyncKijiTableReader will accept as overrides in data requests.
    * @throws java.io.IOException on I/O error.
    */
   private AsyncHBaseAsyncKijiTableReader(
@@ -362,13 +356,13 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
 
     mLayoutConsumerRegistration = mTable.registerLayoutConsumer(new InnerLayoutUpdater());
     Preconditions.checkState(mReaderLayoutCapsule != null,
-        "KijiTableReader for table: %s failed to initialize.", mTable.getURI());
+        "AsyncKijiTableReader for table: %s failed to initialize.", mTable.getURI());
 
     // Retain the table only when everything succeeds.
     mTable.retain();
     final State oldState = mState.getAndSet(State.OPEN);
     Preconditions.checkState(oldState == State.UNINITIALIZED,
-        "Cannot open KijiTableReader instance in state %s.", oldState);
+        "Cannot open AsyncKijiTableReader instance in state %s.", oldState);
   }
 
   /**
@@ -386,7 +380,7 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
   ) throws IOException {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
-        "Cannot get row from KijiTableReader instance %s in state %s.", this, state);
+        "Cannot get row from AsyncKijiTableReader instance %s in state %s.", this, state);
     final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
     final KijiTableLayout tableLayout = capsule.getLayout();
     validateRequestAgainstLayout(dataRequest, tableLayout);
@@ -450,7 +444,7 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
   ) throws IOException {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
-        "Cannot get scanner from KijiTableReader instance %s in state %s.", this, state);
+        "Cannot get scanner from AsyncKijiTableReader instance %s in state %s.", this, state);
 
     final ReaderLayoutCapsule capsule = mReaderLayoutCapsule;
 
@@ -507,7 +501,7 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
   public void close() throws IOException {
     final State oldState = mState.getAndSet(State.CLOSED);
     Preconditions.checkState(oldState == State.OPEN,
-        "Cannot close KijiTableReader instance %s in state %s.", this, oldState);
+        "Cannot close AsyncKijiTableReader instance %s in state %s.", this, oldState);
     mLayoutConsumerRegistration.close();
     mTable.release();
   }
@@ -517,7 +511,7 @@ public final class AsyncHBaseAsyncKijiTableReader implements AsyncKijiTableReade
   protected void finalize() throws Throwable {
     final State state = mState.get();
     if (state != State.CLOSED) {
-      LOG.warn("Finalizing unclosed KijiTableReader {} in state {}.", this, state);
+      LOG.warn("Finalizing unclosed AsyncKijiTableReader {} in state {}.", this, state);
       close();
     }
     super.finalize();
