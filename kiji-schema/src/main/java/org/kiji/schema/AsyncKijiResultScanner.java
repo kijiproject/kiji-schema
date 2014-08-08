@@ -19,8 +19,8 @@
 package org.kiji.schema;
 
 import java.io.Closeable;
-import java.util.Iterator;
-import java.util.concurrent.Future;
+
+import javax.annotation.concurrent.ThreadSafe;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
@@ -31,9 +31,28 @@ import org.kiji.annotations.Inheritance;
  * {@link org.kiji.schema.KijiFuture}<{@link org.kiji.schema.KijiResult}>s.
  * {@code AsyncKijiResultScanner} must be closed when it will no longer be used.
  *
+ * <p>{@code AsyncKijiResultScanner} is thread-safe and the returned {@code KijiFuture}s, in
+ * particular, are thread-safe.</p>
+ *
+ * <p><b>NOTE:</b> AsyncKijiResultScanner does not support automatically reopening the
+ * scanner on timeouts. Therefore, you <i>must</i> set
+ * {@code KijiScannerOptions.setReopenScannerOnTimeout()} to {@code false}.</p>
+ *
  * @param <T> type of {@code KijiCell} value returned by scanned {@code KijiFuture<KijiResult>}s.
  */
 @ApiAudience.Framework
 @ApiStability.Experimental
 @Inheritance.Sealed
-public interface AsyncKijiResultScanner<T> extends Closeable, Iterator<Future<KijiResult<T>>> { }
+@ThreadSafe
+public interface AsyncKijiResultScanner<T> extends Closeable {
+
+  /**
+   * Get a KijiFuture that will contain the next KijiResult once it has returned.
+   *
+   * <p>Note that the scanning is complete when the returned KijiFuture contains null. Every
+   * subsequent call to next() will result in a KijiFuture with a value of null.</p>
+   *
+   * @return A KijiFuture that will contain the next KijiResult once it is available.
+   */
+  KijiFuture<KijiResult<T>> next();
+}

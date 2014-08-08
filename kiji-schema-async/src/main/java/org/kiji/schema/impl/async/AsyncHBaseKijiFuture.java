@@ -26,6 +26,7 @@ import java.util.concurrent.TimeoutException;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.stumbleupon.async.Callback;
@@ -43,11 +44,19 @@ public final class AsyncHBaseKijiFuture<T> implements KijiFuture<T> {
   final ListenableFuture<T> mListenableFuture;
 
   public static <T> AsyncHBaseKijiFuture<T> create() {
-    return create(null);
+    return createFromFuture(null);
+  }
+
+  public static <T> AsyncHBaseKijiFuture<T> createFromFuture(ListenableFuture<T> future) {
+    return new AsyncHBaseKijiFuture<T>(future);
   }
 
   public static <T> AsyncHBaseKijiFuture<T> create(Deferred<T> deferred) {
     return new AsyncHBaseKijiFuture<T>(deferred);
+  }
+
+  AsyncHBaseKijiFuture(ListenableFuture<T> future) {
+    mListenableFuture = future;
   }
 
   AsyncHBaseKijiFuture(Deferred<T> deferred) {

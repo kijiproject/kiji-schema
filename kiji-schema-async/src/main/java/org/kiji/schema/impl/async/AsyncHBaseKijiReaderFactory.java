@@ -61,9 +61,7 @@ public final class AsyncHBaseKijiReaderFactory implements KijiReaderFactory {
   /** {@inheritDoc} */
   @Override
   public AsyncKijiTableReader openAsyncTableReader() throws IOException {
-    // TODO: Implement this using AsyncHBase
-    throw new UnsupportedOperationException("Not yet implemented.");
-    //return AsyncHBaseAsyncKijiTableReader.create(mTable);
+    return AsyncHBaseAsyncKijiTableReader.create(mTable);
   }
 
   /** {@inheritDoc} */
