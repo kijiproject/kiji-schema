@@ -321,11 +321,13 @@ public final class CassandraKiji implements Kiji {
         "Cannot get security manager for Kiji instance %s in state %s.", this, state);
     if (null == mSecurityManager) {
       if (isSecurityEnabled()) {
-        mSecurityManager = CassandraKijiSecurityManager.create(mURI, mAdmin);
+        mSecurityManager = CassandraKijiSecurityManager.create(mURI);
       } else {
-        throw new KijiSecurityException("Cannot create a KijiSecurityManager for security version "
-            + mSystemTable.getSecurityVersion() + ". Version must be "
-            + Versions.MIN_SECURITY_VERSION + " or higher.");
+        throw new KijiSecurityException(
+            String.format(
+                "Can not create a KijiSecurityManager for security version %s."
+                  + "  Version must be %s or higher.",
+                mSystemTable.getSecurityVersion(), Versions.MIN_SECURITY_VERSION));
       }
     }
     return mSecurityManager;

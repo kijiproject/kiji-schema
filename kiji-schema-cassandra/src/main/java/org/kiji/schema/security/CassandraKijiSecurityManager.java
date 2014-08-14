@@ -1,5 +1,5 @@
 /**
- * (c) Copyright 2013 WibiData, Inc.
+ * (c) Copyright 2014 WibiData, Inc.
  *
  * See the NOTICE file distributed with this work for additional
  * information regarding copyright ownership.
@@ -20,596 +20,104 @@
 package org.kiji.schema.security;
 
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Sets;
-import org.apache.hadoop.hbase.security.access.AccessControllerProtocol;
-import org.apache.hadoop.hbase.security.access.Permission.Action;
-import org.apache.hadoop.hbase.util.Bytes;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.Kiji;
-import org.kiji.schema.KijiSystemTable;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.hbase.HBaseFactory;
-import org.kiji.schema.hbase.KijiManagedHBaseTableName;
-import org.kiji.schema.impl.Versions;
-import org.kiji.schema.impl.cassandra.CassandraAdmin;
-import org.kiji.schema.impl.cassandra.CassandraKiji;
-import org.kiji.schema.layout.impl.ZooKeeperClient;
-import org.kiji.schema.layout.impl.ZooKeeperMonitor;
-import org.kiji.schema.util.Lock;
 
 /**
- * The default implementation of KijiSecurityManager.
- *
- * <p>KijiSecurityManager manages access control for a Kiji instance.  It depends on ZooKeeper
- * locks to ensure atomicity of permissions operations.</p>
- *
- * <p>The current version of Kiji security (security-0.1) is instance-level only.  Users can have
- * READ, WRITE, and/or GRANT access on a Kiji instance.</p>
+ * {@link KijiSecurityManager} for Cassandra. Currently security is not implemented for Kiji
+ * Cassandra.
  */
 @ApiAudience.Private
 public final class CassandraKijiSecurityManager implements KijiSecurityManager {
-  private static final Logger LOG = LoggerFactory.getLogger(CassandraKijiSecurityManager.class);
-
-  /** The Kiji instance this manages. */
-  private final KijiURI mInstanceUri;
-
-  /** A handle to the Kiji this manages. */
-  private final Kiji mKiji;
-
-  /** A handle to the CassandraAdmin of mKiji. */
-  private final CassandraAdmin mAdmin;
-
-  /** The system table for the instance this manages. */
-  private final KijiSystemTable mSystemTable;
-
-  /** The HBase ACL (Access Control List) table to use. */
-  private final AccessControllerProtocol mAccessController;
-
-  /** The zookeeper lock for this instance. */
-  private final Lock mLock;
-
-  /** The timeout, in seconds, to wait for ZooKeeper locks before throwing an exception. */
-  private static final int LOCK_TIMEOUT = 10;
 
   /**
    * Factory method.
    *
    * @param uri of the Kiji instance.
-   * @param admin for the Kiji instance.
    * @return a new security manager.
-   * @throws java.io.IOException if there is a problem talking to Cassandra.
+   * @throws IOException if there is a problem talking to Cassandra.
    */
-  public static CassandraKijiSecurityManager create(
-      KijiURI uri,
-      CassandraAdmin admin)
-    throws IOException {
-    // TODO: Put into a static class.
-    return new CassandraKijiSecurityManager(uri, admin);
-
-  }
-
-  /**
-   * Grants all permissions on an instance, the first time it's installed.
-   *
-   * @param instanceUri of the instance being installed.
-   * @param admin Wrapper around open C* session.
-   * @throws java.io.IOException if the specified instance does not exist or on other I/O error.
-   */
-  public static void installInstanceCreator(
-      KijiURI instanceUri,
-      CassandraAdmin admin) throws  IOException {
-
-    create(instanceUri, admin).grantInstanceCreator(KijiUser.getCurrentUser());
-  }
-
-  /**
-   * Just a placeholder right now, since we don't have security set up yet for C*.
-   *
-   * @param instanceUri is the URI of the instance this KijiSecurityManager will manage.
-   * @param admin is a wrapper around an open C* session, used to access the HBase ACL table.
-   * @throws java.io.IOException on I/O error.
-   * @throws org.kiji.schema.security.KijiSecurityException if the Kiji security version is not
-   *   compatible with KijiSecurityManager.
-   */
-  CassandraKijiSecurityManager(
-      KijiURI instanceUri,
-      CassandraAdmin admin) throws IOException {
-    mInstanceUri = instanceUri;
-    mKiji = Kiji.Factory.get().open(mInstanceUri);
-    mSystemTable = mKiji.getSystemTable();
-
-    // If the Kiji has security version lower than MIN_SECURITY_VERSION, then KijiSecurityManager
-    // can't be instantiated.
-    if (mSystemTable.getSecurityVersion().compareTo(Versions.MIN_SECURITY_VERSION) < 0) {
-      mKiji.release();
-      throw new KijiSecurityException("Cannot create a KijiSecurityManager for security version "
-          + mSystemTable.getSecurityVersion() + ". Version must be "
-          + Versions.MIN_SECURITY_VERSION + " or higher.");
-    }
-
-    mAccessController = null;
-
-    mAdmin = ((CassandraKiji) mKiji).getCassandraAdmin();
-
-    final ZooKeeperClient zkClient = HBaseFactory.Provider.get().getZooKeeperClient(mInstanceUri);
-    try {
-      mLock = zkClient.getLockFactory().create(
-          ZooKeeperMonitor.getInstancePermissionsLock(instanceUri).getAbsolutePath());
-    } finally {
-      zkClient.release();
-    }
+  public static CassandraKijiSecurityManager create(final KijiURI uri) throws IOException {
+    return new CassandraKijiSecurityManager();
   }
 
   /** {@inheritDoc} */
   @Override
   public void lock() throws IOException {
-    LOG.debug("Locking permissions for instance: '{}'.", mInstanceUri);
-    boolean lockSuccessful = mLock.lock(LOCK_TIMEOUT);
-    if (!lockSuccessful) {
-      throw new KijiSecurityException("Acquiring lock on instance " + mInstanceUri
-          + " timed out after " + LOCK_TIMEOUT + " seconds.");
-    }
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
   public void unlock() throws IOException {
-    LOG.debug("Unlocking permissions for instance: '{}'.", mInstanceUri);
-    mLock.unlock();
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
-  public void grant(KijiUser user, KijiPermissions.Action action)
-      throws IOException {
-    lock();
-    try {
-      grantWithoutLock(user, action);
-    } finally {
-      unlock();
-    }
+  public void grant(final KijiUser user, final KijiPermissions.Action action) throws IOException {
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
-  public void grantAll(KijiUser user) throws IOException {
-    lock();
-    try {
-      grantAllWithoutLock(user);
-    } finally {
-      unlock();
-    }
+  public void grantAll(final KijiUser user) throws IOException {
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
-  public void revoke(KijiUser user, KijiPermissions.Action action)
-      throws IOException {
-    lock();
-    try {
-      KijiPermissions currentPermissions = getPermissions(user);
-      KijiPermissions newPermissions = currentPermissions.removeAction(action);
-      updatePermissions(user, newPermissions);
-      revokeInstancePermissions(user, KijiPermissions.newWithActions(Sets.newHashSet(action)));
-    } finally {
-      unlock();
-    }
+  public void revoke(final KijiUser user, final KijiPermissions.Action action) throws IOException {
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
-  public void revokeAll(KijiUser user) throws IOException {
-    lock();
-    try {
-      updatePermissions(user, KijiPermissions.emptyPermissions());
-      revokeInstancePermissions(
-          user, KijiPermissions.newWithActions(Sets.newHashSet(KijiPermissions.Action.values())));
-    } finally {
-      unlock();
-    }
+  public void revokeAll(final KijiUser user) throws IOException {
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
   public void reapplyInstancePermissions() throws IOException {
-    lock();
-    try {
-      Set<KijiUser> allUsers = listAllUsers();
-      for (KijiUser user : allUsers) {
-        KijiPermissions permissions = getPermissions(user);
-        // Grant privileges the user should have.
-        for (KijiPermissions.Action action : permissions.getActions()) {
-          grant(user, action);
-        }
-        // Revoke privileges the user shouldn't have.
-        Set<KijiPermissions.Action> forbiddenActions =
-            Sets.difference(
-                Sets.newHashSet(KijiPermissions.Action.values()),
-                permissions.getActions());
-        for (KijiPermissions.Action action : forbiddenActions) {
-          revoke(user, action);
-        }
-      }
-    } finally {
-      unlock();
-    }
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
-  public void applyPermissionsToNewTable(KijiURI tableURI) throws IOException {
-    // The argument must be for a table in the instance this manages.
-    Preconditions.checkArgument(
-        KijiURI.newBuilder(mInstanceUri).withTableName(tableURI.getTable()).build()
-            .equals(tableURI));
-    for (KijiUser user : listAllUsers()) {
-      grantHTablePermissions(user.getNameBytes(),
-          KijiManagedHBaseTableName
-              .getKijiTableName(tableURI.getInstance(), tableURI.getTable()).toBytes(),
-          getPermissions(user).toHBaseActions());
-    }
+  public void applyPermissionsToNewTable(final KijiURI tableURI) throws IOException {
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
-  public void grantInstanceCreator(KijiUser user) throws IOException {
-    lock();
-    try {
-      Set<KijiUser> currentGrantors = getUsersWithPermission(KijiPermissions.Action.GRANT);
-      // This can only be called if there are no grantors, right when the instance is created.
-      if (currentGrantors.size() != 0) {
-        throw new KijiAccessException(
-            "Cannot add user " + user
-                + " to grantors as the instance creator for instance '"
-                + mInstanceUri.toOrderedString()
-                + "' because there are already grantors for this instance.");
-      }
-      Set<KijiUser> newGrantor = Collections.singleton(user);
-      putUsersWithPermission(KijiPermissions.Action.GRANT, newGrantor);
-      grantAllWithoutLock(user);
-    } finally {
-      unlock();
-    }
-    LOG.info("Creator permissions on instance '{}' granted to user {}.",
-        mInstanceUri,
-        user.getName());
+  public void grantInstanceCreator(final KijiUser user) throws IOException {
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
-  public KijiPermissions getPermissions(KijiUser user) throws IOException {
-    KijiPermissions result = KijiPermissions.emptyPermissions();
-
-    for (KijiPermissions.Action action : KijiPermissions.Action.values()) {
-      Set<KijiUser> usersWithAction = getUsersWithPermission(action);
-      if (usersWithAction.contains(user)) {
-        result = result.addAction(action);
-      }
-    }
-
-    return result;
+  public KijiPermissions getPermissions(final KijiUser user) throws IOException {
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
   public Set<KijiUser> listAllUsers() throws IOException {
-    Set<KijiUser> allUsers = new HashSet<KijiUser>();
-    for (KijiPermissions.Action action : KijiPermissions.Action.values()) {
-      allUsers.addAll(getUsersWithPermission(action));
-    }
-
-    return allUsers;
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
   public void checkCurrentGrantAccess() throws IOException {
-    KijiUser currentUser = KijiUser.getCurrentUser();
-    if (!getPermissions(currentUser).allowsAction(KijiPermissions.Action.GRANT)) {
-      throw new KijiAccessException("User " + currentUser.getName()
-          + " does not have GRANT access for instance " + mInstanceUri.toString() + ".");
-    }
-  }
-
-  /**
-   * Grant action to a user, without locking the instance.  When using this method, one must lock
-   * the instance before, and unlock it after.
-   *
-   * @param user User to grant action to.
-   * @param action Action to grant to user.
-   * @throws java.io.IOException on I/O error.
-   */
-  private void grantWithoutLock(KijiUser user, KijiPermissions.Action action) throws IOException {
-    KijiPermissions currentPermissions = getPermissions(user);
-    KijiPermissions newPermissions = currentPermissions.addAction(action);
-    grantInstancePermissions(user, newPermissions);
-  }
-
-  /**
-   * Grants all actions to a user, without locking the instance.  When using this method, one must
-   * lock the instance before, and unlock it after.
-   *
-   * @param user User to grant all actions to.
-   * @throws java.io.IOException on I/O error.
-   */
-  private void grantAllWithoutLock(KijiUser user)
-      throws IOException {
-    LOG.debug("Granting all permissions to user {} on instance '{}'.",
-        user.getName(),
-        mInstanceUri.toOrderedString());
-    KijiPermissions newPermissions = getPermissions(user);
-    for (KijiPermissions.Action action : KijiPermissions.Action.values()) {
-      newPermissions = newPermissions.addAction(action);
-    }
-    grantInstancePermissions(user, newPermissions);
-  }
-
-  /**
-   * Updates the permissions in the Kiji system table for a user on this Kiji instance.
-   *
-   * <p>Use {@link #grantInstancePermissions(org.kiji.schema.security.KijiUser,
-   * org.kiji.schema.security.KijiPermissions)} or {@link
-   * #revokeInstancePermissions(org.kiji.schema.security.KijiUser,
-   * org.kiji.schema.security.KijiPermissions)}instead for updating the permissions in HBase as well
-   * as in the Kiji system table.</p>
-   *
-   * @param user whose permissions to update.
-   * @param permissions to be applied to this user.
-   * @throws java.io.IOException If there is an I/O error.
-   */
-  private void updatePermissions(KijiUser user, KijiPermissions permissions)
-      throws IOException {
-    checkCurrentGrantAccess();
-    for (KijiPermissions.Action action : KijiPermissions.Action.values()) {
-      Set<KijiUser> permittedUsers = getUsersWithPermission(action);
-      if (permissions.allowsAction(action)) {
-        permittedUsers.add(user);
-      } else {
-        permittedUsers.remove(user);
-      }
-      putUsersWithPermission(action, permittedUsers);
-    }
-  }
-
-  /**
-   * Gets the users with permission 'action' in this instance, as recorded in the Kiji system
-   * table.
-   *
-   * @param action specifying the permission to get the users of.
-   * @return the list of users with that permission.
-   * @throws java.io.IOException on I/O exception.
-   */
-  private Set<KijiUser> getUsersWithPermission(KijiPermissions.Action action) throws IOException {
-    byte[] serialized = mSystemTable.getValue(action.getStringKey());
-    if (null == serialized) {
-      // If the key doesn't exist, no users have been put with that permission yet.
-      return new HashSet<KijiUser>();
-    } else {
-      return KijiUser.deserializeKijiUsers(serialized);
-    }
-  }
-
-  /**
-   * Records a set of users as permitted to have action 'action', by recording them in the Kiji
-   * system table.
-   *
-   * @param action to put the set of users into.
-   * @param users to put to that permission.
-   * @throws java.io.IOException on I/O exception.
-   */
-  private void putUsersWithPermission(
-      KijiPermissions.Action action,
-      Set<KijiUser> users)
-      throws IOException {
-    mSystemTable.putValue(action.getStringKey(), KijiUser.serializeKijiUsers(users));
-  }
-
-  /**
-   * Changes the permissions of an instance, by granting the permissions on of all the Kiji meta
-   * tables.
-   *
-   * <p>Permissions should be updated with #updatePermissions before calling this method.</p>
-   *
-   * @param user is the User to whom the permissions are being granted.
-   * @param permissions is the new permissions granted to the user.
-   * @throws java.io.IOException on I/O error.
-   */
-  private void grantInstancePermissions(
-      KijiUser user,
-      KijiPermissions permissions) throws IOException {
-    LOG.info("Changing user permissions for user {} on instance {} to actions {}.",
-        user,
-        mInstanceUri,
-        permissions.getActions());
-
-    // Record the changes in the system table.
-    updatePermissions(user, permissions);
-
-    // Change permissions of Kiji system tables in HBase.
-    KijiPermissions systemTablePermissions;
-    // If this is GRANT permission, also add WRITE access to the permissions in the system table.
-    if (permissions.allowsAction(KijiPermissions.Action.GRANT)) {
-      systemTablePermissions =
-          permissions.addAction(KijiPermissions.Action.WRITE);
-    } else {
-      systemTablePermissions = permissions;
-    }
-    grantHTablePermissions(user.getNameBytes(),
-        KijiManagedHBaseTableName.getSystemTableName(mInstanceUri.getInstance()).toBytes(),
-        systemTablePermissions.toHBaseActions());
-
-    // Change permissions of the other Kiji meta tables.
-    grantHTablePermissions(user.getNameBytes(),
-        KijiManagedHBaseTableName.getMetaTableName(mInstanceUri.getInstance()).toBytes(),
-        permissions.toHBaseActions());
-    grantHTablePermissions(user.getNameBytes(),
-        KijiManagedHBaseTableName.getSchemaIdTableName(mInstanceUri.getInstance()).toBytes(),
-        permissions.toHBaseActions());
-    grantHTablePermissions(user.getNameBytes(),
-        KijiManagedHBaseTableName.getSchemaHashTableName(mInstanceUri.getInstance()).toBytes(),
-        permissions.toHBaseActions());
-
-    // Change permissions of all Kiji tables in this instance in HBase.
-    Kiji kiji = Kiji.Factory.open(mInstanceUri);
-    try {
-      for (String kijiTableName : kiji.getTableNames()) {
-        byte[] kijiHTableNameBytes =
-            KijiManagedHBaseTableName.getKijiTableName(
-                mInstanceUri.getInstance(),
-                kijiTableName
-            ).toBytes();
-        grantHTablePermissions(user.getNameBytes(),
-            kijiHTableNameBytes,
-            permissions.toHBaseActions());
-      }
-    } finally {
-      kiji.release();
-    }
-    LOG.debug("Permissions on instance {} successfully changed.", mInstanceUri);
-  }
-
-  /**
-   * Changes the permissions of an instance, by revoking the permissions on of all the Kiji meta
-   * tables.
-   *
-   * <p>Permissions should be updated with #updatePermissions before calling this method.</p>
-   *
-   * @param user User from whom the permissions are being revoked.
-   * @param permissions Permissions to be revoked from the user.
-   * @throws java.io.IOException on I/O error.
-   */
-  private void revokeInstancePermissions(
-      KijiUser user,
-      KijiPermissions permissions) throws IOException {
-    // If GRANT permission is revoked, also remove WRITE access to the system table.
-    KijiPermissions systemTablePermissions;
-    if (permissions.allowsAction(KijiPermissions.Action.GRANT)) {
-      systemTablePermissions =
-          permissions.addAction(KijiPermissions.Action.WRITE);
-    } else {
-      systemTablePermissions = permissions;
-    }
-    revokeHTablePermissions(user.getNameBytes(),
-        KijiManagedHBaseTableName.getSystemTableName(mInstanceUri.getInstance()).toBytes(),
-        systemTablePermissions.toHBaseActions());
-
-    // Change permissions of the other Kiji meta tables.
-    revokeHTablePermissions(user.getNameBytes(),
-        KijiManagedHBaseTableName.getMetaTableName(mInstanceUri.getInstance()).toBytes(),
-        permissions.toHBaseActions());
-    revokeHTablePermissions(user.getNameBytes(),
-        KijiManagedHBaseTableName.getSchemaIdTableName(mInstanceUri.getInstance()).toBytes(),
-        permissions.toHBaseActions());
-
-    // Change permissions of all Kiji tables in this instance in HBase.
-    for (String kijiTableName : mKiji.getTableNames()) {
-      byte[] kijiHTableNameBytes =
-          KijiManagedHBaseTableName.getKijiTableName(
-              mInstanceUri.getInstance(),
-              kijiTableName
-          ).toBytes();
-      revokeHTablePermissions(user.getNameBytes(),
-          kijiHTableNameBytes,
-          permissions.toHBaseActions());
-    }
-    LOG.debug("Permissions {} on instance '{}' successfully revoked from user {}.",
-        permissions,
-        mInstanceUri.toOrderedString(),
-        user);
-  }
-
-  /**
-   * Grants the actions to user on an HBase table.
-   *
-   * @param hUser HBase byte representation of the user whose permissions to change.
-   * @param hTableName the HBase table to change permissions on.
-   * @param hActions for the user on the table.
-   * @throws java.io.IOException on I/O error, for example if security is not enabled.
-   */
-  private void grantHTablePermissions(
-      byte[] hUser,
-      byte[] hTableName,
-      Action[] hActions) throws IOException {
-    // Construct the HBase UserPermission to grant.
-    /*
-    UserPermission hTablePermission = new UserPermission(
-        hUser,
-        hTableName,
-        null,
-        hActions);
-        */
-
-    // Grant the permissions.
-    LOG.debug(
-        "TODO: Update C* for: 'Changing user permissions for user {} on table {} to HBase Actions "
-          + "{}.'",
-        Bytes.toString(hUser),
-        Bytes.toString(hTableName),
-        Arrays.toString(hActions));
-    /*
-    LOG.debug("Disabling table {}.", Bytes.toString(hTableName));
-    mAdmin.disableTable(hTableName);
-    LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
-    // Grant the permissions.
-    mAccessController.grant(hTablePermission);
-    LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
-    mAdmin.enableTable(hTableName);
-    LOG.debug("Table {} enabled.", Bytes.toString(hTableName));
-    */
-  }
-
-  /**
-   * Revokes the actions from user on an HBase table.
-   *
-   * @param hUser HBase byte representation of the user whose permissions to change.
-   * @param hTableName the HBase table to change permissions on.
-   * @param hActions for the user on the table.
-   * @throws java.io.IOException on I/O error, for example if security is not enabled.
-   */
-  private void revokeHTablePermissions(
-      byte[] hUser,
-      byte[] hTableName,
-      Action[] hActions) throws IOException {
-    // Construct the HBase UserPermission to revoke.
-    /*
-    UserPermission hTablePermission = new UserPermission(
-        hUser,
-        hTableName,
-        null,
-        hActions);
-        */
-
-    // Revoke the permissions.
-    LOG.debug("TODO: Update C* for: 'Revoking user permissions for user {} on table {} to HBase "
-          + "Actions {}.'",
-        Bytes.toString(hUser),
-        Bytes.toString(hTableName),
-        Arrays.toString(hActions));
-    /*
-    LOG.debug("Disabling table {}.", Bytes.toString(hTableName));
-    mAdmin.disableTable(hTableName);
-    LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
-    // Revoke the permissions.
-    mAccessController.revoke(hTablePermission);
-    LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
-    mAdmin.enableTable(hTableName);
-    LOG.debug("Table {} enabled.", Bytes.toString(hTableName));
-    */
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
 
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    mKiji.release();
+    throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
   }
-
 }

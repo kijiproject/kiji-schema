@@ -36,7 +36,6 @@ import org.kiji.schema.KijiInvalidNameException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.cassandra.CassandraFactory;
 import org.kiji.schema.hbase.HBaseFactory;
-import org.kiji.schema.security.CassandraKijiSecurityManager;
 import org.kiji.schema.util.ResourceUtils;
 
 /** Installs or uninstalls Kiji instances from an Cassandra cluster. */
@@ -83,7 +82,7 @@ public final class CassandraKijiInstaller extends KijiInstaller {
       final Kiji kiji = CassandraKijiFactory.get().open(uri);
       try {
         if (kiji.isSecurityEnabled()) {
-          CassandraKijiSecurityManager.installInstanceCreator(uri, cassandraAdmin);
+          throw new UnsupportedOperationException("Kiji Cassandra does not implement security.");
         }
       } finally {
         kiji.release();
