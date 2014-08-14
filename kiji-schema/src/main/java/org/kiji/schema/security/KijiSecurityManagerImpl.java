@@ -29,9 +29,14 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HConstants;
+import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
+import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.protobuf.ProtobufUtil;
+import org.apache.hadoop.hbase.protobuf.generated.AccessControlProtos;
+import org.apache.hadoop.hbase.security.access.AccessControlLists;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
-// import org.apache.hadoop.hbase.security.access.UserPermission;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +49,6 @@ import org.kiji.schema.hbase.KijiManagedHBaseTableName;
 import org.kiji.schema.impl.HTableInterfaceFactory;
 import org.kiji.schema.impl.Versions;
 import org.kiji.schema.impl.hbase.HBaseKiji;
-// import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.Lock;
 import org.kiji.schema.zookeeper.ZooKeeperLock;
 import org.kiji.schema.zookeeper.ZooKeeperUtils;
@@ -75,7 +79,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
   private final KijiSystemTable mSystemTable;
 
   /** The HBase ACL (Access Control List) table to use. */
-  //private final AccessController mAccessController;
+  private final HTableInterface mAccessControlTable;
 
   /** ZooKeeper client connection responsible for creating instance locks. */
   private final CuratorFramework mZKClient;
@@ -119,12 +123,10 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
 
     mAdmin = ((HBaseKiji) mKiji).getHBaseAdmin();
 
-//    // Get the access controller.
-//    HTableInterface accessControlTable = tableFactory
-//        .create(conf, new String(AccessControlLists.ACL_TABLE_NAME, Charsets.UTF_8));
-//    mAccessController = accessControlTable.coprocessorProxy(
-//        AccessControllerProtocol.class,
-//        HConstants.EMPTY_START_ROW);
+    // TODO(SCHEMA-921): Security features should be moved into a bridge for CDH4.
+    // Get the access control table.
+    mAccessControlTable = tableFactory
+        .create(conf, AccessControlLists.ACL_TABLE_NAME.getNameAsString());
 
     mZKClient = ZooKeeperUtils.getZooKeeperClient(mInstanceUri);
     mLock = new ZooKeeperLock(mZKClient, ZooKeeperUtils.getInstancePermissionsLock(instanceUri));
@@ -233,7 +235,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
         KijiURI.newBuilder(mInstanceUri).withTableName(tableURI.getTable()).build()
             .equals(tableURI));
     for (KijiUser user : listAllUsers()) {
-      grantHTablePermissions(user.getNameBytes(),
+      grantHTablePermissions(user.getName(),
           KijiManagedHBaseTableName
               .getKijiTableName(tableURI.getInstance(), tableURI.getTable()).toBytes(),
           getPermissions(user).toHBaseActions());
@@ -422,18 +424,18 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     } else {
       systemTablePermissions = permissions;
     }
-    grantHTablePermissions(user.getNameBytes(),
+    grantHTablePermissions(user.getName(),
         KijiManagedHBaseTableName.getSystemTableName(mInstanceUri.getInstance()).toBytes(),
         systemTablePermissions.toHBaseActions());
 
     // Change permissions of the other Kiji meta tables.
-    grantHTablePermissions(user.getNameBytes(),
+    grantHTablePermissions(user.getName(),
         KijiManagedHBaseTableName.getMetaTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
-    grantHTablePermissions(user.getNameBytes(),
+    grantHTablePermissions(user.getName(),
         KijiManagedHBaseTableName.getSchemaIdTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
-    grantHTablePermissions(user.getNameBytes(),
+    grantHTablePermissions(user.getName(),
         KijiManagedHBaseTableName.getSchemaHashTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
 
@@ -446,7 +448,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
                 mInstanceUri.getInstance(),
                 kijiTableName
             ).toBytes();
-        grantHTablePermissions(user.getNameBytes(),
+        grantHTablePermissions(user.getName(),
             kijiHTableNameBytes,
             permissions.toHBaseActions());
       }
@@ -477,15 +479,15 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
     } else {
       systemTablePermissions = permissions;
     }
-    revokeHTablePermissions(user.getNameBytes(),
+    revokeHTablePermissions(user.getName(),
         KijiManagedHBaseTableName.getSystemTableName(mInstanceUri.getInstance()).toBytes(),
         systemTablePermissions.toHBaseActions());
 
     // Change permissions of the other Kiji meta tables.
-    revokeHTablePermissions(user.getNameBytes(),
+    revokeHTablePermissions(user.getName(),
         KijiManagedHBaseTableName.getMetaTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
-    revokeHTablePermissions(user.getNameBytes(),
+    revokeHTablePermissions(user.getName(),
         KijiManagedHBaseTableName.getSchemaIdTableName(mInstanceUri.getInstance()).toBytes(),
         permissions.toHBaseActions());
 
@@ -496,7 +498,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
               mInstanceUri.getInstance(),
               kijiTableName
           ).toBytes();
-      revokeHTablePermissions(user.getNameBytes(),
+      revokeHTablePermissions(user.getName(),
           kijiHTableNameBytes,
           permissions.toHBaseActions());
     }
@@ -515,27 +517,29 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
    * @throws IOException on I/O error, for example if security is not enabled.
    */
   private void grantHTablePermissions(
-      byte[] hUser,
+      String hUser,
       byte[] hTableName,
       Action[] hActions) throws IOException {
-    // Construct the HBase UserPermission to grant.
-    //UserPermission hTablePermission = SchemaPlatformBridge.get().createUserPermission(
-    //    hUser,
-    //    hTableName,
-    //    null,
-    //    hActions);
-
-    // Grant the permissions.
     LOG.debug("Changing user permissions for user {} on table {} to HBase Actions {}.",
-        Bytes.toString(hUser),
+        hUser,
         Bytes.toString(hTableName),
         Arrays.toString(hActions));
     LOG.debug("Disabling table {}.", Bytes.toString(hTableName));
     mAdmin.disableTable(hTableName);
     LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
+
     // Grant the permissions.
-    //AccessControlLists.addUserPermission();
-    //mAccessController.grant(hTablePermission);
+    AccessControlProtos.AccessControlService.BlockingInterface protocol =
+        AccessControlProtos.AccessControlService.newBlockingStub(
+            mAccessControlTable.coprocessorService(HConstants.EMPTY_START_ROW)
+        );
+    try {
+      ProtobufUtil.grant(protocol, hUser, TableName.valueOf(hTableName), null, null,hActions);
+    } catch (Throwable throwable) {
+      throw new KijiSecurityException("Encountered exception while granting access.",
+          throwable);
+    }
+
     LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
     mAdmin.enableTable(hTableName);
     LOG.debug("Table {} enabled.", Bytes.toString(hTableName));
@@ -550,27 +554,27 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
    * @throws IOException on I/O error, for example if security is not enabled.
    */
   private void revokeHTablePermissions(
-      byte[] hUser,
+      String hUser,
       byte[] hTableName,
       Action[] hActions) throws IOException {
-    // Construct the HBase UserPermission to revoke.
-    //UserPermission hTablePermission = SchemaPlatformBridge.get().createUserPermission(
-    //    hUser,
-    //    hTableName,
-    //    null,
-    //    hActions);
-
-    // Revoke the permissions.
     LOG.debug("Revoking user permissions for user {} on table {} to HBase Actions {}.",
-        Bytes.toString(hUser),
+        hUser,
         Bytes.toString(hTableName),
         Arrays.toString(hActions));
     LOG.debug("Disabling table {}.", Bytes.toString(hTableName));
     mAdmin.disableTable(hTableName);
     LOG.debug("Table {} disabled.", Bytes.toString(hTableName));
     // Revoke the permissions.
-    // mAccessController.revoke();
-    // mAccessController.revoke(hTablePermission);
+    AccessControlProtos.AccessControlService.BlockingInterface protocol =
+        AccessControlProtos.AccessControlService.newBlockingStub(
+            mAccessControlTable.coprocessorService(HConstants.EMPTY_START_ROW)
+        );
+    try {
+      ProtobufUtil.revoke(protocol, hUser, TableName.valueOf(hTableName), null, null,hActions);
+    } catch (Throwable throwable) {
+      throw new KijiSecurityException("Encountered exception while revoking access.",
+          throwable);
+    }
     LOG.debug("Enabling table {}.", Bytes.toString(hTableName));
     mAdmin.enableTable(hTableName);
     LOG.debug("Table {} enabled.", Bytes.toString(hTableName));

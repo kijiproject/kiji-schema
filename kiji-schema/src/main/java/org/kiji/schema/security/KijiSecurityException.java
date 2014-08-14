@@ -33,6 +33,16 @@ public final class KijiSecurityException extends RuntimeException {
    * Creates a new <code>KijiSecurityException</code> with the specified detail message.
    *
    * @param message The exception message.
+   * @param cause The cause of the exception, which may contain additional information.
+   */
+  public KijiSecurityException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  /**
+   * Creates a new <code>KijiSecurityException</code> with the specified detail message.
+   *
+   * @param message The exception message.
    */
   public KijiSecurityException(String message) {
     super(message);
