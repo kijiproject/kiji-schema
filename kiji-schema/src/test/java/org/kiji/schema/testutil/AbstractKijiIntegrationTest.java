@@ -34,8 +34,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HBaseTestingUtility;
-import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -86,10 +84,6 @@ public abstract class AbstractKijiIntegrationTest {
     }
   }
 
-  /** Whether to start an embedded mini HBase and M/R cluster. */
-  private static final boolean STANDALONE =
-      Boolean.parseBoolean(System.getProperty("kiji.test.standalone", "false"));
-
   /**
    * Name of the property to specify an external HBase instance.
    *
@@ -128,43 +122,6 @@ public abstract class AbstractKijiIntegrationTest {
 
   /** Configuration created by the standalone setup, if enabled. */
   private static Configuration mStandaloneConf = null;
-
-  /** Mini HBase cluster instance. */
-  private static MiniHBaseCluster mCluster;
-
-  private static void startHBaseMiniCluster() throws Exception {
-    LOG.info("Starting MiniCluster");
-
-    /** Mini HBase utility helper. */
-    mHBaseUtil = new HBaseTestingUtility();
-
-    /** HBase configuration. */
-    mStandaloneConf = mHBaseUtil.getConfiguration();
-
-    mHBaseUtil.startMiniZKCluster();
-    int zkClientPort = mHBaseUtil.getConfiguration().getInt(
-        "hbase.zookeeper.property.clientPort", 0);
-    LOG.info(String.format("Mini ZooKeeper cluster quorum: localhost:%d",
-        zkClientPort));
-
-    // Randomize HBase master info port:
-    mStandaloneConf.set("hbase.master.info.port", "0");
-
-    // Disable HBase region server info port:
-    mStandaloneConf.set("hbase.regionserver.info.port", "-1");
-
-    mCluster = mHBaseUtil.startMiniCluster();
-    mCluster.waitForActiveAndReadyMaster();
-    LOG.info("Mini HBase cluster is ready");
-
-    LOG.info("Mini Kiji instance is ready");
-
-    LOG.info("Starting mini MapReduce cluster");
-    mStandaloneConf.set("hadoop.log.dir", "/tmp/test_hadoop_log_dir");
-    mHBaseUtil.startMiniMapReduceCluster();
-
-    LOG.info(String.format("Job tracker on %s", mStandaloneConf.get("mapred.job.tracker")));
-  }
 
   // -----------------------------------------------------------------------------------------------
 
@@ -220,14 +177,6 @@ public abstract class AbstractKijiIntegrationTest {
    * @return the URI for the HBase instance to use.
    */
   protected static KijiURI getHBaseURI() {
-   if (STANDALONE) {
-     // We are running an embedded HBase and M/R mini-cluster in-process:
-      final Configuration conf = HBaseConfiguration.create(mStandaloneConf);
-      final String quorum = conf.get(HConstants.ZOOKEEPER_QUORUM);
-      final int clientPort =
-          conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, HConstants.DEFAULT_ZOOKEPER_CLIENT_PORT);
-      return KijiURI.newBuilder(String.format("kiji://%s:%d", quorum, clientPort)).build();
-    }
     if (TEST_CLUSTER_URI != null) {
       return KijiURI.newBuilder(TEST_CLUSTER_URI).build();
     } else {
@@ -237,9 +186,6 @@ public abstract class AbstractKijiIntegrationTest {
 
   @BeforeClass
   public static void setupManagementThreads() throws Exception {
-    if (STANDALONE) {
-      startHBaseMiniCluster();
-    }
     mHBaseURI = getHBaseURI();
 
     synchronized (THREAD_MANAGEMENT_LOCK) {
