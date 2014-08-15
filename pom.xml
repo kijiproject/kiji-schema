@@ -42,20 +42,6 @@
     <kiji-annotations.version>1.1.1</kiji-annotations.version>
     <kiji-delegation.version>1.1.1</kiji-delegation.version>
     <kiji-common-flags.version>1.1.0</kiji-common-flags.version>
-
-    <!--
-       The Hadoop and HBase versions to use in the default "cdh4" profile
-       of the kiji-schema/ submodule. Can be set independently of the root
-       pom if you'd like. Individual platform-bridge modules explicitly
-       depend on their own version of Hadoop/HBase for compilation. At least
-       one bridge must act as a compatible provider for the Hadoop/HBase
-       versions defined here, since this is what our tests execute against by
-       default.
-    -->
-    <cdh4-hadoop.version>${hadoop.version}</cdh4-hadoop.version>
-    <cdh4-hbase.version>${hbase.version}</cdh4-hbase.version>
-    <cdh5-hadoop.version>2.3.0-cdh5.0.3</cdh5-hadoop.version>
-    <cdh5-hbase.version>0.96.1.1-cdh5.0.3</cdh5-hbase.version>
   </properties>
 
   <modules>

@@ -346,11 +346,8 @@
 
   <profiles>
     <profile>
-      <!--
-         Active by default: cdh4 build.
-      -->
-
-      <id>cdh4</id>
+      <!-- Active by default: cdh5 build. -->
+      <id>cdh5</id>
       <activation>
         <property>
           <name>!platform</name>
@@ -362,39 +359,22 @@
         <!-- Marked as 'optional' to prevent propagation to transitive projects. -->
         <dependency>
           <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-core</artifactId>
+          <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
           <scope>compile</scope>
           <optional>true</optional>
-          <version>${cdh4-hadoop.version}</version>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-client</artifactId>
-          <scope>compile</scope>
-          <optional>true</optional>
-          <version>${cdh4-hadoop.version}</version>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-minicluster</artifactId>
-          <scope>test</scope>
-          <optional>true</optional>
-          <version>${cdh4-hadoop.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hbase</groupId>
-          <artifactId>hbase</artifactId>
+          <artifactId>hbase-testing-util</artifactId>
           <type>test-jar</type>
           <scope>test</scope>
           <optional>true</optional>
-          <version>${cdh4-hbase.version}</version>
         </dependency>
         <dependency>
           <groupId>org.apache.hbase</groupId>
-          <artifactId>hbase</artifactId>
+          <artifactId>hbase-client</artifactId>
           <scope>compile</scope>
           <optional>true</optional>
-          <version>${cdh4-hbase.version}</version>
         </dependency>
       </dependencies>
     </profile>
