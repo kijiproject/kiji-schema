@@ -37,10 +37,6 @@
     <!-- Protocol library version must match the version Hadoop/HBase rely on. -->
     <protobuf.version>2.4.0a</protobuf.version>
     <commons-pool.version>1.6</commons-pool.version>
-    <!--Set the IP address for the first node in the Cassandra ring used for integration tests.
-    This property is used by the Cassandra Maven plugin and also gets applied to
-    src/test/resources/cassandra-maven-plugin.properties.-->
-    <cassandra.initialIp>127.0.0.10</cassandra.initialIp>
   </properties>
 
   <build>
@@ -57,24 +53,6 @@
         <excludes><exclude>org/kiji/schema/kiji-schema.properties</exclude></excludes>
       </resource>
     </resources>
-
-    <!--Fill in the reserved ports and the initial IP address for the Cassandra Maven plugin.-->
-    <testResources>
-      <testResource>
-        <directory>src/test/resources</directory>
-        <filtering>true</filtering>
-        <includes>
-          <include>**/cassandra-maven-plugin.properties</include>
-        </includes>
-      </testResource>
-      <testResource>
-        <directory>src/test/resources</directory>
-        <filtering>false</filtering>
-        <excludes>
-          <exclude>**/cassandra-maven-plugin.properties</exclude>
-        </excludes>
-      </testResource>
-    </testResources>
 
     <plugins>
         <plugin>
@@ -96,60 +74,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-      </plugin>
-
-      <plugin>
-        <groupId>org.kiji.maven.plugins</groupId>
-        <artifactId>hbase-maven-plugin</artifactId>
-      </plugin>
-
-      <!--Reserve ports for Cassandra integration tests.-->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>build-helper-maven-plugin</artifactId>
-        <version>1.9</version>
-        <executions>
-          <execution>
-            <id>reserve-network-port</id>
-            <goals>
-              <goal>reserve-network-port</goal>
-            </goals>
-            <!--Note that this has to happen during the process-resources phase, not
-            process-test-resources, because we have to do this before filtering the test
-            resources.-->
-            <phase>process-resources</phase>
-            <configuration>
-              <portNames>
-                <portName>cassandra.nativePort</portName>
-                <portName>cassandra.rpcPort</portName>
-                <portName>cassandra.storagePort</portName>
-                <portName>cassandra.sslStoragePort</portName>
-              </portNames>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-
-      <plugin>
-        <groupId>org.kiji.maven.plugins</groupId>
-        <artifactId>cassandra-maven-plugin</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
-        <executions>
-          <execution>
-            <goals>
-              <goal>start</goal>
-              <goal>stop</goal>
-            </goals>
-          </execution>
-        </executions>
-        <configuration>
-          <numnodes>1</numnodes>
-        </configuration>
-      </plugin>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-failsafe-plugin</artifactId>
       </plugin>
 
       <plugin>
@@ -473,46 +397,6 @@
           <version>${cdh4-hbase.version}</version>
         </dependency>
       </dependencies>
-    </profile>
-
-    <profile>
-      <!--
-        This profile runs integration tests against a cluster instead of
-        hbase-maven-plugin.  It is activated by specifying the kiji.test.cluster.uri
-        property as the Kiji URI without an instance name (e.g.,
-        -Dkiji.test.cassandra.cluster.uri=kiji-cassandra://localhost:2181/cassandrahost/9140)
-        to connect to for testing.  Tests will create Kiji instances within this cluster.
-      -->
-
-      <id>skip-hbase-maven-plugin</id>
-      <activation>
-        <property>
-          <!--
-              Note this is different from the key used in other submodules. This is because the
-              cassandra cluster uses zookeeper from the hbase-maven-plugin, so the
-              hbase-maven-plugin should only be disabled when the cassandra-maven-plugin is.
-          -->
-          <name>kiji.test.cassandra.cluster.uri</name>
-        </property>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.kiji.maven.plugins</groupId>
-            <artifactId>hbase-maven-plugin</artifactId>
-            <configuration>
-              <skip>true</skip>
-            </configuration>
-          </plugin>
-          <plugin>
-            <groupId>org.kiji.maven.plugins</groupId>
-            <artifactId>cassandra-maven-plugin</artifactId>
-            <configuration>
-              <cassandra.skip>true</cassandra.skip>
-            </configuration>
-          </plugin>
-         </plugins>
-      </build>
     </profile>
 
   </profiles>

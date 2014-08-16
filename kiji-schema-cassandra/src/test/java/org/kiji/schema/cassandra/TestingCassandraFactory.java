@@ -81,16 +81,17 @@ public final class TestingCassandraFactory implements CassandraFactory {
   @Override
   public CassandraAdminFactory getCassandraAdminFactory(KijiURI uri) {
     if (isFakeCassandraURI(uri)) {
+      LOG.debug("URI is a fake C* URI -> Creating FakeCassandraAdminFactory...");
       // Make sure that the EmbeddedCassandraService is started
       try {
         startEmbeddedCassandraServiceIfNotRunningAndOpenSession();
       } catch (Exception e) {
         throw new KijiIOException("Problem with embedded Cassandra Session! " + e);
       }
-
       // Get an admin factory that will work with the embedded service
       return createFakeCassandraAdminFactory();
     } else {
+      LOG.debug("URI is not a fake Cassandra URI.");
       return DELEGATE.getCassandraAdminFactory(uri);
     }
   }
