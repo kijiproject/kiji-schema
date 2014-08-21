@@ -60,6 +60,7 @@ import org.kiji.schema.impl.BoundColumnReaderSpec;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
+import org.kiji.schema.platform.SchemaPlatformBridge;
 import org.kiji.schema.util.TimestampComparator;
 
 /**
@@ -194,7 +195,7 @@ public final class HBaseKijiRowData implements KijiRowData {
         final KijiColumnName columnName,
         final HBaseColumnNameTranslator columnNameTranslator
     ) throws IOException {
-      mKeyValues = rowData.mResult.raw();
+      mKeyValues = SchemaPlatformBridge.get().keyValuesFromResult(rowData.mResult);
       mEntityId = rowData.mEntityId;
       mColumn = columnName;
       mDecoder = rowData.mDecoderProvider.getDecoder(mColumn);

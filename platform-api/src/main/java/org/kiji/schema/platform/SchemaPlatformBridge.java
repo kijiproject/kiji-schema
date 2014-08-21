@@ -29,6 +29,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
 import org.apache.hadoop.hbase.filter.QualifierFilter;
@@ -232,6 +233,16 @@ public abstract class SchemaPlatformBridge {
     throw new UnsupportedOperationException(
         "Active SchemaPlatformBridge implementation does not support security operations.");
   }
+
+  /**
+   * Gets the KeyValues from an HBase Result.  Returns an empty array if the result has no Cells
+   * in it.  This method may be slow for implementations for HBase 0.96+,
+   * because it has to do an array copy.
+   *
+   * @param result The Result to get KeyValues from.
+   * @return The KeyValues in result.
+   */
+  public abstract KeyValue[] keyValuesFromResult(Result result);
 
   /**
    * An interface for HColumnDescriptors, implemented by the bridges.

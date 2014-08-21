@@ -30,6 +30,7 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
@@ -182,6 +183,12 @@ public final class CDH41MR1SchemaBridge extends SchemaPlatformBridge {
       Action... actions
   ) {
     return new UserPermission(user, tableName, family, actions);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KeyValue[] keyValuesFromResult(Result result) {
+    return result.raw();
   }
 
   /**

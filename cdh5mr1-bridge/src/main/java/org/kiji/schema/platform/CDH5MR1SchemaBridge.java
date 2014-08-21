@@ -25,12 +25,15 @@ import com.google.common.base.Charsets;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.filter.BinaryComparator;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.FamilyFilter;
@@ -190,6 +193,24 @@ public final class CDH5MR1SchemaBridge extends SchemaPlatformBridge {
       Action... actions
   ) {
     return new UserPermission(user, TableName.valueOf(tableName), family, actions);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public KeyValue[] keyValuesFromResult(Result result) {
+    // This is method re-implemented from Result.raw() in HBase 0.96,
+    // but with a null check to prevent an NPE when there are no Cells in the Result.
+
+    Cell[] cells = result.rawCells();
+    // If result.rawCells is null, return an empty array.
+    if (null == cells) {
+      return new KeyValue[0];
+    }
+    KeyValue[] kvs = new KeyValue[cells.length];
+    for (int i = 0 ; i < kvs.length; i++) {
+      kvs[i] = KeyValueUtil.ensureKeyValue(cells[i]);
+    }
+    return kvs;
   }
 
   /**
