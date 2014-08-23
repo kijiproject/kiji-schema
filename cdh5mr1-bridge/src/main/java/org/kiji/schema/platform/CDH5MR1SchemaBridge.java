@@ -207,7 +207,7 @@ public final class CDH5MR1SchemaBridge extends SchemaPlatformBridge {
       return new KeyValue[0];
     }
     KeyValue[] kvs = new KeyValue[cells.length];
-    for (int i = 0 ; i < kvs.length; i++) {
+    for (int i = 0; i < kvs.length; i++) {
       kvs[i] = KeyValueUtil.ensureKeyValue(cells[i]);
     }
     return kvs;

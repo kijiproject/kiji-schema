@@ -534,7 +534,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
             mAccessControlTable.coprocessorService(HConstants.EMPTY_START_ROW)
         );
     try {
-      ProtobufUtil.grant(protocol, hUser, TableName.valueOf(hTableName), null, null,hActions);
+      ProtobufUtil.grant(protocol, hUser, TableName.valueOf(hTableName), null, null, hActions);
     } catch (Throwable throwable) {
       throw new KijiSecurityException("Encountered exception while granting access.",
           throwable);
@@ -570,7 +570,7 @@ final class KijiSecurityManagerImpl implements KijiSecurityManager {
             mAccessControlTable.coprocessorService(HConstants.EMPTY_START_ROW)
         );
     try {
-      ProtobufUtil.revoke(protocol, hUser, TableName.valueOf(hTableName), null, null,hActions);
+      ProtobufUtil.revoke(protocol, hUser, TableName.valueOf(hTableName), null, null, hActions);
     } catch (Throwable throwable) {
       throw new KijiSecurityException("Encountered exception while revoking access.",
           throwable);
