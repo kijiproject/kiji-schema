@@ -30,10 +30,10 @@ import org.kiji.delegation.Priority;
  * <p>This is the only CDH5 bridge. Future CDH5 releases will
  * automatically fall back to this bridge.
  *
- * This is also the current bridge for Hadoop 2 and HBase 0.96.</p>
+ * This is also the current bridge for Hadoop 2 and HBase 0.96-0.98.</p>
  */
 @ApiAudience.Private
-public final class CDH5MR1SchemaBridgeFactory extends SchemaPlatformBridgeFactory {
+public final class CDH5SchemaBridgeFactory extends SchemaPlatformBridgeFactory {
 
   /** {@inheritDoc} */
   @Override
@@ -42,7 +42,7 @@ public final class CDH5MR1SchemaBridgeFactory extends SchemaPlatformBridgeFactor
     try {
       Class<? extends SchemaPlatformBridge> bridgeClass =
           (Class<? extends SchemaPlatformBridge>) Class.forName(
-              "org.kiji.schema.platform.CDH5MR1SchemaBridge");
+              "org.kiji.schema.platform.CDH5SchemaBridge");
       return bridgeClass.newInstance();
     } catch (Exception e) {
       throw new RuntimeException("Could not instantiate platform bridge", e);
@@ -54,15 +54,15 @@ public final class CDH5MR1SchemaBridgeFactory extends SchemaPlatformBridgeFactor
   public int getPriority(Map<String, String> runtimeHints) {
     String hadoopVer = org.apache.hadoop.util.VersionInfo.getVersion();
     String hbaseVer = org.apache.hadoop.hbase.util.VersionInfo.getVersion();
-    System.out.println(hadoopVer + hbaseVer);
+
     if (hadoopVer.matches("2\\..*-cdh5\\..*")
-        && hbaseVer.matches("0\\.9[56]\\..*-cdh5\\..*")) {
+        && hbaseVer.matches("0\\.9[568]\\..*-cdh5\\..*")) {
       // This is our only bridge for CDH5; this is the
       // best platform bridge available.
       return Priority.HIGH;
     } else if (hadoopVer.matches("2\\..*")
-        && hbaseVer.matches("0\\.96\\..*")) {
-      // This is our only bridge for HBase 0.96.
+        && hbaseVer.matches("0\\.9[68]\\..*")) {
+      // This is our only bridge for HBase 0.96 and HBase 0.98.
       return Priority.LOW;
     } else {
       // Can't provide for this implementation.

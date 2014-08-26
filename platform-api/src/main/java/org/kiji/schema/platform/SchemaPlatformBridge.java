@@ -37,6 +37,8 @@ import org.apache.hadoop.hbase.filter.RowFilter;
 import org.apache.hadoop.hbase.io.hfile.HFile;
 import org.apache.hadoop.hbase.security.access.Permission.Action;
 import org.apache.hadoop.hbase.security.access.UserPermission;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.delegation.Lookups;
@@ -48,6 +50,8 @@ import org.kiji.delegation.Lookups;
  */
 @ApiAudience.Framework
 public abstract class SchemaPlatformBridge {
+  private static final Logger LOG = LoggerFactory.getLogger(SchemaPlatformBridge.class);
+
   /**
    * This API should only be implemented by other modules within KijiSchema;
    * to discourage external users from extending this class, keep the c'tor
@@ -319,7 +323,20 @@ public abstract class SchemaPlatformBridge {
     }
     synchronized (SchemaPlatformBridge.class) {
       if (null == mBridge) {
-        mBridge = Lookups.getPriority(SchemaPlatformBridgeFactory.class).lookup().getBridge();
+        String hadoopVer = org.apache.hadoop.util.VersionInfo.getVersion();
+        String hbaseVer = org.apache.hadoop.hbase.util.VersionInfo.getVersion();
+
+        LOG.info("Loading bridge for Hadoop version {} and HBase version {}", hadoopVer, hbaseVer);
+        final SchemaPlatformBridgeFactory factory =
+            Lookups.getPriority(SchemaPlatformBridgeFactory.class).lookup();
+        if (null == factory) {
+          throw new RuntimeException(
+              "Could not find suitable SchemaPlatformBridgeFactory. This may be an issue with"
+              + " bridge providers on your classpath.");
+        } else {
+          LOG.info("Selected bridge: {}", factory.getClass().getName());
+        }
+        mBridge = factory.getBridge();
       }
       return mBridge;
     }

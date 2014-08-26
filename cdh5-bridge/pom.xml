@@ -19,7 +19,7 @@
   -->
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>kiji-schema-cdh5mr1-bridge</artifactId>
+  <artifactId>kiji-schema-cdh5-bridge</artifactId>
   <packaging>jar</packaging>
 
   <parent>
@@ -29,12 +29,12 @@
     <relativePath>..</relativePath>
   </parent>
 
-  <name>KijiSchema CDH5(MR1) Platform Bridge</name>
-  <description>Bridge API provider for CDH5 with MR1</description>
+  <name>KijiSchema CDH5 Platform Bridge</name>
+  <description>Bridge API provider for CDH5 with MR2</description>
 
   <properties>
-    <hadoop.version>2.3.0-mr1-cdh5.0.1</hadoop.version>
-    <hbase.version>0.96.1.1-cdh5.0.1</hbase.version>
+    <hadoop.version>2.3.0-cdh5.0.3</hadoop.version>
+    <hbase.version>0.96.1.1-cdh5.0.3</hbase.version>
   </properties>
 
   <build>
@@ -69,7 +69,7 @@
   <dependencies>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-client</artifactId>
+      <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
       <version>${hadoop.version}</version>
       <scope>provided</scope>
     </dependency>

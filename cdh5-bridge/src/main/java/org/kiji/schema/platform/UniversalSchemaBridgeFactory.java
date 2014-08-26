@@ -46,7 +46,7 @@ public final class UniversalSchemaBridgeFactory extends SchemaPlatformBridgeFact
         + " with your hadoop and hbase versions.");
     LOG.warn("Hadoop version: {}", org.apache.hadoop.util.VersionInfo.getVersion());
     LOG.warn("HBase version: {}", org.apache.hadoop.hbase.util.VersionInfo.getVersion());
-    return new CDH5MR1SchemaBridgeFactory().getBridge();
+    return new CDH5SchemaBridgeFactory().getBridge();
   }
 
   /** {@inheritDoc} */

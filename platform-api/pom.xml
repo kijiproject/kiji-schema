@@ -64,6 +64,7 @@
   <dependencies>
     <dependency>
       <!-- Compile against the CDH4 platform for the reference class names, etc. -->
+      <!-- TODO(SCHEMA-951): Update this to a more recent version. -->
       <groupId>org.kiji.platforms</groupId>
       <artifactId>kiji-cdh4-platform</artifactId>
       <version>${kiji-platforms.version}</version>

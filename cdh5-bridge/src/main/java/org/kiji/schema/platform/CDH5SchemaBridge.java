@@ -56,7 +56,7 @@ import org.kiji.annotations.ApiAudience;
  * CDH5-backed implementation of the SchemaPlatformBridge API.
  */
 @ApiAudience.Private
-public final class CDH5MR1SchemaBridge extends SchemaPlatformBridge {
+public final class CDH5SchemaBridge extends SchemaPlatformBridge {
   /** {@inheritDoc} */
   @Override
   public void initializeHadoopResources() {

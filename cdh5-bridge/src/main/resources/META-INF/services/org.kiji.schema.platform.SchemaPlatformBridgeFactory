@@ -1,2 +1,2 @@
-org.kiji.schema.platform.CDH5MR1SchemaBridgeFactory
+org.kiji.schema.platform.CDH5SchemaBridgeFactory
 org.kiji.schema.platform.UniversalSchemaBridgeFactory

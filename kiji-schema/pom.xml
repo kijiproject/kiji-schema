@@ -306,7 +306,7 @@
     </dependency>
     <dependency>
       <groupId>${project.groupId}</groupId>
-      <artifactId>kiji-schema-cdh5mr1-bridge</artifactId>
+      <artifactId>kiji-schema-cdh5-bridge</artifactId>
       <version>${project.version}</version>
       <scope>runtime</scope>
     </dependency>
