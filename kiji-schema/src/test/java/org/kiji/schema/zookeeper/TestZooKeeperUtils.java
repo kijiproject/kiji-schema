@@ -80,7 +80,7 @@ public class TestZooKeeperUtils extends ZooKeeperTest {
       node.start();
       node.waitForInitialCreate(5, TimeUnit.SECONDS);
       Assert.assertTrue(ZooKeeperUtils.atomicRecursiveDelete(mZKClient, "/foo"));
-      Thread.sleep(100); // Give ephemeral node time to recreate itself
+      Thread.sleep(1000); // Give ephemeral node time to recreate itself
       Assert.assertNotNull(mZKClient.checkExists().forPath("/foo"));
     } finally {
       node.close();
