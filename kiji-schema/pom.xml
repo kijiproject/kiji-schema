@@ -187,6 +187,20 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
+      <groupId>org.kiji.platforms</groupId>
+      <artifactId>kiji-compile-platform</artifactId>
+      <type>pom</type>
+      <version>${kiji-platforms.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.kiji.platforms</groupId>
+      <artifactId>kiji-test-platform</artifactId>
+      <type>pom</type>
+      <version>${kiji-platforms.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
     </dependency>
@@ -273,24 +287,6 @@
       <scope>test</scope>
     </dependency>
 
-    <dependency>
-      <groupId>org.apache.curator</groupId>
-      <artifactId>curator-recipes</artifactId>
-      <version>${curator.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.curator</groupId>
-      <artifactId>curator-framework</artifactId>
-      <version>${curator.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.curator</groupId>
-      <artifactId>curator-test</artifactId>
-      <version>${curator.version}</version>
-    </dependency>
-
     <!-- All platform bridge implementations that should be bundled with the redistributable. -->
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -315,68 +311,12 @@
   <profiles>
     <profile>
       <!--
-         Active by default: cdh5 build.
-      -->
-
-      <id>cdh5</id>
-      <activation>
-        <property>
-          <name>!platform</name>
-        </property>
-      </activation>
-
-      <dependencies>
-        <!-- Default Hadoop/HBase versions in kiji-root-pom provide these dependencies. -->
-        <!-- Marked as 'optional' to prevent propagation to transitive projects. -->
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-common</artifactId>
-          <scope>compile</scope>
-          <optional>true</optional>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
-          <scope>compile</scope>
-          <optional>true</optional>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-yarn-server-tests</artifactId>
-          <scope>test</scope>
-          <optional>true</optional>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.hbase</groupId>
-          <artifactId>hbase-client</artifactId>
-          <scope>compile</scope>
-          <optional>true</optional>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.hbase</groupId>
-          <artifactId>hbase-server</artifactId>
-          <scope>compile</scope>
-          <optional>true</optional>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.hbase</groupId>
-          <artifactId>hbase-testing-util</artifactId>
-          <type>test-jar</type>
-          <scope>test</scope>
-          <optional>true</optional>
-        </dependency>
-      </dependencies>
-    </profile>
-
-    <profile>
-      <!--
         This profile runs integration tests against a cluster instead of
         hbase-maven-plugin.  It is activated by specifying the kiji.test.cluster.uri
         property as the Kiji URI without an instance name (e.g.,
         -Dkiji.test.cluster.uri=kiji://localhost:2181/) to connect to for testing.
         Tests will create Kiji instances within this cluster.
       -->
-
       <id>skip-hbase-maven-plugin</id>
       <activation>
         <property>
@@ -395,7 +335,5 @@
         </plugins>
       </build>
     </profile>
-
   </profiles>
-
 </project>

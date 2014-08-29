@@ -30,12 +30,6 @@
   <description>A skeleton Kiji schema project.</description>
   <url>http://www.kiji.org</url>
 
-  <properties>
-    <avro.version>1.7.2</avro.version>
-    <maven-compiler-plugin.version>2.3.2</maven-compiler-plugin.version>
-    <maven-jar-plugin.version>2.3.1</maven-jar-plugin.version>
-  </properties>
-
   <build>
     <plugins>
       <plugin>
@@ -76,9 +70,10 @@
     </dependency>
     <dependency>
       <groupId>org.kiji.platforms</groupId>
-      <artifactId>kiji-cdh4-platform</artifactId>
+      <artifactId>kiji-cdh5-1-platform</artifactId>
+      <type>pom</type>
       <version>${kiji-platforms.version}</version>
-      <scope>provided</scope>
+      <scope>compile</scope>
     </dependency>
   </dependencies>
 

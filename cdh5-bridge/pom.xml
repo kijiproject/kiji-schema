@@ -32,11 +32,6 @@
   <name>KijiSchema CDH5 Platform Bridge</name>
   <description>Bridge API provider for CDH5 with MR2</description>
 
-  <properties>
-    <hadoop.version>2.3.0-cdh5.0.3</hadoop.version>
-    <hbase.version>0.96.1.1-cdh5.0.3</hbase.version>
-  </properties>
-
   <build>
     <plugins>
       <plugin>
@@ -68,37 +63,19 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
-      <version>${hadoop.version}</version>
+      <groupId>org.kiji.platforms</groupId>
+      <artifactId>kiji-cdh5-0-platform</artifactId>
+      <type>pom</type>
+      <version>${kiji-platforms.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-minicluster</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>provided</scope>
+      <groupId>org.kiji.platforms</groupId>
+      <artifactId>kiji-cdh5-0-test-platform</artifactId>
+      <type>pom</type>
+      <version>${kiji-platforms.version}</version>
+      <scope>test</scope>
     </dependency>
-
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase-client</artifactId>
-      <version>${hbase.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase-common</artifactId>
-      <version>${hbase.version}</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase-server</artifactId>
-      <version>${hbase.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
     <dependency>
       <groupId>org.kiji.schema</groupId>
       <artifactId>kiji-schema-platform-api</artifactId>

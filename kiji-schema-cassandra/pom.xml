@@ -165,14 +165,22 @@
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>kiji-schema</artifactId>
-      <version>${project.version}</version>
       <type>test-jar</type>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.cassandra</groupId>
-      <artifactId>cassandra-all</artifactId>
-      <version>2.0.6</version>
+      <groupId>org.kiji.platforms</groupId>
+      <artifactId>kiji-cassandra-platform</artifactId>
+      <type>pom</type>
+      <version>${kiji-platforms.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.kiji.platforms</groupId>
+      <artifactId>kiji-cassandra-test-platform</artifactId>
+      <type>pom</type>
+      <version>${kiji-platforms.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -285,23 +293,6 @@
       <version>3.9.0.Final</version>
     </dependency>
 
-    <dependency>
-      <groupId>org.apache.curator</groupId>
-      <artifactId>curator-recipes</artifactId>
-      <version>${curator.version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.jboss.netty</groupId>
-          <artifactId>netty</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-
-    <dependency>
-      <groupId>org.apache.curator</groupId>
-      <artifactId>curator-test</artifactId>
-    </dependency>
-
     <!-- All platform bridge implementations that should be bundled with the redistributable. -->
     <dependency>
       <groupId>${project.groupId}</groupId>
@@ -320,11 +311,6 @@
       <artifactId>kiji-schema-cdh5-bridge</artifactId>
       <version>${project.version}</version>
       <scope>runtime</scope>
-    </dependency>
-    <dependency>
-        <groupId>com.datastax.cassandra</groupId>
-        <artifactId>cassandra-driver-core</artifactId>
-        <version>2.0.4</version>
     </dependency>
     <dependency>
         <groupId>org.xerial.snappy</groupId>
@@ -348,42 +334,4 @@
       </plugin>
     </plugins>
   </reporting>
-
-  <profiles>
-    <profile>
-      <!-- Active by default: cdh5 build. -->
-      <id>cdh5</id>
-      <activation>
-        <property>
-          <name>!platform</name>
-        </property>
-      </activation>
-
-      <dependencies>
-        <!-- Default Hadoop/HBase versions in kiji-root-pom provide these dependencies. -->
-        <!-- Marked as 'optional' to prevent propagation to transitive projects. -->
-        <dependency>
-          <groupId>org.apache.hadoop</groupId>
-          <artifactId>hadoop-mapreduce-client-jobclient</artifactId>
-          <scope>compile</scope>
-          <optional>true</optional>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.hbase</groupId>
-          <artifactId>hbase-testing-util</artifactId>
-          <type>test-jar</type>
-          <scope>test</scope>
-          <optional>true</optional>
-        </dependency>
-        <dependency>
-          <groupId>org.apache.hbase</groupId>
-          <artifactId>hbase-client</artifactId>
-          <scope>compile</scope>
-          <optional>true</optional>
-        </dependency>
-      </dependencies>
-    </profile>
-
-  </profiles>
-
 </project>

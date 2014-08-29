@@ -63,24 +63,11 @@
 
   <dependencies>
     <dependency>
-      <!-- Compile against the CDH4 platform for the reference class names, etc. -->
-      <!-- TODO(SCHEMA-951): Update this to a more recent version. -->
       <groupId>org.kiji.platforms</groupId>
-      <artifactId>kiji-cdh4-platform</artifactId>
+      <artifactId>kiji-compile-platform</artifactId>
+      <type>pom</type>
       <version>${kiji-platforms.version}</version>
       <scope>provided</scope>
-      <exclusions>
-        <!-- When running in Eclipse, the Jackson in this project was superceding the
-        version used by schema core which was throwing a weird NoSuchMethodException -->
-        <exclusion>
-          <groupId>org.codehaus.jackson</groupId>
-          <artifactId>jackson-mapper-asl</artifactId>
-        </exclusion>
-        <exclusion>
-          <groupId>org.codehaus.jackson</groupId>
-          <artifactId>jackson-core-asl</artifactId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.kiji.delegation</groupId>

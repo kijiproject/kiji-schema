@@ -32,11 +32,6 @@
   <name>KijiSchema CDH4.1(MR1) Platform Bridge</name>
   <description>Bridge API provider for CDH4.1 with MR1</description>
 
-  <properties>
-    <hadoop.version>2.0.0-mr1-cdh4.1.2</hadoop.version>
-    <hbase.version>0.92.1-cdh4.1.2</hbase.version>
-  </properties>
-
   <build>
     <plugins>
       <plugin>
@@ -68,31 +63,19 @@
 
   <dependencies>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-client</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>provided</scope>
-    </dependency>
-     <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-core</artifactId>
-      <version>${hadoop.version}</version>
+      <groupId>org.kiji.platforms</groupId>
+      <artifactId>kiji-cdh4-1-platform</artifactId>
+      <type>pom</type>
+      <version>${kiji-platforms.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-minicluster</artifactId>
-      <version>${hadoop.version}</version>
-      <scope>provided</scope>
+      <groupId>org.kiji.platforms</groupId>
+      <artifactId>kiji-cdh4-1-test-platform</artifactId>
+      <type>pom</type>
+      <version>${kiji-platforms.version}</version>
+      <scope>test</scope>
     </dependency>
-
-    <dependency>
-      <groupId>org.apache.hbase</groupId>
-      <artifactId>hbase</artifactId>
-      <version>${hbase.version}</version>
-      <scope>provided</scope>
-    </dependency>
-
     <dependency>
       <groupId>org.kiji.schema</groupId>
       <artifactId>kiji-schema-platform-api</artifactId>
