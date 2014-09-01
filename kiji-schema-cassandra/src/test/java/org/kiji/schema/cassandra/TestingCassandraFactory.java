@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
@@ -143,18 +144,41 @@ public final class TestingCassandraFactory implements CassandraFactory {
       LOG.info("Starting EmbeddedCassandraService...");
       // Use a custom YAML file that specifies different ports from normal for RPC and thrift.
       InputStream yamlStream = getClass().getResourceAsStream("/cassandra.yaml");
-      LOG.info("Checking that we can load cassandra.yaml as a stream...");
-      Preconditions.checkNotNull(yamlStream);
-      LOG.info("Looks good to load it as a stream!");
+      LOG.debug("Checking that we can load cassandra.yaml as a stream...");
+      Preconditions.checkNotNull(yamlStream, "Unable to load resource /cassandra.yaml as a stream");
+      LOG.debug("Looks good to load it as a stream!");
+
+      // Update cassandra.yaml to use available ports.
+      String cassandraYaml = IOUtils.toString(yamlStream);
+
+      final int storagePort = findOpenPort(); // Normally 7000.
+      final int sslStoragePort = findOpenPort(); // Normally 7001.
+      final int nativeTransportPort = findOpenPort(); // Normally 9042.
+      final int rpcPort = findOpenPort(); // Normally 9160.
+
+      cassandraYaml = updateCassandraYamlWithPort(cassandraYaml, "__STORAGE_PORT__", storagePort);
+
+      cassandraYaml =  updateCassandraYamlWithPort(
+          cassandraYaml,
+          "__SSL_STORAGE_PORT__",
+          sslStoragePort);
+
+      cassandraYaml = updateCassandraYamlWithPort(
+          cassandraYaml,
+          "__NATIVE_TRANSPORT_PORT__",
+          nativeTransportPort);
+
+      cassandraYaml = updateCassandraYamlWithPort(cassandraYaml, "__RPC_PORT__", rpcPort);
 
       // Write out the YAML contents to a temp file.
-      File temp = File.createTempFile("cassandra", ".yaml");
-      LOG.info("Writing cassandra.yaml to " + temp);
-      BufferedWriter bw = new BufferedWriter(new FileWriter(temp));
-      bw.write(IOUtils.toString(yamlStream));
-      bw.close();
-
-      File yamlFile = temp;
+      File yamlFile = File.createTempFile("cassandra", ".yaml");
+      LOG.info("Writing cassandra.yaml to {}", yamlFile);
+      final BufferedWriter bw = new BufferedWriter(new FileWriter(yamlFile));
+      try {
+        bw.write(cassandraYaml);
+      } finally {
+        bw.close();
+      }
 
       Preconditions.checkArgument(yamlFile.exists());
       System.setProperty("cassandra.config", "file:" + yamlFile.getAbsolutePath());
@@ -181,13 +205,52 @@ public final class TestingCassandraFactory implements CassandraFactory {
     try {
       // Use different port from normal here to avoid conflicts with any locally-running C* cluster.
       // Port settings are controlled in "cassandra.yaml" in test resources.
-      String hostIp = "127.0.0.1";
-      int port = 9043;
-      Cluster cluster = Cluster.builder().addContactPoints(hostIp).withPort(port).build();
+      Cluster cluster = Cluster.builder()
+          .addContactPoints(DatabaseDescriptor.getListenAddress())
+          .withPort(DatabaseDescriptor.getNativeTransportPort())
+          .build();
       mCassandraSession = cluster.connect();
     } catch (Exception exc) {
       throw new KijiIOException(
           "Started embedded C* service, but cannot connect to cluster. " + exc);
+    }
+  }
+
+  /**
+   * Update the cassandra.yaml contents to substitute a label with an open port.
+   *
+   * @param yamlContents Contents of the YAML file before substitution.
+   * @param portLabelInFile String "label" to replace with the free port number (e.g.,
+   *     "__NATIVE_TRANSPORT_PORT__").
+   * @param freePort Port to use.
+   * @return The contents of the YAML file after the substitution.
+   */
+  private static String updateCassandraYamlWithPort(
+      String yamlContents,
+      String portLabelInFile,
+      int freePort
+  ) {
+    String yamlContentsAfterSub = yamlContents.replace(portLabelInFile, Integer.toString(freePort));
+    Preconditions.checkArgument(!yamlContentsAfterSub.equals(yamlContents));
+    return yamlContentsAfterSub;
+  }
+
+  /**
+   * Find an available port.
+   *
+   * @return an open port number.
+   * @throws IllegalArgumentException if it can't find an open port.
+   */
+  private static int findOpenPort() {
+    try {
+      ServerSocket serverSocket = new ServerSocket(0);
+      int portNumber = serverSocket.getLocalPort();
+      serverSocket.setReuseAddress(true);
+      serverSocket.close();
+      LOG.debug("Found usable port {}", portNumber);
+      return portNumber;
+    } catch (IOException ioe) {
+      throw new RuntimeException("Could not find open port.");
     }
   }
 

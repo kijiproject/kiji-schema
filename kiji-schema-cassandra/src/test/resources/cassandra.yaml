@@ -278,15 +278,11 @@ trickle_fsync: false
 trickle_fsync_interval_in_kb: 10240
 
 # TCP port, for commands and data
-#storage_port: 7000
-# Hack to avoid conflict
-storage_port: 7010
+storage_port: __STORAGE_PORT__
 
 # SSL port, for encrypted communication.  Unused unless enabled in
 # encryption_options
-# Hack to avoid conflict
-#ssl_storage_port: 7001
-ssl_storage_port: 7011
+ssl_storage_port: __SSL_STORAGE_PORT__
 
 # Address to bind to and tell other Cassandra nodes to connect to. You
 # _must_ change this if you want multiple nodes to be able to
@@ -314,8 +310,8 @@ listen_address: localhost
 start_native_transport: true
 # port for the CQL native transport to listen for clients on
 # Hack this to not conflict with the normal Cassandra.
-#native_transport_port: 9042
-native_transport_port: 9043
+native_transport_port: __NATIVE_TRANSPORT_PORT__
+
 # The maximum threads for handling requests when the native transport is used.
 # This is similar to rpc_max_threads though the default differs slightly (and
 # there is no native_transport_min_threads, idle threads will always be stopped
@@ -340,9 +336,7 @@ start_rpc: true
 # that rely on node auto-discovery.
 rpc_address: localhost
 # port for Thrift to listen for clients on
-#rpc_port: 9160
-# Hack to not conflict with other Cassandra processes.
-rpc_port: 9161
+rpc_port: __RPC_PORT__
 
 # enable or disable keepalive on rpc connections
 rpc_keepalive: true
