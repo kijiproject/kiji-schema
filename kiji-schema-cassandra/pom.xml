@@ -33,12 +33,6 @@
   <description>Cassandra implementation of KijiSchema.</description>
   <inceptionYear>2014</inceptionYear>
 
-  <properties>
-    <!-- Protocol library version must match the version Hadoop/HBase rely on. -->
-    <protobuf.version>2.4.0a</protobuf.version>
-    <commons-pool.version>1.6</commons-pool.version>
-  </properties>
-
   <build>
     <resources>
       <!-- Generate kiji-schema.properties with the project's version ID. -->
@@ -166,18 +160,14 @@
   </build>
 
   <dependencies>
+
+    <!-- Kiji Dependencies -->
+
     <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>kiji-schema</artifactId>
       <version>${project.version}</version>
       <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>${project.groupId}</groupId>
-      <artifactId>kiji-schema</artifactId>
-      <type>test-jar</type>
-      <version>${project.version}</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.kiji.platforms</groupId>
@@ -187,50 +177,22 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.kiji.platforms</groupId>
-      <artifactId>kiji-cassandra-test-platform</artifactId>
-      <type>pom</type>
-      <version>${kiji-platforms.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>${project.groupId}</groupId>
       <artifactId>kiji-schema-platform-api</artifactId>
       <version>${project.version}</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>org.kiji.checkin</groupId>
-      <artifactId>kiji-checkin</artifactId>
-      <version>${kiji-checkin.version}</version>
-      <scope>compile</scope>
+      <groupId>org.kiji.annotations</groupId>
+      <artifactId>annotations</artifactId>
     </dependency>
     <dependency>
-      <groupId>commons-io</groupId>
-      <artifactId>commons-io</artifactId>
+      <groupId>org.kiji.delegation</groupId>
+      <artifactId>kiji-delegation</artifactId>
     </dependency>
-    <dependency>
-      <groupId>com.google.guava</groupId>
-      <artifactId>guava</artifactId>
-      <version>15.0</version>
-    </dependency>
-    <!-- Guava has a "provided" dependency on JSR-305, so we must provide it. -->
-    <dependency>
-      <groupId>com.google.code.findbugs</groupId>
-      <artifactId>jsr305</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.kiji.common</groupId>
-      <artifactId>kiji-common-flags</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>log4j</groupId>
-      <artifactId>log4j</artifactId>
-    </dependency>
+
+    <!-- Other Dependencies -->
+
     <dependency>
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
@@ -245,29 +207,8 @@
       <classifier>hadoop2</classifier>
     </dependency>
     <dependency>
-      <groupId>commons-pool</groupId>
-      <artifactId>commons-pool</artifactId>
-      <version>${commons-pool.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.code.gson</groupId>
-      <artifactId>gson</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.easymock</groupId>
-      <artifactId>easymock</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.hamcrest</groupId>
-      <artifactId>hamcrest-all</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.kiji.annotations</groupId>
-      <artifactId>annotations</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.kiji.delegation</groupId>
-      <artifactId>kiji-delegation</artifactId>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
     </dependency>
     <dependency>
       <groupId>org.slf4j</groupId>
@@ -281,26 +222,49 @@
       <artifactId>slf4j-log4j12</artifactId>
       <scope>compile</scope>
     </dependency>
-
     <dependency>
-      <groupId>com.google.protobuf</groupId>
-      <artifactId>protobuf-java</artifactId>
-      <version>${protobuf.version}</version>
-      <!-- Make sure Kiji doesn't override the protobuf library that comes with Hadoop/HBase. -->
-      <scope>provided</scope>
+      <!-- Guava has a "provided" dependency on JSR-305, so we must provide it. -->
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
     </dependency>
-
     <dependency>
-      <groupId>org.kiji.testing</groupId>
-      <artifactId>fake-hbase</artifactId>
-      <version>${fake-hbase.version}</version>
-      <scope>test</scope>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
     </dependency>
-
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty</artifactId>
       <version>3.9.0.Final</version>
+    </dependency>
+
+
+    <!-- Test Dependencies -->
+
+    <dependency>
+      <groupId>${project.groupId}</groupId>
+      <artifactId>kiji-schema</artifactId>
+      <type>test-jar</type>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.kiji.platforms</groupId>
+      <artifactId>kiji-cassandra-test-platform</artifactId>
+      <type>pom</type>
+      <version>${kiji-platforms.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.easymock</groupId>
+      <artifactId>easymock</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.hamcrest</groupId>
+      <artifactId>hamcrest-all</artifactId>
     </dependency>
 
     <!-- All platform bridge implementations that should be bundled with the redistributable. -->
@@ -321,17 +285,6 @@
       <artifactId>kiji-schema-cdh5-bridge</artifactId>
       <version>${project.version}</version>
       <scope>runtime</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.xerial.snappy</groupId>
-        <artifactId>snappy-java</artifactId>
-        <version>1.0.5</version>
-    </dependency>
-    <!-- Somehow I am getting an old version of org.apache.commons.codec... -->
-    <dependency>
-        <groupId>commons-codec</groupId>
-        <artifactId>commons-codec</artifactId>
-        <version>1.7</version>
     </dependency>
   </dependencies>
 

@@ -124,16 +124,25 @@
         <groupId>org.kiji.annotations</groupId>
         <artifactId>annotations</artifactId>
         <version>${kiji-annotations.version}</version>
+        <scope>compile</scope>
       </dependency>
       <dependency>
-        <groupId>org.kiji.delegation</groupId>
-        <artifactId>kiji-delegation</artifactId>
-        <version>${kiji-delegation.version}</version>
+        <groupId>org.kiji.checkin</groupId>
+        <artifactId>kiji-checkin</artifactId>
+        <version>${kiji-checkin.version}</version>
+        <scope>compile</scope>
       </dependency>
       <dependency>
         <groupId>org.kiji.common</groupId>
         <artifactId>kiji-common-flags</artifactId>
         <version>${kiji-common-flags.version}</version>
+        <scope>compile</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.kiji.delegation</groupId>
+        <artifactId>kiji-delegation</artifactId>
+        <version>${kiji-delegation.version}</version>
+        <scope>compile</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>

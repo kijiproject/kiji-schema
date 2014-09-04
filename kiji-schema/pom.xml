@@ -183,8 +183,6 @@
     <dependency>
       <groupId>org.kiji.checkin</groupId>
       <artifactId>kiji-checkin</artifactId>
-      <version>${kiji-checkin.version}</version>
-      <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>org.kiji.platforms</groupId>
