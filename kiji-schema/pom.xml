@@ -86,7 +86,7 @@
 
       <plugin>
         <groupId>org.kiji.maven.plugins</groupId>
-        <artifactId>hbase-maven-plugin</artifactId>
+        <artifactId>bento-maven-plugin</artifactId>
       </plugin>
 
       <plugin>
@@ -99,8 +99,8 @@
         <artifactId>maven-javadoc-plugin</artifactId>
         <configuration>
           <links>
-            <link>http://archive.cloudera.com/cdh4/cdh/4/hadoop/api</link>
-            <link>http://archive.cloudera.com/cdh4/cdh/4/hbase/apidocs</link>
+            <link>http://archive.cloudera.com/cdh5/cdh/5/hadoop/api</link>
+            <link>http://archive.cloudera.com/cdh5/cdh/5/hbase/apidocs</link>
           </links>
         </configuration>
       </plugin>
@@ -307,33 +307,4 @@
       <scope>runtime</scope>
     </dependency>
   </dependencies>
-
-  <profiles>
-    <profile>
-      <!--
-        This profile runs integration tests against a cluster instead of
-        hbase-maven-plugin.  It is activated by specifying the kiji.test.cluster.uri
-        property as the Kiji URI without an instance name (e.g.,
-        -Dkiji.test.cluster.uri=kiji://localhost:2181/) to connect to for testing.
-        Tests will create Kiji instances within this cluster.
-      -->
-      <id>skip-hbase-maven-plugin</id>
-      <activation>
-        <property>
-          <name>kiji.test.cluster.uri</name>
-        </property>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.kiji.maven.plugins</groupId>
-            <artifactId>hbase-maven-plugin</artifactId>
-            <configuration>
-              <skip>true</skip>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-  </profiles>
 </project>
