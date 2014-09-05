@@ -98,6 +98,16 @@
       </plugin>
 
       <plugin>
+        <groupId>org.kiji.maven.plugins</groupId>
+        <artifactId>bento-maven-plugin</artifactId>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+      </plugin>
+
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
       </plugin>
