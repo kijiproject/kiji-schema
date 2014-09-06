@@ -31,6 +31,10 @@ import java.util.Map;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.SocketOptions;
+import com.datastax.driver.core.policies.DefaultRetryPolicy;
+import com.datastax.driver.core.policies.LoggingRetryPolicy;
+import com.datastax.driver.core.policies.Policies;
 import com.google.common.base.Preconditions;
 import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.service.EmbeddedCassandraService;
@@ -205,9 +209,25 @@ public final class TestingCassandraFactory implements CassandraFactory {
     try {
       // Use different port from normal here to avoid conflicts with any locally-running C* cluster.
       // Port settings are controlled in "cassandra.yaml" in test resources.
+      // Also change the timeouts and retry policies.  Since we have only a single thread here for
+      // this test process, it can slow down dramatically if it has to do a compaction (see
+      // SCHEMA-959 and SCHEMA-969 for examples of the flakiness this case cause in unit tests).
+
+      // No builder for `SocketOptions`:
+      final SocketOptions socketOptions = new SocketOptions();
+      // Setting this to 0 disables read timeouts.
+      socketOptions.setReadTimeoutMillis(0);
+      // This defaults to 5 s.  Increase to a minute.
+      socketOptions.setConnectTimeoutMillis(60 * 1000);
+
+
       Cluster cluster = Cluster.builder()
           .addContactPoints(DatabaseDescriptor.getListenAddress())
           .withPort(DatabaseDescriptor.getNativeTransportPort())
+          .withSocketOptions(socketOptions)
+          // Let's at least log all of the retries so we can see what is happening.
+          .withRetryPolicy(new LoggingRetryPolicy(Policies.defaultRetryPolicy()))
+          // The default reconnection policy (exponential) looks fine.
           .build();
       mCassandraSession = cluster.connect();
     } catch (Exception exc) {
