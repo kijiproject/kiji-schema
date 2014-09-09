@@ -32,7 +32,6 @@ import java.util.Map;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.SocketOptions;
-import com.datastax.driver.core.policies.DefaultRetryPolicy;
 import com.datastax.driver.core.policies.LoggingRetryPolicy;
 import com.datastax.driver.core.policies.Policies;
 import com.google.common.base.Preconditions;
