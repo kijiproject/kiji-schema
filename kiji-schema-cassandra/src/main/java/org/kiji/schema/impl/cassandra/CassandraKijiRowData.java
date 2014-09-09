@@ -312,6 +312,7 @@ public final class CassandraKijiRowData implements KijiRowData {
       familyMap = new TreeMap<String, NavigableMap<Long, byte[]>>();
       mFilteredMap.put(family, familyMap);
     }
+    Preconditions.checkNotNull(familyMap);
 
     // Get a reference to the map for the qualifier.
     NavigableMap<Long, byte[]> qualifierMap;
@@ -323,9 +324,14 @@ public final class CassandraKijiRowData implements KijiRowData {
       qualifierMap =  new TreeMap<Long, byte[]>(TimestampComparator.INSTANCE);
       familyMap.put(qualifier, qualifierMap);
     }
+    Preconditions.checkNotNull(qualifierMap);
+
+    LOG.debug("timestamp = {}", timestamp);
 
     // Should not already have an entry for this timestamp!
-    assert(!qualifierMap.containsKey(timestamp));
+    Preconditions.checkArgument(
+        !qualifierMap.containsKey(timestamp),
+        String.format("Duplicate entries in map for at %s:%s:%s", family, qualifier, timestamp));
 
     // Insert the data into the map if we have not already exceeded the maximum number of
     // versions.  Also check that the timestamp for the current cell we are considering is older

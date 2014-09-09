@@ -566,7 +566,6 @@ public final class CQLUtils {
    * @param admin Cassandra context object.
    * @param layout table layout of table.
    * @param tableName translated table name as known by Cassandra.
-   * @param column to scan.  May be unqualified.
    * @param scannerOptions Cassandra specific scanner options (e.g., start and end tokens).
    * @return a statement which will get the column.
    */
@@ -574,7 +573,6 @@ public final class CQLUtils {
       CassandraAdmin admin,
       KijiTableLayout layout,
       CassandraTableName tableName,
-      CassandraColumnName column,
       CassandraKijiScannerOptions scannerOptions) {
     Preconditions.checkNotNull(scannerOptions);
 
@@ -582,13 +580,11 @@ public final class CQLUtils {
     //  "SELECT token(${PartitionKeyComponent1}, ${PartitionKeyComponent2} ...),
     //          ${PKColumn1}, ${PKColumn2}..., ${VALUE_COL}
     //   FROM ${tableName}
-    //   WHERE ${LOCALITY_GROUP_COL}=? AND ${FAMILY_COL}=? [AND ${QUALIFIER_COL}=?]
-    //   ALLOW FILTERING"
 
-    List<String> whereColumns = Lists.newArrayList(LOCALITY_GROUP_COL, FAMILY_COL);
-    if (column.containsQualifier()) {
-      whereColumns.add(QUALIFIER_COL);
-    }
+    // Note that this query does not use any WHERE clauses and it does not enable ALLOW FILTERING.
+    // This means that we will fetch *all* of that data for each row for the Cassandra table in
+    // question.  We do so because using WHERE clauses and ALLOW FILTERING caused major performance
+    // problems.
 
     List<String> tokenColumns = getPartitionKeyColumns(layout);
     List<String> fromColumns = getPrimaryKeyColumns(layout);
@@ -601,43 +597,32 @@ public final class CQLUtils {
     sb.append("), ");
     COMMA_JOINER.appendTo(sb, fromColumns);
     sb.append(" FROM ")
-      .append(tableName)
-      .append(" WHERE ")
-      .append(LOCALITY_GROUP_COL)
-      .append("=? AND ")
-      .append(FAMILY_COL)
-      .append("=?");
+      .append(tableName);
 
-    if (column.containsQualifier()) {
-      sb.append(" AND ")
-        .append(QUALIFIER_COL)
-        .append("=? ");
+    if (scannerOptions.hasStartToken() || scannerOptions.hasStopToken()) {
+      sb.append(" WHERE ");
     }
 
     if (scannerOptions.hasStartToken()) {
-      sb.append(" AND token(");
+      sb.append(" token(");
       COMMA_JOINER.appendTo(sb, tokenColumns);
       sb.append(") >= ?");
     }
 
     if (scannerOptions.hasStopToken()) {
-      sb.append(" AND token(");
+      if (scannerOptions.hasStartToken()) {
+        sb.append(" AND ");
+      }
+      sb.append(" token(");
       COMMA_JOINER.appendTo(sb, tokenColumns);
       sb.append(") <= ?");
     }
-
-    sb.append("ALLOW FILTERING;");
 
     String query = sb.toString();
 
     LOG.debug("Prepared query string for single column scan: {}", query);
 
     List<Object> bindValues = Lists.newArrayList();
-    bindValues.add(column.getLocalityGroup());
-    bindValues.add(column.getFamilyBuffer());
-    if (column.containsQualifier()) {
-      bindValues.add(column.getQualifierBuffer());
-    }
     if (scannerOptions.hasStartToken()) {
       bindValues.add(scannerOptions.getStartToken());
     }

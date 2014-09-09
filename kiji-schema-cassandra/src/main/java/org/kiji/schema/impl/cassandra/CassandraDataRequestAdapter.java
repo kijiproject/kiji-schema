@@ -48,13 +48,15 @@ import org.kiji.schema.layout.CassandraColumnNameTranslator;
 public class CassandraDataRequestAdapter {
   private static final Logger LOG = LoggerFactory.getLogger(CassandraDataRequestAdapter.class);
 
-  /** The wrapped KijiDataRequest. */
+  /**
+   * The wrapped KijiDataRequest.
+   */
   private final KijiDataRequest mKijiDataRequest;
 
-  /** The translator for generating Cassandra column names. */
-  private final CassandraColumnNameTranslator mColumnNameTranslator;
-
   /**
+   * The translator for generating Cassandra column names.
+   */
+  private final CassandraColumnNameTranslator mColumnNameTranslator;
 
   /**
    * Creates a new CassandraDataRequestAdapter for a given data request using a given
@@ -65,7 +67,8 @@ public class CassandraDataRequestAdapter {
    */
   public CassandraDataRequestAdapter(
       KijiDataRequest kijiDataRequest,
-      CassandraColumnNameTranslator translator) {
+      CassandraColumnNameTranslator translator
+  ) {
     mKijiDataRequest = kijiDataRequest;
     mColumnNameTranslator = translator;
   }
@@ -81,7 +84,7 @@ public class CassandraDataRequestAdapter {
   public List<ResultSet> doScan(
       CassandraKijiTable table,
       CassandraKijiScannerOptions kijiScannerOptions
-    ) throws IOException {
+  ) throws IOException {
     return queryCassandraTables(table, null, false, kijiScannerOptions);
   }
 
@@ -122,16 +125,17 @@ public class CassandraDataRequestAdapter {
    *
    * @param table The Cassandra Kiji table to scan.
    * @param entityId Make null if this is a scan over all entity IDs (not currently supporting
-   *     entity ID ranges).
+   * entity ID ranges).
    * @param pagingEnabled If true, all columns in the data request should be paged.  If false, skip
-   *                      any paged columns in the data request.
+   * any paged columns in the data request.
    * @return A list of results for the Cassandra query.
    * @throws java.io.IOException if there is a problem executing the scan.
    */
   private List<ResultSet> queryCassandraTables(
       CassandraKijiTable table,
       EntityId entityId,
-      boolean pagingEnabled) throws IOException {
+      boolean pagingEnabled
+  ) throws IOException {
     return queryCassandraTables(table, entityId, pagingEnabled, null);
   }
 
@@ -140,10 +144,11 @@ public class CassandraDataRequestAdapter {
    *
    * @param table The Cassandra Kiji table to scan.
    * @param entityId Make null if this is a scan over all entity IDs (not currently supporting
-   *     entity ID ranges).
+   * entity ID ranges).
    * @param pagingEnabled If true, all columns in the data request should be paged.  If false, skip
-   *                      any paged columns in the data request.
-   * @param scannerOptions Cassandra-specific scanner options (set to `null` if this is not a scan).
+   * any paged columns in the data request.
+   * @param scannerOptions Cassandra-specific scanner options (set to `null` if this is not a
+   * scan).
    * @return A list of results for the Cassandra query.
    * @throws java.io.IOException if there is a problem executing the scan.
    */
@@ -183,56 +188,87 @@ public class CassandraDataRequestAdapter {
     // Use the C* admin to send queries to the C* cluster.
     CassandraAdmin admin = table.getAdmin();
 
-    // For now, to keep things simple, we have a separate request for each column, even if there
-    // are multiple columns of interest in the same column family that we could potentially put
-    // together into a single query.
-    for (KijiDataRequest.Column column : mKijiDataRequest.getColumns()) {
-      LOG.info("Processing data request for data request column " + column);
-
-      if (!pagingEnabled && column.isPagingEnabled()) {
-        // The user will have to use an explicit KijiPager to get this data.
-        LOG.info("...this column is paged, but this is not a KijiPager request, skipping...");
-        continue;
-      }
-
-      // Requests with paging enabled should come from only explicit KijiPagers, which should
-      // create custom data requests for only paged columns.
-      assert (!(pagingEnabled && !column.isPagingEnabled()));
-
-      // Translate the Kiji column name.
-      KijiColumnName kijiColumn = new KijiColumnName(column.getName());
-      LOG.info("Kiji column name for the requested column is " + kijiColumn);
-      CassandraColumnName cassandraColumn =
-          mColumnNameTranslator.toCassandraColumnName(kijiColumn);
-
-      // TODO: Optimize these queries such that we need only one RPC per column family.
-      // (Right now a data request that asks for "info:foo" and "info:bar" would trigger two
-      // separate session.execute(statement) commands.
+    // If we are doing a scan, we need to execute only a single CQL statement per table (counter or
+    // non-counter), because we don't use any WHERE clauses anymore to limit the query to certain
+    // locality groups or columns.
+    if (bIsScan) {
+      // -------------------------------------------------------------------------------------------
+      // SCAN STATEMENT
 
       // Determine whether we need to read non-counter values and/or counter values.
       List<CassandraTableName> tableNames = Lists.newArrayList();
-
-      if (maybeContainsNonCounterValues(table, kijiColumn)) {
-        tableNames.add(nonCounterTableName);
-      }
-
-      if (maybeContainsCounterValues(table, kijiColumn)) {
-        tableNames.add(counterTableName);
-      }
+      tableNames.add(nonCounterTableName);
+      tableNames.add(counterTableName);
 
       for (CassandraTableName cassandraTableName : tableNames) {
-        if (bIsScan) {
-          Statement statement = CQLUtils.getColumnScanStatement(
-              admin,
-              table.getLayout(),
-              cassandraTableName,
-              cassandraColumn,
-              scannerOptions);
-          if (pagingEnabled) {
-            statement.setFetchSize(column.getPageSize());
-          }
-          futures.add(admin.executeAsync(statement));
-        } else {
+        Statement statement = CQLUtils.getColumnScanStatement(
+            admin,
+            table.getLayout(),
+            cassandraTableName,
+            scannerOptions);
+        //
+        if (pagingEnabled) {
+          // TODO (SCHEMA-977): Re-enable paging during row scans.
+          throw new UnsupportedOperationException(
+              "Cassandra Kiji does not currently support paging in row scans."
+          );
+        }
+        futures.add(admin.executeAsync(statement));
+      }
+      if (futures.isEmpty()) {
+        // If this is a scan, you need to make sure that you execute at least one SELECT statement,
+        // just to get back every entity ID.  If you do not do so, then a user could
+        // create a scanner with a data request that has a single, paged column, and you would never
+        // execute a SELECT query below (because we wait to execute paged SELECT queries) and so you
+        // would never get an iterator back with any row keys at all!  Eek!
+
+        // TODO: do we need to scan the counter table as well?
+        futures.add(
+            admin.executeAsync(
+                CQLUtils.getEntityIDScanStatement(admin, table.getLayout(), nonCounterTableName)));
+      }
+    } else {
+      // -------------------------------------------------------------------------------------------
+      // SINGLE-ROW QUERY
+
+      // For now, to keep things simple, we have a separate request for each column, even if there
+      // are multiple columns of interest in the same column family that we could potentially put
+      // together into a single query.
+      for (KijiDataRequest.Column column : mKijiDataRequest.getColumns()) {
+        LOG.info("Processing data request for data request column " + column);
+
+        if (!pagingEnabled && column.isPagingEnabled()) {
+          // The user will have to use an explicit KijiPager to get this data.
+          LOG.info("...this column is paged, but this is not a KijiPager request, skipping...");
+          continue;
+        }
+
+        // Requests with paging enabled should come from only explicit KijiPagers, which should
+        // create custom data requests for only paged columns.
+        Preconditions.checkArgument(!(pagingEnabled && !column.isPagingEnabled()));
+
+        // Translate the Kiji column name.
+        KijiColumnName kijiColumn = new KijiColumnName(column.getName());
+        LOG.info("Kiji column name for the requested column is " + kijiColumn);
+        CassandraColumnName cassandraColumn =
+            mColumnNameTranslator.toCassandraColumnName(kijiColumn);
+
+        // TODO: Optimize these queries such that we need only one RPC per column family.
+        // (Right now a data request that asks for "info:foo" and "info:bar" would trigger two
+        // separate session.execute(statement) commands.
+
+        // Determine whether we need to read non-counter values and/or counter values.
+        List<CassandraTableName> tableNames = Lists.newArrayList();
+
+        if (maybeContainsNonCounterValues(table, kijiColumn)) {
+          tableNames.add(nonCounterTableName);
+        }
+
+        if (maybeContainsCounterValues(table, kijiColumn)) {
+          tableNames.add(counterTableName);
+        }
+
+        for (CassandraTableName cassandraTableName : tableNames) {
           Statement statement =
               CQLUtils.getColumnGetStatement(
                   admin,
@@ -252,31 +288,18 @@ public class CassandraDataRequestAdapter {
       }
     }
 
-    if (bIsScan && futures.isEmpty()) {
-      // If this is a scan, you need to make sure that you execute at least one SELECT statement,
-      // just to get back every entity ID.  If you do not do so, then a user could
-      // create a scanner with a data request that has a single, paged column, and you would never
-      // execute a SELECT query below (because we wait to execute paged SELECT queries) and so you
-      // would never get an iterator back with any row keys at all!  Eek!
-
-      // TODO: do we need to scan the counter table as well?
-      futures.add(
-          admin.executeAsync(
-              CQLUtils.getEntityIDScanStatement(admin, table.getLayout(), nonCounterTableName)));
-    }
-
     // Wait until all of the futures are done.
     List<ResultSet> results = new ArrayList<ResultSet>();
 
-    for (ResultSetFuture resultSetFuture: futures) {
+    for (ResultSetFuture resultSetFuture : futures) {
       results.add(resultSetFuture.getUninterruptibly());
     }
     return results;
   }
 
   /**
-   *  Check whether this column could specify non-counter values.  Return false iff this column
-   *  name refers to a fully-qualified column of type COUNTER or a map-type family of type COUNTER.
+   * Check whether this column could specify non-counter values.  Return false iff this column
+   * name refers to a fully-qualified column of type COUNTER or a map-type family of type COUNTER.
    *
    * @param table The table to check for counters.
    * @param kijiColumnName The column to check for counters.
@@ -303,9 +326,9 @@ public class CassandraDataRequestAdapter {
   }
 
   /**
-   *  Check whether this column could specify counter values.  Return false iff this column name
-   *  refers to a fully-qualified column that is not of type COUNTER or a map-type family not of
-   *  type COUNTER.
+   * Check whether this column could specify counter values.  Return false iff this column name
+   * refers to a fully-qualified column that is not of type COUNTER or a map-type family not of
+   * type COUNTER.
    *
    * @param table to check for counter values.
    * @param kijiColumnName to check for counter values.

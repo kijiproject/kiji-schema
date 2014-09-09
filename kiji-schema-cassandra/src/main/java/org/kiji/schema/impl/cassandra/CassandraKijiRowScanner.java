@@ -119,6 +119,7 @@ public class CassandraKijiRowScanner implements KijiRowScanner {
       rowIterators.add(Iterators.peekingIterator(rowIterator));
     }
 
+    // Merges all of the row iterators in order based on comparing C* tokens of entity IDs.
     mRowsIterator =
         Iterators.peekingIterator(
             Iterators.mergeSorted(rowIterators, new RowComparator(mTable.getLayout())));
