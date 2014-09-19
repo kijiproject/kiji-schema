@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedMap;
 
 import com.google.common.collect.ImmutableList;
@@ -37,7 +38,6 @@ import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequest.Column;
 import org.kiji.schema.KijiResult;
-import org.kiji.schema.impl.hbase.HBaseKijiResult;
 import org.kiji.schema.layout.KijiTableLayout;
 
 /**
@@ -68,23 +68,6 @@ public final class MaterializedKijiResult<T> implements KijiResult<T> {
     mDataRequest = dataRequest;
     mColumns = columns;
   }
-  /**
-   * Create a new materialized {@code KijiResult} backed by the provided {@code KijiCell}s.
-   * (Only use when serializing)
-   * @param entityId The entity ID of the row containing this result.
-   * @param dataRequest The Kiji data request which defines the columns in this result.
-   * @param columns The materialized results. The cells must be in the order guaranteed by
-   *     {@code KijiResult}.
-   * @param <T> The type of {@code KijiCell} values in the view.
-   * @return A new materialized {@code KijiResult} backed by {@code KijiCell}s.
-   */
-  public static <T> MaterializedKijiResult<T> create(
-      final EntityId entityId,
-      final KijiDataRequest dataRequest,
-      final SortedMap<KijiColumnName, List<KijiCell<T>>> columns
-  ) {
-    return new MaterializedKijiResult<T>(entityId, dataRequest, columns);
-  }
 
   /**
    * Create a new materialized {@code KijiResult} backed by the provided {@code KijiCell}s.
@@ -93,7 +76,7 @@ public final class MaterializedKijiResult<T> implements KijiResult<T> {
    * @param dataRequest The Kiji data request which defines the columns in this result.
    * @param layout The Kiji table layout of the table.
    * @param columns The materialized results. The cells must be in the order guaranteed by
-   *     {@code KijiResult}.
+   *     {@code KijiResult}. Must be mutable, and should not be modified after passing in.
    * @param <T> The type of {@code KijiCell} values in the view.
    * @return A new materialized {@code KijiResult} backed by {@code KijiCell}s.
    */
@@ -107,29 +90,28 @@ public final class MaterializedKijiResult<T> implements KijiResult<T> {
     // not specify the order of columns in a group-type family.  We rely on the columns being
     // ordered so that we can use binary search.
 
-    final List<KijiColumnName> groupFamilies = Lists.newArrayListWithCapacity(columns.size());
-    for (KijiColumnName column : columns.keySet()) {
+    final List<Map.Entry<KijiColumnName, List<KijiCell<T>>>> groupFamilyEntries =
+        Lists.newArrayListWithCapacity(columns.size());
+    for (Map.Entry<KijiColumnName, List<KijiCell<T>>> entry : columns.entrySet()) {
+      final KijiColumnName column = entry.getKey();
       if (!column.isFullyQualified()
           && layout.getFamilyMap().get(column.getFamily()).isGroupType()) {
-        groupFamilies.add(column);
+        groupFamilyEntries.add(entry);
       }
     }
 
-    if (groupFamilies.isEmpty()) {
+    if (groupFamilyEntries.isEmpty()) {
       return new MaterializedKijiResult<T>(entityId, dataRequest, columns);
     }
 
-    final ImmutableSortedMap.Builder<KijiColumnName, List<KijiCell<T>>> sortedColumns =
-        ImmutableSortedMap.naturalOrder();
-    sortedColumns.putAll(columns);
-
-    for (KijiColumnName groupFamily : groupFamilies) {
-      final List<KijiCell<T>> sortedColumn = columns.get(groupFamily);
+    for (Map.Entry<KijiColumnName, List<KijiCell<T>>> entry : groupFamilyEntries) {
+      final KijiColumnName groupFamily = entry.getKey();
+      final List<KijiCell<T>> sortedColumn = entry.getValue();
       Collections.sort(sortedColumn, KijiCell.getKeyComparator());
-      sortedColumns.put(groupFamily, sortedColumn);
+      columns.put(groupFamily, sortedColumn);
     }
 
-    return new MaterializedKijiResult<T>(entityId, dataRequest, sortedColumns.build());
+    return new MaterializedKijiResult<T>(entityId, dataRequest, columns);
   }
 
   /** {@inheritDoc} */
@@ -154,7 +136,7 @@ public final class MaterializedKijiResult<T> implements KijiResult<T> {
   @SuppressWarnings("unchecked")
   @Override
   public <U extends T> KijiResult<U> narrowView(final KijiColumnName column) {
-    final KijiDataRequest narrowRequest = HBaseKijiResult.narrowRequest(column, mDataRequest);
+    final KijiDataRequest narrowRequest = DefaultKijiResult.narrowRequest(column, mDataRequest);
     if (narrowRequest.equals(mDataRequest)) {
       return (KijiResult<U>) this;
     }

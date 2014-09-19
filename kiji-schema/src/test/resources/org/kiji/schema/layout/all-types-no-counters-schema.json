@@ -1,0 +1,301 @@
+/**
+ * (c) Copyright 2013 WibiData, Inc.
+ *
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * Kiji table layout containing a semi-exhaustive list of examples of the Avro types that can be
+ * used for cells within Kiji.  This layout can be used in framework level clients for writing
+ * tests that exhaustively ensure that all Avro types are supported.  As such this layout should
+ * be considered mostly immutable(it's probably ok to add columns).
+ */
+ {
+  "name": "all_types_table",
+  "description": "A table with a semi-exhaustive layout containing the possible types in Kiji Schema",
+  "keys_format": {
+    "org.kiji.schema.avro.RowKeyFormat2": {
+      "encoding": "FORMATTED",
+      "salt": {
+        "hash_type": "MD5",
+        "hash_size": 2,
+        "suppress_key_materialization": false
+      },
+      "range_scan_start_index": 1,
+      "nullable_start_index": 1,
+      "components": [
+        {
+          "name": "sequence_number",
+          "type": "LONG"
+        }
+      ]
+    }
+  },
+  "locality_groups": [
+    {
+      "name": "default",
+      "description": "main storage",
+      "in_memory": false,
+      "max_versions": 2147483647,
+      "ttl_seconds": 2147483647,
+      "compression_type": "GZ",
+      "families": [
+        {
+          "name": "primitive",
+          "description": "primitive type columns",
+          "columns": [
+            {
+              "name": "boolean_column",
+              "description": "",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": {
+                  "string": '"boolean"'
+                }
+              }
+            }, {
+              "name": "int_column",
+              "description": "",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": {
+                  "string": '"int"'
+                }
+              }
+            }, {
+              "name": "long_column",
+              "description": "",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": {
+                  "string": '"long"'
+                }
+              }
+            }, {
+              "name": "float_column",
+              "description": "",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": {
+                  "string": '"float"'
+                }
+              }
+            }, {
+              "name": "double_column",
+              "description": "",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": {
+                  "string": '"double"'
+                }
+              }
+            }, {
+              "name": "bytes_column",
+              "description": "",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": {
+                  "string": '"bytes"'
+                }
+              }
+            }, {
+              "name": "string_column",
+              "description": "",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": {
+                  "string": '"string"'
+                }
+              }
+            }
+          ]
+        }, {
+          "name": "complex",
+          "description": "complex type columns",
+          "map_schema": null,
+          "columns": [
+            {
+              "name": "record_column",
+              "description": "record column representing a fraction with a numerator and a denominator",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": '{"type": "record", "name": "fraction", "fields": [{"name": "numerator", "type": "int"}, {"name": "denominator", "type": "int"}]}'
+              }
+            }, {
+              "name": "enum_column",
+              "description": "enum column representing a card suit",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": '{ "type": "enum", "name": "Suit", "symbols" : ["SPADES", "HEARTS", "DIAMONDS", "CLUBS"] }'
+              }
+            }, {
+              "name": "array_column",
+              "description": "array column containing an array of strings",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": '{"type": "array", "items": "string"}'
+              }
+            }, {
+              "name": "map_column",
+              "description": "fixed column",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": '{"type": "map", "values": "long"}'
+              }
+            }, {
+              "name": "union_column",
+              "description": "union column",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": '["string", "null"]'
+              }
+            }, {
+              "name": "fixed_column",
+              "description": "fixed column",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": '{"type": "fixed", "size": 16, "name": "md5"}'
+              }
+            }, {
+              "name": "recursive_record_column",
+              "description": "record column containing a linked list of longs",
+              "column_schema": {
+                "storage": "UID",
+                "type": "INLINE",
+                "value": '{ "type": "record", "name": "LongList", "fields" : [ {"name": "value", "type": "long"},  {"name": "next", "type": ["LongList", "null"]} ] }'
+              }
+            }, {
+              "name": "class_column",
+              "description": "column containing a schema based on an avro class",
+              "column_schema": {
+                "storage": "UID",
+                "type": "CLASS",
+                "value": "org.kiji.schema.avro.Node"
+              }
+            }
+          ]
+        }, {
+          "name": "boolean_map",
+          "description": "boolean map family",
+          "map_schema": {
+            "org.kiji.schema.avro.CellSchema": {
+              "type": "INLINE",
+              "value": {
+                "string": '{"type": "boolean"}'
+              }
+            }
+          },
+          "columns": []
+        }, {
+          "name": "int_map",
+          "description": "int map family",
+          "map_schema": {
+            "org.kiji.schema.avro.CellSchema": {
+              "storage": "UID",
+              "type": "INLINE",
+              "value": {
+                "string": '{"type": "int"}'
+              }
+            }
+          },
+          "columns": []
+        }, {
+          "name": "long_map",
+          "description": "long map family",
+          "map_schema": {
+            "org.kiji.schema.avro.CellSchema": {
+              "storage": "UID",
+              "type": "INLINE",
+              "value": {
+                "string": '{"type": "long"}'
+              }
+            }
+          },
+          "columns": []
+        }, {
+          "name": "float_map",
+          "description": "float map family",
+          "map_schema": {
+            "org.kiji.schema.avro.CellSchema": {
+              "storage": "UID",
+              "type": "INLINE",
+              "value": {
+                "string": '{"type": "float"}'
+              }
+            }
+          },
+          "columns": []
+        }, {
+          "name": "double_map",
+          "description": "double map family",
+          "map_schema": {
+            "org.kiji.schema.avro.CellSchema": {
+              "storage": "UID",
+              "type": "INLINE",
+              "value": {
+                "string": '{"type": "double"}'
+              }
+            }
+          },
+          "columns": []
+        }, {
+          "name": "bytes_map",
+          "description": "bytes map family",
+          "map_schema": {
+            "org.kiji.schema.avro.CellSchema": {
+              "storage": "UID",
+              "type": "INLINE",
+              "value": {
+                "string": '{"type": "bytes"}'
+              }
+            }
+          },
+          "columns": []
+        }, {
+          "name": "string_map",
+          "description": "string map family",
+          "map_schema": {
+            "org.kiji.schema.avro.CellSchema": {
+              "storage": "UID",
+              "type": "INLINE",
+              "value": {
+                "string": '{"type": "string"}'
+              }
+            }
+          },
+          "columns": []
+        }
+      ]
+    }
+  ],
+  "version": "layout-1.1",
+  "layout_id": {
+    "string": "1"
+  }
+}

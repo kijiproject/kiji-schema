@@ -22,11 +22,16 @@ package org.kiji.schema.impl.hbase;
 import java.io.IOException;
 import java.util.Arrays;
 
+import javax.annotation.concurrent.Immutable;
+import javax.annotation.concurrent.NotThreadSafe;
+import javax.annotation.concurrent.ThreadSafe;
+
 import com.google.common.base.Function;
 import org.apache.hadoop.hbase.KeyValue;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.DecodedCell;
+import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiColumnName;
@@ -42,6 +47,7 @@ import org.kiji.schema.layout.impl.CellDecoderProvider;
  * Provides decoding functions for Kiji columns.
  */
 @ApiAudience.Private
+@ThreadSafe
 public final class ResultDecoders {
   /**
    * Get a decoder function for a column.
@@ -79,14 +85,11 @@ public final class ResultDecoders {
    *
    * <p>
    *   This function may apply optimizations that make it only suitable to decode {@code KeyValue}s
-   *   from the specified group-type family, so do not use it over {@code KeyValue}s from another
+   *   from the specified map-type family, so do not use it over {@code KeyValue}s from another
    *   family.
    * </p>
-   *
-   * <p>
-   *   This class is <em>not</em> threadsafe.
-   * </p>
    */
+  @NotThreadSafe
   private static final class MapFamilyDecoder<T> implements Function<KeyValue, KijiCell<T>> {
     private final KijiCellDecoder<T> mCellDecoder;
     private final HBaseColumnNameTranslator mColumnTranslator;
@@ -131,7 +134,7 @@ public final class ResultDecoders {
         } catch (NoSuchColumnException e) {
           mLastQualifier = null;
           mLastColumn = null;
-          throw new IllegalArgumentException(e);
+          throw new InternalKijiError(e);
         }
       }
 
@@ -152,11 +155,8 @@ public final class ResultDecoders {
    *   from the specified group-type family, so do not use it over {@code KeyValue}s from another
    *   family.
    * </p>
-   *
-   * <p>
-   *   This class is <em>not</em> threadsafe.
-   * </p>
    */
+  @NotThreadSafe
   private static final class GroupFamilyDecoder<T> implements Function<KeyValue, KijiCell<T>> {
     private final CellDecoderProvider mDecoderProvider;
     private final HBaseColumnNameTranslator mColumnTranslator;
@@ -206,6 +206,7 @@ public final class ResultDecoders {
 
           mLastDecoder = mDecoderProvider.getDecoder(mLastColumn);
         } catch (NoSuchColumnException e) {
+          // TODO(SCHEMA-962): Critical! Handle this. Will happen when reading a deleted column
           mLastDecoder = null;
           mLastColumn = null;
           mLastQualifier = null;
@@ -236,6 +237,7 @@ public final class ResultDecoders {
    *
    * @param <T> type of value in the column.
    */
+  @Immutable
   private static final class QualifiedColumnDecoder<T> implements Function<KeyValue, KijiCell<T>> {
     private final KijiCellDecoder<T> mCellDecoder;
     private final KijiColumnName mColumnName;

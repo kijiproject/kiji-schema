@@ -45,6 +45,7 @@ import org.kiji.schema.KijiDataRequest.Column;
 import org.kiji.schema.KijiResult;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.impl.DefaultKijiResult;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.CellDecoderProvider;
@@ -163,7 +164,7 @@ public final class HBaseMaterializedKijiResult<T> implements KijiResult<T> {
   @Override
   @SuppressWarnings("unchecked")
   public <U extends T> HBaseMaterializedKijiResult<U> narrowView(final KijiColumnName column) {
-    final KijiDataRequest narrowRequest = HBaseKijiResult.narrowRequest(column, mDataRequest);
+    final KijiDataRequest narrowRequest = DefaultKijiResult.narrowRequest(column, mDataRequest);
     if (narrowRequest.equals(mDataRequest)) {
       return (HBaseMaterializedKijiResult<U>) this;
     }

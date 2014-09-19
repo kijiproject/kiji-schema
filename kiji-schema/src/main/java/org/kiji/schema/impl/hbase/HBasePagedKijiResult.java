@@ -50,6 +50,7 @@ import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiResult;
 import org.kiji.schema.filter.KijiColumnFilter;
 import org.kiji.schema.hbase.HBaseColumnName;
+import org.kiji.schema.impl.DefaultKijiResult;
 import org.kiji.schema.impl.hbase.HBaseDataRequestAdapter.NameTranslatingFilterContext;
 import org.kiji.schema.layout.HBaseColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -148,7 +149,7 @@ public class HBasePagedKijiResult<T> implements KijiResult<T> {
   @Override
   @SuppressWarnings("unchecked")
   public <U extends T> HBasePagedKijiResult<U> narrowView(final KijiColumnName column) {
-    final KijiDataRequest narrowRequest = HBaseKijiResult.narrowRequest(column, mDataRequest);
+    final KijiDataRequest narrowRequest = DefaultKijiResult.narrowRequest(column, mDataRequest);
 
     return new HBasePagedKijiResult<U>(
         mEntityId,

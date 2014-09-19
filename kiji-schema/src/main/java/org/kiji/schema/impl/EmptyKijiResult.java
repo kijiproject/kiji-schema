@@ -30,7 +30,6 @@ import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiResult;
-import org.kiji.schema.impl.hbase.HBaseKijiResult;
 
 /**
  * A {@code KijiResult} with no cells.
@@ -76,7 +75,7 @@ public class EmptyKijiResult<T> implements KijiResult<T> {
   @Override
   @SuppressWarnings("unchecked")
   public <U extends T> KijiResult<U> narrowView(final KijiColumnName column) {
-    final KijiDataRequest narrowRequest = HBaseKijiResult.narrowRequest(column, mDataRequest);
+    final KijiDataRequest narrowRequest = DefaultKijiResult.narrowRequest(column, mDataRequest);
     if (mDataRequest.equals(narrowRequest)) {
       return (KijiResult<U>) this;
     } else {

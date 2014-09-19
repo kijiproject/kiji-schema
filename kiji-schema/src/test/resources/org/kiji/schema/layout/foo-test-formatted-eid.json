@@ -75,17 +75,6 @@
           value : '"string"'
         }
       } ]
-    }, {
-      name : "other",
-      description : "other crap",
-      columns : [ {
-        name : "counter",
-        description : "A counter",
-        column_schema : {
-          type : "COUNTER",
-          storage : "FINAL"
-        }
-      } ]
     } ]
   }, {
     name : "inMemory",
