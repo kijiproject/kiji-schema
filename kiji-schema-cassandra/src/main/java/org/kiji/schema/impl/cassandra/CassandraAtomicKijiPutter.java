@@ -20,53 +20,61 @@
 package org.kiji.schema.impl.cassandra;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.concurrent.atomic.AtomicReference;
+
+import javax.annotation.concurrent.GuardedBy;
+import javax.annotation.concurrent.ThreadSafe;
 
 import com.datastax.driver.core.BatchStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Statement;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import org.apache.hadoop.hbase.HConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.annotations.Inheritance;
 import org.kiji.schema.AtomicKijiPutter;
 import org.kiji.schema.EntityId;
-import org.kiji.schema.KijiIOException;
+import org.kiji.schema.KijiColumnName;
+import org.kiji.schema.KijiURI;
+import org.kiji.schema.avro.SchemaType;
+import org.kiji.schema.cassandra.CassandraColumnName;
+import org.kiji.schema.cassandra.CassandraTableName;
 import org.kiji.schema.impl.DefaultKijiCellEncoderFactory;
 import org.kiji.schema.impl.LayoutConsumer;
-import org.kiji.schema.impl.cassandra.CassandraKijiTableWriter.WriterLayoutCapsule;
+import org.kiji.schema.impl.cassandra.CassandraKijiBufferedWriter.WriterLayoutCapsule;
 import org.kiji.schema.layout.CassandraColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
+import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout;
+import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout.FamilyLayout.ColumnLayout;
 import org.kiji.schema.layout.LayoutUpdatedException;
 import org.kiji.schema.layout.impl.CellEncoderProvider;
+import org.kiji.schema.layout.impl.ColumnId;
 
 /**
  * Cassandra implementation of AtomicKijiPutter.
  *
- * Facilitates guaranteed atomic puts in batch on a single row.
+ * Facilitates guaranteed atomic puts in batch on a single row to a single locality group.
  *
- * Use <code>begin(EntityId)</code> to open a new transaction,
- * <code>put(family, qualifier, value)</code> to stage a put in the transaction,
- * and <code>commit()</code> or <code>checkAndCommit(family, qualifier, value)</code>
- * to write all staged puts atomically.
- *
- * This class is not thread-safe.  It is the user's responsibility to protect against
- * concurrent access to a writer while a transaction is being constructed.
+ * Use {@link #begin} to start a new transaction, {@link #put} to stage a put in the transaction,
+ * and {@link #commit} to write all staged puts atomically.
  */
 @ApiAudience.Private
+@Inheritance.Sealed
+@ThreadSafe
 public final class CassandraAtomicKijiPutter implements AtomicKijiPutter {
-  // TODO: Implement compare-and-set.  Should be possible in C* 2.0.6.
-  // See this thread on the C* user list: http://tinyurl.com/lcz73s3
 
   private static final Logger LOG = LoggerFactory.getLogger(CassandraAtomicKijiPutter.class);
 
   /** The Kiji table instance. */
   private final CassandraKijiTable mTable;
 
-  /** Contains shared code with TableWriter, BufferedWriter. */
-  private final CassandraKijiWriterCommon mWriterCommon;
+  /** Layout consumer registration resource. */
+  private final LayoutConsumer.Registration mLayoutConsumerRegistration;
 
   /** States of an atomic kiji putter instance. */
   private static enum State {
@@ -75,55 +83,52 @@ public final class CassandraAtomicKijiPutter implements AtomicKijiPutter {
     CLOSED
   }
 
+  /** Monitor against which all internal state mutations must be synchronized. */
+  private final Object mMonitor = new Object();
+
   /** Tracks the state of this atomic kiji putter. */
-  private final AtomicReference<State> mState = new AtomicReference<State>(State.UNINITIALIZED);
+  @GuardedBy("mMonitor")
+  private State mState = State.UNINITIALIZED;
 
-  /** Layout consumer registration resource. */
-  private final LayoutConsumer.Registration mLayoutConsumerRegistration;
-
-  /** Object which processes layout update from the KijiTable to which this Writer writes. */
-  private final InnerLayoutUpdater mInnerLayoutUpdater = new InnerLayoutUpdater();
-
-  /** Lock for synchronizing layout update mutations. */
-  private final Object mLock = new Object();
+  /** Internal state which must be updated upon table layout change. */
+  @GuardedBy("mMonitor")
+  private WriterLayoutCapsule mCapsule = null;
 
   /** EntityId of the row to mutate atomically. */
+  @GuardedBy("mMonitor")
   private EntityId mEntityId;
 
-  /** List of cells to be written. */
+  /** Table name of the current transaction's locality group. */
+  @GuardedBy("mMonitor")
+  private CassandraTableName mTableName;
+
+  /** Timestamp to use for puts without an explicit timestamps. Set to transaction start time. */
+  @GuardedBy("mMonitor")
+  private long mTimestamp;
+
+  /** List of statements to execute. */
+  @GuardedBy("mMonitor")
   private ArrayList<Statement> mStatements = null;
 
   /**
-   * All state which should be modified atomically to reflect an update to the underlying table's
-   * layout.
+   * Set to true when the table calls {@link InnerLayoutUpdater#update(KijiTableLayout)} to
+   * indicate a table layout update. Set to false when a user calls {@link #begin(EntityId)}. If
+   * this becomes true while a transaction is in progress all methods which would advance the
+   * transaction will instead call {@link #rollback()} and throw a {@link LayoutUpdatedException}.
    */
-  private volatile WriterLayoutCapsule mWriterLayoutCapsule = null;
-
-  /**
-   * <p>
-   *   Set to true when the table calls
-   *   {@link CassandraAtomicKijiPutter.InnerLayoutUpdater#update(KijiTableLayout)} to
-   *   indicate a table layout update.  Set to false when a user calls
-   *   {@link #begin(org.kiji.schema.EntityId)}.  If this becomes true while a transaction is in
-   *   progress all methods which would advance the transaction will instead call
-   *   {@link #rollback()} and throw a {@link org.kiji.schema.layout.LayoutUpdatedException}.
-   * </p>
-   * <p>
-   *   Access to this variable must be protected by synchronizing on mLock.
-   * </p>
-   */
-  private boolean mLayoutOutOfDate = false;
+  @GuardedBy("mMonitor")
+  private boolean mLayoutChanged = true;
 
   /** Provides for the updating of this Writer in response to a table layout update. */
   private final class InnerLayoutUpdater implements LayoutConsumer {
     /** {@inheritDoc} */
     @Override
     public void update(final KijiTableLayout layout) throws IOException {
-      final State state = mState.get();
-      Preconditions.checkState(state != State.CLOSED,
-          "Cannot update an AtomicKijiPutter instance in state %s.", state);
-      synchronized (mLock) {
-        mLayoutOutOfDate = true;
+      synchronized (mMonitor) {
+        final State state = mState;
+        Preconditions.checkState(state != State.CLOSED,
+            "Cannot update an AtomicKijiPutter instance in state %s.", state);
+        mLayoutChanged = true;
         // Update the state of the writer.
         final CellEncoderProvider provider = new CellEncoderProvider(
             mTable.getURI(),
@@ -131,12 +136,12 @@ public final class CassandraAtomicKijiPutter implements AtomicKijiPutter {
             mTable.getKiji().getSchemaTable(),
             DefaultKijiCellEncoderFactory.get());
         // If the layout is null this is the initial setup and we do not need a log message.
-        if (mWriterLayoutCapsule != null) {
+        if (mCapsule != null) {
           LOG.debug(
               "Updating layout used by AtomicKijiPutter: {} for table: {} from version: {} to: {}",
               this,
               mTable.getURI(),
-              mWriterLayoutCapsule.getLayout().getDesc().getLayoutId(),
+              mCapsule.getLayout().getDesc().getLayoutId(),
               layout.getDesc().getLayoutId());
         } else {
           LOG.debug(
@@ -145,7 +150,7 @@ public final class CassandraAtomicKijiPutter implements AtomicKijiPutter {
               mTable.getURI(),
               layout.getDesc().getLayoutId());
         }
-        mWriterLayoutCapsule = new WriterLayoutCapsule(
+        mCapsule = new WriterLayoutCapsule(
             provider,
             layout,
             CassandraColumnNameTranslator.from(layout));
@@ -161,42 +166,45 @@ public final class CassandraAtomicKijiPutter implements AtomicKijiPutter {
    */
   public CassandraAtomicKijiPutter(CassandraKijiTable table) throws IOException {
     mTable = table;
-    mLayoutConsumerRegistration = mTable.registerLayoutConsumer(mInnerLayoutUpdater);
-    Preconditions.checkState(mWriterLayoutCapsule != null,
+    mLayoutConsumerRegistration = mTable.registerLayoutConsumer(new InnerLayoutUpdater());
+    Preconditions.checkState(
+        mCapsule != null,
         "AtomicKijiPutter for table: %s failed to initialize.", mTable.getURI());
 
     // Retain the table only when everything succeeds.
     table.retain();
-    final State oldState = mState.getAndSet(State.OPEN);
-    Preconditions.checkState(oldState == State.UNINITIALIZED,
-        "Cannot open AtomicKijiPutter instance in state %s.", oldState);
-    mWriterCommon = new CassandraKijiWriterCommon(mTable);
+    synchronized (mMonitor) {
+      mState = State.OPEN;
+    }
   }
 
   /** Resets the current transaction. */
   private void reset() {
-    mEntityId = null;
-    mStatements = null;
+    synchronized (mMonitor) {
+      mEntityId = null;
+      mStatements = null;
+    }
   }
 
   /** {@inheritDoc} */
   @Override
   public void begin(EntityId eid) {
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot begin a transaction on an AtomicKijiPutter instance in state %s.", state);
-    // Preconditions.checkArgument() cannot be used here because mEntityId is null between calls to
-    // begin().
-    if (mStatements != null) {
-      throw new IllegalStateException(String.format("There is already a transaction in progress on "
-          + "row: %s. Call commit(), checkAndCommit(), or rollback() to clear the Put.",
-          mEntityId.toShellString()));
+    synchronized (mMonitor) {
+      Preconditions.checkState(mState == State.OPEN,
+          "Can not begin a transaction on an AtomicKijiPutter instance in state %s.", mState);
+      if (mStatements != null) {
+        throw new IllegalStateException(
+            String.format(
+                "There is already a transaction in progress on row: %s. Call commit(),"
+                    + " checkAndCommit(), or rollback() to clear the current transaction.",
+                mEntityId.toShellString()));
+      }
+
+      mEntityId = eid;
+      mStatements = Lists.newArrayList();
+      mLayoutChanged = false;
+      mTimestamp = System.currentTimeMillis();
     }
-    synchronized (mLock) {
-      mLayoutOutOfDate = false;
-    }
-    mEntityId = eid;
-    mStatements = new ArrayList<Statement>();
   }
 
   /** {@inheritDoc} */
@@ -208,105 +216,151 @@ public final class CassandraAtomicKijiPutter implements AtomicKijiPutter {
   /** {@inheritDoc} */
   @Override
   public void commit() throws IOException {
-    Preconditions.checkState(mStatements != null, "commit() must be paired with a call to begin()");
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot commit a transaction on an AtomicKijiPutter instance in state %s.", state);
-    // We don't actually need the writer layout capsule here, but we want the layout update check.
-    getWriterLayoutCapsule();
+    synchronized (mMonitor) {
+      Preconditions.checkState(mStatements != null,
+          "commit() must be paired with a call to begin().");
 
-    assert(mStatements.size() > 0);
+      Preconditions.checkState(mState == State.OPEN,
+          "Can not commit a transaction on an AtomicKijiPutter instance in state %s.", mState);
+      // We don't actually need the writer layout capsule here, but we want the layout update check.
+      getCapsule();
 
-    BatchStatement batchStatement = new BatchStatement(BatchStatement.Type.LOGGED);
-    batchStatement.addAll(mStatements);
+      Preconditions.checkState(mStatements.size() > 0, "No transactions to commit.");
 
-    // TODO: Possibly check that execution worked correctly.
-    ResultSet resultSet = mTable.getAdmin().execute(batchStatement);
-    LOG.info("Results from batch set: " + resultSet);
+      final Statement statement;
+      if (mStatements.size() > 1) {
+        statement = new BatchStatement(BatchStatement.Type.UNLOGGED).addAll(mStatements);
+      } else {
+        statement = mStatements.get(0);
+      }
 
-    reset();
+      ResultSet result = mTable.getAdmin().execute(statement);
+      LOG.debug("Results from batch commit: {}.", result);
+
+      reset();
+    }
   }
 
   /** {@inheritDoc} */
   @Override
-  public <T> boolean checkAndCommit(String family, String qualifier, T value) throws IOException {
-    Preconditions.checkState(mStatements != null,
-        "checkAndCommit() must be paired with a call to begin()");
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot checkAndCommit a transaction on an AtomicKijiPutter instance in state %s.", state);
+  public <T> boolean checkAndCommit(
+      final String family,
+      final String qualifier,
+      final T value
+  ) throws IOException {
+
     /*
-    final WriterLayoutCapsule capsule = getWriterLayoutCapsule();
-    final KijiColumnName kijiColumnName = new KijiColumnName(family, qualifier);
-    final byte[] encoded;
+      Unfortunately we can not support the Kiji check and put API because it implicitly relies on
+      'latest' timestamp semantics.  Cassandra has support for check and put style transactions
+      since 2.0.6, but we can not take advantage of them since we can not know what timestamp we
+      should check.
+     */
 
-    // If passed value is null, then let encoded value be null.
-    // HBase will check for non-existence of cell.
-    if (null == value) {
-      encoded = null;
-    } else {
-      final KijiCellEncoder cellEncoder =
-          capsule.getCellEncoderProvider().getEncoder(family, qualifier);
-      encoded = cellEncoder.encode(value);
-    }
-
-    // CQL currently supports only check-and-set operations that set the same cell that they
-    // check.  See https://issues.apache.org/jira/browse/CASSANDRA-5633 for more details.  Thrift
-    // may support everything that we need.
-    */
-
-    // TODO: Possibly suport checkAndCommit if cell to check and cell to set are the same.
-
-    throw new KijiIOException(
-        "Cassandra Kiji cannot yet support check-and-commit that inserts more than one cell.");
+    throw new UnsupportedOperationException(
+        "Cassandra AtomicKijiPutter does not support check and commit.");
   }
 
   /** {@inheritDoc} */
   @Override
   public void rollback() {
-    Preconditions.checkState(
-        mStatements != null,
-        "rollback() must be paired with a call to begin()"
-    );
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot rollback a transaction on an AtomicKijiPutter instance in state %s.", state);
-    reset();
-  }
+    synchronized (mMonitor) {
+      Preconditions.checkState(mState == State.OPEN,
+          "Cannot rollback a transaction on an AtomicKijiPutter instance in state %s.", mState);
+      Preconditions.checkState(mStatements != null,
+          "rollback() must be paired with a call to begin()");
 
-  /** {@inheritDoc} */
-  @Override
-  public <T> void put(String family, String qualifier, T value) throws IOException {
-    if (mWriterCommon.isCounterColumn(family, qualifier)) {
-      throw new UnsupportedOperationException(
-          "Cannot modify counters within Cassandra atomic putter.");
+      reset();
     }
-    put(family, qualifier, System.currentTimeMillis(), value);
   }
 
   /** {@inheritDoc} */
   @Override
   public <T> void put(
-      String family,
-      String qualifier,
-      long timestamp,
-      T value) throws IOException {
-    Preconditions.checkState(mStatements != null,
-        "calls to put() must be between calls to begin() and "
-            + "commit(), checkAndCommit(), or rollback()");
-    final State state = mState.get();
-    Preconditions.checkState(state == State.OPEN,
-        "Cannot put cell to an AtomicKijiPutter instance in state %s.", state);
-    //final WriterLayoutCapsule capsule = getWriterLayoutCapsule();
+      final String family,
+      final String qualifier,
+      final T value
+  ) throws IOException {
+    synchronized (mMonitor) {
+      put(family, qualifier, mTimestamp, value);
+    }
+  }
 
-    Statement statement = mWriterCommon.getPutStatement(
-        mWriterLayoutCapsule.getCellEncoderProvider(),
-        mEntityId,
-        family,
-        qualifier,
-        timestamp,
-        value);
-    mStatements.add(statement);
+  /** {@inheritDoc} */
+  @Override
+  public <T> void put(
+      final String family,
+      final String qualifier,
+      final long timestamp,
+      final T value
+  ) throws IOException {
+    synchronized (mMonitor) {
+      Preconditions.checkState(mStatements != null,
+          "Calls to put() must be between calls to begin() "
+              + "and commit(), checkAndCommit(), or rollback().");
+
+      Preconditions.checkState(mState == State.OPEN,
+          "Can not put cell to an AtomicKijiPutter instance in state %s.", mState);
+
+      final KijiURI tableURI = mTable.getURI();
+
+      final FamilyLayout familyLayout = mCapsule.getLayout().getFamilyMap().get(family);
+      if (familyLayout == null) {
+        throw new IllegalArgumentException(
+            String.format("Unknown family '%s' in table %s.", family, tableURI));
+      }
+
+      final ColumnLayout columnLayout = familyLayout.getColumnMap().get(qualifier);
+      if (columnLayout == null) {
+        throw new IllegalArgumentException(
+            String.format("Unknown qualifier '%s' in family '%s' of table %s.",
+                qualifier, family, tableURI));
+      }
+
+      if (columnLayout.getDesc().getColumnSchema().getType() == SchemaType.COUNTER) {
+        throw new UnsupportedOperationException(
+            "Cassandra Kiji does not support puts to counter columns.");
+      }
+
+      final ColumnId localityGroupId = familyLayout.getLocalityGroup().getId();
+      if (mTableName == null) {
+        // first put in transaction; set the table.
+        mTableName = CassandraTableName.getLocalityGroupTableName(
+            tableURI, familyLayout.getLocalityGroup().getId());
+      } else {
+        Preconditions.checkArgument(mTableName.getLocalityGroupId().equals(localityGroupId),
+            "Kiji Cassandra does not support transactions across multiple locality groups.");
+      }
+
+      // In Cassandra Kiji, a write to HConstants.LATEST_TIMESTAMP should be a write with the
+      // current transaction time.
+      final long version;
+      if (timestamp == HConstants.LATEST_TIMESTAMP) {
+        version = mTimestamp;
+      } else {
+        version = timestamp;
+      }
+
+      int ttl = familyLayout.getLocalityGroup().getDesc().getTtlSeconds();
+
+      final KijiColumnName columnName = KijiColumnName.create(family, qualifier);
+      final CassandraColumnName cassandraColumn =
+          mCapsule.getColumnNameTranslator().toCassandraColumnName(columnName);
+
+      final ByteBuffer valueBuffer =
+          CassandraByteUtil.bytesToByteBuffer(
+              mCapsule.getCellEncoderProvider().getEncoder(family, qualifier).encode(value));
+
+      final Statement put = CQLUtils.getInsertStatement(
+          mCapsule.getLayout(),
+          mTableName,
+          mEntityId,
+          cassandraColumn,
+          version,
+          valueBuffer,
+          ttl);
+
+      mStatements.add(put);
+    }
   }
 
   /**
@@ -317,9 +371,9 @@ public final class CassandraAtomicKijiPutter implements AtomicKijiPutter {
    * @throws org.kiji.schema.layout.LayoutUpdatedException in case the table layout has been
    * updated while a transaction is in progress
    */
-  private WriterLayoutCapsule getWriterLayoutCapsule() throws LayoutUpdatedException {
-    synchronized (mLock) {
-      if (mLayoutOutOfDate) {
+  private WriterLayoutCapsule getCapsule() throws LayoutUpdatedException {
+    synchronized (mMonitor) {
+      if (mLayoutChanged) {
         // If the layout was updated, roll back the transaction and throw an Exception to indicate
         // the need to retry.
         rollback();
@@ -327,7 +381,7 @@ public final class CassandraAtomicKijiPutter implements AtomicKijiPutter {
         throw new LayoutUpdatedException(
             "Table layout was updated during a transaction, please retry.");
       } else {
-        return mWriterLayoutCapsule;
+        return mCapsule;
       }
     }
   }
@@ -335,15 +389,19 @@ public final class CassandraAtomicKijiPutter implements AtomicKijiPutter {
   /** {@inheritDoc} */
   @Override
   public void close() throws IOException {
-    final State oldState = mState.getAndSet(State.CLOSED);
-    Preconditions.checkState(oldState == State.OPEN,
-        "Cannot close an AtomicKijiPutter instance in state %s.", oldState);
-    if (mStatements != null) {
-      LOG.warn("Closing HBaseAtomicKijiPutter while a transaction on table {} on entity ID {} is "
-          + "in progress. Rolling back transaction.", mTable.getURI(), mEntityId);
-      reset();
+    synchronized (mMonitor) {
+      Preconditions.checkState(mState == State.OPEN,
+          "Cannot close an AtomicKijiPutter instance in state %s.", mState);
+
+      if (mStatements != null) {
+        LOG.warn("Closing HBaseAtomicKijiPutter while a transaction on table {} on entity {} is "
+                + "in progress. Rolling back transaction.", mTable.getURI(), mEntityId);
+        reset();
+      }
+
+      mLayoutConsumerRegistration.close();
+      mTable.release();
+      mState = State.CLOSED;
     }
-    mLayoutConsumerRegistration.close();
-    mTable.release();
   }
 }

@@ -38,6 +38,10 @@ import org.kiji.schema.InternalKijiError;
 import org.kiji.schema.KijiMetaTable;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.RuntimeInterruptedException;
+import org.kiji.schema.avro.ColumnDesc;
+import org.kiji.schema.avro.FamilyDesc;
+import org.kiji.schema.avro.LocalityGroupDesc;
+import org.kiji.schema.avro.SchemaType;
 import org.kiji.schema.avro.TableLayoutDesc;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -277,9 +281,10 @@ public class CassandraTableLayoutUpdater {
       }
 
       final TableLayoutUpdateValidator validator = new TableLayoutUpdateValidator(mKiji);
-      validator.validate(
-          currentLayout,
-          KijiTableLayout.createUpdatedLayout(update , currentLayout));
+      final KijiTableLayout updatedLayout =
+          KijiTableLayout.createUpdatedLayout(update , currentLayout);
+      validateCassandraTableLayout(updatedLayout.getDesc());
+      validator.validate(currentLayout, updatedLayout);
 
       final TableLayoutTracker layoutTracker =
           new TableLayoutTracker(mZKClient, mTableURI, mLayoutUpdateHandler).start();
@@ -387,5 +392,42 @@ public class CassandraTableLayoutUpdater {
    */
   public KijiTableLayout getNewLayout() {
     return mNewLayout;
+  }
+
+  /**
+   * Validates that the provided Kiji table layout is valid for Kiji Cassandra.
+   *
+   * Currently Kiji Cassandra does not support the following:
+   *
+   * <ul>
+   *   <li>Counter columns</li>
+   * </ul>
+   *
+   * @param layout The layout to validate.
+   */
+  public static void validateCassandraTableLayout(final TableLayoutDesc layout) {
+    // Check for counter columns
+    for (final LocalityGroupDesc localityGroup : layout.getLocalityGroups()) {
+      for (final FamilyDesc family : localityGroup.getFamilies()) {
+        if (family.getMapSchema() != null) {
+          // Map type family
+          if (family.getMapSchema().getType() == SchemaType.COUNTER) {
+            throw new IllegalArgumentException(String.format(
+                "Kiji Cassandra does not support counter map type families. Family: %s, table: %s.",
+                layout.getName(), family.getName()));
+          }
+        } else {
+          // Group type family
+          for (final ColumnDesc column : family.getColumns()) {
+            if (column.getColumnSchema().getType() == SchemaType.COUNTER) {
+              throw new IllegalArgumentException(String.format(
+                  "Kiji Cassandra does not support counter columns."
+                      + " Table: %s, family: %s, column: %s.",
+                  layout.getName(), family.getName(), column.getName()));
+            }
+          }
+        }
+      }
+    }
   }
 }

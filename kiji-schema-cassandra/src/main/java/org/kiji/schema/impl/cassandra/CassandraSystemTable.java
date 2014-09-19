@@ -311,12 +311,14 @@ public final class CassandraSystemTable implements KijiSystemTable {
    * @param kijiURI The URI for the kiji instance to remove.
    * @throws java.io.IOException If there is an error.
    */
-  public static void uninstall(CassandraAdmin admin, KijiURI kijiURI)
-      throws IOException {
+  public static void uninstall(
+      final CassandraAdmin admin,
+      final KijiURI kijiURI
+  ) throws IOException {
     // TODO: Does this actually need to do anything beyond dropping the table?
     final CassandraTableName tableName = CassandraTableName.getSystemTableName(kijiURI);
-    admin.disableTable(tableName);
-    admin.deleteTable(tableName);
+    final String delete = CQLUtils.getDropTableStatement(tableName);
+    admin.execute(delete);
   }
 
   /** {@inheritDoc} */

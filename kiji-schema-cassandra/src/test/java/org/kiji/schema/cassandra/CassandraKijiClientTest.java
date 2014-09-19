@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import org.kiji.checkin.CheckinUtils;
 import org.kiji.schema.Kiji;
+import org.kiji.schema.impl.cassandra.CassandraKiji;
 import org.kiji.schema.impl.cassandra.CassandraKijiFactory;
 import org.kiji.schema.impl.cassandra.CassandraKijiInstaller;
 import org.kiji.schema.util.TestingFileUtils;
@@ -91,7 +92,7 @@ public class CassandraKijiClientTest {
   private File mLocalTempDir = null;
 
   /** Default test Kiji instance. */
-  private Kiji mKiji = null;
+  private CassandraKiji mKiji = null;
 
   /**
    * Initializes the in-memory kiji for testing.
@@ -154,7 +155,7 @@ public class CassandraKijiClientTest {
    * @return a fresh new Kiji instance.
    * @throws Exception on error.
    */
-  public Kiji createTestKiji() throws Exception {
+  public CassandraKiji createTestKiji() throws Exception {
     // Note: The C* keyspace for the instance has to be less than 48 characters long. Every C*
     // Kiji keyspace starts with "kiji_", so we have a total of 43 characters to work with - yikes!
     // Hopefully dropping off the class name is good enough to make this short enough.
@@ -169,7 +170,7 @@ public class CassandraKijiClientTest {
         CassandraKijiURI.newBuilder(kijiURI).withInstanceName(instanceName).build();
     LOG.info("Installing fake C* instance " + instanceURI);
     CassandraKijiInstaller.get().install(instanceURI, null);
-    final Kiji kiji = CassandraKijiFactory.get().open(instanceURI);
+    final CassandraKiji kiji = CassandraKijiFactory.get().open(instanceURI);
 
     mAllKijis.add(kiji);
     return kiji;
@@ -206,7 +207,7 @@ public class CassandraKijiClientTest {
    * @throws java.io.IOException on I/O error.  Should be Exception, but breaks too many tests for
    *     now.
    */
-  public synchronized Kiji getKiji() throws IOException {
+  public synchronized CassandraKiji getKiji() throws IOException {
     if (null == mKiji) {
       try {
         mKiji = createTestKiji();

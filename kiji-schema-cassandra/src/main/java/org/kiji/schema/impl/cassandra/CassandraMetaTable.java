@@ -27,6 +27,7 @@ import java.util.NavigableMap;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.datastax.driver.core.ResultSetFuture;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
@@ -291,15 +292,20 @@ public final class CassandraMetaTable implements KijiMetaTable {
    * @param uri The uri of the Kiji instance to uninstall.
    * @throws java.io.IOException If there is an error.
    */
-  public static void uninstall(CassandraAdmin admin, KijiURI uri)
-    throws IOException {
+  public static void uninstall(CassandraAdmin admin, KijiURI uri) throws IOException {
     final CassandraTableName metaKeyValueTableName =
         CassandraTableName.getMetaKeyValueTableName(uri);
-    admin.disableTable(metaKeyValueTableName);
-    admin.deleteTable(metaKeyValueTableName);
-    final CassandraTableName metaLayoutTableName = CassandraTableName.getMetaLayoutTableName(uri);
-    admin.disableTable(metaLayoutTableName);
-    admin.deleteTable(metaLayoutTableName);
+    final CassandraTableName metaLayoutTableName =
+        CassandraTableName.getMetaLayoutTableName(uri);
+
+    final String deleteMetaKeyValue = CQLUtils.getDropTableStatement(metaKeyValueTableName);
+    final String deleteMetaLayout = CQLUtils.getDropTableStatement(metaLayoutTableName);
+
+    final ResultSetFuture keyValueFuture = admin.executeAsync(deleteMetaKeyValue);
+    final ResultSetFuture layoutFuture = admin.executeAsync(deleteMetaLayout);
+
+    keyValueFuture.getUninterruptibly();
+    layoutFuture.getUninterruptibly();
   }
 
   /** {@inheritDoc} */

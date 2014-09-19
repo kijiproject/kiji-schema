@@ -43,7 +43,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.schema.EntityId;
-import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequestBuilder.ColumnsDef;
@@ -52,7 +51,9 @@ import org.kiji.schema.KijiRowScanner;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
+import org.kiji.schema.impl.cassandra.CassandraKiji;
 import org.kiji.schema.impl.cassandra.CassandraKijiScannerOptions;
+import org.kiji.schema.impl.cassandra.CassandraKijiTable;
 import org.kiji.schema.impl.cassandra.CassandraKijiTableReader;
 import org.kiji.schema.layout.KijiTableLayouts;
 
@@ -60,7 +61,7 @@ import org.kiji.schema.layout.KijiTableLayouts;
 public class TestCassandraReadAndWrite {
   private static final Logger LOG = LoggerFactory.getLogger(TestCassandraReadAndWrite.class);
 
-  private static Kiji mKiji;
+  private static CassandraKiji mKiji;
   private static KijiTable mTable;
   private KijiTableWriter mWriter;
   private KijiTableReader mReader;
@@ -353,6 +354,7 @@ public class TestCassandraReadAndWrite {
     assertFalse(allData.get(david).containsColumn(pets, rabbit));
     assertFalse(allData.get(david).containsColumn(pets, fish));
   }
+
   /**
    * Test corner cases for a row scanner.  The row scanner may have to issue multiple discrete
    * queries for a single `KijiDataRequest`.  Each query will return an iterator over Cassandra
@@ -608,7 +610,7 @@ public class TestCassandraReadAndWrite {
    */
   @Test
   public void testRowScannerWithMultiEntityIDTable() throws Exception {
-    final KijiTable table = mKiji.openTable("table_two_components");
+    final CassandraKijiTable table = mKiji.openTable("table_two_components");
     try {
       // Reuse these entity IDs for puts and for gets.
       final EntityId alice = table.getEntityId("A", "Alice");
@@ -628,6 +630,7 @@ public class TestCassandraReadAndWrite {
       try {
         // Insert some data into the table.  Give various users different pets.
         writer.put(alice, family, column, 0L, cat);
+        writer.put(alice, family, column, 1L, cat);
         writer.put(bob, family, column, 0L, dog);
         writer.put(cathy, family, column, 0L, fish);
         writer.put(david, family, column, 0L, bird);
@@ -636,9 +639,7 @@ public class TestCassandraReadAndWrite {
       }
 
       final KijiDataRequest dataRequest = KijiDataRequest.create(family, column);
-      final KijiTableReader myreader = table.openTableReader();
-      assert myreader instanceof CassandraKijiTableReader;
-      final CassandraKijiTableReader reader = (CassandraKijiTableReader) myreader;
+      final CassandraKijiTableReader reader = table.openTableReader();
 
       try {
         // Fire up a row scanner!

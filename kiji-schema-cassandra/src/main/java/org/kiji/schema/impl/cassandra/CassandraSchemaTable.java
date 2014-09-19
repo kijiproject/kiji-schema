@@ -782,12 +782,8 @@ public final class CassandraSchemaTable implements KijiSchemaTable {
    * @param tableName Name of the table to delete.
    */
   private static void deleteTable(CassandraAdmin admin, CassandraTableName tableName) {
-    if (admin.tableExists(tableName)) {
-      if (admin.isTableEnabled(tableName)) {
-        admin.disableTable(tableName);
-      }
-      admin.deleteTable(tableName);
-    }
+    final String delete = CQLUtils.getDropTableStatement(tableName);
+    admin.execute(delete);
   }
 
   /**

@@ -69,7 +69,7 @@ public class TestCassandraKijiBufferedWriter {
   public static void initShared() throws Exception {
     CLIENT_TEST_DELEGATE.setupKijiTest();
     Kiji kiji = CLIENT_TEST_DELEGATE.getKiji();
-    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST));
+    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.USER_TABLE_FORMATTED_EID));
     mTable = kiji.openTable("user");
   }
 
@@ -141,33 +141,23 @@ public class TestCassandraKijiBufferedWriter {
   }
 
   @Test
-  public void testSetCounter() throws Exception {
-    final KijiDataRequest request = KijiDataRequest.create("info", "visits");
-
-    // Cannot set a counter from a Cassandra buffered writer.
-    try {
-      mBufferedWriter.put(mEntityId, "info", "visits", 5L);
-      fail("Exception should have occurred.");
-    } catch (UnsupportedOperationException e) {
-      assertNotNull(e);
-    }
-  }
-
-  @Test
   public void testDeleteColumn() throws Exception {
-    final KijiDataRequest request = KijiDataRequest.create("info", "name");
+    final KijiDataRequest request = KijiDataRequest.create("info");
 
     // Write initial value.
     mWriter.put(mEntityId, "info", "name", 123L, "not empty");
+    mWriter.put(mEntityId, "info", "email", 123L, "not empty");
 
     // Buffer the delete and confirm it has not happened yet.
     assertTrue(mReader.get(mEntityId, request).containsCell("info", "name", 123L));
     mBufferedWriter.deleteColumn(mEntityId, "info", "name");
     assertTrue(mReader.get(mEntityId, request).containsCell("info", "name", 123L));
+    assertTrue(mReader.get(mEntityId, request).containsCell("info", "email", 123L));
 
     // Flush the buffer and confirm the delete has happened.
     mBufferedWriter.flush();
     assertFalse(mReader.get(mEntityId, request).containsCell("info", "name", 123L));
+    assertTrue(mReader.get(mEntityId, request).containsCell("info", "email", 123L));
   }
 
   @Test

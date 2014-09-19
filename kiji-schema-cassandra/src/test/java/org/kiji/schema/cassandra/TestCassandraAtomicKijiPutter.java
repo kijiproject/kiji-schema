@@ -62,9 +62,7 @@ public class TestCassandraAtomicKijiPutter {
   // Useful shortcuts for families, qualifiers, and values.
   private static final String MAP = "experiments";
   private static final String INFO = "info";
-  private static final String VISITS = "visits";
   private static final String NAME = "name";
-  private static final String Q0 = "q0";
   private static final String MR_BONKERS = "Mr Bonkers";
   private static final String BIRDHEAD = "Giant Robot-Birdhead";
   private static final String AMINO_MAN = "Amino Man";
@@ -75,7 +73,7 @@ public class TestCassandraAtomicKijiPutter {
     Kiji kiji = CLIENT_TEST_DELEGATE.getKiji();
     // Use the counter test layout so that we can verify that trying to modify counters in an
     // atomic putter causes an exception.
-    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.COUNTER_TEST));
+    kiji.createTable(KijiTableLayouts.getLayout(KijiTableLayouts.USER_TABLE_FORMATTED_EID));
     mTable = kiji.openTable("user");
   }
 
@@ -124,7 +122,6 @@ public class TestCassandraAtomicKijiPutter {
         BIRDHEAD,
         mReader.get(mEntityId, request).getMostRecentValue(INFO, NAME).toString()
     );
-
   }
 
   @Test

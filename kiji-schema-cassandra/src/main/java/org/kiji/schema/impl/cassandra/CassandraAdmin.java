@@ -21,13 +21,11 @@ package org.kiji.schema.impl.cassandra;
 
 import java.io.Closeable;
 import java.util.Collection;
-import java.util.List;
 
 import com.datastax.driver.core.Metadata;
 import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.ResultSetFuture;
-import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.TableMetadata;
@@ -35,7 +33,6 @@ import com.google.common.base.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.kiji.schema.KijiIOException;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.cassandra.CassandraTableName;
 
@@ -59,12 +56,6 @@ public abstract class CassandraAdmin implements Closeable {
 
   /** Keep a cache of all of the prepared CQL statements. */
   private final CassandraStatementCache mStatementCache;
-
-  /** Maximum number of retry attempts for creating an index. */
-  private static final int CREATE_INDEX_MAX_RETRY_ATTEMPTS = 10;
-
-  /** Number of seconds to wait between retry attempts to create the index. */
-  private static final int CREATE_INDEX_RETRY_ATTEMPT_DURATION_SECONDS = 5;
 
   /**
    * Getter for open Session.
@@ -96,7 +87,7 @@ public abstract class CassandraAdmin implements Closeable {
    * @param kijiURI The URI.
    */
   private void createKeyspaceIfMissingForURI(KijiURI kijiURI) {
-    String keyspace = CassandraTableName.getQuotedKeyspace(kijiURI);
+    String keyspace = CassandraTableName.getKeyspace(kijiURI);
     LOG.info(String.format("Creating keyspace %s (if missing) for %s.", keyspace, kijiURI));
 
     // TODO: Check whether keyspace is > 48 characters long and if so provide Kiji error to user.
@@ -132,119 +123,11 @@ public abstract class CassandraAdmin implements Closeable {
    */
   public void createTable(CassandraTableName tableName, String createTableStatement) {
     // TODO: Keep track of all tables associated with this session
-    LOG.info("Creating table {} with statement {}.", tableName, createTableStatement);
+    LOG.debug("Creating table {} with statement {}.", tableName, createTableStatement);
     getSession().execute(createTableStatement);
 
     // Check that the table actually exists
     assert(tableExists(tableName));
-  }
-
-  // TODO: Add something for disabling this table.
-
-  /**
-   * Disable a table.
-   *
-   * @param tableName of the table to disable.
-   */
-  public void disableTable(CassandraTableName tableName) { }
-
-  // TODO: Just return true for now since we aren't disabling any Cassandra tables yet.
-
-  /**
-   * Check whether a table is enabled.
-   *
-   * @param tableName of the table to check.
-   * @return whether the table is enabled.
-   */
-  public boolean isTableEnabled(CassandraTableName tableName) {
-    return true;
-  }
-
-  /**
-   * Delete a Cassandra table.
-   *
-   * @param tableName of the table to delete.
-   */
-  public void deleteTable(CassandraTableName tableName) {
-    // TODO: Check first that the table actually exists?
-    String queryString = String.format("DROP TABLE IF EXISTS %s;", tableName);
-    LOG.info("Deleting table " + tableName);
-    getSession().execute(queryString);
-  }
-
-  /**
-   * Create a secondary index in a Cassandra table.
-   *
-   * This operation sometimes fails, depending on the time required for schema information to
-   * propagate around the Cassandra cluster.  This method will poll the cluster and continue trying
-   * to create the index until the operation succeeds or a maximum number of tries is reached.
-   *
-   * @param tableName The name of the table containing the column to be indexed.
-   * @param columnName The name of the column to be indexed.
-   * @throws KijiIOException If the method fails to create the index.
-   */
-  public void createIndex(CassandraTableName tableName, String columnName) {
-    // Cassandra sometimes does not create the secondary index right away!  Loop until it does.
-    boolean indexExists = false;
-    LOG.debug("Creating secondary index for column {} in table {}", columnName, tableName);
-
-    for (int attemptCount = 0; attemptCount < CREATE_INDEX_MAX_RETRY_ATTEMPTS; attemptCount++) {
-      // Add a secondary index on the locality group (needed for row scans - SCHEMA-846).
-      execute(CQLUtils.getCreateIndexStatement(tableName, columnName));
-
-      if (indexExists(tableName, columnName)) {
-        LOG.debug("Found index during attempt #{}", attemptCount);
-        indexExists = true;
-        break;
-      }
-
-      LOG.debug(
-          "Could not find index during attempt #{}, sleeping for 5 seconds",
-          attemptCount + 1);
-
-      try {
-        Thread.sleep(1000 * CREATE_INDEX_RETRY_ATTEMPT_DURATION_SECONDS);
-      } catch (InterruptedException ie) {
-        LOG.warn("Interrupted from pause for index creation.");
-        Thread.currentThread().interrupt();
-        break;
-      }
-    }
-    if (!indexExists) {
-      throw new KijiIOException(String.format(
-          "Could not create index for column %s in table %s",
-          columnName,
-          tableName));
-    }
-  }
-
-  /**
-   * Check whether an index exists.
-   *
-   * @param tableName The name of the table containing the column to check for an index.
-   * @param columnName The name of the column that we are checking.
-   * @return Whether the column has an index or not.
-   * @throws KijiIOException If there is an error querying the Cassandra system table.
-   */
-  private boolean indexExists(CassandraTableName tableName, String columnName) {
-    // Query the system table to see if the index has been created yet.
-    String query = String.format(
-        "SELECT * FROM system.schema_columns WHERE keyspace_name='%s' AND "
-            + " columnfamily_name='%s' AND column_name='%s' ALLOW FILTERING",
-        tableName.getKeyspace(),
-        tableName.getTable(),
-        CQLUtils.LOCALITY_GROUP_COL);
-    LOG.debug(query);
-    ResultSet resultSet = execute(query);
-    List<Row> rows = resultSet.all();
-
-    // Should get exactly one row back.
-    if (rows.size() != 1) {
-      throw new KijiIOException(String.format(
-          "Unexpected number of rows (%s) returned from index query!", rows.size()));
-    }
-
-    return rows.get(0).getString("index_name") != null;
   }
 
   /**
@@ -256,11 +139,11 @@ public abstract class CassandraAdmin implements Closeable {
     Preconditions.checkNotNull(getSession());
     Preconditions.checkNotNull(getSession().getCluster());
     Preconditions.checkNotNull(getSession().getCluster().getMetadata());
-    String keyspace = CassandraTableName.getQuotedKeyspace(mKijiURI);
+    String keyspace = CassandraTableName.getKeyspace(mKijiURI);
     Preconditions.checkNotNull(getSession().getCluster().getMetadata().getKeyspace(keyspace));
     Collection<TableMetadata> tables =
         getSession().getCluster().getMetadata().getKeyspace(keyspace).getTables();
-    return (tables.isEmpty());
+    return tables.isEmpty();
   }
 
   /**
@@ -268,7 +151,7 @@ public abstract class CassandraAdmin implements Closeable {
    */
   public void deleteKeyspace() {
     // TODO: Track whether keyspace exists and assert appropriate keyspace state in all methods.
-    String keyspace = CassandraTableName.getQuotedKeyspace(mKijiURI);
+    String keyspace = CassandraTableName.getKeyspace(mKijiURI);
     String queryString = "DROP KEYSPACE " + keyspace;
     getSession().execute(queryString);
     assert (!keyspaceExists(keyspace));
@@ -286,14 +169,14 @@ public abstract class CassandraAdmin implements Closeable {
     Preconditions.checkNotNull(getSession());
     Metadata metadata = getSession().getCluster().getMetadata();
 
-    String keyspace = CassandraTableName.getQuotedKeyspace(mKijiURI);
+    String keyspace = CassandraTableName.getKeyspace(mKijiURI);
 
     if (null == metadata.getKeyspace(keyspace)) {
-      assert(!keyspaceExists(CassandraTableName.getQuotedKeyspace(mKijiURI)));
+      assert(!keyspaceExists(CassandraTableName.getKeyspace(mKijiURI)));
       return false;
     }
 
-    return metadata.getKeyspace(keyspace).getTable(tableName.getQuotedTable()) != null;
+    return metadata.getKeyspace(keyspace).getTable(tableName.getTable()) != null;
   }
 
   // TODO: Implement close method

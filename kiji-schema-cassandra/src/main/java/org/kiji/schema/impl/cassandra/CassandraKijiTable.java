@@ -39,16 +39,13 @@ import org.kiji.schema.KijiRegion;
 import org.kiji.schema.KijiTable;
 import org.kiji.schema.KijiTableAnnotator;
 import org.kiji.schema.KijiTableNotFoundException;
-import org.kiji.schema.KijiTableReader;
 import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiURI;
-import org.kiji.schema.KijiWriterFactory;
 import org.kiji.schema.avro.RowKeyFormat;
 import org.kiji.schema.avro.RowKeyFormat2;
 import org.kiji.schema.cassandra.CassandraKijiURI;
 import org.kiji.schema.impl.LayoutConsumer;
 import org.kiji.schema.impl.LayoutConsumer.Registration;
-import org.kiji.schema.layout.CassandraColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.impl.TableLayoutMonitor;
 import org.kiji.schema.util.DebugResourceTracker;
@@ -107,7 +104,7 @@ public final class CassandraKijiTable implements KijiTable {
   private final AtomicInteger mRetainCount = new AtomicInteger(0);
 
   /** Writer factory for this table. */
-  private final KijiWriterFactory mWriterFactory;
+  private final CassandraKijiWriterFactory mWriterFactory;
 
   /** Reader factory for this table. */
   private final KijiReaderFactory mReaderFactory;
@@ -230,22 +227,9 @@ public final class CassandraKijiTable implements KijiTable {
     return mLayoutMonitor.getLayout();
   }
 
-  /**
-   * Get the column name translator for the current layout of this table. Do not cache this object.
-   *
-   * If you need both the table layout and a column name translator within a single short lived
-   * operation, you should get the layout and use it to create a column name translator to ensure
-   * consistency.
-   *
-   * @return the column name translator for the current layout of this table.
-   */
-  public CassandraColumnNameTranslator getColumnNameTranslator() {
-    return CassandraColumnNameTranslator.from(getLayout());
-  }
-
   /** {@inheritDoc} */
   @Override
-  public KijiTableReader openTableReader() {
+  public CassandraKijiTableReader openTableReader() {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot open a table reader on a KijiTable in state %s.", state);
@@ -280,7 +264,7 @@ public final class CassandraKijiTable implements KijiTable {
 
   /** {@inheritDoc} */
   @Override
-  public KijiWriterFactory getWriterFactory() throws IOException {
+  public CassandraKijiWriterFactory getWriterFactory() throws IOException {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot get the writer factory for a KijiTable in state %s.", state);

@@ -22,9 +22,6 @@ package org.kiji.schema.impl.cassandra;
 import java.io.IOException;
 
 import org.kiji.annotations.ApiAudience;
-import org.kiji.schema.AtomicKijiPutter;
-import org.kiji.schema.KijiBufferedWriter;
-import org.kiji.schema.KijiTableWriter;
 import org.kiji.schema.KijiWriterFactory;
 
 /** Factory for Table Writers. */
@@ -45,21 +42,19 @@ public final class CassandraKijiWriterFactory implements KijiWriterFactory {
 
   /** {@inheritDoc} */
   @Override
-  public KijiTableWriter openTableWriter() throws IOException {
+  public CassandraKijiTableWriter openTableWriter() throws IOException {
     return new CassandraKijiTableWriter(mTable);
   }
 
   /** {@inheritDoc} */
   @Override
-  public AtomicKijiPutter openAtomicPutter() throws IOException {
-    //return new HBaseAtomicKijiPutter(mTable);
-    // TODO: Implement C* atomic putter.
+  public CassandraAtomicKijiPutter openAtomicPutter() throws IOException {
     return new CassandraAtomicKijiPutter(mTable);
   }
 
   /** {@inheritDoc} */
   @Override
-  public KijiBufferedWriter openBufferedWriter() throws IOException {
+  public CassandraKijiBufferedWriter openBufferedWriter() throws IOException {
     return new CassandraKijiBufferedWriter(mTable);
   }
 }

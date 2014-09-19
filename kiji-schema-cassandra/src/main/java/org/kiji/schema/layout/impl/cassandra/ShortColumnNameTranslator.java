@@ -27,6 +27,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.cassandra.CassandraColumnName;
+import org.kiji.schema.cassandra.CassandraTableName;
 import org.kiji.schema.layout.CassandraColumnNameTranslator;
 import org.kiji.schema.layout.KijiTableLayout;
 import org.kiji.schema.layout.KijiTableLayout.LocalityGroupLayout;
@@ -48,21 +49,25 @@ public final class ShortColumnNameTranslator extends CassandraColumnNameTranslat
    *
    * @param layout of the table to translate column names for.
    */
-  public ShortColumnNameTranslator(KijiTableLayout layout) {
+  public ShortColumnNameTranslator(final KijiTableLayout layout) {
     mLayout = layout;
   }
 
   /** {@inheritDoc} */
   @Override
-  public KijiColumnName toKijiColumnName(CassandraColumnName cassandraColumnName)
-      throws NoSuchColumnException {
+  public KijiColumnName toKijiColumnName(
+      final CassandraTableName localityGroupTable,
+      final CassandraColumnName cassandraColumnName
+  ) throws NoSuchColumnException {
 
-    final ColumnId localityGroupID = ColumnId.fromString(cassandraColumnName.getLocalityGroup());
-    final LocalityGroupLayout localityGroup =
-        mLayout.getLocalityGroupMap().get(mLayout.getLocalityGroupIdNameMap().get(localityGroupID));
+    final String localityGroupName =
+        mLayout.getLocalityGroupIdNameMap().get(localityGroupTable.getLocalityGroupId());
+    final LocalityGroupLayout localityGroup = mLayout.getLocalityGroupMap().get(localityGroupName);
+        mLayout.getLocalityGroupIdNameMap().get(localityGroupTable.getLocalityGroupId());
     if (localityGroup == null) {
-      throw new NoSuchColumnException(String.format("No locality group with ID %s in table %s.",
-          localityGroupID.getId(), mLayout.getName()));
+      throw new NoSuchColumnException(
+          String.format("No locality group for Cassandra table %s in Kiji table %s.",
+              localityGroupTable, mLayout.getName()));
     }
 
     final ColumnId familyID = ColumnId.fromByteArray(cassandraColumnName.getFamily());
@@ -85,12 +90,14 @@ public final class ShortColumnNameTranslator extends CassandraColumnNameTranslat
             "No column with ID %s in family %s of table %s.",
             qualifierID.getId(), family.getName(), mLayout.getName()));
       }
-      kijiColumnName = new KijiColumnName(family.getName(), qualifier.getName());
+      kijiColumnName = KijiColumnName.create(family.getName(), qualifier.getName());
     } else {
       // Map type family.
       assert(family.isMapType());
       kijiColumnName =
-          new KijiColumnName(family.getName(), Bytes.toString(cassandraColumnName.getQualifier()));
+          KijiColumnName.create(
+              family.getName(),
+              Bytes.toString(cassandraColumnName.getQualifier()));
     }
     LOG.debug("Translated Kiji column {}.", kijiColumnName);
     return kijiColumnName;
@@ -98,8 +105,9 @@ public final class ShortColumnNameTranslator extends CassandraColumnNameTranslat
 
   /** {@inheritDoc} */
   @Override
-  public CassandraColumnName toCassandraColumnName(KijiColumnName kijiColumnName)
-      throws NoSuchColumnException {
+  public CassandraColumnName toCassandraColumnName(
+      final KijiColumnName kijiColumnName
+  ) throws NoSuchColumnException {
     final String familyName = kijiColumnName.getFamily();
     final String qualifierName = kijiColumnName.getQualifier();
 
@@ -108,25 +116,23 @@ public final class ShortColumnNameTranslator extends CassandraColumnNameTranslat
       throw new NoSuchColumnException(kijiColumnName.toString());
     }
 
-    final ColumnId localityGroupID = family.getLocalityGroup().getId();
     final ColumnId familyID = family.getId();
 
-    final String translatedLocalityGroup = localityGroupID.toString();
     final byte[] familyBytes = familyID.toByteArray();
 
     if (qualifierName == null) {
       // Unqualified column
-      return new CassandraColumnName(translatedLocalityGroup, familyBytes, null);
+      return new CassandraColumnName(familyBytes, null);
     } else if (family.isGroupType()) {
       // Group type family.
       final ColumnId qualifierID = family.getColumnIdNameMap().inverse().get(qualifierName);
       final byte[] qualifierBytes = qualifierID.toByteArray();
-      return new CassandraColumnName(translatedLocalityGroup, familyBytes, qualifierBytes);
+      return new CassandraColumnName(familyBytes, qualifierBytes);
     } else {
       // Map type family.
       assert family.isMapType();
       final byte[] qualifierBytes = Bytes.toBytes(qualifierName);
-      return new CassandraColumnName(translatedLocalityGroup, familyBytes, qualifierBytes);
+      return new CassandraColumnName(familyBytes, qualifierBytes);
     }
   }
 }

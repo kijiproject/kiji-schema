@@ -24,6 +24,7 @@ import org.kiji.annotations.ApiStability;
 import org.kiji.schema.KijiColumnName;
 import org.kiji.schema.NoSuchColumnException;
 import org.kiji.schema.cassandra.CassandraColumnName;
+import org.kiji.schema.cassandra.CassandraTableName;
 import org.kiji.schema.layout.impl.cassandra.ShortColumnNameTranslator;
 
 /**
@@ -38,11 +39,11 @@ import org.kiji.schema.layout.impl.cassandra.ShortColumnNameTranslator;
 @ApiStability.Experimental
 public abstract class CassandraColumnNameTranslator {
   /**
-   * Creates a new {@link org.kiji.schema.layout.CassandraColumnNameTranslator} instance.
-   * Supports the {@link ShortColumnNameTranslator} based on the table layout.
+   * Creates a new {@link CassandraColumnNameTranslator} instance. Supports the
+   * {@link ShortColumnNameTranslator} based on the table layout.
    *
    * @param tableLayout The layout of the table to translate column names for.
-   * @return {@link org.kiji.schema.layout.CassandraColumnNameTranslator} of the appropriate type.
+   * @return {@link CassandraColumnNameTranslator} of the appropriate type.
    */
   public static CassandraColumnNameTranslator from(KijiTableLayout tableLayout) {
     switch (tableLayout.getDesc().getColumnNameTranslator()) {
@@ -59,12 +60,15 @@ public abstract class CassandraColumnNameTranslator {
   /**
    * Translates a Cassandra column name to a Kiji column name.
    *
-   * @param cassandraColumnName the Cassandra column name.
+   * @param localityGroupTable The Cassandra table containing the column.
+   * @param cassandraColumnName The Cassandra column name.
    * @return The Kiji column name.
    * @throws NoSuchColumnException If the column name cannot be found.
    */
-  public abstract KijiColumnName toKijiColumnName(CassandraColumnName cassandraColumnName)
-      throws NoSuchColumnException;
+  public abstract KijiColumnName toKijiColumnName(
+      final CassandraTableName localityGroupTable,
+      final CassandraColumnName cassandraColumnName
+  ) throws NoSuchColumnException;
 
   /**
    * Translates a Kiji column name into a Cassandra column name.
@@ -73,6 +77,7 @@ public abstract class CassandraColumnNameTranslator {
    * @return The Cassandra column name.
    * @throws NoSuchColumnException If the column name cannot be found.
    */
-  public abstract CassandraColumnName toCassandraColumnName(KijiColumnName kijiColumnName)
-      throws NoSuchColumnException;
+  public abstract CassandraColumnName toCassandraColumnName(
+      final KijiColumnName kijiColumnName
+  ) throws NoSuchColumnException;
 }
