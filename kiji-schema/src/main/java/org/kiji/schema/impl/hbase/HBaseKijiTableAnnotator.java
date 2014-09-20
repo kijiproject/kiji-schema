@@ -82,8 +82,8 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
   private static boolean isKCAColumnMetaTableKey(
       final String metaTableKey
   ) {
-    final int firstColonIndex = metaTableKey.indexOf(":");
-    final int lastPeriodIndex = metaTableKey.lastIndexOf(".");
+    final int firstColonIndex = metaTableKey.indexOf(':');
+    final int lastPeriodIndex = metaTableKey.lastIndexOf('.');
     return metaTableKey.startsWith(METATABLE_KEY_PREFIX)
         // a colon between the prefix and the last period indicates a qualified column.
         && ((firstColonIndex > METATABLE_KEY_PREFIX.length() && lastPeriodIndex > firstColonIndex)
@@ -103,7 +103,7 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
   private static boolean isKCATableMetaTableKey(
       final String metaTableKey
   ) {
-    final int lastPeriodIndex = metaTableKey.lastIndexOf(".");
+    final int lastPeriodIndex = metaTableKey.lastIndexOf('.');
     return metaTableKey.startsWith(METATABLE_KEY_PREFIX)
         // The last period should be just after the prefix.
         && lastPeriodIndex == (METATABLE_KEY_PREFIX.length())
@@ -159,7 +159,7 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
       final String metaTableKey
   ) {
     // +1 to exclude the '.'.
-    return metaTableKey.substring(metaTableKey.lastIndexOf(".") + 1);
+    return metaTableKey.substring(metaTableKey.lastIndexOf('.') + 1);
   }
 
   /**
@@ -179,11 +179,11 @@ public final class HBaseKijiTableAnnotator implements KijiTableAnnotator {
     final HBaseColumnNameTranslator translator = table.getColumnNameTranslator();
     // Everything between the prefix and the annotation key.
     final String hbaseColumnString =
-        metaTableKey.substring(METATABLE_KEY_PREFIX.length(), metaTableKey.lastIndexOf("."));
+        metaTableKey.substring(METATABLE_KEY_PREFIX.length(), metaTableKey.lastIndexOf('.'));
     // Everything before the first ':'.
-    final String hbaseFamily = hbaseColumnString.substring(0, hbaseColumnString.indexOf(":"));
+    final String hbaseFamily = hbaseColumnString.substring(0, hbaseColumnString.indexOf(':'));
     // Everything after the first ':'. The +1 excludes the ':' itself.
-    final String hbaseQualifier = hbaseColumnString.substring(hbaseColumnString.indexOf(":") + 1);
+    final String hbaseQualifier = hbaseColumnString.substring(hbaseColumnString.indexOf(':') + 1);
 
     final HBaseColumnName hbaseColumn = new HBaseColumnName(hbaseFamily, hbaseQualifier);
     return translator.toKijiColumnName(hbaseColumn);

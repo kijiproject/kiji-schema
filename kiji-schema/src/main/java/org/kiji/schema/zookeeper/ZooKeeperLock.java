@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+import javax.annotation.concurrent.GuardedBy;
+
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import org.apache.curator.framework.CuratorFramework;
@@ -47,6 +49,8 @@ public final class ZooKeeperLock implements Lock {
   private final CuratorFramework mZKClient;
   private final File mLockDir;
   private final File mLockPathPrefix;
+
+  @GuardedBy("this")
   private File mCreatedPath = null;
 
   /**
@@ -87,23 +91,6 @@ public final class ZooKeeperLock implements Lock {
   /** {@inheritDoc} */
   @Override
   public boolean lock(double timeout) throws IOException {
-    final boolean isAcquired = lockInternal(timeout);
-    if (isAcquired) {
-      DebugResourceTracker.get().registerResource(
-          mCreatedPath,
-          String.format("Locked (acquired) ZooKeeper lock: %s.", this));
-    }
-    return isAcquired;
-  }
-
-  /**
-   * Acquires the lock.
-   *
-   * @param timeout Deadline, in seconds, to acquire the lock. 0 means no timeout.
-   * @return whether the lock is acquired (ie. false means timeout).
-   * @throws IOException on unrecoverable ZooKeeper error.
-   */
-  private boolean lockInternal(double timeout) throws IOException {
     /** Absolute time deadline, in seconds since Epoch */
     final double absoluteDeadline = (timeout > 0.0) ? Time.now() + timeout : 0.0;
 
@@ -120,9 +107,8 @@ public final class ZooKeeperLock implements Lock {
       } catch (Exception e) {
         ZooKeeperUtils.wrapAndRethrow(e);
       }
+      LOG.debug("{}: queuing for lock with node {}", this, mCreatedPath);
     }
-
-    LOG.debug("{}: queuing for lock with node {}", this, mCreatedPath);
 
     while (true) {
       try {
@@ -130,13 +116,16 @@ public final class ZooKeeperLock implements Lock {
         final List<String> children = mZKClient.getChildren().forPath(mLockDir.getPath());
         Collections.sort(children);
         LOG.debug("{}: lock queue: {}", this, children);
-        final int index = Collections.binarySearch(children, mCreatedPath.getName());
-        if (index == 0) {
-          // We own the lock:
-          LOG.debug("{}: lock acquired", this);
-          return true;
-        } else { // index >= 1
-          synchronized (this) {
+        synchronized (this) {
+          final int index = Collections.binarySearch(children, mCreatedPath.getName());
+          if (index == 0) {
+            // We own the lock:
+            LOG.debug("{}: lock acquired", this);
+            DebugResourceTracker.get().registerResource(
+                mCreatedPath,
+                String.format("Locked (acquired) ZooKeeper lock: %s.", this));
+            return true;
+          } else { // index >= 1
             final String preceding = new File(mLockDir, children.get(index - 1)).getPath();
             LOG.debug("{}: waiting for preceding node {} to disappear", this, preceding);
             if (mZKClient.checkExists().usingWatcher(mLockWatcher).forPath(preceding) != null) {
@@ -180,6 +169,7 @@ public final class ZooKeeperLock implements Lock {
    *
    * @throws IOException on unrecoverable ZooKeeper error.
    */
+  @GuardedBy("this")
   private void unlockInternal() throws IOException {
     File pathToDelete;
     Preconditions.checkState(null != mCreatedPath,

@@ -80,8 +80,8 @@ public final class CassandraKijiTableAnnotator implements KijiTableAnnotator {
   private static boolean isKCAColumnMetaTableKey(
       final String metaTableKey
   ) {
-    final int firstColonIndex = metaTableKey.indexOf(":");
-    final int lastPeriodIndex = metaTableKey.lastIndexOf(".");
+    final int firstColonIndex = metaTableKey.indexOf(':');
+    final int lastPeriodIndex = metaTableKey.lastIndexOf('.');
     return metaTableKey.startsWith(METATABLE_KEY_PREFIX)
         // a colon between the prefix and the last period indicates a qualified column.
         && ((firstColonIndex > METATABLE_KEY_PREFIX.length() && lastPeriodIndex > firstColonIndex)
@@ -101,7 +101,7 @@ public final class CassandraKijiTableAnnotator implements KijiTableAnnotator {
   private static boolean isKCATableMetaTableKey(
       final String metaTableKey
   ) {
-    final int lastPeriodIndex = metaTableKey.lastIndexOf(".");
+    final int lastPeriodIndex = metaTableKey.lastIndexOf('.');
     return metaTableKey.startsWith(METATABLE_KEY_PREFIX)
         // The last period should be just after the prefix.
         && lastPeriodIndex == (METATABLE_KEY_PREFIX.length())
@@ -160,7 +160,7 @@ public final class CassandraKijiTableAnnotator implements KijiTableAnnotator {
       final String metaTableKey
   ) {
     // +1 to exclude the '.'.
-    return metaTableKey.substring(metaTableKey.lastIndexOf(".") + 1);
+    return metaTableKey.substring(metaTableKey.lastIndexOf('.') + 1);
   }
 
   /**
@@ -179,7 +179,7 @@ public final class CassandraKijiTableAnnotator implements KijiTableAnnotator {
   ) throws NoSuchColumnException {
     // Everything between the prefix and the annotation key.
     final String columnString =
-        metaTableKey.substring(METATABLE_KEY_PREFIX.length(), metaTableKey.lastIndexOf("."));
+        metaTableKey.substring(METATABLE_KEY_PREFIX.length(), metaTableKey.lastIndexOf('.'));
     return new KijiColumnName(columnString);
   }
 
