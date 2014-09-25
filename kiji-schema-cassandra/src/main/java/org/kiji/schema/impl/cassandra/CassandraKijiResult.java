@@ -26,15 +26,10 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.concurrent.ExecutionException;
 
-import com.datastax.driver.core.ResultSet;
-import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.core.exceptions.DriverException;
 import com.datastax.driver.core.exceptions.DriverInternalError;
-import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
-import com.google.common.base.Predicates;
-import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
@@ -267,19 +262,9 @@ public final class CassandraKijiResult {
               dataRequest,
               columnRequest);
 
-      final Function<Row, KijiCell<T>> rowDecoder =
-          RowDecoders.getQualifiedColumnDecoderFunction(
-              column,
-              decoderProvider);
-
       return Futures.transform(
           admin.executeAsync(statement),
-          new Function<ResultSet, Iterator<KijiCell<T>>>() {
-            @Override
-            public Iterator<KijiCell<T>> apply(final ResultSet resultSet) {
-              return Iterators.transform(resultSet.iterator(), rowDecoder);
-            }
-          });
+          RowDecoders.<T>getQualifiedColumnDecoderFunction(column, decoderProvider));
     } else {
 
       if (columnRequest.getMaxVersions() != 0) {
@@ -303,26 +288,16 @@ public final class CassandraKijiResult {
               cassandraColumn,
               columnRequest);
 
-      final Function<Row, KijiCell<T>> rowDecoder =
-          RowDecoders.getColumnFamilyDecoderFunction(
+      return Futures.transform(
+          admin.executeAsync(statement),
+          RowDecoders.<T>getColumnFamilyDecoderFunction(
               table,
               column,
               columnRequest,
               dataRequest,
               layout,
               translator,
-              decoderProvider);
-
-      return Futures.transform(
-          admin.executeAsync(statement),
-          new Function<ResultSet, Iterator<KijiCell<T>>>() {
-            @Override
-            public Iterator<KijiCell<T>> apply(final ResultSet resultSet) {
-              return Iterators.filter(
-                  Iterators.transform(resultSet.iterator(), rowDecoder),
-                  Predicates.notNull());
-            }
-          });
+              decoderProvider));
     }
   }
   // CSON: ParameterNumber

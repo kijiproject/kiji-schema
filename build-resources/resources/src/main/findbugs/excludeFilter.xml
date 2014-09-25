@@ -149,8 +149,13 @@
       <Class name="org.kiji.schema.impl.cassandra.CassandraKijiResultScanner$3" />
       <Class name="org.kiji.schema.impl.cassandra.CassandraKijiResultScanner$5" />
       <Class name="org.kiji.schema.impl.cassandra.CassandraKijiResultScanner$6" />
+      <Class name="org.kiji.schema.impl.cassandra.RowDecoders$1" />
+      <Class name="org.kiji.schema.impl.cassandra.RowDecoders$2" />
       <Class name="org.kiji.schema.impl.cassandra.RowDecoders$GroupFamilyDecoder" />
       <Class name="org.kiji.schema.impl.cassandra.RowDecoders$MapFamilyDecoder" />
+      <Class name="org.kiji.schema.impl.cassandra.RowDecoders$MaxTimestampPredicate" />
+      <Class name="org.kiji.schema.impl.cassandra.RowDecoders$MaxVersionsPredicate" />
+      <Class name="org.kiji.schema.impl.cassandra.RowDecoders$MinTimestampPredicate" />
       <Class name="org.kiji.schema.impl.cassandra.RowDecoders$QualifiedColumnDecoder" />
       <Class name="org.kiji.schema.impl.cassandra.RowDecoders$RawRowKeyDecoder" />
       <Class name="org.kiji.schema.impl.cassandra.RowDecoders$RowKeyComponentsToEntityId" />

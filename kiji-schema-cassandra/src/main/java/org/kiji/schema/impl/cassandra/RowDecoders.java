@@ -22,19 +22,25 @@ package org.kiji.schema.impl.cassandra;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
 
+import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
+import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
+import com.google.common.collect.Iterators;
 
 import org.kiji.commons.ByteUtils;
 import org.kiji.schema.DecodedCell;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.InternalKijiError;
+import org.kiji.schema.KConstants;
 import org.kiji.schema.KijiCell;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiColumnName;
@@ -56,20 +62,21 @@ import org.kiji.schema.layout.impl.CellDecoderProvider;
  * Provides decoding functions for Kiji columns.
  */
 public final class RowDecoders {
+
   /**
-   * Get a new decoder function for a Cassandra {@link Row}.
+   * Create a new column family result set decoder function.
    *
-   * @param tableName The Cassandra table name the column family belongs to.
-   * @param column The Kiji column of the Row.
-   * @param columnRequest The column request defining the query.
-   * @param dataRequest The data request defining the query.
-   * @param layout The table layout of the Kiji table.
+   * @param tableName The Cassandra table that the results are from.
+   * @param column The Kiji column name of the family.
+   * @param columnRequest The column request defining the request for the family.
+   * @param dataRequest The data request defining the request.
+   * @param layout The layout of the Kiji table.
    * @param translator A column name translator for the table.
    * @param decoderProvider A cell decoder provider for the table.
-   * @param <T> The value type in the column.
-   * @return A decoded cell.
+   * @param <T> Type of cell values.
+   * @return A function to convert a {@link ResultSet} containing a column family to cells.
    */
-  public static <T> Function<Row, KijiCell<T>> getColumnFamilyDecoderFunction(
+  public static <T> Function<ResultSet, Iterator<KijiCell<T>>> getColumnFamilyDecoderFunction(
       final CassandraTableName tableName,
       final KijiColumnName column,
       final Column columnRequest,
@@ -78,45 +85,79 @@ public final class RowDecoders {
       final CassandraColumnNameTranslator translator,
       final CellDecoderProvider decoderProvider
   ) {
-    try {
-      if (layout.getFamilyMap().get(column.getFamily()).isMapType()) {
-        // Map-type family
-        return new MapFamilyDecoder<T>(
-            tableName,
-            translator.toCassandraColumnName(column),
-            columnRequest,
-            dataRequest,
-            translator,
-            decoderProvider.<T>getDecoder(column));
-      } else {
-        // Group-type family
-        return new GroupFamilyDecoder<T>(
-            tableName,
-            columnRequest,
-            dataRequest,
-            translator.toCassandraColumnName(column),
-            translator,
-            decoderProvider);
+    return new Function<ResultSet, Iterator<KijiCell<T>>>() {
+      /** {@inheritDoc} */
+      @Override
+      public Iterator<KijiCell<T>> apply(final ResultSet resultSet) {
+        final int mMaxVersions = columnRequest.getMaxVersions();
+        final long mMinTimestamp = dataRequest.getMinTimestamp();
+        final long mMaxTimestamp = dataRequest.getMaxTimestamp();
+
+        Iterator<Row> rows = resultSet.iterator();
+
+        if (mMinTimestamp != 0) {
+          rows = Iterators.filter(rows, new MinTimestampPredicate(mMinTimestamp));
+        }
+        if (mMaxTimestamp != KConstants.END_OF_TIME) {
+          rows = Iterators.filter(rows, new MaxTimestampPredicate(mMaxTimestamp));
+        }
+        rows = Iterators.filter(rows, new MaxVersionsPredicate(mMaxVersions));
+
+        try {
+          if (layout.getFamilyMap().get(column.getFamily()).isMapType()) {
+            // Map-type family
+            final Function<Row, KijiCell<T>> decoder =
+                new MapFamilyDecoder<>(
+                    tableName,
+                    translator.toCassandraColumnName(column),
+                    translator,
+                    decoderProvider.<T>getDecoder(column));
+
+            return Iterators.transform(rows, decoder);
+          } else {
+            // Group-type family
+            final Function<Row, KijiCell<T>> decoder =
+                new GroupFamilyDecoder<>(
+                    tableName,
+                    translator.toCassandraColumnName(column),
+                    translator,
+                    decoderProvider);
+
+            // Group family decoder may return nulls, so filter them out
+            return Iterators.filter(Iterators.transform(rows, decoder), Predicates.notNull());
+          }
+        } catch (NoSuchColumnException e) {
+          throw new IllegalStateException(
+              String.format("Column %s does not exist in Kiji table %s.",
+                  column, layout.getName()));
+        }
       }
-    } catch (NoSuchColumnException e) {
-      throw new IllegalStateException(String.format("Column %s does not exist in Kiji table %s.",
-          column, layout.getName()));
-    }
+    };
   }
 
   /**
-   * Get a new decoder function for a Cassandra {@link Row}.
+   * Create a new qualified column result set decoder function.
    *
    * @param column The Kiji column of the Row.
    * @param decoderProvider A cell decoder provider for the table.
    * @param <T> The value type in the column.
    * @return A decoded cell.
    */
-  public static <T> Function<Row, KijiCell<T>> getQualifiedColumnDecoderFunction(
+  public static <T> Function<ResultSet, Iterator<KijiCell<T>>> getQualifiedColumnDecoderFunction(
       final KijiColumnName column,
       final CellDecoderProvider decoderProvider
   ) {
-    return new QualifiedColumnDecoder<T>(column, decoderProvider.<T>getDecoder(column));
+    // No min/max timestamp or max versions filter is needed, because the CQL statement for
+    // qualified gets only selects the required cells.
+    return new Function<ResultSet, Iterator<KijiCell<T>>>() {
+      /** {@inheritDoc} */
+      @Override
+      public Iterator<KijiCell<T>> apply(final ResultSet resultSet) {
+        final Function<Row, KijiCell<T>> decoder =
+            new QualifiedColumnDecoder<>(column, decoderProvider.<T>getDecoder(column));
+        return Iterators.transform(resultSet.iterator(), decoder);
+      }
+    };
   }
 
   /**
@@ -152,9 +193,7 @@ public final class RowDecoders {
   }
 
   /**
-   * A function which will decode {@link Row}s from a map-type column. If data request specifies
-   * a maximum number of versions for the columns in the family, then this function will filter
-   * extra versions and return null.
+   * A function which will decode {@link Row}s from a map-type column.
    *
    * <p>
    *   This function may apply optimizations that make it only suitable to decode {@code Row}s
@@ -168,28 +207,20 @@ public final class RowDecoders {
     private final CassandraColumnName mFamilyColumn;
     private final KijiCellDecoder<T> mCellDecoder;
     private final CassandraColumnNameTranslator mColumnTranslator;
-    private final int mMaxVersions;
-    private final long mMinTimestamp;
-    private final long mMaxTimestamp;
 
     private KijiColumnName mLastColumn = null;
     private ByteBuffer mLastQualifier = null;
-    private int mLastQualifierVersions = 0;
 
     /**
      * Create a map-family column decoder.
      * @param tableName The Cassandra table name.
      * @param familyColumn The Kiji column of the Row.
-     * @param columnRequest The column request defining the query.
-     * @param dataRequest The data request defining the query.
      * @param columnTranslator The column translator for the table.
      * @param decoder for the table.
      */
     public MapFamilyDecoder(
         final CassandraTableName tableName,
         final CassandraColumnName familyColumn,
-        final Column columnRequest,
-        final KijiDataRequest dataRequest,
         final CassandraColumnNameTranslator columnTranslator,
         final KijiCellDecoder<T> decoder
     ) {
@@ -197,9 +228,6 @@ public final class RowDecoders {
       mTableName = tableName;
       mColumnTranslator = columnTranslator;
       mCellDecoder = decoder;
-      mMaxVersions = columnRequest.getMaxVersions();
-      mMinTimestamp = dataRequest.getMinTimestamp();
-      mMaxTimestamp = dataRequest.getMaxTimestamp();
     }
 
     /**
@@ -219,7 +247,6 @@ public final class RowDecoders {
       final ByteBuffer qualifier = row.getBytes(CQLUtils.QUALIFIER_COL);
       if (!qualifier.equals(mLastQualifier)) {
         mLastQualifier = qualifier;
-        mLastQualifierVersions = 0;
         try {
           mLastColumn =
               mColumnTranslator.toKijiColumnName(
@@ -235,28 +262,20 @@ public final class RowDecoders {
 
       final long version = row.getLong(CQLUtils.VERSION_COL);
 
-      if (mMaxVersions == 0 || mLastQualifierVersions < mMaxVersions
-          && version < mMaxTimestamp && version >= mMinTimestamp) {
-        try {
-          mLastQualifierVersions += 1;
-          final DecodedCell<T> decodedCell =
-              mCellDecoder.decodeCell(
-                  ByteUtils.toBytes(row.getBytes(CQLUtils.VALUE_COL)));
-          return KijiCell.create(mLastColumn, version, decodedCell);
-        } catch (IOException e) {
-          throw new KijiIOException(e);
-        }
-      } else {
-        return null;
+      try {
+        final DecodedCell<T> decodedCell =
+            mCellDecoder.decodeCell(
+                ByteUtils.toBytes(row.getBytes(CQLUtils.VALUE_COL)));
+        return KijiCell.create(mLastColumn, version, decodedCell);
+      } catch (IOException e) {
+        throw new KijiIOException(e);
       }
     }
   }
 
   /**
-   * A function which will decode {@link Row}s from a group-type family. If data request specifies
-   * a maximum number of versions for the columns in the family, then this function will filter
-   * extra versions and return null. If a column is read which has been dropped, then this function
-   * will return null.
+   * A function which will decode {@link Row}s from a group-type family. If a column is read which
+   * has been dropped, then this function will return null.
    *
    * <p>
    *   This function may use optimizations that make it only suitable to decode {@code Row}s
@@ -270,29 +289,22 @@ public final class RowDecoders {
     private final CellDecoderProvider mDecoderProvider;
     private final CassandraColumnNameTranslator mColumnTranslator;
     private final CassandraColumnName mFamilyColumn;
-    private final int mMaxVersions;
-    private final long mMaxTimestamp;
-    private final long mMinTimestamp;
 
     private KijiCellDecoder<T> mLastDecoder;
     private KijiColumnName mLastColumn;
     private ByteBuffer mLastQualifier;
-    private int mLastQualifierVersions = 0;
 
     /**
      * Create a qualified column decoder for the provided column.
      *
      * @param tableName The Cassandra table name.
-     * @param columnRequest The column request defining the query.
-     * @param dataRequest The data request defining the query.
      * @param familyColumn The Kiji column of the Row.
      * @param columnTranslator The column translator for the table.
      * @param decoderProvider A cell decoder provider for the table.
      */
     public GroupFamilyDecoder(
         final CassandraTableName tableName,
-        final Column columnRequest,
-        final KijiDataRequest dataRequest, final CassandraColumnName familyColumn,
+        final CassandraColumnName familyColumn,
         final CassandraColumnNameTranslator columnTranslator,
         final CellDecoderProvider decoderProvider
     ) {
@@ -300,9 +312,6 @@ public final class RowDecoders {
       mDecoderProvider = decoderProvider;
       mColumnTranslator = columnTranslator;
       mFamilyColumn = familyColumn;
-      mMaxVersions = columnRequest.getMaxVersions();
-      mMaxTimestamp = dataRequest.getMaxTimestamp();
-      mMinTimestamp = dataRequest.getMinTimestamp();
     }
 
     /**
@@ -328,7 +337,6 @@ public final class RowDecoders {
       if (!qualifier.equals(mLastQualifier)) {
         try {
           mLastQualifier = qualifier.duplicate();
-          mLastQualifierVersions = 0;
           mLastColumn =
               mColumnTranslator.toKijiColumnName(
                   mTableName,
@@ -337,8 +345,7 @@ public final class RowDecoders {
                       ByteUtils.toBytes(qualifier)));
           mLastDecoder = mDecoderProvider.getDecoder(mLastColumn);
         } catch (NoSuchColumnException e) {
-          // This can happen when a column is dropped from the family layout, and later read by
-          // this get
+          // This can happen when a column is dropped from the group-family layout
           mLastDecoder = null;
           mLastColumn = null;
           mLastQualifier = null;
@@ -348,19 +355,13 @@ public final class RowDecoders {
 
       final long version = row.getLong(CQLUtils.VERSION_COL);
 
-      if ((mMaxVersions == 0 || mLastQualifierVersions < mMaxVersions)
-          && version < mMaxTimestamp && version >= mMinTimestamp) {
-        try {
-          mLastQualifierVersions += 1;
-          final DecodedCell<T> decodedCell =
-              mLastDecoder.decodeCell(
-                  ByteUtils.toBytes(row.getBytes(CQLUtils.VALUE_COL)));
-          return KijiCell.create(mLastColumn, version, decodedCell);
-        } catch (IOException e) {
-          throw new KijiIOException(e);
-        }
-      } else {
-        return null;
+      try {
+        final DecodedCell<T> decodedCell =
+            mLastDecoder.decodeCell(
+                ByteUtils.toBytes(row.getBytes(CQLUtils.VALUE_COL)));
+        return KijiCell.create(mLastColumn, version, decodedCell);
+      } catch (IOException e) {
+        throw new KijiIOException(e);
       }
     }
   }
@@ -599,6 +600,7 @@ public final class RowDecoders {
 
     /**
      * Create a new function for converting a {@link TokenRowKeyComponents} to an {@link EntityId}.
+     * The table must not be closed while the function could still evaluate.
      *
      * @param table The table the row key belongs to.
      */
@@ -610,6 +612,138 @@ public final class RowDecoders {
     @Override
     public EntityId apply(final TokenRowKeyComponents input) {
       return input.getComponents().getEntityIdForTable(mTable);
+    }
+  }
+
+  /**
+   * A predicate to filter excess Kiji Cells of a column from a Cassandra result set.
+   */
+  @NotThreadSafe
+  private static final class MaxVersionsPredicate implements Predicate<Row> {
+    private final int mMaxVersions;
+
+    private int mCurrentCount = 0;
+    private ByteBuffer mCurrentFamily = null;
+    private ByteBuffer mCurrentQualifier = null;
+
+    /**
+     * Create a new column limit predicate.
+     *
+     * @param maxVersions The number of cells from each column to limit to.
+     */
+    private MaxVersionsPredicate(final int maxVersions) {
+      mMaxVersions = maxVersions;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean apply(final Row row) {
+      final ByteBuffer family = row.getBytes(CQLUtils.FAMILY_COL);
+      final ByteBuffer qualifier = row.getBytes(CQLUtils.QUALIFIER_COL);
+
+      if (!family.equals(mCurrentFamily)) {
+        mCurrentFamily = family;
+        mCurrentQualifier = qualifier;
+        mCurrentCount = 0;
+      } else if (!qualifier.equals(mCurrentQualifier)) {
+        mCurrentQualifier = qualifier;
+        mCurrentCount = 0;
+      }
+
+      mCurrentCount += 1;
+      return mCurrentCount <= mMaxVersions;
+    }
+  }
+
+  /**
+   * A predicate to filter Kiji cells below a minimum timestamp (inclusive).
+   */
+  @Immutable
+  private static final class MinTimestampPredicate implements Predicate<Row> {
+
+    private final long mTimestamp;
+
+    /**
+     * Create a new minimum timestamp predicate.
+     *
+     * @param timestamp The minimum timestamp.
+     */
+    private MinTimestampPredicate(final long timestamp) {
+      mTimestamp = timestamp;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean apply(final Row row) {
+      return row.getLong(CQLUtils.VERSION_COL) >= mTimestamp;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int hashCode() {
+      return Objects.hashCode(mTimestamp);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean equals(final Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null || getClass() != obj.getClass()) {
+        return false;
+      }
+      if (!super.equals(obj)) {
+        return false;
+      }
+      final MinTimestampPredicate other = (MinTimestampPredicate) obj;
+      return Objects.equal(this.mTimestamp, other.mTimestamp);
+    }
+  }
+
+  /**
+   * A predicate to filter Kiji cells above a maximum timestamp (exclusive).
+   */
+  @Immutable
+  private static final class MaxTimestampPredicate implements Predicate<Row> {
+
+    private final long mTimestamp;
+
+    /**
+     * Create a new maximum timestamp predicate.
+     *
+     * @param timestamp The maximum timestamp.
+     */
+    private MaxTimestampPredicate(final long timestamp) {
+      mTimestamp = timestamp;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean apply(final Row input) {
+      return input.getLong(CQLUtils.VERSION_COL) < mTimestamp;
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public int hashCode() {
+      return Objects.hashCode(mTimestamp);
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public boolean equals(final Object obj) {
+      if (this == obj) {
+        return true;
+      }
+      if (obj == null || getClass() != obj.getClass()) {
+        return false;
+      }
+      if (!super.equals(obj)) {
+        return false;
+      }
+      final MaxTimestampPredicate other = (MaxTimestampPredicate) obj;
+      return Objects.equal(this.mTimestamp, other.mTimestamp);
     }
   }
 
