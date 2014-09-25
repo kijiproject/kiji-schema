@@ -31,6 +31,7 @@ import com.datastax.driver.core.Row;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
 
+import org.kiji.commons.ByteUtils;
 import org.kiji.schema.DecodedCell;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.InternalKijiError;
@@ -225,7 +226,7 @@ public final class RowDecoders {
                   mTableName,
                   new CassandraColumnName(
                       mFamilyColumn.getFamily(),
-                      CassandraByteUtil.byteBuffertoBytes(row.getBytes(CQLUtils.QUALIFIER_COL))));
+                      ByteUtils.toBytes(row.getBytes(CQLUtils.QUALIFIER_COL))));
         } catch (NoSuchColumnException e) {
           // There should be no columns that we can't decode, so this signals a logic error
           throw new InternalKijiError(e);
@@ -240,7 +241,7 @@ public final class RowDecoders {
           mLastQualifierVersions += 1;
           final DecodedCell<T> decodedCell =
               mCellDecoder.decodeCell(
-                  CassandraByteUtil.byteBuffertoBytes(row.getBytes(CQLUtils.VALUE_COL)));
+                  ByteUtils.toBytes(row.getBytes(CQLUtils.VALUE_COL)));
           return KijiCell.create(mLastColumn, version, decodedCell);
         } catch (IOException e) {
           throw new KijiIOException(e);
@@ -333,7 +334,7 @@ public final class RowDecoders {
                   mTableName,
                   new CassandraColumnName(
                       mFamilyColumn.getFamily(),
-                      CassandraByteUtil.byteBuffertoBytes(qualifier)));
+                      ByteUtils.toBytes(qualifier)));
           mLastDecoder = mDecoderProvider.getDecoder(mLastColumn);
         } catch (NoSuchColumnException e) {
           // This can happen when a column is dropped from the family layout, and later read by
@@ -353,7 +354,7 @@ public final class RowDecoders {
           mLastQualifierVersions += 1;
           final DecodedCell<T> decodedCell =
               mLastDecoder.decodeCell(
-                  CassandraByteUtil.byteBuffertoBytes(row.getBytes(CQLUtils.VALUE_COL)));
+                  ByteUtils.toBytes(row.getBytes(CQLUtils.VALUE_COL)));
           return KijiCell.create(mLastColumn, version, decodedCell);
         } catch (IOException e) {
           throw new KijiIOException(e);
@@ -402,9 +403,7 @@ public final class RowDecoders {
     public KijiCell<T> apply(final Row row) {
       try {
         final DecodedCell<T> decodedCell =
-            mCellDecoder.decodeCell(
-                CassandraByteUtil.byteBuffertoBytes(
-                    row.getBytes(CQLUtils.VALUE_COL)));
+            mCellDecoder.decodeCell(ByteUtils.toBytes(row.getBytes(CQLUtils.VALUE_COL)));
         return KijiCell.create(mColumnName, row.getLong(CQLUtils.VERSION_COL), decodedCell);
       } catch (IOException e) {
         throw new KijiIOException(e);
@@ -528,9 +527,7 @@ public final class RowDecoders {
     public TokenRowKeyComponents apply(final Row row) {
       final int token = row.getInt(mTokenColumn);
       final Object[] components =
-          new Object[] {
-              CassandraByteUtil.byteBuffertoBytes(row.getBytes(CQLUtils.RAW_KEY_COL)),
-          };
+          new Object[] { ByteUtils.toBytes(row.getBytes(CQLUtils.RAW_KEY_COL)) };
       return new TokenRowKeyComponents(token, KijiRowKeyComponents.fromComponents(components));
     }
   }

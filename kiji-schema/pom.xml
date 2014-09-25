@@ -216,6 +216,10 @@
       <artifactId>kiji-common-flags</artifactId>
     </dependency>
     <dependency>
+      <groupId>org.kiji.commons</groupId>
+      <artifactId>kiji-commons-java</artifactId>
+    </dependency>
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
     </dependency>

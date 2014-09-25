@@ -42,6 +42,7 @@
     <kiji-annotations.version>1.1.2-SNAPSHOT</kiji-annotations.version>
     <kiji-delegation.version>1.1.2-SNAPSHOT</kiji-delegation.version>
     <kiji-common-flags.version>1.1.1-SNAPSHOT</kiji-common-flags.version>
+    <kiji-commons.version>0.1.0-SNAPSHOT</kiji-commons.version>
 
     <bento-maven-plugin.version>0.1.0-SNAPSHOT</bento-maven-plugin.version>
   </properties>
@@ -135,6 +136,12 @@
         <groupId>org.kiji.common</groupId>
         <artifactId>kiji-common-flags</artifactId>
         <version>${kiji-common-flags.version}</version>
+        <scope>compile</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.kiji.commons</groupId>
+        <artifactId>kiji-commons-java</artifactId>
+        <version>${kiji-commons.version}</version>
         <scope>compile</scope>
       </dependency>
       <dependency>

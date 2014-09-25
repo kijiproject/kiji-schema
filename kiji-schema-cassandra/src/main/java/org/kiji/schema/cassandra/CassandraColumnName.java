@@ -29,7 +29,7 @@ import org.apache.hadoop.hbase.util.Bytes;
 
 import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
-import org.kiji.schema.impl.cassandra.ByteUtils;
+import org.kiji.commons.ByteUtils;
 
 /**
  * A Cassandra column name.

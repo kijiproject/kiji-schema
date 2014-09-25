@@ -24,8 +24,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import javax.annotation.concurrent.NotThreadSafe;
-
 import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
@@ -33,13 +31,12 @@ import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
-import com.google.common.collect.PeekingIterator;
 import com.google.common.collect.Sets;
-import com.google.common.collect.UnmodifiableIterator;
 import org.mortbay.io.RuntimeIOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.kiji.commons.IteratorUtils;
 import org.kiji.schema.EntityId;
 import org.kiji.schema.KijiDataRequest;
 import org.kiji.schema.KijiDataRequest.Column;
@@ -219,7 +216,7 @@ public class CassandraKijiResultScanner<T> implements KijiResultScanner<T> {
                       final Iterator<TokenRowKeyComponents> components
                   ) {
                     if (deduplicateComponents) {
-                      return deduplicatingIterator(components);
+                      return IteratorUtils.deduplicatingIterator(components);
                     } else {
                       return components;
                     }
@@ -229,7 +226,7 @@ public class CassandraKijiResultScanner<T> implements KijiResultScanner<T> {
 
     return
         Iterators.transform(
-            deduplicatingIterator(
+            IteratorUtils.deduplicatingIterator(
                 Iterators.mergeSorted(
                     tokenRowKeyStreams,
                     TokenRowKeyComponentsComparator.getInstance())),
@@ -253,56 +250,5 @@ public class CassandraKijiResultScanner<T> implements KijiResultScanner<T> {
   @Override
   public void remove() {
     throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Wraps an existing iterator and removes consecutive duplicate elements.
-   *
-   * TODO: replace this with the version from kiji-commons
-   *
-   * @param iterator The iterator to deduplicate.
-   * @param <T> The value type of the iterator.
-   * @return An iterator which lazily deduplicates elements.
-   */
-  public static <T> Iterator<T> deduplicatingIterator(final Iterator<T> iterator) {
-    return new DeduplicatingIterator<T>(iterator);
-  }
-
-  /**
-   * A deduplicating iterator which removes consecutive duplicate elements from another iterator.
-   *
-   * TODO: replace this with the version from kiji-commons
-   *
-   * @param <T> The value type of elements in the iterator.
-   */
-  @NotThreadSafe
-  private static final class DeduplicatingIterator<T> extends UnmodifiableIterator<T> {
-    private final PeekingIterator<T> mIterator;
-
-    /**
-     * Create an iterator which will remove consecutive duplicate elements in an iterator.
-     *
-     * @param iterator The iterator to deduplicate.
-     */
-    private DeduplicatingIterator(final Iterator<T> iterator) {
-      mIterator = Iterators.peekingIterator(iterator);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public boolean hasNext() {
-      return mIterator.hasNext();
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public T next() {
-      final T next = mIterator.next();
-
-      while (mIterator.hasNext() && next.equals(mIterator.peek())) {
-        mIterator.next();
-      }
-      return next;
-    }
   }
 }

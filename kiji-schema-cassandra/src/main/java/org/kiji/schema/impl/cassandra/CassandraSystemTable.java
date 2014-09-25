@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.commons.ByteUtils;
 import org.kiji.schema.Kiji;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiSystemTable;
@@ -198,7 +199,7 @@ public final class CassandraSystemTable implements KijiSystemTable {
         rows.size() <= 1, "Expected to get 0 or 1 rows from system table, but got %s.", rows);
     if (rows.size() == 1) {
       Row row = rows.get(0);
-      return CassandraByteUtil.byteBuffertoBytes(row.getBytes(VALUE_COLUMN));
+      return ByteUtils.toBytes(row.getBytes(VALUE_COLUMN));
     }
     return null;
   }
@@ -210,7 +211,7 @@ public final class CassandraSystemTable implements KijiSystemTable {
     final State state = mState.get();
     Preconditions.checkState(state == State.OPEN,
         "Cannot put value into SystemTable instance in state %s.", state);
-    ByteBuffer valAsByteBuffer = CassandraByteUtil.bytesToByteBuffer(value);
+    ByteBuffer valAsByteBuffer = ByteBuffer.wrap(value);
     // TODO: Check for success?
     mAdmin.execute(mPreparedStatementPutValue.bind(key, valAsByteBuffer));
   }
@@ -417,7 +418,7 @@ public final class CassandraSystemTable implements KijiSystemTable {
     public SimpleEntry<String, byte[]> next() {
       Row next = mRowIterator.next();
       String key = next.getString(KEY_COLUMN);
-      byte[] value = CassandraByteUtil.byteBuffertoBytes(next.getBytes(VALUE_COLUMN));
+      byte[] value = ByteUtils.toBytes(next.getBytes(VALUE_COLUMN));
       return new SimpleEntry<String, byte[]>(key, value);
     }
 

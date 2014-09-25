@@ -36,13 +36,12 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HConstants;
-import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.commons.ByteUtils;
 import org.kiji.schema.KijiCellDecoder;
 import org.kiji.schema.KijiCellEncoder;
 import org.kiji.schema.KijiSchemaTable;
@@ -58,7 +57,6 @@ import org.kiji.schema.avro.TableLayoutsBackup;
 import org.kiji.schema.cassandra.CassandraTableName;
 import org.kiji.schema.impl.AvroCellEncoder;
 import org.kiji.schema.impl.cassandra.CassandraAdmin;
-import org.kiji.schema.impl.cassandra.CassandraByteUtil;
 import org.kiji.schema.layout.CellSpec;
 import org.kiji.schema.layout.InvalidLayoutException;
 import org.kiji.schema.layout.KijiTableLayout;
@@ -66,7 +64,6 @@ import org.kiji.schema.layout.KijiTableLayoutDatabase;
 import org.kiji.schema.layout.TableLayoutBuilder;
 import org.kiji.schema.layout.TableLayoutBuilder.LayoutOptions;
 import org.kiji.schema.layout.TableLayoutBuilder.LayoutOptions.SchemaFormat;
-import org.kiji.schema.platform.SchemaPlatformBridge;
 
 /**
  * <p>Manages Kiji table layouts using a Cassandra table as a backing store.</p>
@@ -376,7 +373,7 @@ public final class CassandraTableLayoutDatabase implements KijiTableLayoutDataba
     final List<KijiTableLayout> layouts = Lists.newArrayList();
     for (Row row: rows) {
       ByteBuffer blob = row.getBytes(QUALIFIER_LAYOUT);
-      byte[] bytes = CassandraByteUtil.byteBuffertoBytes(blob);
+      byte[] bytes = ByteUtils.toBytes(blob);
       layouts.add(KijiTableLayout.newLayout(decodeTableLayoutDesc(bytes)));
     }
     return layouts;
@@ -396,7 +393,7 @@ public final class CassandraTableLayoutDatabase implements KijiTableLayoutDataba
     final NavigableMap<Long, KijiTableLayout> timedValues = Maps.newTreeMap();
     for (Row row: rows) {
       ByteBuffer blob = row.getBytes(QUALIFIER_LAYOUT);
-      byte[] bytes = CassandraByteUtil.byteBuffertoBytes(blob);
+      byte[] bytes = ByteUtils.toBytes(blob);
       KijiTableLayout layout = KijiTableLayout.newLayout(decodeTableLayoutDesc(bytes));
 
       Long timestamp = row.getDate(QUALIFIER_TIME).getTime();
@@ -457,23 +454,6 @@ public final class CassandraTableLayoutDatabase implements KijiTableLayoutDataba
     return tables.contains(tableName);
   }
 
-  /**
-   * Gets the description of an HColumn suitable for storing the table layout database.
-   *
-   * @param family The family within the HTable used to store layout data.
-   * @return The HColumn descriptor.
-   */
-  public static HColumnDescriptor getHColumnDescriptor(String family) {
-    return SchemaPlatformBridge.get().createHColumnDescriptorBuilder(Bytes.toBytes(family))
-        .setMaxVersions(HConstants.ALL_VERSIONS)
-        .setCompressionType("none")
-        .setInMemory(false)
-        .setBlockCacheEnabled(true)
-        .setTimeToLive(HConstants.FOREVER)
-        .setBloomType("NONE")
-        .build();
-  }
-
   /** {@inheritDoc} */
   @Override
   public TableLayoutsBackup layoutsToBackup(String table) throws IOException {
@@ -490,13 +470,11 @@ public final class CassandraTableLayoutDatabase implements KijiTableLayoutDataba
     for (Row row: rows) {
       final long timestamp = row.getDate(QUALIFIER_TIME).getTime();
       final TableLayoutDesc layout =
-          decodeTableLayoutDesc(
-              CassandraByteUtil.byteBuffertoBytes(row.getBytes(QUALIFIER_LAYOUT)));
+          decodeTableLayoutDesc(ByteUtils.toBytes(row.getBytes(QUALIFIER_LAYOUT)));
 
       // TODO: May need some check here that the update is not null
       final TableLayoutDesc update =
-          decodeTableLayoutDesc(
-              CassandraByteUtil.byteBuffertoBytes(row.getBytes(QUALIFIER_UPDATE)));
+          decodeTableLayoutDesc(ByteUtils.toBytes(row.getBytes(QUALIFIER_UPDATE)));
 
       history.add(TableLayoutBackupEntry.newBuilder()
           .setLayout(layout)
@@ -537,11 +515,11 @@ public final class CassandraTableLayoutDatabase implements KijiTableLayoutDataba
     // TODO: Unclear what happens to layout IDs here...
     for (TableLayoutBackupEntry lbe : layoutBackup.getLayouts()) {
       final byte[] layoutBytes = encodeTableLayoutDesc(lbe.getLayout());
-      final ByteBuffer layoutByteBuffer = CassandraByteUtil.bytesToByteBuffer(layoutBytes);
+      final ByteBuffer layoutByteBuffer = ByteBuffer.wrap(layoutBytes);
 
       if (lbe.getUpdate() != null) {
         final byte[] updateBytes = encodeTableLayoutDesc(lbe.getUpdate());
-        final ByteBuffer updateByteBuffer = CassandraByteUtil.bytesToByteBuffer(updateBytes);
+        final ByteBuffer updateByteBuffer = ByteBuffer.wrap(updateBytes);
         final long timestamp = lbe.getTimestamp();
 
         mAdmin.execute(preparedStatementInsertAll.bind(

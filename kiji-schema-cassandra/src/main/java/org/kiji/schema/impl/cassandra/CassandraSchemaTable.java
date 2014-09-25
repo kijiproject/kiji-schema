@@ -54,6 +54,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.commons.ByteUtils;
 import org.kiji.schema.KijiNotInstalledException;
 import org.kiji.schema.KijiSchemaTable;
 import org.kiji.schema.KijiURI;
@@ -445,7 +446,7 @@ public final class CassandraSchemaTable implements KijiSchemaTable {
         mPreparedStatementWriteIdTable.bind(
             avroEntry.getId(),
             new Date(timestamp),
-            CassandraByteUtil.bytesToByteBuffer(entryBytes))
+            ByteBuffer.wrap(entryBytes))
     );
     Preconditions.checkNotNull(resultSet);
 
@@ -455,9 +456,9 @@ public final class CassandraSchemaTable implements KijiSchemaTable {
     final ResultSet hashResultSet =
         mAdmin.execute(
             mPreparedStatementWriteHashTable.bind(
-                CassandraByteUtil.bytesToByteBuffer(avroEntry.getHash().bytes()),
+                ByteBuffer.wrap(avroEntry.getHash().bytes()),
                 new Date(timestamp),
-                CassandraByteUtil.bytesToByteBuffer(entryBytes))
+                ByteBuffer.wrap(entryBytes))
         );
     Preconditions.checkNotNull(hashResultSet);
 
@@ -492,7 +493,7 @@ public final class CassandraSchemaTable implements KijiSchemaTable {
 
     assert(rows.size() == 1);
     final byte[] schemaAsBytes =
-        CassandraByteUtil.byteBuffertoBytes(rows.get(0).getBytes(SCHEMA_COLUMN_VALUE));
+        ByteUtils.toBytes(rows.get(0).getBytes(SCHEMA_COLUMN_VALUE));
     return decodeSchemaEntry(schemaAsBytes);
   }
 
@@ -504,7 +505,7 @@ public final class CassandraSchemaTable implements KijiSchemaTable {
    * @throws java.io.IOException on I/O error.
    */
   private SchemaTableEntry loadFromHashTable(BytesKey schemaHash) throws IOException {
-    final ByteBuffer tableKey = CassandraByteUtil.bytesToByteBuffer(schemaHash.getBytes());
+    final ByteBuffer tableKey = ByteBuffer.wrap(schemaHash.getBytes());
     final ResultSet resultSet = mAdmin.execute(mPreparedStatementReadHashTable.bind(tableKey));
 
     final List<Row> rows = resultSet.all();
@@ -515,7 +516,7 @@ public final class CassandraSchemaTable implements KijiSchemaTable {
 
     assert(rows.size() == 1);
     final byte[] schemaAsBytes =
-        CassandraByteUtil.byteBuffertoBytes(rows.get(0).getBytes(SCHEMA_COLUMN_VALUE));
+        ByteUtils.toBytes(rows.get(0).getBytes(SCHEMA_COLUMN_VALUE));
     return decodeSchemaEntry(schemaAsBytes);
   }
 
@@ -1015,11 +1016,9 @@ public final class CassandraSchemaTable implements KijiSchemaTable {
       */
 
       // Get the row key, timestamp, and schema for this row
-      final BytesKey rowKey =
-          new BytesKey(CassandraByteUtil.byteBuffertoBytes(row.getBytes(SCHEMA_COLUMN_HASH_KEY)));
+      final BytesKey rowKey = new BytesKey(ByteUtils.toBytes(row.getBytes(SCHEMA_COLUMN_HASH_KEY)));
       final long timestamp = row.getDate(SCHEMA_COLUMN_TIME).getTime();
-      final byte[] schemaAsBytes =
-          CassandraByteUtil.byteBuffertoBytes(row.getBytes(SCHEMA_COLUMN_VALUE));
+      final byte[] schemaAsBytes = ByteUtils.toBytes(row.getBytes(SCHEMA_COLUMN_VALUE));
 
       try {
         final SchemaEntry entry = fromAvroEntry(decodeSchemaEntry(schemaAsBytes));
@@ -1070,7 +1069,7 @@ public final class CassandraSchemaTable implements KijiSchemaTable {
       // Get the row key, timestamp, and schema for this row.  Use "Unsafe" version of method here
       // to get raw bytes no matter what format the field is in the C* table.
       final BytesKey rowKey = new BytesKey(
-          CassandraByteUtil.byteBuffertoBytes(row.getBytesUnsafe(SCHEMA_COLUMN_ID_KEY)));
+          ByteUtils.toBytes(row.getBytesUnsafe(SCHEMA_COLUMN_ID_KEY)));
 
       long schemaId = -1;
       try {
@@ -1082,7 +1081,7 @@ public final class CassandraSchemaTable implements KijiSchemaTable {
 
       final long timestamp = row.getDate(SCHEMA_COLUMN_TIME).getTime();
       final byte[] schemaAsBytes =
-          CassandraByteUtil.byteBuffertoBytes(row.getBytes(SCHEMA_COLUMN_VALUE));
+          ByteUtils.toBytes(row.getBytes(SCHEMA_COLUMN_VALUE));
       try {
         final SchemaEntry entry = fromAvroEntry(decodeSchemaEntry(schemaAsBytes));
         entries.add(entry);

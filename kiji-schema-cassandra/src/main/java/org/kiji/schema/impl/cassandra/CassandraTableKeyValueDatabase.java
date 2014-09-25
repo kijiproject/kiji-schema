@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.kiji.annotations.ApiAudience;
+import org.kiji.commons.ByteUtils;
 import org.kiji.schema.KijiTableKeyValueDatabase;
 import org.kiji.schema.KijiURI;
 import org.kiji.schema.avro.KeyValueBackup;
@@ -241,7 +242,7 @@ public class CassandraTableKeyValueDatabase
     final List<byte[]> values = Lists.newArrayList();
     for (Row row: rows) {
       final ByteBuffer blob = row.getBytes(KV_COLUMN_VALUE);
-      values.add(CassandraByteUtil.byteBuffertoBytes(blob));
+      values.add(ByteUtils.toBytes(blob));
     }
     return values;
   }
@@ -260,7 +261,7 @@ public class CassandraTableKeyValueDatabase
     final NavigableMap<Long, byte[]> timedValues = Maps.newTreeMap();
     for (Row row: rows) {
       ByteBuffer blob = row.getBytes(KV_COLUMN_VALUE);
-      final byte[] bytes = CassandraByteUtil.byteBuffertoBytes(blob);
+      final byte[] bytes = ByteUtils.toBytes(blob);
       Long timestamp = row.getDate(KV_COLUMN_TIME).getTime();
       Preconditions.checkState(timedValues.put(timestamp, bytes) == null);
     }
@@ -272,7 +273,7 @@ public class CassandraTableKeyValueDatabase
   public CassandraTableKeyValueDatabase putValue(String table, String key, byte[] value)
       throws IOException {
     Preconditions.checkNotNull(mPutValueStatement);
-    ByteBuffer valAsByteBuffer = CassandraByteUtil.bytesToByteBuffer(value);
+    ByteBuffer valAsByteBuffer = ByteBuffer.wrap(value);
     // TODO: Check for success?
     mAdmin.execute(mPutValueStatement.bind(table, key, new Date(), valAsByteBuffer));
     return this;
