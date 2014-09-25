@@ -43,7 +43,83 @@ public class TestCassandraKijiURI {
     assertEquals(5678, uri.getContactPort());
     assertEquals(null, uri.getInstance());
     assertEquals(null, uri.getTable());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
     assertTrue(uri.getColumns().isEmpty());
+  }
+
+  @Test
+  public void testCassandraUriWithUsernameAndPassword() {
+    final CassandraKijiURI uri = CassandraKijiURI.newBuilder(
+        "kiji-cassandra://zkhost:1234/sallycinnamon:password@chost:5678").build();
+    assertEquals("zkhost", uri.getZookeeperQuorum().get(0));
+    assertEquals(1234, uri.getZookeeperClientPort());
+    assertEquals("chost", uri.getContactPoints().get(0));
+    assertEquals(5678, uri.getContactPort());
+    assertEquals(null, uri.getInstance());
+    assertEquals(null, uri.getTable());
+    assertEquals("sallycinnamon", uri.getUsername());
+    assertEquals("password", uri.getPassword());
+    assertTrue(uri.getColumns().isEmpty());
+  }
+
+  @Test
+  public void testCassandraUriWithUsernameAndPasswordMultipleHosts() {
+    final CassandraKijiURI uri = CassandraKijiURI.newBuilder(
+        "kiji-cassandra://zkhost:1234/sallycinnamon:password@(chost1,chost2):5678").build();
+    assertEquals("zkhost", uri.getZookeeperQuorum().get(0));
+    assertEquals(1234, uri.getZookeeperClientPort());
+    assertEquals("chost1", uri.getContactPoints().get(0));
+    assertEquals("chost2", uri.getContactPoints().get(1));
+    assertEquals(5678, uri.getContactPort());
+    assertEquals(null, uri.getInstance());
+    assertEquals(null, uri.getTable());
+    assertEquals("sallycinnamon", uri.getUsername());
+    assertEquals("password", uri.getPassword());
+    assertTrue(uri.getColumns().isEmpty());
+  }
+
+  @Test
+  public void testCassandraUriDoubleApersand() {
+    final String uriString = "kiji-cassandra://zkhost:1234/sally@cinnamon@chost:5678";
+    try {
+      final CassandraKijiURI uri = CassandraKijiURI.newBuilder(uriString).build();
+      fail("An exception should have been thrown.");
+    } catch (KijiURIException kurie) {
+      assertEquals(String.format(
+              "Invalid Kiji URI: '%s' : Cannot have more than one '@' in URI authority",
+              uriString),
+          kurie.getMessage());
+    }
+  }
+
+  @Test
+  public void testCassandraUriTooManyColons() {
+    final String uriString = "kiji-cassandra://zkhost:1234/sally:cinnamon:foo@chost:5678";
+    try {
+      final CassandraKijiURI uri = CassandraKijiURI.newBuilder(uriString).build();
+      fail("An exception should have been thrown.");
+    } catch (KijiURIException kurie) {
+      assertEquals(String.format(
+              "Invalid Kiji URI: '%s' : Cannot have more than one ':' in URI user info",
+              uriString),
+          kurie.getMessage());
+    }
+  }
+
+  @Test
+  public void testCassandraUriWithUsername() {
+    final String uriString = "kiji-cassandra://zkhost:1234/sallycinnamon@chost:5678";
+    try {
+      final CassandraKijiURI uri = CassandraKijiURI.newBuilder(uriString).build();
+      fail("An exception should have been thrown.");
+    } catch (KijiURIException kurie) {
+      assertEquals(String.format(
+          "Invalid Kiji URI: '%s' : Cassandra Kiji URIs do not support a username without a "
+              + "password.",
+          uriString),
+          kurie.getMessage());
+    }
   }
 
   @Test
@@ -56,6 +132,8 @@ public class TestCassandraKijiURI {
     assertEquals(5678, uri.getContactPort());
     assertEquals("instance", uri.getInstance());
     assertEquals(null, uri.getTable());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
     assertTrue(uri.getColumns().isEmpty());
   }
 
@@ -70,6 +148,8 @@ public class TestCassandraKijiURI {
     assertEquals("instance", uri.getInstance());
     assertEquals("table", uri.getTable());
     assertEquals("col", uri.getColumns().get(0).getName());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -84,6 +164,8 @@ public class TestCassandraKijiURI {
     assertEquals("instance", uri.getInstance());
     assertEquals("table", uri.getTable());
     assertEquals("family:qualifier", uri.getColumns().get(0).getName());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -98,6 +180,8 @@ public class TestCassandraKijiURI {
     assertEquals("default", uri.getInstance());
     assertEquals("table", uri.getTable());
     assertEquals("col", uri.getColumns().get(0).getName());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -112,6 +196,8 @@ public class TestCassandraKijiURI {
     assertEquals("instance", uri.getInstance());
     assertEquals("table", uri.getTable());
     assertEquals("col", uri.getColumns().get(0).getName());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -129,6 +215,8 @@ public class TestCassandraKijiURI {
     assertEquals("instance", uri.getInstance());
     assertEquals("table", uri.getTable());
     assertEquals("col", uri.getColumns().get(0).getName());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -143,6 +231,8 @@ public class TestCassandraKijiURI {
     assertEquals("instance", uri.getInstance());
     assertEquals("table", uri.getTable());
     assertEquals("col", uri.getColumns().get(0).getName());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -157,6 +247,8 @@ public class TestCassandraKijiURI {
     assertEquals("default", uri.getInstance());
     assertEquals("table", uri.getTable());
     assertEquals("col", uri.getColumns().get(0).getName());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -170,6 +262,8 @@ public class TestCassandraKijiURI {
     assertEquals("instance", uriTwo.getInstance());
     assertEquals("table", uriTwo.getTable());
     assertEquals("col", uriTwo.getColumns().get(0).getName());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -234,6 +328,8 @@ public class TestCassandraKijiURI {
     assertEquals("default", uri.getInstance());
     assertEquals("table", uri.getTable());
     assertEquals(2, uri.getColumns().size());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -261,6 +357,8 @@ public class TestCassandraKijiURI {
     assertEquals("instance", uri.getInstance());
     assertEquals("table", uri.getTable());
     assertEquals("col", uri.getColumns().get(0).getName());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -274,6 +372,8 @@ public class TestCassandraKijiURI {
     assertEquals("instance", uri.getInstance());
     assertEquals("table", uri.getTable());
     assertEquals("col", uri.getColumns().get(0).getName());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test
@@ -283,6 +383,8 @@ public class TestCassandraKijiURI {
     assertEquals("zkhost", uri.getZookeeperQuorum().get(0));
     assertEquals(1234, uri.getZookeeperClientPort());
     assertEquals(null, uri.getInstance());
+    assertEquals(null, uri.getUsername());
+    assertEquals(null, uri.getPassword());
   }
 
   @Test

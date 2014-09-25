@@ -97,6 +97,9 @@ public final class CassandraKijiURI extends KijiURI {
   /** Cassandra contact points port number. */
   private final int mContactPort;
 
+  private final String mUsername;
+  private final String mPassword;
+
   // CSOFF: ParameterNumberCheck
   /**
    * Constructs a new CassandraKijiURI with the given parameters.
@@ -106,6 +109,8 @@ public final class CassandraKijiURI extends KijiURI {
    * @param zookeeperClientPort Zookeeper client port.
    * @param contactPoints The host names of Cassandra contact points.
    * @param contactPort The port of Cassandra contact points.
+   * @param username Optional username for Cassandra authentication.
+   * @param password Optional password for Cassandra authentication.
    * @param instanceName Instance name.
    * @param tableName Table name.
    * @param columnNames Column names.
@@ -117,6 +122,8 @@ public final class CassandraKijiURI extends KijiURI {
       final int zookeeperClientPort,
       final ImmutableList<String> contactPoints,
       final int contactPort,
+      final String username,
+      final String password,
       final String instanceName,
       final String tableName,
       final Iterable<KijiColumnName> columnNames) {
@@ -124,6 +131,8 @@ public final class CassandraKijiURI extends KijiURI {
     mContactPoints = contactPoints;
     mContactPointsNormalized = ImmutableSortedSet.copyOf(mContactPoints).asList();
     mContactPort = contactPort;
+    mUsername = username;
+    mPassword = password;
   }
   // CSON
 
@@ -155,14 +164,35 @@ public final class CassandraKijiURI extends KijiURI {
   }
 
   /**
+   * Returns the Cassandra username.
+   *
+   * @return the Cassandra username.
+   */
+  public String getUsername() {
+    return mUsername;
+  }
+
+  /**
+   * Returns the Cassandra password.
+   *
+   * @return the Cassandra password.
+   */
+  public String getPassword() {
+    return mPassword;
+  }
+
+  /**
    * Builder class for constructing CassandraKijiURIs.
    */
   public static final class CassandraKijiURIBuilder extends KijiURIBuilder {
 
     private ImmutableList<String> mContactPoints;
     private int mContactPort;
+    private String mUsername;
+    private String mPassword;
 
     // CSOFF: ParameterNumberCheck
+
     /**
      * Constructs a new builder for CassandraKijiURIs.
      *
@@ -171,16 +201,21 @@ public final class CassandraKijiURI extends KijiURI {
      * @param zookeeperClientPort The initial zookeeper client port.
      * @param contactPoints The host names of Cassandra contact points.
      * @param contactPort The port of Cassandra contact points.
+     * @param username for Cassandra authentication (can be null)
+     * @param password for Cassandra authentication (can be null)
      * @param instanceName The initial instance name.
      * @param tableName The initial table name.
      * @param columnNames The initial column names.
      */
+
     private CassandraKijiURIBuilder(
         final String scheme,
         final Iterable<String> zookeeperQuorum,
         final int zookeeperClientPort,
         final Iterable<String> contactPoints,
         final int contactPort,
+        final String username,
+        final String password,
         final String instanceName,
         final String tableName,
         final Iterable<KijiColumnName> columnNames
@@ -188,6 +223,8 @@ public final class CassandraKijiURI extends KijiURI {
       super(scheme, zookeeperQuorum, zookeeperClientPort, instanceName, tableName, columnNames);
       mContactPoints = ImmutableList.copyOf(contactPoints);
       mContactPort = contactPort;
+      mUsername = username;
+      mPassword = password;
     }
     // CSOFF
 
@@ -336,6 +373,8 @@ public final class CassandraKijiURI extends KijiURI {
           mZookeeperClientPort,
           mContactPoints,
           mContactPort,
+          mUsername,
+          mPassword,
           mInstanceName,
           mTableName,
           mColumnNames);
@@ -349,23 +388,41 @@ public final class CassandraKijiURI extends KijiURI {
     /** {@inheritDoc} */
     @Override
     public CassandraKijiURIBuilder parse(final URI uri) {
-      final AuthorityParser authorityParser = AuthorityParser.getAuthorityParser(uri);
+      // Parse the ZooKeeper portion of the authority.
+      final ZooKeeperAuthorityParser zooKeeperAuthorityParser
+          = ZooKeeperAuthorityParser.getAuthorityParser(uri);
+
+      // Cassandra Kiji URIs aren't strictly legal - the Cassandra "authority" is really the first
+      // part of the path.
       final List<String> segments = Splitter.on('/').omitEmptyStrings().splitToList(uri.getPath());
       if (segments.size() < 1) {
         throw new KijiURIException(uri.toString(), "Cassandra contact points must be specified.");
       }
+      final String cassandraAuthority = segments.get(0);
+      final AuthorityParser cassandraAuthorityParser = AuthorityParser.getAuthorityParser(
+          cassandraAuthority,
+          uri);
 
-      final ImmutableList<String> contactPoints = AuthorityParser.parseHosts(uri, segments.get(0));
-      final Integer contactPort = AuthorityParser.parsePort(uri, segments.get(0));
+      // We currently support either neither a username nor a password, OR a username and a
+      // password, but not a username without a password.
+      if (null != cassandraAuthorityParser.getUsername()
+          && null == cassandraAuthorityParser.getPassword()) {
+        throw new KijiURIException(uri.toString(),
+            "Cassandra Kiji URIs do not support a username without a password.");
+
+      }
 
       final PathParser segmentParser = new PathParser(uri, 1);
 
       return new CassandraKijiURIBuilder(
           uri.getScheme(),
-          authorityParser.getZookeeperQuorum(),
-          authorityParser.getZookeeperClientPort(),
-          contactPoints,
-          contactPort == null ? DEFAULT_CONTACT_PORT : contactPort,
+          zooKeeperAuthorityParser.getZookeeperQuorum(),
+          zooKeeperAuthorityParser.getZookeeperClientPort(),
+          cassandraAuthorityParser.getHosts(),
+          cassandraAuthorityParser.getHostPort() == null
+              ? DEFAULT_CONTACT_PORT : cassandraAuthorityParser.getHostPort(),
+          cassandraAuthorityParser.getUsername(),
+          cassandraAuthorityParser.getPassword(),
           segmentParser.getInstance(),
           segmentParser.getTable(),
           segmentParser.getColumns());
@@ -442,13 +499,19 @@ public final class CassandraKijiURI extends KijiURI {
   public static CassandraKijiURIBuilder newBuilder(KijiURI uri) {
     final ImmutableList<String> contactPoints;
     final int contactPort;
+    final String username;
+    final String password;
     if (uri instanceof CassandraKijiURI) {
       final CassandraKijiURI cassandraKijiURI = (CassandraKijiURI) uri;
       contactPoints = cassandraKijiURI.mContactPoints;
       contactPort = cassandraKijiURI.mContactPort;
+      username = cassandraKijiURI.mUsername;
+      password = cassandraKijiURI.mPassword;
     } else {
       contactPoints = ImmutableList.of(DEFAULT_CONTACT_POINT);
       contactPort = DEFAULT_CONTACT_PORT;
+      username = null;
+      password = null;
     }
 
     return new CassandraKijiURIBuilder(
@@ -457,6 +520,8 @@ public final class CassandraKijiURI extends KijiURI {
         uri.getZookeeperClientPort(),
         contactPoints,
         contactPort,
+        username,
+        password,
         uri.getInstance(),
         uri.getTable(),
         uri.getColumnsOrdered());

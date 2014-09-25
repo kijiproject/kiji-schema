@@ -22,6 +22,7 @@ package org.kiji.schema.impl.cassandra;
 import java.util.List;
 
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.PlainTextAuthProvider;
 import com.datastax.driver.core.Session;
 
 import org.kiji.schema.KijiIOException;
@@ -55,15 +56,22 @@ public final class DefaultCassandraAdmin extends CassandraAdmin {
     } else {
       throw new KijiIOException("Need a Cassandra URI for a CassandraAdmin.");
     }
-    List<String> hosts = cassandraKijiURI.getContactPoints();
-    String[] hostStrings = hosts.toArray(new String[hosts.size()]);
+    final List<String> hosts = cassandraKijiURI.getContactPoints();
+    final String[] hostStrings = hosts.toArray(new String[hosts.size()]);
     int port = cassandraKijiURI.getContactPort();
-    Cluster cluster = Cluster
+    final Cluster.Builder clusterBuilder = Cluster
         .builder()
         .addContactPoints(hostStrings)
-        .withPort(port)
-        .build();
-    Session cassandraSession = cluster.connect();
+        .withPort(port);
+
+    if (null != cassandraKijiURI.getUsername()) {
+      clusterBuilder.withAuthProvider(
+          new PlainTextAuthProvider(cassandraKijiURI.getUsername(), cassandraKijiURI.getPassword())
+      );
+    }
+
+    final Cluster cluster = clusterBuilder.build();
+    final Session cassandraSession = cluster.connect();
     return new DefaultCassandraAdmin(cassandraSession, kijiURI);
   }
 

@@ -250,7 +250,8 @@ public final class HBaseKijiURI extends KijiURI {
     /** {@inheritDoc} */
     @Override
     public HBaseKijiURIBuilder parse(final URI uri) {
-      final AuthorityParser authorityParser = AuthorityParser.getAuthorityParser(uri);
+      final ZooKeeperAuthorityParser authorityParser =
+          ZooKeeperAuthorityParser.getAuthorityParser(uri);
       final PathParser segmentParser = new PathParser(uri);
 
       return new HBaseKijiURIBuilder(

@@ -32,7 +32,7 @@ import org.kiji.annotations.ApiAudience;
 import org.kiji.annotations.ApiStability;
 import org.kiji.schema.hbase.HBaseKijiURI.HBaseKijiURIBuilder;
 import org.kiji.schema.impl.KijiURIParser;
-import org.kiji.schema.impl.KijiURIParser.AuthorityParser;
+import org.kiji.schema.impl.KijiURIParser.ZooKeeperAuthorityParser;
 import org.kiji.schema.util.KijiNameValidator;
 import org.kiji.schema.zookeeper.ZooKeeperFactory;
 
@@ -288,8 +288,8 @@ public class KijiURI {
      */
     protected KijiURIBuilder() {
       mScheme = KIJI_SCHEME;
-      mZookeeperQuorum = AuthorityParser.ENV_ZOOKEEPER_QUORUM;
-      mZookeeperClientPort = AuthorityParser.ENV_ZOOKEEPER_CLIENT_PORT;
+      mZookeeperQuorum = ZooKeeperAuthorityParser.ENV_ZOOKEEPER_QUORUM;
+      mZookeeperClientPort = ZooKeeperAuthorityParser.ENV_ZOOKEEPER_CLIENT_PORT;
       mInstanceName = KConstants.DEFAULT_INSTANCE_NAME;
       mTableName = UNSET_URI_STRING;
       mColumnNames = ImmutableList.of();

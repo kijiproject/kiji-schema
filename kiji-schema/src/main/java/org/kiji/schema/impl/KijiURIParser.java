@@ -23,6 +23,8 @@ import java.net.URI;
 import java.util.List;
 import java.util.regex.Matcher;
 
+import com.google.common.base.CharMatcher;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import org.apache.hadoop.conf.Configuration;
@@ -82,29 +84,166 @@ public interface KijiURIParser extends NamedProvider {
 
 
   /**
-   * Class for parsing the authority portion of a KijiURI.
+   * Class for parsing an authority portion in a KijiURI.
+   *
+   * An HBase KijiURI has only a single authority, whereas a Cassandra KijiURI has two, one for
+   * ZooKeeper and another for Cassandra (the Cassandra KijiURI is not strictly a legal URI).
+   *
+   * The authority in a Cassandra KijiURI can also have a username and password.
    */
   public static final class AuthorityParser {
-    /** ZooKeeper quorum configured from the local environment.*/
-    public static final ImmutableList<String> ENV_ZOOKEEPER_QUORUM;
-
-    /** ZooKeeper client port configured from the local environment. */
-    public static final int ENV_ZOOKEEPER_CLIENT_PORT;
+    private final ImmutableList<String> mHosts;
+    private final Integer mHostPort;
+    private final String mUsername;
+    private final String mPassword;
 
     /**
-     * Resolves the local environment ZooKeeper parameters.
+     * Constructs an AuthorityParser.
      *
-     * Local environment refers to the hbase-site.xml configuration file available on the classpath.
+     * @param authority The authority within the URI.
+     * @param uri The uri whose authority is to be parsed (used for generating messages in
+     *     exceptions).
+     * @return an {@code AuthorityParser} for the provided {@code URI}.
+     * @throws KijiURIException If the authority is invalid.
      */
-    static {
-      Configuration conf = HBaseConfiguration.create();
-      ENV_ZOOKEEPER_QUORUM = ImmutableList.copyOf(conf.get(HConstants.ZOOKEEPER_QUORUM).split(","));
-      ENV_ZOOKEEPER_CLIENT_PORT =
-          conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, KijiURI.DEFAULT_ZOOKEEPER_CLIENT_PORT);
+    public static AuthorityParser getAuthorityParser(String authority, URI uri) {
+      return new AuthorityParser(authority, uri);
     }
 
-    private final ImmutableList<String> mZookeeperQuorum;
-    private final int mZookeeperClientPort;
+    /**
+     * Return a new authority parser, which will parse a substring of the entire URI.
+     *
+     * We specify the authority explicitly because in a Cassandra KijiURI, the Cassandra hosts
+     * authority will be different from `uri.getAuthority()`.
+     *
+     * Parse the hosts from a host / port segment. The segment must be in one of the following
+     * formats:
+     *
+     * <li> {@code host}
+     * <li> {@code host:port}
+     * <li> {@code host1,host2}
+     * <li> {@code (host1,host2):port}
+     * <li> {@code user@host}
+     * <li> {@code user@host:port}
+     * <li> {@code user@host1,host2}
+     * <li> {@code user@(host1,host2):port}
+     * <li> {@code user:password@host}
+     * <li> {@code user:password@host:port}
+     * <li> {@code user:password@host1,host2}
+     * <li> {@code user:password@(host1,host2):port}
+     *
+     * @param authority The substring of the URI containing the authority.
+     * @param uri The URI itself (needed here for error messages).
+     */
+    private AuthorityParser(String authority, URI uri) {
+      // Extract the user info, if it is present.
+      final String hostPortInfo = getHostAndPortInfoFromAuthority(uri, authority);
+      final String userInfo = getUserInfoFromAuthority(uri, authority);
+
+      mUsername = parseUsername(uri, userInfo);
+      mPassword = parsePassword(uri, userInfo);
+
+      // Get the hosts and ports.
+      mHosts = parseHosts(uri, hostPortInfo);
+      mHostPort = parsePort(uri, hostPortInfo);
+    }
+
+    /**
+     * Extract the user information (username and password) from an authority.
+     *
+     * The returned value is of the form `username:password` or just `username`.
+     *
+     * @param uri The URI containing the authority (used to generate exception messages).
+     * @param authority The authority to parse.
+     * @return A string containing the user information, or null if the authority does not contain
+     *     user information.
+     */
+    private static String getUserInfoFromAuthority(URI uri, String authority) {
+      if (!authority.contains("@")) {
+        return null;
+      }
+      // Should have no more than a single @ appear!
+      final List<String> userInfoAndHostPortInfo =
+          ImmutableList.copyOf(Splitter.on('@').split(authority));
+      if (2 != userInfoAndHostPortInfo.size()) {
+        throw new KijiURIException(
+            uri.toString(), "Cannot have more than one '@' in URI authority");
+      }
+      return userInfoAndHostPortInfo.get(0);
+    }
+
+    /**
+     * Extract the host(s) and port from an authority.
+     *
+     * The returned value is of the form `host`, `host:port`, `(host1,host2,...)`, or
+     * `(host1,host2,...):port`.
+     *
+     * @param uri The URI containing the authority (used to generate exception messages).
+     * @param authority The authority to parse.
+     * @return A string containing the host(s) and optional port.
+     */
+    private static String getHostAndPortInfoFromAuthority(URI uri, String authority) {
+      if (!authority.contains("@")) {
+        return authority;
+      }
+      // Should have no more than a single @ appear!
+      final List<String> userInfoAndHostPortInfo =
+          ImmutableList.copyOf(Splitter.on('@').split(authority));
+      if (2 != userInfoAndHostPortInfo.size()) {
+        throw new KijiURIException(
+            uri.toString(), "Cannot have more than one '@' in URI authority");
+      }
+      Preconditions.checkArgument(2 == userInfoAndHostPortInfo.size());
+      return userInfoAndHostPortInfo.get(1);
+    }
+
+    /**
+     * Extract the username from a user information string.
+     *
+     * @param uri The URI from which the user information comes (used for exception messages).
+     * @param userInfo The user info, of the form `username` or `username:password` (can be null).
+     * @return The username, or null if the `userInfo` is null.
+     */
+    private static String parseUsername(URI uri, String userInfo) {
+      if (null == userInfo) {
+        return null;
+      }
+      if (!userInfo.contains(":")) {
+        return userInfo;
+      }
+      if (1 != CharMatcher.is(':').countIn(userInfo)) {
+        throw new KijiURIException(
+            uri.toString(), "Cannot have more than one ':' in URI user info");
+      }
+      final List<String> usernameAndPassword =
+          ImmutableList.copyOf(Splitter.on(':').split(userInfo));
+      Preconditions.checkArgument(2 == usernameAndPassword.size());
+      return usernameAndPassword.get(0);
+    }
+
+    /**
+     * Extract the password from a user information string.
+     *
+     * @param uri The URI from which the user information comes (used for exception messages).
+     * @param userInfo The user info, of the form `username` or `username:password` (can be null).
+     * @return The password, or null if it is not specified.
+     */
+    private static String parsePassword(URI uri, String userInfo) {
+      if (null == userInfo) {
+        return null;
+      }
+      if (!userInfo.contains(":")) {
+        return null;
+      }
+      if (1 != CharMatcher.is(':').countIn(userInfo)) {
+        throw new KijiURIException(
+            uri.toString(), "Cannot have more than one ':' in URI user info");
+      }
+      final List<String> usernameAndPassword =
+          ImmutableList.copyOf(Splitter.on(':').split(userInfo));
+      Preconditions.checkArgument(2 == usernameAndPassword.size());
+      return usernameAndPassword.get(1);
+    }
 
     /**
      * Parse the hosts from a host / port segment. The segment must be in one of the following
@@ -119,7 +258,7 @@ public interface KijiURIParser extends NamedProvider {
      * @param segment containing the host(s) and optionally the port.
      * @return list of hosts.
      */
-    public static ImmutableList<String> parseHosts(URI uri, String segment) {
+    private static ImmutableList<String> parseHosts(URI uri, String segment) {
       final Matcher zkMatcher = KijiURI.RE_AUTHORITY_GROUP.matcher(segment);
       if (zkMatcher.matches()) {
         return ImmutableList.copyOf(Splitter.on(',').split(zkMatcher.group(1)));
@@ -155,7 +294,7 @@ public interface KijiURIParser extends NamedProvider {
      * @param segment containing the host(s) and optionally the port.
      * @return the port, or {@code null} if no port is specified.
      */
-    public static Integer parsePort(URI uri, String segment) {
+    private static Integer parsePort(URI uri, String segment) {
       final List<String> parts = ImmutableList.copyOf(Splitter.on(':').split(segment));
       if (parts.size() != 2) {
         return null;
@@ -169,24 +308,81 @@ public interface KijiURIParser extends NamedProvider {
     }
 
     /**
+     * @return the hosts from the parsed URI authority.
+     */
+    public ImmutableList<String> getHosts() {
+      return mHosts;
+    }
+
+    /**
+     * @return the host port from the parsed URI authority (can be null).
+     */
+    public Integer getHostPort() {
+      return mHostPort;
+    }
+
+    /**
+     * @return the username from the parsed URI authority (can be null).
+     */
+    public String getUsername() {
+      return mUsername;
+    }
+
+    /**
+     * @return the password from the parsed URI authority (can be null).
+     */
+    public String getPassword() {
+      return mPassword;
+    }
+  }
+
+  /**
+   * Parser for the ZooKeeper authority section in a URI.
+   */
+  public static final class ZooKeeperAuthorityParser {
+    /** ZooKeeper quorum configured from the local environment.*/
+    public static final ImmutableList<String> ENV_ZOOKEEPER_QUORUM;
+
+    /** ZooKeeper client port configured from the local environment. */
+    public static final int ENV_ZOOKEEPER_CLIENT_PORT;
+
+    /**
+     * Resolves the local environment ZooKeeper parameters.
+     *
+     * Local environment refers to the hbase-site.xml configuration file available on the classpath.
+     */
+    static {
+      Configuration conf = HBaseConfiguration.create();
+      ENV_ZOOKEEPER_QUORUM = ImmutableList.copyOf(conf.get(HConstants.ZOOKEEPER_QUORUM).split(","));
+      ENV_ZOOKEEPER_CLIENT_PORT =
+          conf.getInt(HConstants.ZOOKEEPER_CLIENT_PORT, KijiURI.DEFAULT_ZOOKEEPER_CLIENT_PORT);
+    }
+
+    /** List of nodes in the ZooKeeper quorum for this authority. */
+    private final ImmutableList<String> mZookeeperQuorum;
+
+    /** The ZooKeeper port for this authority. */
+    private final int mZookeeperClientPort;
+
+    /**
      * Constructs an AuthorityParser.
      *
      * @param uri The uri whose authority is to be parsed.
      * @return an {@code AuthorityParser} for the provided {@code URI}.
      * @throws KijiURIException If the authority is invalid.
      */
-    public static AuthorityParser getAuthorityParser(URI uri) {
-      return new AuthorityParser(uri);
+    public static ZooKeeperAuthorityParser getAuthorityParser(URI uri) {
+      return new ZooKeeperAuthorityParser(uri);
     }
 
     /**
-     * Constructs an AuthorityParser.
+     * Constructs an AuthorityParser for ZooKeeper authorities.
      *
      * @param uri The uri whose authority is to be parsed.
      * @throws KijiURIException If the authority is invalid.
      */
-    private AuthorityParser(URI uri) {
-      String authority = uri.getAuthority();
+    private ZooKeeperAuthorityParser(URI uri) {
+      final String authority = uri.getAuthority();
       if (null == authority) {
         throw new KijiURIException(uri.toString(), "ZooKeeper ensemble missing.");
       }
@@ -195,9 +391,12 @@ public interface KijiURIParser extends NamedProvider {
         mZookeeperQuorum = ENV_ZOOKEEPER_QUORUM;
         mZookeeperClientPort = ENV_ZOOKEEPER_CLIENT_PORT;
       } else {
-        mZookeeperQuorum = parseHosts(uri, authority);
-        final Integer port = parsePort(uri, authority);
+        final AuthorityParser authorityParser = AuthorityParser.getAuthorityParser(authority, uri);
+        mZookeeperQuorum = authorityParser.getHosts();
+        final Integer port = authorityParser.getHostPort();
         mZookeeperClientPort = port == null ? KijiURI.DEFAULT_ZOOKEEPER_CLIENT_PORT : port;
+        Preconditions.checkArgument(null == authorityParser.getUsername());
+        Preconditions.checkArgument(null == authorityParser.getPassword());
       }
     }
 
