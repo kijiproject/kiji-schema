@@ -62,12 +62,6 @@
   </modules>
 
   <build>
-    <plugins>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-enforcer-plugin</artifactId>
-      </plugin>
-    </plugins>
     <pluginManagement>
       <plugins>
         <plugin>
